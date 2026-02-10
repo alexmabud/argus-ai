@@ -62,32 +62,32 @@ O sistema **não substitui ferramentas oficiais** — é uma camada de apoio par
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Frontend (PWA)                        │
-│          HTML + Alpine.js + Tailwind + IndexedDB         │
+│                    Frontend (PWA)                       │
+│          HTML + Alpine.js + Tailwind + IndexedDB        │
 │          Câmera · GPS · Voz · OCR · Offline Queue       │
 └──────────────────────┬──────────────────────────────────┘
                        │ HTTPS
 ┌──────────────────────▼──────────────────────────────────┐
-│               Backend (FastAPI - Monolito)               │
-│                                                          │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐  │
-│  │ Routers  │→ │ Services │→ │  Repos   │→ │   DB   │  │
-│  │ (API v1) │  │ (Lógica) │  │ (Dados)  │  │        │  │
-│  └──────────┘  └──────────┘  └──────────┘  └────────┘  │
-│                                                          │
+│               Backend (FastAPI - Monolito)              │
+│                                                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐   │
+│  │ Routers  │→ │ Services │→ │  Repos   │→ │   DB   │   │
+│  │ (API v1) │  │ (Lógica) │  │ (Dados)  │  │        │   │
+│  └──────────┘  └──────────┘  └──────────┘  └────────┘   │
+│                                                         │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │              arq Worker (Background)              │   │
-│  │     PDF Processing · Face Embedding · Sync        │   │
+│  │              arq Worker (Background)             │   │
+│  │     PDF Processing · Face Embedding · Sync       │   │
 │  └──────────────────────────────────────────────────┘   │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│                    Infraestrutura                        │
-│                                                          │
-│  PostgreSQL 16          Redis           Cloudflare R2    │
-│  + pgvector             Cache           Object Storage   │
-│  + PostGIS              + arq Queue     (Fotos + PDFs)   │
-│  + pg_trgm                                               │
+│                    Infraestrutura                       │
+│                                                         │
+│  PostgreSQL 16          Redis           Cloudflare R2   │
+│  + pgvector             Cache           Object Storage  │
+│  + PostGIS              + arq Queue     (Fotos + PDFs)  │
+│  + pg_trgm                                              │
 └─────────────────────────────────────────────────────────┘
 ```
 
