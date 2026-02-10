@@ -1,0 +1,151 @@
+# ══════════════════════════════════
+# ARGUS AI — .gitignore
+# ══════════════════════════════════
+
+# ══════════════════════════════════
+# SEGURANÇA — NUNCA commitar
+# ══════════════════════════════════
+.env
+.env.local
+.env.production
+.env.staging
+*.pem
+*.key
+*.crt
+encryption.key
+
+# ══════════════════════════════════
+# PYTHON
+# ══════════════════════════════════
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+*.whl
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# ══════════════════════════════════
+# TESTES E COVERAGE
+# ══════════════════════════════════
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.pytest_cache/
+.mypy_cache/
+
+# ══════════════════════════════════
+# IDEs E EDITORES
+# ══════════════════════════════════
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# PyCharm / JetBrains
+.idea/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# ══════════════════════════════════
+# OS
+# ══════════════════════════════════
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.bak
+*.tmp
+*.temp
+
+# ══════════════════════════════════
+# DOCKER
+# ══════════════════════════════════
+# Volumes locais de dados (nunca versionar dados do banco)
+pgdata/
+redisdata/
+miniodata/
+
+# ══════════════════════════════════
+# MODELOS DE ML (pesados demais para git)
+# ══════════════════════════════════
+*.onnx
+*.pt
+*.pth
+*.bin
+*.h5
+*.safetensors
+models/
+.cache/
+sentence-transformers/
+insightface/
+torch_cache/
+
+# Hugging Face cache
+~/.cache/huggingface/
+.cache/huggingface/
+
+# ══════════════════════════════════
+# STORAGE LOCAL (uploads e arquivos)
+# ══════════════════════════════════
+uploads/
+downloads/
+temp/
+tmp/
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+!frontend/icons/*.png
+
+# ══════════════════════════════════
+# ALEMBIC
+# ══════════════════════════════════
+# NÃO ignorar migrations — elas SÃO versionadas
+# Apenas ignorar o cache do alembic
+alembic/__pycache__/
+
+# ══════════════════════════════════
+# LOGS
+# ══════════════════════════════════
+*.log
+logs/
+
+# ══════════════════════════════════
+# NODE (caso use build tools no frontend)
+# ══════════════════════════════════
+node_modules/
+package-lock.json
+yarn.lock
+
+# ══════════════════════════════════
+# JUPYTER (caso use notebooks para análise)
+# ══════════════════════════════════
+.ipynb_checkpoints/
+*.ipynb
+
+# ══════════════════════════════════
+# RUFF / LINT
+# ══════════════════════════════════
+.ruff_cache/
