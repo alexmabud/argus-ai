@@ -244,7 +244,7 @@ As decisões técnicas do projeto estão documentadas em ADRs (Architecture Deci
 
 ## Autor
 
-Desenvolvido por **Abud** — AI Automation Engineer & Python Developer
+Desenvolvido por **Alex Abud** — AI Automation Engineer & Python Developer
 
 ---
 
