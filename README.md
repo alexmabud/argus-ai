@@ -235,8 +235,8 @@ As decisões técnicas do projeto estão documentadas em ADRs (Architecture Deci
 
 ## Roadmap
 
-- [x] Especificação técnica e arquitetura
-- [ ] **Fase 1** — Fundação (models, auth, migrations)
+- [x] **Fase 0** — Setup inicial (config, Docker, CI/CD, segurança)
+- [x] **Fase 1** — Fundação (models, auth, migrations)
 - [ ] **Fase 2** — Core operacional (CRUD, relacionamentos, geoespacial)
 - [ ] **Fase 3** — RAG (embeddings, busca semântica, geração de relatório)
 - [ ] **Fase 4** — Visão computacional (face recognition, OCR)
