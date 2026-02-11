@@ -1,8 +1,8 @@
-"""FastAPI application factory and lifecycle management.
+"""Factory e gerenciamento do ciclo de vida da aplicação FastAPI.
 
-Creates the main FastAPI application instance with configured middleware,
-routers, and lifecycle hooks. Also manages ML model initialization and
-database connection lifecycle.
+Cria a instância principal da aplicação FastAPI com middlewares, routers
+e hooks de ciclo de vida configurados. Também gerencia inicialização de
+modelos de ML e ciclo de vida de conexões com banco de dados.
 """
 
 from contextlib import asynccontextmanager
@@ -21,18 +21,19 @@ from app.database.session import engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan context manager.
+    """Gerenciador de contexto do ciclo de vida da aplicação.
 
-    Manages startup and shutdown events for the FastAPI application.
-    On startup: initializes logging and ML models (future phases).
-    On shutdown: disposes database engine and cleanup resources.
+    Gerencia eventos de inicialização e encerramento da aplicação FastAPI.
+    Na inicialização: configura logging e carrega modelos de ML (fases futuras).
+    No encerramento: libera engine do banco de dados e recursos.
 
     Args:
-        app: FastAPI application instance.
+        app: Instância da aplicação FastAPI.
 
     Yields:
         None
     """
+
     setup_logging()
     # Startup: modelos de ML serão carregados aqui nas fases seguintes
     # from app.services.embedding_service import EmbeddingService
@@ -45,14 +46,14 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    """Create and configure the FastAPI application instance.
+    """Cria e configura a instância da aplicação FastAPI.
 
-    Instantiates FastAPI with configured title, description, and version.
-    Applies middleware stack (CORS, logging, audit, rate limiting) and
-    includes all routers (health, API v1).
+    Instancia FastAPI com título, descrição e versão configurados.
+    Aplica stack de middlewares (CORS, logging, audit, rate limiting)
+    e inclui todos os routers (health, API v1).
 
     Returns:
-        Configured FastAPI application instance.
+        Instância da aplicação FastAPI configurada.
     """
 
     app = FastAPI(

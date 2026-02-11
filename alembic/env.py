@@ -4,14 +4,11 @@ from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+# Importar todos os models para que o autogenerate funcione
+import app.models  # noqa: F401
 from alembic import context
 from app.config import settings
 from app.models.base import Base
-
-# Importar todos os models aqui para que o autogenerate funcione
-# from app.models.guarnicao import Guarnicao  # noqa: F401
-# from app.models.usuario import Usuario  # noqa: F401
-# ... (adicionar conforme models forem criados)
 
 config = context.config
 

@@ -1,3 +1,10 @@
+"""Router agregador da API versão 1.
+
+Centraliza todos os routers de domínio da versão 1 da API. Inclui
+subrouters de autenticação e será expandido com outros domínios
+(pessoas, veículos, abordagens, ocorrências, etc.) conforme desenvolvidos.
+"""
+
 from fastapi import APIRouter
 
 from app.api.v1.auth import router as auth_router

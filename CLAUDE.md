@@ -61,6 +61,76 @@ Memória operacional da guarnição: abordagens, ocorrências, RAG, reconhecimen
 - Offline-first: IndexedDB + sync automático
 - LGPD: criptografia, audit, soft delete, retenção controlada
 
+## Documentação com Docstrings
+
+Todos os arquivos Python devem ter docstrings em **Google Style em português**. Siga este padrão:
+
+### Módulo (topo do arquivo)
+```python
+"""Descrição breve do módulo em uma linha.
+
+Descrição mais detalhada explicando propósito, responsabilidades principais
+e contexto no projeto. Pode incluir exemplos de uso se necessário.
+"""
+```
+
+### Classe
+```python
+class MinhaClasse:
+    """Descrição breve da classe.
+
+    Descrição detalhada explicando responsabilidades, padrões de projeto
+    aplicados (soft delete, multi-tenancy, async, etc), e comportamentos
+    importantes.
+
+    Attributes:
+        campo1: Descrição do campo1.
+        campo2: Descrição do campo2 (incluir tipo especial se houver).
+    """
+```
+
+### Função/Método
+```python
+def minha_funcao(arg1: str, arg2: int) -> bool:
+    """Descrição breve em uma linha.
+
+    Descrição detalhada do que a função faz, seu propósito e comportamento.
+    Pode incluir notas técnicas sobre async, side effects, etc.
+
+    Args:
+        arg1: Descrição do argumento 1.
+        arg2: Descrição do argumento 2.
+
+    Returns:
+        Descrição do valor retornado.
+
+    Raises:
+        MeuErro: Quando X acontecer.
+        OutroErro: Quando Y acontecer.
+    """
+```
+
+### Tipos Especiais
+Ao documentar campos/parâmetros com tipos especiais, inclua informação técnica:
+- **Vector(384)**: "Embedding multilíngue para busca semântica (SentenceTransformers)"
+- **Vector(512)**: "Embedding facial para reconhecimento InsightFace"
+- **Geography(POINT, 4326)**: "Coordenada geoespacial para busca por raio (PostGIS)"
+- **Fernet**: "Campo criptografado com AES-256 (LGPD)"
+
+### Cobertura Obrigatória
+✓ Todos os módulos (arquivo)
+✓ Todas as classes
+✓ Todos os métodos públicos e protegidos
+✓ Todos os routers/endpoints
+✓ Funções de teste
+✓ Fixtures pytest
+✓ Scripts
+
+### Idioma
+- **Docstrings**: sempre em português
+- **Tipo hints**: em inglês (str, int, bool, etc)
+- **Nomes de variáveis**: em inglês
+
 ## Referência detalhada
 Para detalhes de implementação, models, código e arquitetura completa, consulte o arquivo `ARGUS_AI_SPEC.md` na raiz do projeto.
 

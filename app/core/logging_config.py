@@ -1,3 +1,9 @@
+"""Configuração de logging para a aplicação.
+
+Inicializa o sistema de logging com formato padronizado, nível adequado
+conforme modo debug/produção, e reduz verbosidade de bibliotecas externas.
+"""
+
 import logging
 import sys
 
@@ -5,6 +11,15 @@ from app.config import settings
 
 
 def setup_logging() -> None:
+    """Configura logging da aplicação no inicialização.
+
+    Define formato padronizado com timestamp, nível, nome do logger e mensagem.
+    Nível é DEBUG em modo debug ou INFO em produção. Reduz logs verbosos de
+    uvicorn.access e sqlalchemy.engine para evitar ruído em logs.
+
+    O logging é inicializado no startup da aplicação via lifespan hook.
+    """
+
     level = logging.DEBUG if settings.DEBUG else logging.INFO
 
     logging.basicConfig(

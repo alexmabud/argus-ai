@@ -1,7 +1,7 @@
-"""Security utilities for password hashing and JWT token generation.
+"""Utilitários de segurança para hashing de senhas e geração de tokens JWT.
 
-Provides functions for bcrypt password hashing, verification, and JWT token
-creation/validation for authentication and authorization flows.
+Fornece funções para hashing de senhas com bcrypt, verificação de credenciais
+e criação/validação de tokens JWT para fluxos de autenticação e autorização.
 """
 
 from datetime import datetime, timedelta
@@ -15,43 +15,43 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_senha(senha: str) -> str:
-    """Hash a password using bcrypt.
+    """Faz hash de uma senha usando bcrypt.
 
     Args:
-        senha: Plain text password to hash.
+        senha: Senha em texto plano a ser hasheada.
 
     Returns:
-        Hashed password string suitable for storage in database.
+        String de hash bcrypt adequada para armazenamento em banco de dados.
     """
 
     return pwd_context.hash(senha)
 
 
 def verificar_senha(senha: str, hash: str) -> bool:
-    """Verify a plain text password against a bcrypt hash.
+    """Verifica uma senha em texto plano contra um hash bcrypt.
 
     Args:
-        senha: Plain text password to verify.
-        hash: Bcrypt hash from database.
+        senha: Senha em texto plano a verificar.
+        hash: Hash bcrypt armazenado no banco de dados.
 
     Returns:
-        True if password matches hash, False otherwise.
+        True se a senha bate com o hash, False caso contrário.
     """
 
     return pwd_context.verify(senha, hash)
 
 
 def criar_access_token(data: dict) -> str:
-    """Create a JWT access token.
+    """Cria um token JWT de acesso.
 
-    Generates a JWT access token with the provided data and configured
-    expiration (default 8 hours). Used for API authentication.
+    Gera um token JWT de acesso com os dados fornecidos e expiração configurada
+    (padrão 8 horas). Usado para autenticação em endpoints da API.
 
     Args:
-        data: Dictionary of claims to encode (e.g., {"sub": user_id, "guarnicao_id": 1}).
+        data: Dicionário de claims a codificar (ex: {"sub": user_id, "guarnicao_id": 1}).
 
     Returns:
-        Encoded JWT access token string.
+        String de token JWT de acesso codificado.
     """
 
     to_encode = data.copy()
@@ -61,16 +61,16 @@ def criar_access_token(data: dict) -> str:
 
 
 def criar_refresh_token(data: dict) -> str:
-    """Create a JWT refresh token.
+    """Cria um token JWT de refresh.
 
-    Generates a JWT refresh token with the provided data and configured
-    expiration (default 30 days). Used to obtain new access tokens.
+    Gera um token JWT de refresh com os dados fornecidos e expiração configurada
+    (padrão 30 dias). Usado para obter novos tokens de acesso.
 
     Args:
-        data: Dictionary of claims to encode (e.g., {"sub": user_id, "guarnicao_id": 1}).
+        data: Dicionário de claims a codificar (ex: {"sub": user_id, "guarnicao_id": 1}).
 
     Returns:
-        Encoded JWT refresh token string.
+        String de token JWT de refresh codificado.
     """
 
     to_encode = data.copy()
@@ -80,17 +80,17 @@ def criar_refresh_token(data: dict) -> str:
 
 
 def decodificar_token(token: str, expected_type: str = "access") -> dict | None:
-    """Decode and validate a JWT token.
+    """Decodifica e valida um token JWT.
 
-    Decodes a JWT token and validates its signature and token type.
-    Returns None if token is invalid, expired, or of wrong type.
+    Decodifica um token JWT e valida sua assinatura e tipo de token.
+    Retorna None se o token for inválido, expirado ou de tipo incorreto.
 
     Args:
-        token: JWT token string to decode.
-        expected_type: Expected token type ("access" or "refresh").
+        token: String de token JWT a decodificar.
+        expected_type: Tipo esperado de token ("access" ou "refresh").
 
     Returns:
-        Decoded payload dictionary if valid, None otherwise.
+        Dicionário de payload decodificado se válido, None caso contrário.
     """
 
     try:
