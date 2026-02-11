@@ -1,3 +1,10 @@
+"""FastAPI application factory and lifecycle management.
+
+Creates the main FastAPI application instance with configured middleware,
+routers, and lifecycle hooks. Also manages ML model initialization and
+database connection lifecycle.
+"""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -14,6 +21,18 @@ from app.database.session import engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Application lifespan context manager.
+
+    Manages startup and shutdown events for the FastAPI application.
+    On startup: initializes logging and ML models (future phases).
+    On shutdown: disposes database engine and cleanup resources.
+
+    Args:
+        app: FastAPI application instance.
+
+    Yields:
+        None
+    """
     setup_logging()
     # Startup: modelos de ML serão carregados aqui nas fases seguintes
     # from app.services.embedding_service import EmbeddingService
@@ -26,6 +45,16 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    """Create and configure the FastAPI application instance.
+
+    Instantiates FastAPI with configured title, description, and version.
+    Applies middleware stack (CORS, logging, audit, rate limiting) and
+    includes all routers (health, API v1).
+
+    Returns:
+        Configured FastAPI application instance.
+    """
+
     app = FastAPI(
         title="Argus AI",
         description="Sistema de apoio operacional com IA",

@@ -1,4 +1,4 @@
-from fastapi import HTTPException, status
+from app.core.exceptions import AcessoNegadoError
 
 
 class TenantFilter:
@@ -16,7 +16,4 @@ class TenantFilter:
         """Verifica se recurso pertence à guarnição do usuário."""
         if hasattr(resource, "guarnicao_id"):
             if resource.guarnicao_id != user.guarnicao_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Acesso negado — recurso de outra guarnição",
-                )
+                raise AcessoNegadoError("Recurso de outra guarnição")
