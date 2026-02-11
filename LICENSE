@@ -1,0 +1,41 @@
+MIT License
+
+Copyright (c) 2026 Abud
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+ADDITIONAL DISCLAIMER FOR PRODUCTION USE:
+
+This software is provided as a portfolio/educational project. The author(s)
+make no guarantees about its suitability for production use, especially in
+contexts involving sensitive personal data or compliance with data protection
+regulations (such as LGPD, GDPR, etc.).
+
+Any use of this software in production environments is done entirely at the
+user's own risk. The author(s) assume no liability for:
+- Data breaches or security vulnerabilities
+- Non-compliance with data protection regulations
+- Loss of data or system failures
+- Any damages resulting from the use or misuse of this software
+
+Users are strongly advised to conduct thorough security audits and obtain
+professional legal counsel before deploying this software in any production
+environment.

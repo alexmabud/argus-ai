@@ -15,8 +15,20 @@
   <img src="https://img.shields.io/badge/pgvector-embeddings-blueviolet" alt="pgvector" />
   <img src="https://img.shields.io/badge/PostGIS-geospatial-green" alt="PostGIS" />
   <img src="https://img.shields.io/badge/PWA-offline--first-orange?logo=pwa&logoColor=white" alt="PWA" />
-  <img src="https://img.shields.io/badge/license-private-red" alt="License" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
+  <img src="https://img.shields.io/badge/status-portfolio-blue" alt="Status" />
 </p>
+
+---
+
+## ⚠️ Aviso Importante
+
+**Este é um projeto de portfólio/demonstração técnica.**
+
+- 🔒 **Dados sensíveis NUNCA devem ser commitados** — use `.env` para configurações
+- 🚫 **NÃO use em produção sem auditoria de segurança completa**
+- 📋 **Projeto educacional** — demonstra arquitetura, não substitui sistemas oficiais
+- ✅ **LGPD-compliant by design** — criptografia, audit trail, soft delete
 
 ---
 

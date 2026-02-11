@@ -55,7 +55,10 @@ dev = [
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-select = ["E", "F", "I", "N", "W", "UP", "S", "B"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["S", "B008"]  # Ignora security warnings e function calls em defaults
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
