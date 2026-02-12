@@ -3,8 +3,11 @@
 Fornece fixtures para:
 - Configuração do banco de dados de testes
 - Cliente HTTP assincrónico para testes de API
-- Dados de teste (guarnição, usuário, headers com autenticação)
+- Dados de teste (guarnição, usuário, pessoa, veículo, abordagem, passagem)
+- Headers com autenticação JWT
 """
+
+from datetime import UTC, datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -14,9 +17,13 @@ from app.config import settings
 from app.core.security import criar_access_token, hash_senha
 from app.database.session import get_db
 from app.main import create_app
+from app.models.abordagem import Abordagem
 from app.models.base import Base
 from app.models.guarnicao import Guarnicao
+from app.models.passagem import Passagem
+from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
+from app.models.veiculo import Veiculo
 
 test_engine = create_async_engine(
     settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
@@ -143,3 +150,105 @@ def auth_headers(usuario: Usuario) -> dict:
         }
     )
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+async def pessoa(db_session: AsyncSession, guarnicao: Guarnicao) -> Pessoa:
+    """Fixture que cria uma pessoa de teste.
+
+    Insere uma pessoa no banco com dados básicos para uso em
+    testes de CRUD, busca e relacionamentos.
+
+    Args:
+        db_session: Sessão do banco de testes.
+        guarnicao: Fixture de guarnição para associar à pessoa.
+
+    Returns:
+        Pessoa: Objeto de pessoa com nome "João da Silva".
+    """
+    p = Pessoa(
+        nome="João da Silva",
+        apelido="Joãozinho",
+        guarnicao_id=guarnicao.id,
+    )
+    db_session.add(p)
+    await db_session.flush()
+    return p
+
+
+@pytest.fixture
+async def veiculo(db_session: AsyncSession, guarnicao: Guarnicao) -> Veiculo:
+    """Fixture que cria um veículo de teste.
+
+    Insere um veículo no banco com placa Mercosul para uso em
+    testes de CRUD e busca por placa.
+
+    Args:
+        db_session: Sessão do banco de testes.
+        guarnicao: Fixture de guarnição para associar ao veículo.
+
+    Returns:
+        Veiculo: Objeto de veículo com placa "ABC1D23".
+    """
+    v = Veiculo(
+        placa="ABC1D23",
+        modelo="Gol",
+        cor="Branco",
+        ano=2020,
+        tipo="Carro",
+        guarnicao_id=guarnicao.id,
+    )
+    db_session.add(v)
+    await db_session.flush()
+    return v
+
+
+@pytest.fixture
+async def abordagem(db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario) -> Abordagem:
+    """Fixture que cria uma abordagem de teste.
+
+    Insere uma abordagem no banco com coordenadas do Rio de Janeiro
+    para uso em testes de CRUD e busca geoespacial.
+
+    Args:
+        db_session: Sessão do banco de testes.
+        guarnicao: Fixture de guarnição para associar à abordagem.
+        usuario: Fixture de usuário que realizou a abordagem.
+
+    Returns:
+        Abordagem: Objeto de abordagem com coordenadas do Rio de Janeiro.
+    """
+    a = Abordagem(
+        data_hora=datetime.now(UTC),
+        latitude=-22.9068,
+        longitude=-43.1729,
+        endereco_texto="Av. Brasil, 1000 - Centro, Rio de Janeiro",
+        usuario_id=usuario.id,
+        guarnicao_id=guarnicao.id,
+    )
+    db_session.add(a)
+    await db_session.flush()
+    return a
+
+
+@pytest.fixture
+async def passagem(db_session: AsyncSession) -> Passagem:
+    """Fixture que cria uma passagem criminal de teste.
+
+    Insere uma passagem do Código Penal para uso em testes
+    de catálogo e vinculação com abordagens.
+
+    Args:
+        db_session: Sessão do banco de testes.
+
+    Returns:
+        Passagem: Objeto de passagem — Art. 121 CP (Homicídio Simples).
+    """
+    p = Passagem(
+        lei="CP",
+        artigo="121",
+        nome_crime="Homicídio Simples",
+    )
+    db_session.add(p)
+    await db_session.flush()
+    return p
