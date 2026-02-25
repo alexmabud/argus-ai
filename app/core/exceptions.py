@@ -2,7 +2,8 @@
 
 Define exceções HTTP padronizadas para diferentes cenários de erro:
 404 (não encontrado), 403 (acesso negado), 401 (credenciais inválidas),
-409 (conflito de dados). Todas herdam de HTTPException do FastAPI.
+409 (conflito de dados), 503 (serviço indisponível).
+Todas herdam de HTTPException do FastAPI.
 """
 
 from fastapi import HTTPException, status
@@ -69,5 +70,22 @@ class ConflitoDadosError(HTTPException):
     def __init__(self, detail: str = "Registro já existe"):
         super().__init__(
             status_code=status.HTTP_409_CONFLICT,
+            detail=detail,
+        )
+
+
+class LLMIndisponivelError(HTTPException):
+    """Exceção para serviço LLM indisponível (503).
+
+    Levantada quando o provedor de IA (Anthropic ou Ollama) está fora
+    do ar ou retorna erro, impedindo geração de relatórios via RAG.
+
+    Args:
+        detail: Mensagem de erro customizada.
+    """
+
+    def __init__(self, detail: str = "Serviço de IA temporariamente indisponível"):
+        super().__init__(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=detail,
         )
