@@ -56,7 +56,7 @@ class GeocodingService:
             Endereço formatado ou None se falha.
         """
         url = "https://nominatim.openstreetmap.org/reverse"
-        params = {
+        params: dict[str, str | float | int] = {
             "lat": lat,
             "lon": lon,
             "format": "json",
@@ -83,9 +83,9 @@ class GeocodingService:
             Endereço formatado ou None se falha.
         """
         url = "https://maps.googleapis.com/maps/api/geocode/json"
-        params = {
+        params: dict[str, str] = {
             "latlng": f"{lat},{lon}",
-            "key": settings.GOOGLE_MAPS_API_KEY,
+            "key": str(settings.GOOGLE_MAPS_API_KEY),
             "language": "pt-BR",
         }
 

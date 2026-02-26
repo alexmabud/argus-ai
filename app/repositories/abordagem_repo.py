@@ -6,7 +6,6 @@ carregamento eager de relacionamentos e deduplicação por client_id.
 
 from collections.abc import Sequence
 
-from geoalchemy2 import func as geo_func
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -127,7 +126,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 Abordagem.ativo == True,  # noqa: E712
                 Abordagem.guarnicao_id == guarnicao_id,
                 Abordagem.localizacao.isnot(None),
-                geo_func.ST_DWithin(
+                func.ST_DWithin(
                     Abordagem.localizacao,
                     point,
                     raio_metros,

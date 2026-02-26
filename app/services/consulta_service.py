@@ -73,7 +73,7 @@ class ConsultaService:
             Dicionário com chaves "pessoas", "veiculos", "abordagens"
             e "total_resultados" com a contagem combinada.
         """
-        guarnicao_id = user.guarnicao_id
+        guarnicao_id = user.guarnicao_id if user else None
         pessoas = []
         veiculos = []
         abordagens = []
@@ -97,7 +97,7 @@ class ConsultaService:
     async def _buscar_pessoas(
         self,
         q: str,
-        guarnicao_id: int,
+        guarnicao_id: int | None,
         skip: int,
         limit: int,
     ) -> list:
@@ -141,7 +141,7 @@ class ConsultaService:
     async def _buscar_veiculos(
         self,
         q: str,
-        guarnicao_id: int,
+        guarnicao_id: int | None,
         skip: int,
         limit: int,
     ) -> list:
@@ -166,7 +166,7 @@ class ConsultaService:
     async def _buscar_abordagens(
         self,
         q: str,
-        guarnicao_id: int,
+        guarnicao_id: int | None,
         skip: int,
         limit: int,
     ) -> list:
@@ -184,16 +184,13 @@ class ConsultaService:
         Returns:
             Lista de abordagens encontradas.
         """
-        query = (
-            select(Abordagem)
-            .where(
-                Abordagem.ativo == True,  # noqa: E712
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.endereco_texto.ilike(f"%{q}%"),
-            )
-            .order_by(Abordagem.data_hora.desc())
-            .offset(skip)
-            .limit(limit)
+        query = select(Abordagem).where(
+            Abordagem.ativo == True,  # noqa: E712
+            Abordagem.endereco_texto.ilike(f"%{q}%"),
         )
+        if guarnicao_id is not None:
+            query = query.where(Abordagem.guarnicao_id == guarnicao_id)
+
+        query = query.order_by(Abordagem.data_hora.desc()).offset(skip).limit(limit)
         result = await self.db.execute(query)
         return list(result.scalars().all())

@@ -37,7 +37,7 @@ class PessoaRepository(BaseRepository[Pessoa]):
     async def search_by_nome_fuzzy(
         self,
         nome: str,
-        guarnicao_id: int,
+        guarnicao_id: int | None,
         threshold: float = 0.3,
         skip: int = 0,
         limit: int = 20,
@@ -57,21 +57,18 @@ class PessoaRepository(BaseRepository[Pessoa]):
         Returns:
             Sequência de Pessoas ordenadas por similaridade decrescente.
         """
-        query = (
-            select(Pessoa)
-            .where(
-                Pessoa.ativo == True,  # noqa: E712
-                Pessoa.guarnicao_id == guarnicao_id,
-                func.similarity(Pessoa.nome, nome) > threshold,
-            )
-            .order_by(func.similarity(Pessoa.nome, nome).desc())
-            .offset(skip)
-            .limit(limit)
+        query = select(Pessoa).where(
+            Pessoa.ativo == True,  # noqa: E712
+            func.similarity(Pessoa.nome, nome) > threshold,
         )
+        if guarnicao_id is not None:
+            query = query.where(Pessoa.guarnicao_id == guarnicao_id)
+
+        query = query.order_by(func.similarity(Pessoa.nome, nome).desc()).offset(skip).limit(limit)
         result = await self.db.execute(query)
         return result.scalars().all()
 
-    async def get_by_cpf_hash(self, cpf_hash: str, guarnicao_id: int) -> Pessoa | None:
+    async def get_by_cpf_hash(self, cpf_hash: str, guarnicao_id: int | None) -> Pessoa | None:
         """Busca pessoa por hash SHA-256 do CPF.
 
         Permite busca exata por CPF sem necessidade de descriptografia,
@@ -86,9 +83,11 @@ class PessoaRepository(BaseRepository[Pessoa]):
         """
         query = select(Pessoa).where(
             Pessoa.cpf_hash == cpf_hash,
-            Pessoa.guarnicao_id == guarnicao_id,
             Pessoa.ativo == True,  # noqa: E712
         )
+        if guarnicao_id is not None:
+            query = query.where(Pessoa.guarnicao_id == guarnicao_id)
+
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 

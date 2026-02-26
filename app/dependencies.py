@@ -47,6 +47,11 @@ async def get_current_user(
         )
 
     user_id = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido (sem sub)",
+        )
     result = await db.execute(
         select(Usuario).where(Usuario.id == int(user_id), Usuario.ativo == True)  # noqa: E712
     )

@@ -231,19 +231,18 @@ class PessoaService:
         Returns:
             Lista de pessoas encontradas.
         """
+        guarnicao_id = user.guarnicao_id if user else None
         if cpf:
             cpf_hash = hash_for_search(cpf)
-            result = await self.repo.get_by_cpf_hash(cpf_hash, user.guarnicao_id)
+            result = await self.repo.get_by_cpf_hash(cpf_hash, guarnicao_id)
             return [result] if result else []
 
         if nome:
             return list(
-                await self.repo.search_by_nome_fuzzy(
-                    nome, user.guarnicao_id, skip=skip, limit=limit
-                )
+                await self.repo.search_by_nome_fuzzy(nome, guarnicao_id, skip=skip, limit=limit)
             )
 
-        return list(await self.repo.get_all(skip=skip, limit=limit, guarnicao_id=user.guarnicao_id))
+        return list(await self.repo.get_all(skip=skip, limit=limit, guarnicao_id=guarnicao_id))
 
     async def desativar(
         self,

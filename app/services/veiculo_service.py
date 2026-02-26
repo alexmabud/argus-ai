@@ -202,14 +202,13 @@ class VeiculoService:
         Returns:
             Lista de veículos encontrados.
         """
+        guarnicao_id = user.guarnicao_id if user else None
         if placa:
             return list(
-                await self.repo.search_by_placa_partial(
-                    placa, user.guarnicao_id, skip=skip, limit=limit
-                )
+                await self.repo.search_by_placa_partial(placa, guarnicao_id, skip=skip, limit=limit)
             )
 
-        return list(await self.repo.get_all(skip=skip, limit=limit, guarnicao_id=user.guarnicao_id))
+        return list(await self.repo.get_all(skip=skip, limit=limit, guarnicao_id=guarnicao_id))
 
     async def desativar(
         self,

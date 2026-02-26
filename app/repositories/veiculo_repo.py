@@ -51,7 +51,7 @@ class VeiculoRepository(BaseRepository[Veiculo]):
     async def search_by_placa_partial(
         self,
         placa_partial: str,
-        guarnicao_id: int,
+        guarnicao_id: int | None,
         skip: int = 0,
         limit: int = 20,
     ) -> Sequence[Veiculo]:
@@ -67,15 +67,13 @@ class VeiculoRepository(BaseRepository[Veiculo]):
             Sequência de Veículos que contêm a placa parcial.
         """
         normalized = placa_partial.upper().replace("-", "").replace(" ", "")
-        query = (
-            select(Veiculo)
-            .where(
-                Veiculo.ativo == True,  # noqa: E712
-                Veiculo.guarnicao_id == guarnicao_id,
-                Veiculo.placa.ilike(f"%{normalized}%"),
-            )
-            .offset(skip)
-            .limit(limit)
+        query = select(Veiculo).where(
+            Veiculo.ativo == True,  # noqa: E712
+            Veiculo.placa.ilike(f"%{normalized}%"),
         )
+        if guarnicao_id is not None:
+            query = query.where(Veiculo.guarnicao_id == guarnicao_id)
+
+        query = query.offset(skip).limit(limit)
         result = await self.db.execute(query)
         return result.scalars().all()

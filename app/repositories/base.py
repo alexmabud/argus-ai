@@ -45,7 +45,7 @@ class BaseRepository(Generic[T]):
         Returns:
             Objeto do modelo se encontrado, None caso contrário.
         """
-        result = await self.db.execute(select(self.model).where(self.model.id == id))
+        result = await self.db.execute(select(self.model).where(getattr(self.model, "id") == id))
         return result.scalar_one_or_none()
 
     async def get_all(
@@ -71,10 +71,10 @@ class BaseRepository(Generic[T]):
         query = select(self.model)
 
         if hasattr(self.model, "ativo"):
-            query = query.where(self.model.ativo == True)  # noqa: E712
+            query = query.where(getattr(self.model, "ativo") == True)  # noqa: E712
 
         if guarnicao_id is not None and hasattr(self.model, "guarnicao_id"):
-            query = query.where(self.model.guarnicao_id == guarnicao_id)
+            query = query.where(getattr(self.model, "guarnicao_id") == guarnicao_id)
 
         query = query.offset(skip).limit(limit)
         result = await self.db.execute(query)
@@ -136,9 +136,10 @@ class BaseRepository(Generic[T]):
             - desativado_por_id (int, opcional)
         """
         if hasattr(obj, "ativo"):
-            obj.ativo = False
-            obj.desativado_em = datetime.now(UTC)
-            if deleted_by_id is not None:
-                obj.desativado_por_id = deleted_by_id
+            setattr(obj, "ativo", False)
+            if hasattr(obj, "desativado_em"):
+                setattr(obj, "desativado_em", datetime.now(UTC))
+            if hasattr(obj, "desativado_por_id") and deleted_by_id is not None:
+                setattr(obj, "desativado_por_id", deleted_by_id)
             await self.db.flush()
         return obj
