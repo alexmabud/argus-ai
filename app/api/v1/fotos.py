@@ -1,7 +1,8 @@
-"""Router de upload e listagem de fotos.
+"""Router de upload, listagem e busca de fotos.
 
-Fornece endpoints para upload de fotos para S3/R2 e listagem
-por pessoa ou abordagem associada.
+Fornece endpoints para upload de fotos para S3/R2, listagem
+por pessoa ou abordagem, busca por similaridade facial
+(pgvector 512-dim) e extração de placas via OCR (EasyOCR).
 """
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, status
@@ -9,10 +10,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
 from app.database.session import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_face_service
 from app.models.usuario import Usuario
-from app.schemas.foto import FotoRead, FotoUploadResponse
+from app.schemas.foto import (
+    BuscaRostoItem,
+    BuscaRostoResponse,
+    FotoRead,
+    FotoUploadResponse,
+    OCRPlacaResponse,
+)
+from app.services.face_service import FaceService
 from app.services.foto_service import FotoService
+from app.services.ocr_service import OCRService
 
 router = APIRouter(prefix="/fotos", tags=["Fotos"])
 
@@ -111,3 +120,84 @@ async def listar_fotos_abordagem(
     service = FotoService(db)
     fotos = await service.listar_por_abordagem(abordagem_id)
     return [FotoRead.model_validate(f) for f in fotos]
+
+
+@router.post("/buscar-rosto", response_model=BuscaRostoResponse)
+@limiter.limit("10/minute")
+async def buscar_por_rosto(
+    request: Request,
+    file: UploadFile,
+    top_k: int = Form(5),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+    face_service: FaceService = Depends(get_face_service),
+) -> BuscaRostoResponse:
+    """Busca pessoas por similaridade facial via pgvector.
+
+    Recebe imagem com rosto, extrai embedding facial (512-dim via
+    InsightFace) e busca fotos similares no banco usando distância
+    cosseno com pgvector.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        file: Imagem com rosto para busca (multipart/form-data).
+        top_k: Número máximo de resultados (padrão 5).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+        face_service: Serviço InsightFace do application state.
+
+    Returns:
+        BuscaRostoResponse com lista de fotos similares e total.
+
+    Status Code:
+        200: Busca realizada (pode retornar lista vazia).
+        429: Rate limit (10/min).
+    """
+    file_bytes = await file.read()
+    service = FotoService(db)
+    results = await service.buscar_por_rosto(
+        image_bytes=file_bytes,
+        face_service=face_service,
+        top_k=top_k,
+    )
+
+    items = [
+        BuscaRostoItem(
+            foto_id=r["foto"].id,
+            arquivo_url=r["foto"].arquivo_url,
+            pessoa_id=r["foto"].pessoa_id,
+            similaridade=r["similaridade"],
+        )
+        for r in results
+    ]
+    return BuscaRostoResponse(resultados=items, total=len(items))
+
+
+@router.post("/ocr-placa", response_model=OCRPlacaResponse)
+@limiter.limit("10/minute")
+async def extrair_placa(
+    request: Request,
+    file: UploadFile,
+    user: Usuario = Depends(get_current_user),
+) -> OCRPlacaResponse:
+    """Extrai placa veicular de imagem via OCR (EasyOCR).
+
+    Processa a imagem com EasyOCR, detectando placas nos padrões
+    Mercosul (ABC1D23) e antigo (ABC1234).
+
+    Args:
+        request: Objeto Request do FastAPI.
+        file: Imagem com placa para extração (multipart/form-data).
+        user: Usuário autenticado.
+
+    Returns:
+        OCRPlacaResponse com placa detectada ou None.
+
+    Status Code:
+        200: OCR processado (placa pode ser None se não detectada).
+        429: Rate limit (10/min).
+    """
+    file_bytes = await file.read()
+    ocr = OCRService()
+    placa = ocr.extrair_placa(file_bytes)
+    return OCRPlacaResponse(placa=placa, detectada=placa is not None)

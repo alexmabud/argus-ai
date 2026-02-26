@@ -6,7 +6,10 @@ no banco e listagem de fotos por pessoa ou abordagem. Fotos com tipo
 de embedding facial (512 dimensões via InsightFace).
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +17,9 @@ from app.models.foto import Foto
 from app.repositories.foto_repo import FotoRepository
 from app.services.audit_service import AuditService
 from app.services.storage_service import StorageService
+
+if TYPE_CHECKING:
+    from app.services.face_service import FaceService
 
 
 class FotoService:
@@ -150,3 +156,37 @@ class FotoService:
             Lista de Fotos da abordagem ordenadas por data_hora decrescente.
         """
         return list(await self.repo.get_by_abordagem(abordagem_id))
+
+    async def buscar_por_rosto(
+        self,
+        image_bytes: bytes,
+        face_service: FaceService,
+        top_k: int = 5,
+    ) -> list[dict]:
+        """Busca pessoas por similaridade facial via pgvector.
+
+        Extrai embedding facial da imagem enviada e busca fotos com
+        rostos similares no banco via distância cosseno (512-dim).
+
+        Args:
+            image_bytes: Imagem com rosto para busca em bytes.
+            face_service: Serviço InsightFace para extração de embedding.
+            top_k: Número máximo de resultados.
+
+        Returns:
+            Lista de dicionários com foto, pessoa_id e similaridade.
+            Lista vazia se nenhum rosto detectado na imagem.
+        """
+        embedding = face_service.extrair_embedding(image_bytes)
+        if embedding is None:
+            return []
+
+        results = await self.repo.buscar_por_similaridade_facial(embedding, top_k=top_k)
+
+        return [
+            {
+                "foto": row[0],
+                "similaridade": round(float(row[1]), 4),
+            }
+            for row in results
+        ]

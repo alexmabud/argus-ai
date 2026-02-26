@@ -70,7 +70,7 @@ def get_face_service(request: Request):
         request: Objeto Request do FastAPI.
 
     Returns:
-        Instância de FaceService (será implementada em Fase 4).
+        Instância de FaceService com InsightFace buffalo_l (512-dim).
     """
 
     return request.app.state.face_service
@@ -83,7 +83,7 @@ def get_embedding_service(request: Request):
         request: Objeto Request do FastAPI.
 
     Returns:
-        Instância de EmbeddingService (será implementada em Fase 3).
+        Instância de EmbeddingService com SentenceTransformers (384-dim).
     """
 
     return request.app.state.embedding_service

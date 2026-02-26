@@ -1,8 +1,8 @@
 """Worker arq para processamento assíncrono de tarefas pesadas.
 
 Configura e executa o worker arq com Redis como broker de mensagens.
-Registra tasks de processamento de PDF (OCR + extração de texto) e
-geração de embeddings em batch.
+Registra tasks de processamento de PDF (OCR + extração de texto),
+geração de embeddings em batch e processamento facial (InsightFace).
 
 Uso:
     make worker  # ou: arq app.worker.WorkerSettings
@@ -14,6 +14,7 @@ from arq.connections import RedisSettings
 
 from app.config import settings
 from app.tasks.embedding_generator import gerar_embeddings_batch_task
+from app.tasks.face_processor import processar_face_task
 from app.tasks.pdf_processor import processar_pdf_task
 
 logger = logging.getLogger("argus")
@@ -22,17 +23,19 @@ logger = logging.getLogger("argus")
 async def startup(ctx: dict) -> None:
     """Inicializa recursos compartilhados do worker.
 
-    Carrega o EmbeddingService (modelo SentenceTransformers) em memória
-    e cria sessão de banco de dados disponível para todas as tasks.
+    Carrega EmbeddingService (SentenceTransformers), FaceService (InsightFace)
+    em memória e cria sessão de banco de dados disponível para todas as tasks.
 
     Args:
         ctx: Contexto compartilhado do worker arq.
     """
     from app.database.session import AsyncSessionLocal
     from app.services.embedding_service import EmbeddingService
+    from app.services.face_service import FaceService
 
     logger.info("Iniciando worker arq...")
     ctx["embedding_service"] = EmbeddingService()
+    ctx["face_service"] = FaceService()
     ctx["db_session_factory"] = AsyncSessionLocal
     logger.info("Worker arq pronto")
 
@@ -77,7 +80,7 @@ class WorkerSettings:
         job_timeout: Timeout máximo por job em segundos (10 min).
     """
 
-    functions = [processar_pdf_task, gerar_embeddings_batch_task]
+    functions = [processar_pdf_task, gerar_embeddings_batch_task, processar_face_task]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = _parse_redis_settings()

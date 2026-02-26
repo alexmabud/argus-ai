@@ -1,7 +1,8 @@
-"""Schemas Pydantic para upload e leitura de fotos.
+"""Schemas Pydantic para upload, leitura e busca de fotos.
 
-Define estruturas de resposta para upload de fotos e listagem
-de imagens associadas a pessoas e abordagens.
+Define estruturas de resposta para upload de fotos, listagem
+de imagens associadas a pessoas e abordagens, busca por
+similaridade facial e resultado de OCR de placas.
 """
 
 from __future__ import annotations
@@ -51,3 +52,45 @@ class FotoUploadResponse(BaseModel):
     id: int
     arquivo_url: str
     tipo: str
+
+
+class BuscaRostoItem(BaseModel):
+    """Item de resultado da busca por similaridade facial.
+
+    Attributes:
+        foto_id: ID da foto encontrada no banco.
+        arquivo_url: URL da imagem no storage (R2/S3).
+        pessoa_id: ID da pessoa associada à foto.
+        similaridade: Grau de similaridade (0 a 1, cosseno).
+    """
+
+    foto_id: int
+    arquivo_url: str
+    pessoa_id: int | None = None
+    similaridade: float
+
+    model_config = {"from_attributes": True}
+
+
+class BuscaRostoResponse(BaseModel):
+    """Resposta da busca por similaridade facial.
+
+    Attributes:
+        resultados: Lista de fotos similares ordenadas por similaridade.
+        total: Quantidade de resultados retornados.
+    """
+
+    resultados: list[BuscaRostoItem]
+    total: int
+
+
+class OCRPlacaResponse(BaseModel):
+    """Resposta da extração de placa via OCR.
+
+    Attributes:
+        placa: Placa detectada normalizada (ex: "ABC1D23") ou None.
+        detectada: Flag indicando se uma placa foi encontrada.
+    """
+
+    placa: str | None = None
+    detectada: bool

@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     """Gerenciador de contexto do ciclo de vida da aplicação.
 
     Gerencia eventos de inicialização e encerramento da aplicação FastAPI.
-    Na inicialização: configura logging e carrega modelos de ML (fases futuras).
+    Na inicialização: configura logging e carrega modelos de ML.
     No encerramento: libera engine do banco de dados e recursos.
 
     Args:
@@ -37,10 +37,10 @@ async def lifespan(app: FastAPI):
     setup_logging()
     # Startup: carregar modelos de ML
     from app.services.embedding_service import EmbeddingService
+    from app.services.face_service import FaceService
 
     app.state.embedding_service = EmbeddingService()
-    # from app.services.face_service import FaceService
-    # app.state.face_service = FaceService()
+    app.state.face_service = FaceService()
     yield
     # Shutdown
     await engine.dispose()
