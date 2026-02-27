@@ -1,4 +1,4 @@
-.PHONY: dev test lint migrate seed worker
+.PHONY: dev test lint migrate seed worker anonimizar
 
 dev:
 	docker compose up -d db redis minio
@@ -38,3 +38,9 @@ docker-logs:
 
 encrypt-key:
 	python scripts/generate_encryption_key.py
+
+anonimizar:
+	python scripts/anonimizar_dados.py
+
+anonimizar-dry:
+	python scripts/anonimizar_dados.py --dry-run

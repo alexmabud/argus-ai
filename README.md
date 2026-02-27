@@ -5,7 +5,7 @@
 <h1 align="center">Argus AI</h1>
 
 <p align="center">
-  <strong>Sistema de Apoio Operacional com Inteligência Artificial</strong>
+  <strong>Sistema de Apoio Operacional com Inteligencia Artificial</strong>
 </p>
 
 <p align="center">
@@ -21,86 +21,69 @@
 
 ---
 
-## ⚠️ Aviso Importante
-
-**Este é um projeto de portfólio/demonstração técnica.**
-
-- 🔒 **Dados sensíveis NUNCA devem ser commitados** — use `.env` para configurações
-- 🚫 **NÃO use em produção sem auditoria de segurança completa**
-- 📋 **Projeto educacional** — demonstra arquitetura, não substitui sistemas oficiais
-- ✅ **LGPD-compliant by design** — criptografia, audit trail, soft delete
+> **Aviso:** Este e um projeto de portfolio/demonstracao tecnica. Nao use em producao sem auditoria de seguranca completa. LGPD-compliant by design.
 
 ---
 
 ## Sobre
 
-**Argus AI** é uma ferramenta de apoio operacional que funciona como **memória inteligente de equipe**, permitindo registro rápido de abordagens em campo, consulta instantânea de histórico, relacionamento automático entre pessoas, busca por reconhecimento facial, OCR de placas veiculares e geração de relatórios assistida por IA (RAG).
+**Argus AI** e uma ferramenta de apoio operacional que funciona como **memoria inteligente de equipe**, permitindo registro rapido de abordagens em campo, consulta instantanea de historico, relacionamento automatico entre pessoas, busca por reconhecimento facial, OCR de placas veiculares e geracao de relatorios assistida por IA (RAG).
 
-> O nome faz referência a **Argus Panoptes**, o gigante de cem olhos da mitologia grega — aquele que tudo vê e nada esquece.
-
-O sistema **não substitui ferramentas oficiais** — é uma camada de apoio para organização, consulta e produtividade operacional.
+> O nome faz referencia a **Argus Panoptes**, o gigante de cem olhos da mitologia grega — aquele que tudo ve e nada esquece.
 
 ---
 
 ## Funcionalidades
 
-- ⚡ **Cadastro rápido** — Registro de abordagem em menos de 40 segundos
-- 🎤 **Entrada por voz** — Ditado de observações via Web Speech API
-- 📷 **Captura de foto** — Câmera direta sem file picker
-- 🔍 **Reconhecimento facial** — Busca por similaridade com InsightFace
-- 🚗 **OCR de placas** — Extrai placa de foto automaticamente
-- 📍 **Geolocalização automática** — GPS + geocoding reverso
-- 🗺️ **Análise geoespacial** — Busca por raio e mapa de calor (PostGIS)
-- 🔗 **Relacionamentos automáticos** — Vínculo materializado entre pessoas abordadas juntas
-- 📄 **RAG para relatórios** — Geração assistida por IA com base em ocorrências anteriores e legislação
-- ⚖️ **Consulta de legislação** — Busca semântica no Código Penal e leis extravagantes
-- 📊 **Dashboard analítico** — Métricas, horários de pico, pessoas recorrentes
-- 📶 **Offline-first** — Funciona sem internet, sincroniza automaticamente
-- 🔒 **LGPD compliant** — Criptografia, audit trail, soft delete, retenção controlada
-
----
-
-## Demonstração
-
-<!-- TODO: Adicionar GIF/vídeo do fluxo de cadastro em campo -->
-
-<p align="center">
-  <em>🎬 Demo em breve</em>
-</p>
+| Feature | Descricao |
+|---------|-----------|
+| Cadastro rapido | Registro de abordagem em < 40 segundos |
+| Entrada por voz | Ditado de observacoes via Web Speech API |
+| Captura de foto | Camera direta no navegador |
+| Reconhecimento facial | Busca por similaridade com InsightFace (512-dim) |
+| OCR de placas | Extracao automatica de placa com EasyOCR |
+| Geolocalizacao | GPS automatico + geocoding reverso |
+| Analise geoespacial | Busca por raio e mapa de calor (PostGIS) |
+| Relacionamentos | Vinculo automatico entre pessoas abordadas juntas |
+| RAG para relatorios | Geracao assistida por IA com busca semantica |
+| Legislacao | Busca semantica no Codigo Penal e leis extravagantes |
+| Dashboard | Metricas, horarios de pico, pessoas recorrentes |
+| Offline-first | Funciona sem internet, sincroniza automaticamente |
+| LGPD compliant | Criptografia, audit trail, soft delete, retencao controlada |
 
 ---
 
 ## Arquitetura
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Frontend (PWA)                       │
-│          HTML + Alpine.js + Tailwind + IndexedDB        │
-│          Câmera · GPS · Voz · OCR · Offline Queue       │
-└──────────────────────┬──────────────────────────────────┘
-                       │ HTTPS
-┌──────────────────────▼──────────────────────────────────┐
-│               Backend (FastAPI - Monolito)              │
-│                                                         │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐   │
-│  │ Routers  │→ │ Services │→ │  Repos   │→ │   DB   │   │
-│  │ (API v1) │  │ (Lógica) │  │ (Dados)  │  │        │   │
-│  └──────────┘  └──────────┘  └──────────┘  └────────┘   │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │              arq Worker (Background)             │   │
-│  │     PDF Processing · Face Embedding · Sync       │   │
-│  └──────────────────────────────────────────────────┘   │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────┐
-│                    Infraestrutura                       │
-│                                                         │
-│  PostgreSQL 16          Redis           Cloudflare R2   │
-│  + pgvector             Cache           Object Storage  │
-│  + PostGIS              + arq Queue     (Fotos + PDFs)  │
-│  + pg_trgm                                              │
-└─────────────────────────────────────────────────────────┘
++---------------------------------------------------------+
+|                    Frontend (PWA)                        |
+|          HTML + Alpine.js + Tailwind + IndexedDB         |
+|          Camera . GPS . Voz . OCR . Offline Queue        |
++----------------------------+----------------------------+
+                             | HTTPS
++----------------------------v----------------------------+
+|               Backend (FastAPI - Monolito)               |
+|                                                          |
+|  +----------+  +----------+  +----------+  +--------+   |
+|  | Routers  |->| Services |->|  Repos   |->|   DB   |   |
+|  | (API v1) |  | (Logica) |  | (Dados)  |  |        |   |
+|  +----------+  +----------+  +----------+  +--------+   |
+|                                                          |
+|  +----------------------------------------------------+  |
+|  |              arq Worker (Background)                |  |
+|  |     PDF Processing . Face Embedding . Sync          |  |
+|  +----------------------------------------------------+  |
++----------------------------+----------------------------+
+                             |
++----------------------------v----------------------------+
+|                    Infraestrutura                        |
+|                                                          |
+|  PostgreSQL 16          Redis           Cloudflare R2    |
+|  + pgvector             Cache           Object Storage   |
+|  + PostGIS              + arq Queue     (Fotos + PDFs)   |
+|  + pg_trgm                                               |
++---------------------------------------------------------+
 ```
 
 ---
@@ -108,49 +91,40 @@ O sistema **não substitui ferramentas oficiais** — é uma camada de apoio par
 ## Tech Stack
 
 | Camada | Tecnologias |
-|---|---|
+|--------|-------------|
 | **Backend** | Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic v2 |
 | **Banco** | PostgreSQL 16, pgvector, PostGIS, pg_trgm |
 | **IA / RAG** | SentenceTransformers (multilingual), PyMuPDF, Claude API / Ollama |
-| **Visão** | InsightFace, EasyOCR, Pillow |
+| **Visao** | InsightFace (buffalo_l), EasyOCR, Pillow |
 | **Frontend** | PWA, Alpine.js, Tailwind CSS, Dexie.js (IndexedDB) |
-| **Infra** | Docker, Redis, Cloudflare R2, GitHub Actions |
-| **Segurança** | JWT, Fernet (AES), bcrypt, audit logging, rate limiting |
+| **Infra** | Docker, Redis, Cloudflare R2 (MinIO local), GitHub Actions |
+| **Seguranca** | JWT, Fernet (AES-256), bcrypt, audit logging, rate limiting |
 
 ---
 
-## Pré-requisitos
+## Quick Start
 
-- Python 3.11+
+### Pre-requisitos
+
 - Docker e Docker Compose
 - Git
 
----
-
-## Instalação
-
-### 1. Clonar o repositório
+### 1. Clonar e configurar
 
 ```bash
 git clone https://github.com/SEU_USUARIO/argus-ai.git
 cd argus-ai
-```
-
-### 2. Configurar variáveis de ambiente
-
-```bash
 cp .env.example .env
 python scripts/generate_encryption_key.py  # gera ENCRYPTION_KEY
-# Editar .env com suas configurações
 ```
 
-### 3. Subir com Docker
+### 2. Subir com Docker
 
 ```bash
 docker compose up -d
 ```
 
-### 4. Rodar migrations e seed
+### 3. Migrations e seed
 
 ```bash
 docker compose exec api alembic upgrade head
@@ -158,38 +132,49 @@ docker compose exec api python scripts/seed_legislacao.py
 docker compose exec api python scripts/seed_passagens.py
 ```
 
-### 5. Acessar
+### 4. Acessar
 
-```
-App:  http://localhost:8000
-API:  http://localhost:8000/api/v1/docs
-```
+| Servico | URL |
+|---------|-----|
+| App (PWA) | http://localhost:8000 |
+| API Docs | http://localhost:8000/api/v1/docs |
+| MinIO Console | http://localhost:9001 |
 
 ---
 
-## Desenvolvimento
+## Desenvolvimento Local
 
 ```bash
-# Ambiente local (sem Docker para o backend)
+# Criar virtualenv
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate     # Windows
+
+# Instalar dependencias
 pip install -e ".[dev]"
 
-# Subir dependências
+# Subir apenas infra
 docker compose up -d db redis minio
 
 # Rodar API
 make dev
 
-# Rodar worker (em outro terminal)
+# Rodar worker (outro terminal)
 make worker
-
-# Testes
-make test
-
-# Lint + type check
-make lint
 ```
+
+### Comandos
+
+| Comando | Descricao |
+|---------|-----------|
+| `make dev` | Sobe API com hot-reload |
+| `make worker` | Sobe arq worker |
+| `make test` | Roda testes com cobertura |
+| `make lint` | Ruff lint + format |
+| `make migrate msg="desc"` | Nova migration Alembic |
+| `make seed` | Popular legislacao e passagens |
+| `make anonimizar` | Anonimizacao LGPD |
+| `make anonimizar-dry` | Simulacao da anonimizacao |
 
 ---
 
@@ -197,60 +182,82 @@ make lint
 
 ```
 argus-ai/
-├── app/
-│   ├── api/v1/          # Routers (endpoints HTTP)
-│   ├── models/          # SQLAlchemy models
-│   ├── schemas/         # Pydantic schemas
-│   ├── services/        # Lógica de negócio
-│   ├── repositories/    # Acesso a dados
-│   ├── core/            # Security, crypto, middleware
-│   ├── tasks/           # Background jobs (arq)
-│   └── database/        # Engine, sessions
-├── frontend/            # PWA (HTML + JS)
-├── tests/               # pytest (unit + integration + e2e)
-├── scripts/             # Seeds e utilitários
-├── docs/                # Documentação e ADRs
-├── alembic/             # Migrations
-├── CLAUDE.md            # Contexto para Claude Code
-├── ARGUS_AI_SPEC.md     # Especificação técnica completa
-└── docker-compose.yml
++-- app/
+|   +-- api/v1/            # Routers (endpoints HTTP)
+|   +-- models/            # SQLAlchemy models (mixins: Timestamp, SoftDelete, MultiTenant)
+|   +-- schemas/           # Pydantic schemas (request/response)
+|   +-- services/          # Logica de negocio (NUNCA importa FastAPI)
+|   +-- repositories/      # Acesso a dados (queries)
+|   +-- core/              # Security, crypto, middleware, rate limiting
+|   +-- tasks/             # Background jobs (arq worker)
+|   +-- database/          # Engine, sessions
+|   +-- dependencies.py    # Injecao de dependencias
+|   +-- main.py            # App factory
+|   +-- worker.py          # Worker arq
++-- frontend/              # PWA offline-first (Alpine.js + Tailwind)
+|   +-- js/                # Modulos JS (api, auth, db, sync, pages, components)
+|   +-- css/               # Estilos
+|   +-- sw.js              # Service Worker
+|   +-- manifest.json      # PWA manifest
++-- tests/                 # pytest async (unit + integration)
++-- scripts/               # Seeds, anonimizacao, utilitarios
++-- docs/                  # Documentacao e ADRs
++-- alembic/               # Migrations
++-- docker-compose.yml
++-- Makefile
++-- pyproject.toml
 ```
 
 ---
 
-## Decisões Arquiteturais
+## Variaveis de Ambiente
 
-As decisões técnicas do projeto estão documentadas em ADRs (Architecture Decision Records) na pasta `docs/adr/`:
+Copie `.env.example` e configure:
 
-| ADR | Decisão |
-|---|---|
-| 001 | Monolito modular (vs microserviços) |
-| 002 | pgvector no PostgreSQL (vs FAISS externo) |
-| 003 | PWA (vs React Native) |
-| 004 | Embedding multilíngue para PT-BR |
-| 005 | Offline-first com IndexedDB + sync |
-| 006 | Multi-tenancy por guarnição |
+| Variavel | Descricao | Exemplo |
+|----------|-----------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://argus:pass@localhost/argus_db` |
+| `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
+| `SECRET_KEY` | Chave JWT | `openssl rand -hex 32` |
+| `ENCRYPTION_KEY` | Chave Fernet para CPF (LGPD) | `scripts/generate_encryption_key.py` |
+| `S3_ENDPOINT` | Storage endpoint | `http://localhost:9000` |
+| `LLM_PROVIDER` | Provider LLM (`ollama` ou `anthropic`) | `ollama` |
+| `EMBEDDING_MODEL` | Modelo de embeddings | `paraphrase-multilingual-MiniLM-L12-v2` |
+| `DATA_RETENTION_DAYS` | Retencao LGPD (dias) | `1825` |
+
+Ver `.env.example` para lista completa.
+
+---
+
+## Decisoes Arquiteturais (ADRs)
+
+| ADR | Decisao |
+|-----|---------|
+| [001](docs/adr/001-offline-first.md) | Arquitetura offline-first com IndexedDB + sync batch |
+| [002](docs/adr/002-pgvector-embeddings.md) | pgvector para embeddings vetoriais (texto + face) |
+| [003](docs/adr/003-multi-tenancy.md) | Multi-tenancy por guarnicao via coluna filtrada |
+
+---
+
+## Documentacao
+
+| Documento | Descricao |
+|-----------|-----------|
+| [ARGUS_AI_SPEC.md](ARGUS_AI_SPEC.md) | Especificacao tecnica completa |
+| [docs/API.md](docs/API.md) | Referencia de todos os endpoints |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Guia de deploy (Render + Neon + Upstash + R2) |
+| [docs/LGPD.md](docs/LGPD.md) | Compliance LGPD e protecao de dados |
 
 ---
 
 ## Roadmap
 
-- [x] **Fase 0** — Setup inicial (config, Docker, CI/CD, segurança)
-- [x] **Fase 1** — Fundação (models, auth, migrations)
-- [ ] **Fase 2** — Core operacional (CRUD, relacionamentos, geoespacial)
-- [ ] **Fase 3** — RAG (embeddings, busca semântica, geração de relatório)
-- [ ] **Fase 4** — Visão computacional (face recognition, OCR)
-- [ ] **Fase 5** — Frontend PWA (offline, voz, câmera, dashboard)
-- [ ] **Fase 6** — Deploy e polimento
-
----
-
-## Documentação
-
-- [`ARGUS_AI_SPEC.md`](./ARGUS_AI_SPEC.md) — Especificação técnica completa
-- [`docs/API.md`](./docs/API.md) — Documentação da API (em breve)
-- [`docs/DEPLOY.md`](./docs/DEPLOY.md) — Guia de deploy (em breve)
-- [`docs/LGPD.md`](./docs/LGPD.md) — Política de dados (em breve)
+- [x] **Fase 1** — Fundacao (models, auth, migrations, Docker, CI)
+- [x] **Fase 2** — Core operacional (CRUD, relacionamentos, geoespacial)
+- [x] **Fase 3** — RAG (embeddings, busca semantica, LLM, worker)
+- [x] **Fase 4** — Visao computacional (InsightFace, EasyOCR)
+- [x] **Fase 5** — Frontend PWA (offline-first, voz, camera, dashboard)
+- [x] **Fase 6** — Testes, CI/CD, documentacao, LGPD, polimento
 
 ---
 
@@ -261,5 +268,5 @@ Desenvolvido por **Alex Abud** — AI Automation Engineer & Python Developer
 ---
 
 <p align="center">
-  <sub>Argus Panoptes — o que tudo vê e nada esquece. 👁️</sub>
+  <sub>Argus Panoptes — o que tudo ve e nada esquece.</sub>
 </p>
