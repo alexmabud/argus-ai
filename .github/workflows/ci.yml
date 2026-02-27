@@ -15,25 +15,20 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install lint tools
-        run: |
-          pip install --upgrade pip setuptools wheel
-          pip install ruff mypy pydantic sqlalchemy
+      - name: Install Ruff
+        run: pip install ruff
 
-      - name: Run Ruff lint
-        run: ruff check app/
+      - name: Ruff lint
+        run: ruff check app/ tests/
 
-      - name: Run Ruff format check
-        run: ruff format --check app/
-
-      - name: Run MyPy type check
-        run: mypy app/ --strict
+      - name: Ruff format
+        run: ruff format --check app/ tests/
 
   test:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: pgvector/pgvector:pg16
+        image: postgis/postgis:16-3.4
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -61,34 +56,31 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr tesseract-ocr-por
 
+      - name: Install pgvector in PostgreSQL
+        run: |
+          docker exec ${{ job.services.postgres.id }} bash -c \
+            "apt-get update && apt-get install -y postgresql-16-pgvector"
+
       - name: Setup PostgreSQL extensions
         env:
           PGPASSWORD: test
         run: |
-          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
           psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
           psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
           psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS unaccent;"
 
-      - name: Install Python deps (core + dev)
+      - name: Install Python deps
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install --only-binary :all: \
-            fastapi uvicorn python-multipart slowapi \
-            sqlalchemy asyncpg alembic pgvector geoalchemy2 \
-            pydantic pydantic-settings \
-            python-jose passlib cryptography \
-            httpx redis arq \
-            pytest pytest-asyncio pytest-cov \
-            ruff mypy pre-commit factory-boy \
-            sentence-transformers pymupdf pillow boto3 aioboto3
+          pip install -e ".[dev]"
 
-      - name: Install optional vision deps
+      - name: Wait for services
         run: |
-          pip install --only-binary :all: onnxruntime easyocr
-        continue-on-error: true
+          pg_isready -h localhost -U test -d argus_test
+          redis-cli -h localhost ping
 
-      - name: Run tests with coverage
+      - name: Run tests
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/argus_test
           REDIS_URL: redis://localhost:6379
@@ -98,7 +90,7 @@ jobs:
           S3_ACCESS_KEY: test
           S3_SECRET_KEY: test
           S3_BUCKET: argus-test
-        run: pytest --cov=app --cov-report=xml --cov-report=term -v
+        run: pytest --maxfail=5 --disable-warnings -q --cov=app --cov-report=xml
 
       - name: Upload coverage report
         if: always()

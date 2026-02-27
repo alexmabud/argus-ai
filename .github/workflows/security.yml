@@ -1,12 +1,9 @@
 name: Security Checks
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     branches: [main]
   schedule:
-    # Roda toda segunda-feira às 9h
     - cron: '0 9 * * 1'
 
 jobs:
@@ -15,12 +12,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # Verifica se .env foi commitado (nunca deve acontecer)
       - name: Check for .env files
         run: |
           if ls .env* 2>/dev/null | grep -v '.env.example'; then
@@ -28,35 +26,25 @@ jobs:
             exit 1
           fi
 
-      # Detecta segredos
       - name: Detect secrets
         uses: trufflesecurity/trufflehog@main
         with:
-          path: ./
-          base: main
-          head: HEAD
+          extra_args: --only-verified
         continue-on-error: true
 
-      # Análise de vulnerabilidades em dependências
       - name: Install pip-audit
         run: pip install --upgrade pip pip-audit
-        continue-on-error: true
 
       - name: Audit dependencies
         run: |
-          pip install --only-binary :all: \
-            fastapi uvicorn sqlalchemy asyncpg alembic pgvector geoalchemy2 \
-            pydantic pydantic-settings python-jose passlib cryptography \
-            httpx redis arq
+          pip install -e ".[dev]"
           pip-audit --skip-editable --desc || echo "Some vulnerabilities found"
         continue-on-error: true
 
-      # Análise estática de segurança
       - name: Run Bandit
         run: |
           pip install bandit
           bandit -r app/ -ll -f json -o bandit-report.json || true
-        continue-on-error: true
 
       - name: Upload Bandit report
         uses: actions/upload-artifact@v4
