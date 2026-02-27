@@ -7,6 +7,28 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install lint tools
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install ruff mypy pydantic sqlalchemy
+
+      - name: Run Ruff lint
+        run: ruff check app/
+
+      - name: Run Ruff format check
+        run: ruff format --check app/
+
+      - name: Run MyPy type check
+        run: mypy app/ --strict
+
   test:
     runs-on: ubuntu-latest
     services:
@@ -59,7 +81,7 @@ jobs:
             httpx redis arq \
             pytest pytest-asyncio pytest-cov \
             ruff mypy pre-commit factory-boy \
-            sentence-transformers pymupdf pillow boto3
+            sentence-transformers pymupdf pillow boto3 aioboto3
 
       - name: Install optional vision deps
         run: |
