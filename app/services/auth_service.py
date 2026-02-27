@@ -165,6 +165,8 @@ class AuthService:
             raise CredenciaisInvalidasError()
 
         user_id = payload.get("sub")
+        if not user_id:
+            raise CredenciaisInvalidasError()
         usuario = await self.repo.get(int(user_id))
         if not usuario or not usuario.ativo:
             raise CredenciaisInvalidasError()

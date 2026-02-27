@@ -59,7 +59,7 @@ async def register(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
-    return usuario
+    return UsuarioRead.model_validate(usuario)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -162,4 +162,4 @@ async def me(user: Usuario = Depends(get_current_user)) -> UsuarioRead:
     Security:
         Requer autenticação via Bearer token no header Authorization.
     """
-    return user
+    return UsuarioRead.model_validate(user)

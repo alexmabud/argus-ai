@@ -50,7 +50,7 @@ class AnalyticsService:
         # Total abordagens
         total_q = select(func.count(Abordagem.id)).where(
             Abordagem.guarnicao_id == guarnicao_id,
-            Abordagem.deleted_at.is_(None),
+            Abordagem.ativo,
             Abordagem.data_hora >= desde,
         )
         total = (await self.db.execute(total_q)).scalar() or 0
@@ -61,7 +61,7 @@ class AnalyticsService:
             .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
             .where(
                 Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.deleted_at.is_(None),
+                Abordagem.ativo,
                 Abordagem.data_hora >= desde,
             )
         )
@@ -88,7 +88,7 @@ class AnalyticsService:
 
         query = select(Abordagem.latitude, Abordagem.longitude).where(
             Abordagem.guarnicao_id == guarnicao_id,
-            Abordagem.deleted_at.is_(None),
+            Abordagem.ativo,
             Abordagem.data_hora >= desde,
             Abordagem.latitude.isnot(None),
             Abordagem.longitude.isnot(None),
@@ -113,7 +113,7 @@ class AnalyticsService:
             select(hora, func.count(Abordagem.id).label("total"))
             .where(
                 Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.deleted_at.is_(None),
+                Abordagem.ativo,
                 Abordagem.data_hora >= desde,
             )
             .group_by(hora)
@@ -147,8 +147,8 @@ class AnalyticsService:
             .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
             .where(
                 Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.deleted_at.is_(None),
-                Pessoa.deleted_at.is_(None),
+                Abordagem.ativo,
+                Pessoa.ativo,
             )
             .group_by(Pessoa.id, Pessoa.nome, Pessoa.apelido)
             .order_by(func.count(AbordagemPessoa.abordagem_id).desc())
@@ -177,13 +177,13 @@ class AnalyticsService:
         """
         total_q = select(func.count(Ocorrencia.id)).where(
             Ocorrencia.guarnicao_id == guarnicao_id,
-            Ocorrencia.deleted_at.is_(None),
+            Ocorrencia.ativo,
         )
         total = (await self.db.execute(total_q)).scalar() or 0
 
         indexadas_q = select(func.count(Ocorrencia.id)).where(
             Ocorrencia.guarnicao_id == guarnicao_id,
-            Ocorrencia.deleted_at.is_(None),
+            Ocorrencia.ativo,
             Ocorrencia.processada.is_(True),
         )
         indexadas = (await self.db.execute(indexadas_q)).scalar() or 0

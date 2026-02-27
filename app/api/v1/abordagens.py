@@ -91,7 +91,7 @@ async def abordagens_por_raio(
         Lista de AbordagemRead dentro do raio.
     """
     service = AbordagemService(db)
-    abordagens = await service.buscar_por_raio(lat, lon, raio_metros, user)
+    abordagens = await service.buscar_por_raio(lat, lon, raio_metros, user.guarnicao_id)
     return [AbordagemRead.model_validate(a) for a in abordagens]
 
 
@@ -116,7 +116,7 @@ async def listar_abordagens(
         Lista de AbordagemRead.
     """
     service = AbordagemService(db)
-    abordagens = await service.listar(skip, limit, user)
+    abordagens = await service.listar(user.guarnicao_id, skip, limit)
     return [AbordagemRead.model_validate(a) for a in abordagens]
 
 
@@ -144,7 +144,7 @@ async def detalhe_abordagem(
         AcessoNegadoError: Se abordagem de outra guarnição.
     """
     service = AbordagemService(db)
-    abordagem = await service.buscar_detalhe(abordagem_id, user)
+    abordagem = await service.buscar_detalhe(abordagem_id, user.guarnicao_id)
     pessoa_service = PessoaService(db)
 
     # Montar pessoas a partir da associação M:N
@@ -227,7 +227,8 @@ async def atualizar_abordagem(
     abordagem = await service.atualizar(
         abordagem_id,
         data,
-        user,
+        user.id,
+        user.guarnicao_id,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
@@ -266,7 +267,8 @@ async def vincular_pessoa(
     await service.vincular_pessoa(
         abordagem_id,
         pessoa_id,
-        user,
+        user.id,
+        user.guarnicao_id,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
@@ -300,7 +302,8 @@ async def desvincular_pessoa(
     await service.desvincular_pessoa(
         abordagem_id,
         pessoa_id,
-        user,
+        user.id,
+        user.guarnicao_id,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
@@ -336,7 +339,8 @@ async def vincular_veiculo(
     await service.vincular_veiculo(
         abordagem_id,
         veiculo_id,
-        user,
+        user.id,
+        user.guarnicao_id,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
@@ -370,7 +374,8 @@ async def desvincular_veiculo(
     await service.desvincular_veiculo(
         abordagem_id,
         veiculo_id,
-        user,
+        user.id,
+        user.guarnicao_id,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )

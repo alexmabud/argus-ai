@@ -264,8 +264,8 @@ class RAGService:
         """
         partes = []
 
-        if abordagem.observacoes:
-            partes.append(f"Observações: {abordagem.observacoes}")
+        if abordagem.observacao:
+            partes.append(f"Observações: {abordagem.observacao}")
 
         for ap in abordagem.pessoas:
             pessoa = ap.pessoa

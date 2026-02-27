@@ -103,6 +103,8 @@ async def buscar_semantica(
             abordagem_id=item["ocorrencia"].abordagem_id,
             arquivo_pdf_url=item["ocorrencia"].arquivo_pdf_url,
             processada=item["ocorrencia"].processada,
+            usuario_id=item["ocorrencia"].usuario_id,
+            guarnicao_id=item["ocorrencia"].guarnicao_id,
             texto_extraido=item["ocorrencia"].texto_extraido,
             similaridade=item["similaridade"],
             criado_em=item["ocorrencia"].criado_em,

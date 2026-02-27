@@ -84,7 +84,7 @@ class EmbeddingService:
         Returns:
             Lista de 384 floats (do cache ou recém-gerado).
         """
-        cache_key = f"emb:{hashlib.md5(texto.encode()).hexdigest()}"
+        cache_key = f"emb:{hashlib.md5(texto.encode(), usedforsecurity=False).hexdigest()}"
 
         try:
             redis_client = aioredis.from_url(self.redis_url)

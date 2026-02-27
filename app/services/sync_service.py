@@ -114,8 +114,10 @@ class SyncService:
             dados: Payload da abordagem.
             user: Usuário autenticado.
         """
+        from app.schemas.abordagem import AbordagemCreate
+
         service = AbordagemService(self.db)
-        await service.criar(
+        data = AbordagemCreate(
             data_hora=dados.get("data_hora"),
             latitude=dados.get("latitude"),
             longitude=dados.get("longitude"),
@@ -126,6 +128,9 @@ class SyncService:
             pessoa_ids=dados.get("pessoa_ids", []),
             veiculo_ids=dados.get("veiculo_ids", []),
             passagens=[],
+        )
+        await service.criar(
+            data=data,
             user_id=user.id,
             guarnicao_id=user.guarnicao_id,
         )
@@ -137,13 +142,18 @@ class SyncService:
             dados: Payload da pessoa.
             user: Usuário autenticado.
         """
+        from app.schemas.pessoa import PessoaCreate
+
         service = PessoaService(self.db)
-        await service.criar(
+        data = PessoaCreate(
             nome=dados["nome"],
             cpf=dados.get("cpf"),
             data_nascimento=dados.get("data_nascimento"),
             apelido=dados.get("apelido"),
             observacoes=dados.get("observacoes"),
+        )
+        await service.criar(
+            data=data,
             user_id=user.id,
             guarnicao_id=user.guarnicao_id,
         )
@@ -155,14 +165,19 @@ class SyncService:
             dados: Payload do veículo.
             user: Usuário autenticado.
         """
+        from app.schemas.veiculo import VeiculoCreate
+
         service = VeiculoService(self.db)
-        await service.criar(
+        data = VeiculoCreate(
             placa=dados["placa"],
             modelo=dados.get("modelo"),
             cor=dados.get("cor"),
             ano=dados.get("ano"),
             tipo=dados.get("tipo"),
             observacoes=dados.get("observacoes"),
+        )
+        await service.criar(
+            data=data,
             user_id=user.id,
             guarnicao_id=user.guarnicao_id,
         )

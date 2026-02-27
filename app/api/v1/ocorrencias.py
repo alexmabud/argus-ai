@@ -22,8 +22,8 @@ router = APIRouter(prefix="/ocorrencias", tags=["Ocorrências"])
 @limiter.limit("10/minute")
 async def criar_ocorrencia(
     request: Request,
+    arquivo_pdf: UploadFile,
     data: OcorrenciaCreate = Depends(),
-    arquivo_pdf: UploadFile = ...,
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> OcorrenciaRead:
