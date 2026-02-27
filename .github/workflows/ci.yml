@@ -63,7 +63,7 @@ jobs:
 
       - name: Install optional vision deps
         run: |
-          pip install --only-binary :all: insightface onnxruntime easyocr
+          pip install --only-binary :all: onnxruntime easyocr
         continue-on-error: true
 
       - name: Run tests with coverage
