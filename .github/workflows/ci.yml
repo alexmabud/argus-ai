@@ -16,7 +16,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Ruff
-        run: pip install ruff
+        run: pip install ruff==0.15.4
 
       - name: Ruff lint
         run: ruff check app/ tests/
@@ -56,29 +56,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr tesseract-ocr-por
 
-      - name: Install pgvector in PostgreSQL
+      - name: Install pgvector and setup extensions
         run: |
           docker exec ${{ job.services.postgres.id }} bash -c \
             "apt-get update && apt-get install -y postgresql-16-pgvector"
-
-      - name: Setup PostgreSQL extensions
-        env:
-          PGPASSWORD: test
-        run: |
-          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
-          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
-          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS unaccent;"
+          docker exec ${{ job.services.postgres.id }} psql -U test -d argus_test -c \
+            "CREATE EXTENSION IF NOT EXISTS postgis;"
+          docker exec ${{ job.services.postgres.id }} psql -U test -d argus_test -c \
+            "CREATE EXTENSION IF NOT EXISTS vector;"
+          docker exec ${{ job.services.postgres.id }} psql -U test -d argus_test -c \
+            "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+          docker exec ${{ job.services.postgres.id }} psql -U test -d argus_test -c \
+            "CREATE EXTENSION IF NOT EXISTS unaccent;"
 
       - name: Install Python deps
         run: |
           pip install --upgrade pip setuptools wheel
           pip install -e ".[dev]"
-
-      - name: Wait for services
-        run: |
-          pg_isready -h localhost -U test -d argus_test
-          redis-cli -h localhost ping
 
       - name: Run tests
         env:
