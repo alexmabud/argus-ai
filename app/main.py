@@ -38,10 +38,17 @@ async def lifespan(app: FastAPI):
     setup_logging()
     # Startup: carregar modelos de ML
     from app.services.embedding_service import EmbeddingService
-    from app.services.face_service import FaceService
 
     app.state.embedding_service = EmbeddingService()
-    app.state.face_service = FaceService()
+
+    # Face service é opcional — requer insightface
+    try:
+        from app.services.face_service import FaceService
+
+        app.state.face_service = FaceService()
+    except ImportError:
+        app.state.face_service = None
+
     yield
     # Shutdown
     await engine.dispose()

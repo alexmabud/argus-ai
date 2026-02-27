@@ -19,9 +19,19 @@ from app.schemas.foto import (
     FotoUploadResponse,
     OCRPlacaResponse,
 )
-from app.services.face_service import FaceService
 from app.services.foto_service import FotoService
-from app.services.ocr_service import OCRService
+
+# Face service é opcional — requer insightface
+try:
+    from app.services.face_service import FaceService
+except ImportError:
+    FaceService = None
+
+# OCR service é opcional — requer easyocr
+try:
+    from app.services.ocr_service import OCRService
+except ImportError:
+    OCRService = None
 
 router = APIRouter(prefix="/fotos", tags=["Fotos"])
 
