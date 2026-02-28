@@ -1,31 +1,41 @@
 .PHONY: dev test lint migrate seed worker anonimizar
 
+VENV_BIN := .venv/bin
+PYTHON := $(VENV_BIN)/python
+PIP := $(VENV_BIN)/pip
+UVICORN := $(VENV_BIN)/uvicorn
+ARQ := $(VENV_BIN)/arq
+PYTEST := $(VENV_BIN)/pytest
+RUFF := $(VENV_BIN)/ruff
+MYPY := $(VENV_BIN)/mypy
+ALEMBIC := $(VENV_BIN)/alembic
+
 dev:
 	docker compose up -d db redis minio
-	uvicorn app.main:app --reload
+	$(UVICORN) app.main:app --reload
 
 worker:
-	arq app.worker.WorkerSettings
+	$(ARQ) app.worker.WorkerSettings
 
 test:
-	pytest -v --cov=app
+	$(PYTEST) -v --cov=app
 
 lint:
-	ruff check app/ tests/
-	mypy app/ --ignore-missing-imports
+	$(RUFF) check app/ tests/
+	$(MYPY) app/ --ignore-missing-imports
 
 format:
-	ruff format app/ tests/
+	$(RUFF) format app/ tests/
 
 migrate:
-	alembic upgrade head
+	$(ALEMBIC) upgrade head
 
 migrate-create:
-	alembic revision --autogenerate -m "$(msg)"
+	$(ALEMBIC) revision --autogenerate -m "$(msg)"
 
 seed:
-	python scripts/seed_legislacao.py
-	python scripts/seed_passagens.py
+	$(PYTHON) scripts/seed_legislacao.py
+	$(PYTHON) scripts/seed_passagens.py
 
 docker-up:
 	docker compose up -d
@@ -37,10 +47,10 @@ docker-logs:
 	docker compose logs -f api worker
 
 encrypt-key:
-	python scripts/generate_encryption_key.py
+	$(PYTHON) scripts/generate_encryption_key.py
 
 anonimizar:
-	python scripts/anonimizar_dados.py
+	$(PYTHON) scripts/anonimizar_dados.py
 
 anonimizar-dry:
-	python scripts/anonimizar_dados.py --dry-run
+	$(PYTHON) scripts/anonimizar_dados.py --dry-run
