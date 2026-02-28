@@ -95,6 +95,7 @@ miniodata/
 *.h5
 *.safetensors
 models/
+!app/models/
 .cache/
 sentence-transformers/
 insightface/
