@@ -105,12 +105,17 @@ jobs:
           S3_ACCESS_KEY: test
           S3_SECRET_KEY: test
           S3_BUCKET: argus-test
-        run: pytest --maxfail=5 --disable-warnings -q --cov=app --cov-report=xml
+        run: |
+          pytest --maxfail=5 --disable-warnings -q --cov=app --cov-report=xml 2>&1 | tee pytest.log
+          test ${PIPESTATUS[0]} -eq 0
 
-      - name: Upload coverage report
+      - name: Upload test artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: coverage.xml
+          name: test-artifacts
+          path: |
+            pytest.log
+            coverage.xml
+          if-no-files-found: warn
           retention-days: 30
