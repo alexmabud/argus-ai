@@ -1,0 +1,97 @@
+# Docker Compose de produção para Oracle Cloud
+# Uso: docker compose -f docker-compose.prod.yml up -d
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: docker/db.Dockerfile
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-argus}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-argus_db}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-argus} -d ${DB_NAME:-argus_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init_extensions.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    restart: always
+    command: python -m arq app.worker.WorkerSettings
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/certbot/conf:/etc/letsencrypt:ro
+      - ./deploy/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - api
+
+  # Renovação automática de certificado SSL (opcional)
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./deploy/certbot/conf:/etc/letsencrypt
+      - ./deploy/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  pgdata:
+  redis_data:

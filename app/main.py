@@ -39,23 +39,9 @@ async def lifespan(app: FastAPI):
     """
 
     setup_logging()
-    # Startup: carregar modelos de ML
-    try:
-        from app.services.embedding_service import EmbeddingService
-
-        app.state.embedding_service = EmbeddingService()
-    except Exception as exc:
-        logger.warning("Embedding service indisponível no startup: %s", exc)
-        app.state.embedding_service = None
-
-    # Face service é opcional — requer insightface
-    try:
-        from app.services.face_service import FaceService
-
-        app.state.face_service = FaceService()
-    except Exception as exc:
-        logger.warning("FaceService indisponível no startup: %s", exc)
-        app.state.face_service = None
+    # Startup rápido: serviços de IA são carregados sob demanda (lazy loading).
+    app.state.embedding_service = None
+    app.state.face_service = None
 
     yield
     # Shutdown

@@ -127,9 +127,8 @@ docker compose up -d
 ### 3. Migrations e seed
 
 ```bash
-docker compose exec api alembic upgrade head
+docker compose exec api python scripts/init_db.py
 docker compose exec api python scripts/seed_legislacao.py
-docker compose exec api python scripts/seed_passagens.py
 ```
 
 ### 4. Acessar
@@ -171,8 +170,9 @@ make worker
 | `make worker` | Sobe arq worker |
 | `make test` | Roda testes com cobertura |
 | `make lint` | Ruff lint + format |
-| `make migrate msg="desc"` | Nova migration Alembic |
-| `make seed` | Popular legislacao e passagens |
+| `make migrate` | Aplica migrations (ou inicializa schema se ainda não houver migration) |
+| `make migrate-create msg="desc"` | Nova migration Alembic |
+| `make seed` | Popular legislação |
 | `make anonimizar` | Anonimizacao LGPD |
 | `make anonimizar-dry` | Simulacao da anonimizacao |
 

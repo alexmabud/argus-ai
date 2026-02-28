@@ -99,7 +99,8 @@ make lint         # Ruff lint + mypy type check
 make format       # Formata código com ruff
 
 # Banco de Dados
-make migrate      # Aplica migrations
+make migrate      # Aplica migrations (ou inicializa schema se ainda não houver migration)
+make init-db      # Inicializa schema direto pelo metadata SQLAlchemy
 make migrate-create msg="descrição"  # Cria nova migration
 
 # Dados

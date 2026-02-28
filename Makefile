@@ -1,4 +1,4 @@
-.PHONY: dev test lint migrate seed worker anonimizar
+.PHONY: dev test lint migrate init-db seed worker anonimizar
 
 VENV_BIN := .venv/bin
 PYTHON := $(VENV_BIN)/python
@@ -28,14 +28,22 @@ format:
 	$(RUFF) format app/ tests/
 
 migrate:
-	$(ALEMBIC) upgrade head
+	@if ls alembic/versions/*.py >/dev/null 2>&1; then \
+		$(ALEMBIC) upgrade head; \
+	else \
+		echo "Sem migrations em alembic/versions; executando init-db."; \
+		$(PYTHON) scripts/init_db.py; \
+	fi
+
+init-db:
+	$(PYTHON) scripts/init_db.py
 
 migrate-create:
 	$(ALEMBIC) revision --autogenerate -m "$(msg)"
 
 seed:
 	$(PYTHON) scripts/seed_legislacao.py
-	$(PYTHON) scripts/seed_passagens.py
+	@if [ -f scripts/seed_passagens.py ]; then $(PYTHON) scripts/seed_passagens.py; else echo "scripts/seed_passagens.py nao existe; pulando seed de passagens."; fi
 
 docker-up:
 	docker compose up -d

@@ -1,0 +1,66 @@
+# syntax=docker/dockerfile:1
+# Dockerfile de produção para o Argus AI (multi-stage build)
+
+# ── Stage 1: Build ──────────────────────────────────────────────
+FROM python:3.11-slim-bookworm AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml .
+
+# Instalar deps em /build/venv para copiar depois
+RUN python -m venv /build/venv && \
+    /build/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    /build/venv/bin/pip install --no-cache-dir .
+
+# ── Stage 2: Runtime ───────────────────────────────────────────
+FROM python:3.11-slim-bookworm AS runtime
+
+LABEL maintainer="alexmabud"
+LABEL description="Argus AI - Sistema de apoio operacional com IA"
+
+WORKDIR /app
+
+# Deps do sistema (runtime only)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    libgl1 \
+    libglib2.0-0 \
+    tesseract-ocr \
+    tesseract-ocr-por \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar venv do builder
+COPY --from=builder /build/venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
+
+# Copiar código da aplicação
+COPY app/ ./app/
+COPY frontend/ ./frontend/
+COPY alembic/ ./alembic/
+COPY alembic.ini .
+COPY pyproject.toml .
+
+# Usuário não-root
+RUN groupadd -r argus && useradd -r -g argus -d /app argus && \
+    chown -R argus:argus /app
+USER argus
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Gunicorn com workers uvicorn para produção
+CMD ["python", "-m", "gunicorn", "app.main:app", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "2", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--timeout", "120", \
+     "--access-logfile", "-"]

@@ -200,3 +200,42 @@ jobs:
             ci-debug.log
           if-no-files-found: warn
           retention-days: 30
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 10
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Oracle Cloud
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          # Validar secrets
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_KEY" ]; then
+            echo "Secrets de deploy não configurados. Pulando deploy."
+            echo "Configure DEPLOY_HOST, DEPLOY_USER e DEPLOY_KEY nos secrets do repositório."
+            exit 0
+          fi
+
+          # Configurar SSH
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Executar deploy remoto
+          ssh -o StrictHostKeyChecking=no "${DEPLOY_USER}@${DEPLOY_HOST}" << 'DEPLOY_SCRIPT'
+            cd ~/argus-ai || exit 1
+            git pull origin main
+            docker compose -f docker-compose.prod.yml build
+            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml exec -T api python -m alembic upgrade head || true
+            echo "Deploy concluído: $(date)"
+          DEPLOY_SCRIPT

@@ -75,10 +75,16 @@ def get_face_service(request: Request):
 
     face_service = request.app.state.face_service
     if face_service is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Serviço de reconhecimento facial indisponível",
-        )
+        try:
+            from app.services.face_service import FaceService
+
+            face_service = FaceService()
+            request.app.state.face_service = face_service
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Serviço de reconhecimento facial indisponível: {exc}",
+            ) from exc
     return face_service
 
 
@@ -94,8 +100,14 @@ def get_embedding_service(request: Request):
 
     embedding_service = request.app.state.embedding_service
     if embedding_service is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Serviço de embeddings indisponível",
-        )
+        try:
+            from app.services.embedding_service import EmbeddingService
+
+            embedding_service = EmbeddingService()
+            request.app.state.embedding_service = embedding_service
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Serviço de embeddings indisponível: {exc}",
+            ) from exc
     return embedding_service
