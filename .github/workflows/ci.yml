@@ -90,6 +90,13 @@ jobs:
           docker exec -e PGPASSWORD=test ${{ job.services.postgres.id }} \
             psql -v ON_ERROR_STOP=1 -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS unaccent;"
 
+      - name: Start MinIO
+        run: |
+          docker run -d -p 9000:9000 --name minio \
+            -e MINIO_ROOT_USER=test \
+            -e MINIO_ROOT_PASSWORD=test \
+            minio/minio server /data
+
       - name: Install Python deps
         run: |
           pip install --upgrade pip setuptools wheel
@@ -106,6 +113,9 @@ jobs:
           S3_SECRET_KEY: test
           S3_BUCKET: argus-test
         run: |
+          # Create S3 bucket
+          python -c "import os, boto3; s3 = boto3.client('s3', endpoint_url=os.environ['S3_ENDPOINT'], aws_access_key_id=os.environ['S3_ACCESS_KEY'], aws_secret_access_key=os.environ['S3_SECRET_KEY']); s3.create_bucket(Bucket=os.environ['S3_BUCKET'])"
+
           pytest --maxfail=5 --disable-warnings -q --cov=app --cov-report=xml 2>&1 | tee pytest.log
           test ${PIPESTATUS[0]} -eq 0
 
