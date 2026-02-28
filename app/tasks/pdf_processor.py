@@ -8,7 +8,10 @@ vetorial para busca semântica via pgvector.
 import logging
 from urllib.parse import urlparse
 
-import fitz  # PyMuPDF
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    fitz = None
 
 from app.services.storage_service import StorageService
 from app.services.text_utils import chunk_text_semantico
@@ -27,7 +30,12 @@ def extrair_texto_pdf(pdf_bytes: bytes) -> str:
 
     Returns:
         Texto extraído concatenado de todas as páginas.
+
+    Raises:
+        RuntimeError: Se PyMuPDF não estiver instalado.
     """
+    if fitz is None:
+        raise RuntimeError("PyMuPDF (fitz) não instalado — processamento de PDF indisponível")
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     textos = []
     for page in doc:

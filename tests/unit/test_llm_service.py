@@ -15,7 +15,6 @@ from app.services.llm_service import LLMService
 class TestLLMService:
     """Testes para LLMService."""
 
-    @pytest.mark.asyncio
     async def test_gerar_anthropic_sucesso(self):
         """Deve gerar texto via Anthropic quando disponível."""
         service = LLMService()
@@ -40,7 +39,6 @@ class TestLLMService:
                 )
                 assert result == "Relatório gerado"
 
-    @pytest.mark.asyncio
     async def test_gerar_anthropic_erro_levanta_excecao(self):
         """Deve levantar LLMIndisponivelError quando Anthropic falha."""
         service = LLMService()
@@ -59,7 +57,6 @@ class TestLLMService:
                 with pytest.raises(LLMIndisponivelError):
                     await service._gerar_anthropic(prompt="teste", system="system", max_tokens=100)
 
-    @pytest.mark.asyncio
     async def test_gerar_roteia_para_provider(self):
         """Deve rotear para o provider correto com base em settings."""
         service = LLMService()

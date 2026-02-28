@@ -58,8 +58,8 @@ async def setup_db(test_engine):
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with test_engine.begin() as conn:
-        for table in reversed(Base.metadata.sorted_tables):
-            await conn.execute(text(f'TRUNCATE TABLE "{table.name}" RESTART IDENTITY CASCADE'))
+        table_names = ", ".join(f'"{t.name}"' for t in reversed(Base.metadata.sorted_tables))
+        await conn.execute(text(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE"))
 
 
 @pytest.fixture
@@ -151,7 +151,7 @@ async def usuario(db_session: AsyncSession, guarnicao: Guarnicao) -> Usuario:
 
 
 @pytest.fixture
-def auth_headers(usuario: Usuario) -> dict:
+async def auth_headers(usuario: Usuario) -> dict:
     """Fixture que gera headers com token de autenticação válido.
 
     Cria um token JWT de acesso válido para o usuário de teste e

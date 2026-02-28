@@ -37,7 +37,6 @@ async def legislacao(db_session: AsyncSession) -> Legislacao:
 class TestListarLegislacao:
     """Testes para GET /legislacao."""
 
-    @pytest.mark.asyncio
     async def test_retorna_200(
         self, client: AsyncClient, auth_headers: dict, legislacao: Legislacao
     ):
@@ -48,7 +47,6 @@ class TestListarLegislacao:
         assert len(data) >= 1
         assert data[0]["lei"] == "CP"
 
-    @pytest.mark.asyncio
     async def test_sem_auth_retorna_401(self, client: AsyncClient, legislacao: Legislacao):
         """Deve retornar 401 sem autenticação."""
         response = await client.get("/api/v1/legislacao/")
@@ -58,7 +56,6 @@ class TestListarLegislacao:
 class TestDetalheLegislacao:
     """Testes para GET /legislacao/{id}."""
 
-    @pytest.mark.asyncio
     async def test_retorna_200(
         self, client: AsyncClient, auth_headers: dict, legislacao: Legislacao
     ):
@@ -67,7 +64,6 @@ class TestDetalheLegislacao:
         assert response.status_code == 200
         assert response.json()["artigo"] == "157"
 
-    @pytest.mark.asyncio
     async def test_id_inexistente_retorna_404(self, client: AsyncClient, auth_headers: dict):
         """Deve retornar 404 para ID inexistente."""
         response = await client.get("/api/v1/legislacao/99999", headers=auth_headers)
