@@ -3,6 +3,7 @@
 Define a abordagem em campo e suas tabelas de associação (pessoas,
 veículos, fotos, passagens). Abordagem é o "documento" raiz do sistema.
 """
+
 from datetime import datetime
 
 from geoalchemy2 import Geography

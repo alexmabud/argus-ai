@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
         from app.services.face_service import FaceService
 
         app.state.face_service = FaceService()
-    except ImportError:
+    except Exception:
         app.state.face_service = None
 
     yield

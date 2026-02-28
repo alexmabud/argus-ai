@@ -3,6 +3,7 @@
 Define os tipos de passagens criminais e infrações administrativas
 registráveis durante abordagens.
 """
+
 from sqlalchemy import Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 

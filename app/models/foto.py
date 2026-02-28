@@ -3,6 +3,7 @@
 Define fotos de pessoas ou registros de abordagens com embeddings
 faciais para busca por similaridade facial (InsightFace).
 """
+
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector

@@ -3,6 +3,7 @@
 Define a pessoa abordada, com dados pessoais, endereços, fotos,
 histórico de abordagens e relacionamentos com outras pessoas.
 """
+
 from datetime import date
 
 from sqlalchemy import Date, Index, String, Text

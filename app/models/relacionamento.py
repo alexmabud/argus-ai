@@ -3,6 +3,7 @@
 Define relacionamentos (associações) materializados entre pessoas
 abordadas juntas, com frequência e histórico temporal.
 """
+
 from datetime import datetime
 
 from sqlalchemy import (

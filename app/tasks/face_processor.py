@@ -48,7 +48,11 @@ async def processar_face_task(ctx: dict, foto_id: int) -> dict:
 
     from app.models.foto import Foto
 
-    face_service = ctx["face_service"]
+    face_service = ctx.get("face_service")
+    if face_service is None:
+        logger.warning("FaceService indisponível, pulando foto %d", foto_id)
+        return {"status": "indisponível", "motivo": "FaceService não carregado"}
+
     db_factory = ctx["db_session_factory"]
     storage = StorageService()
 

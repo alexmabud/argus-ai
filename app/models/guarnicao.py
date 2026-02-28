@@ -3,6 +3,7 @@
 Define a entidade central de multi-tenancy, representando uma
 unidade policial ou guarnição que contém membros e dados operacionais.
 """
+
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

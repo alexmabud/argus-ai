@@ -3,6 +3,7 @@
 Define endereços conhecidos de uma pessoa com localização geoespacial
 (PostGIS) para análise de padrões de movimento.
 """
+
 from datetime import date
 
 from geoalchemy2 import Geography

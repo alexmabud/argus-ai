@@ -31,11 +31,24 @@ async def startup(ctx: dict) -> None:
     """
     from app.database.session import AsyncSessionLocal
     from app.services.embedding_service import EmbeddingService
-    from app.services.face_service import FaceService
 
     logger.info("Iniciando worker arq...")
-    ctx["embedding_service"] = EmbeddingService()
-    ctx["face_service"] = FaceService()
+
+    try:
+        ctx["embedding_service"] = EmbeddingService()
+    except Exception as exc:
+        logger.warning("EmbeddingService indisponível: %s", exc)
+        ctx["embedding_service"] = None
+
+    # Face service é opcional — requer insightface
+    try:
+        from app.services.face_service import FaceService
+
+        ctx["face_service"] = FaceService()
+    except Exception:
+        logger.warning("FaceService indisponível (insightface não instalado)")
+        ctx["face_service"] = None
+
     ctx["db_session_factory"] = AsyncSessionLocal
     logger.info("Worker arq pronto")
 

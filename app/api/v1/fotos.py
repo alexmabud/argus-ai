@@ -207,6 +207,9 @@ async def extrair_placa(
         200: OCR processado (placa pode ser None se não detectada).
         429: Rate limit (10/min).
     """
+    if OCRService is None:
+        return OCRPlacaResponse(placa=None, detectada=False)
+
     file_bytes = await file.read()
     ocr = OCRService()
     placa = ocr.extrair_placa(file_bytes)

@@ -3,6 +3,7 @@
 Define a classe base DeclarativeBase e mixins para auditoria temporal,
 exclusão lógica (soft delete) e isolamento multi-tenant por guarnição.
 """
+
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, func

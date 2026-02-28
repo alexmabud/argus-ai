@@ -3,6 +3,7 @@
 Define o log de auditoria que rastreia todas as ações para atender
 requisitos LGPD de rastreabilidade: quem, o quê, quando e de onde.
 """
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
