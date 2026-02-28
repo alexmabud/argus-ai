@@ -9,8 +9,12 @@ import io
 import logging
 
 import numpy as np
-from insightface.app import FaceAnalysis
 from PIL import Image
+
+try:
+    from insightface.app import FaceAnalysis
+except ImportError:
+    FaceAnalysis = None
 
 logger = logging.getLogger("argus")
 
@@ -32,6 +36,9 @@ class FaceService:
         Carrega modelo buffalo_l com ONNX Runtime (CPU).
         O modelo fica em memória durante todo o ciclo de vida da aplicação.
         """
+        if FaceAnalysis is None:
+            raise ImportError("InsightFace não instalado")
+
         logger.info("Carregando modelo InsightFace (buffalo_l)...")
         self.app = FaceAnalysis(
             name="buffalo_l",

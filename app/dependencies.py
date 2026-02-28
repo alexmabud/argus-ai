@@ -73,7 +73,13 @@ def get_face_service(request: Request):
         Instância de FaceService com InsightFace buffalo_l (512-dim).
     """
 
-    return request.app.state.face_service
+    face_service = request.app.state.face_service
+    if face_service is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Serviço de reconhecimento facial indisponível",
+        )
+    return face_service
 
 
 def get_embedding_service(request: Request):
@@ -86,4 +92,10 @@ def get_embedding_service(request: Request):
         Instância de EmbeddingService com SentenceTransformers (384-dim).
     """
 
-    return request.app.state.embedding_service
+    embedding_service = request.app.state.embedding_service
+    if embedding_service is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Serviço de embeddings indisponível",
+        )
+    return embedding_service

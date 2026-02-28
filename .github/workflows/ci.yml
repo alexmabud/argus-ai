@@ -15,8 +15,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Ruff
-        run: pip install ruff==0.15.4
+      - name: Install Python deps
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install -e ".[dev]"
 
       - name: Ruff lint
         run: ruff check app/ tests/
@@ -58,25 +60,33 @@ jobs:
 
       - name: Install pgvector in PostgreSQL
         run: |
-          docker exec ${{ job.services.postgres.id }} bash -c \
-            "apt-get update && apt-get install -y postgresql-16-pgvector"
+          docker exec ${{ job.services.postgres.id }} bash -euxo pipefail -c \
+            "apt-get update && \
+             apt-get install -y --no-install-recommends git build-essential postgresql-server-dev-16 ca-certificates && \
+             git clone --branch v0.8.1 --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector && \
+             cd /tmp/pgvector && \
+             make && \
+             make install"
           docker restart ${{ job.services.postgres.id }}
 
       - name: Wait for PostgreSQL restart
         run: |
-          for i in $(seq 1 30); do
-            pg_isready -h localhost -U test -d argus_test && break
+          for i in $(seq 1 60); do
+            docker exec ${{ job.services.postgres.id }} pg_isready -U test -d argus_test && break
             sleep 1
           done
+          docker exec ${{ job.services.postgres.id }} pg_isready -U test -d argus_test
 
       - name: Setup PostgreSQL extensions
-        env:
-          PGPASSWORD: test
         run: |
-          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
-          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
-          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS unaccent;"
+          docker exec -e PGPASSWORD=test ${{ job.services.postgres.id }} \
+            psql -v ON_ERROR_STOP=1 -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+          docker exec -e PGPASSWORD=test ${{ job.services.postgres.id }} \
+            psql -v ON_ERROR_STOP=1 -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          docker exec -e PGPASSWORD=test ${{ job.services.postgres.id }} \
+            psql -v ON_ERROR_STOP=1 -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+          docker exec -e PGPASSWORD=test ${{ job.services.postgres.id }} \
+            psql -v ON_ERROR_STOP=1 -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS unaccent;"
 
       - name: Install Python deps
         run: |

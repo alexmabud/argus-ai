@@ -21,8 +21,10 @@ jobs:
 
       - name: Check for .env files
         run: |
-          if ls .env* 2>/dev/null | grep -v '.env.example'; then
+          tracked_env_files="$(git ls-files '.env*' ':!.env.example')"
+          if [ -n "$tracked_env_files" ]; then
             echo "ERROR: .env file found in repository!"
+            echo "$tracked_env_files"
             exit 1
           fi
 

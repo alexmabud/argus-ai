@@ -5,6 +5,7 @@ e hooks de ciclo de vida configurados. Também gerencia inicialização de
 modelos de ML e ciclo de vida de conexões com banco de dados.
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -18,6 +19,8 @@ from app.core.logging_config import setup_logging
 from app.core.middleware import AuditMiddleware, LoggingMiddleware
 from app.core.rate_limit import limiter
 from app.database.session import engine
+
+logger = logging.getLogger("argus")
 
 
 @asynccontextmanager
@@ -37,9 +40,13 @@ async def lifespan(app: FastAPI):
 
     setup_logging()
     # Startup: carregar modelos de ML
-    from app.services.embedding_service import EmbeddingService
+    try:
+        from app.services.embedding_service import EmbeddingService
 
-    app.state.embedding_service = EmbeddingService()
+        app.state.embedding_service = EmbeddingService()
+    except Exception as exc:
+        logger.warning("Embedding service indisponível no startup: %s", exc)
+        app.state.embedding_service = None
 
     # Face service é opcional — requer insightface
     try:
