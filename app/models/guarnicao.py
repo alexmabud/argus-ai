@@ -32,4 +32,8 @@ class Guarnicao(Base, TimestampMixin, SoftDeleteMixin):
     unidade: Mapped[str] = mapped_column(String(200))  # ex: "3º BPM"
     codigo: Mapped[str] = mapped_column(String(50), unique=True)  # ex: "3BPM-3CIA-GU01"
 
-    membros = relationship("Usuario", back_populates="guarnicao")
+    membros = relationship(
+        "Usuario",
+        back_populates="guarnicao",
+        foreign_keys="Usuario.guarnicao_id",
+    )

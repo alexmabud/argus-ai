@@ -38,4 +38,8 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     guarnicao_id: Mapped[int] = mapped_column(ForeignKey("guarnicoes.id"))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    guarnicao = relationship("Guarnicao", back_populates="membros")
+    guarnicao = relationship(
+        "Guarnicao",
+        back_populates="membros",
+        foreign_keys=[guarnicao_id],
+    )
