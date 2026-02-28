@@ -5,15 +5,20 @@ Legislação é dado global (sem multi-tenancy), acessível por todas as
 guarnições.
 """
 
+from __future__ import annotations
+
 import logging
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NaoEncontradoError
 from app.models.legislacao import Legislacao
 from app.repositories.legislacao_repo import LegislacaoRepository
-from app.services.embedding_service import EmbeddingService
+
+if TYPE_CHECKING:
+    from app.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger("argus")
 

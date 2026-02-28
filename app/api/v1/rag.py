@@ -4,6 +4,10 @@ Fornece endpoints para geração de relatórios operacionais via LLM
 com contexto semântico e busca cross-domain em ocorrências e legislação.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,8 +23,10 @@ from app.schemas.rag import (
     RelatorioRequest,
     RelatorioResponse,
 )
-from app.services.embedding_service import EmbeddingService
 from app.services.rag_service import RAGService
+
+if TYPE_CHECKING:
+    from app.services.embedding_service import EmbeddingService
 
 router = APIRouter(prefix="/rag", tags=["RAG"])
 

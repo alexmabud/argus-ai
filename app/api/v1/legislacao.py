@@ -4,6 +4,10 @@ Fornece endpoints para listagem e busca semântica de artigos de
 legislação. Legislação é dado global (sem filtro multi-tenant).
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,8 +15,10 @@ from app.database.session import get_db
 from app.dependencies import get_current_user, get_embedding_service
 from app.models.usuario import Usuario
 from app.schemas.legislacao import LegislacaoRead, LegislacaoSemanticaRead
-from app.services.embedding_service import EmbeddingService
 from app.services.legislacao_service import LegislacaoService
+
+if TYPE_CHECKING:
+    from app.services.embedding_service import EmbeddingService
 
 router = APIRouter(prefix="/legislacao", tags=["Legislação"])
 

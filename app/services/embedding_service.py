@@ -10,9 +10,13 @@ import json
 import logging
 
 import redis.asyncio as aioredis
-from sentence_transformers import SentenceTransformer
 
 from app.config import settings
+
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None
 
 logger = logging.getLogger("argus")
 
@@ -37,6 +41,8 @@ class EmbeddingService:
         Carrega o modelo SentenceTransformers definido em settings.EMBEDDING_MODEL.
         O modelo fica em memória durante todo o ciclo de vida da aplicação.
         """
+        if SentenceTransformer is None:
+            raise ImportError("sentence-transformers não está instalado")
         logger.info("Carregando modelo de embeddings: %s", settings.EMBEDDING_MODEL)
         self.model = SentenceTransformer(settings.EMBEDDING_MODEL)
         self.redis_url = settings.REDIS_URL

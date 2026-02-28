@@ -5,8 +5,11 @@ Implementa pipeline completo de RAG: recuperação de contexto semântico
 estritas de veracidade, e geração de relatório via LLM.
 """
 
+from __future__ import annotations
+
 import logging
 import time
+from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -15,8 +18,10 @@ from app.core.exceptions import NaoEncontradoError
 from app.models.abordagem import Abordagem
 from app.repositories.legislacao_repo import LegislacaoRepository
 from app.repositories.ocorrencia_repo import OcorrenciaRepository
-from app.services.embedding_service import EmbeddingService
 from app.services.llm_service import LLMService
+
+if TYPE_CHECKING:
+    from app.services.embedding_service import EmbeddingService
 
 logger = logging.getLogger("argus")
 
