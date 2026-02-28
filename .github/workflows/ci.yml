@@ -56,18 +56,27 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr tesseract-ocr-por
 
-      - name: Install pgvector and setup extensions
+      - name: Install pgvector in PostgreSQL
         run: |
           docker exec ${{ job.services.postgres.id }} bash -c \
             "apt-get update && apt-get install -y postgresql-16-pgvector"
-          docker exec ${{ job.services.postgres.id }} psql -U test -d argus_test -c \
-            "CREATE EXTENSION IF NOT EXISTS postgis;"
-          docker exec ${{ job.services.postgres.id }} psql -U test -d argus_test -c \
-            "CREATE EXTENSION IF NOT EXISTS vector;"
-          docker exec ${{ job.services.postgres.id }} psql -U test -d argus_test -c \
-            "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
-          docker exec ${{ job.services.postgres.id }} psql -U test -d argus_test -c \
-            "CREATE EXTENSION IF NOT EXISTS unaccent;"
+          docker restart ${{ job.services.postgres.id }}
+
+      - name: Wait for PostgreSQL restart
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -U test -d argus_test && break
+            sleep 1
+          done
+
+      - name: Setup PostgreSQL extensions
+        env:
+          PGPASSWORD: test
+        run: |
+          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+          psql -h localhost -U test -d argus_test -c "CREATE EXTENSION IF NOT EXISTS unaccent;"
 
       - name: Install Python deps
         run: |
