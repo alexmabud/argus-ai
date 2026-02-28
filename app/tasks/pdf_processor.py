@@ -86,7 +86,11 @@ async def processar_pdf_task(ctx: dict, ocorrencia_id: int) -> dict:
             # 1. Buscar ocorrência
             from sqlalchemy import select
 
-            result = await db.execute(select(Ocorrencia).where(Ocorrencia.id == ocorrencia_id))
+            result = await db.execute(
+                select(Ocorrencia)
+                .where(Ocorrencia.id == ocorrencia_id)
+                .with_for_update(skip_locked=True)
+            )
             ocorrencia = result.scalar_one_or_none()
 
             if ocorrencia is None:

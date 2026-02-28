@@ -53,7 +53,8 @@ async def lifespan(app: FastAPI):
         from app.services.face_service import FaceService
 
         app.state.face_service = FaceService()
-    except Exception:
+    except Exception as exc:
+        logger.warning("FaceService indisponível no startup: %s", exc)
         app.state.face_service = None
 
     yield

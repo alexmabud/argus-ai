@@ -4,6 +4,8 @@ Gerencia criação, atualização, busca e soft delete de pessoas,
 com criptografia CPF (Fernet), busca fuzzy (pg_trgm) e auditoria.
 """
 
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import decrypt, encrypt, hash_for_search
@@ -15,6 +17,8 @@ from app.models.usuario import Usuario
 from app.repositories.pessoa_repo import PessoaRepository
 from app.schemas.pessoa import EnderecoCreate, PessoaCreate, PessoaUpdate
 from app.services.audit_service import AuditService
+
+logger = logging.getLogger("argus")
 
 
 class PessoaService:
@@ -352,4 +356,5 @@ class PessoaService:
             clean = cpf.replace(".", "").replace("-", "")
             return f"***.***.*{clean[-3]}-{clean[-2:]}"
         except Exception:
+            logger.warning("Falha ao descriptografar CPF da pessoa %s", pessoa.id)
             return None

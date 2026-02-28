@@ -61,7 +61,9 @@ async def processar_face_task(ctx: dict, foto_id: int) -> dict:
     async with db_factory() as db:
         try:
             # 1. Buscar foto
-            result = await db.execute(select(Foto).where(Foto.id == foto_id))
+            result = await db.execute(
+                select(Foto).where(Foto.id == foto_id).with_for_update(skip_locked=True)
+            )
             foto = result.scalar_one_or_none()
 
             if foto is None:

@@ -10,10 +10,10 @@ from geoalchemy2 import Geography
 from sqlalchemy import Date, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 
-class EnderecoPessoa(Base, TimestampMixin):
+class EnderecoPessoa(Base, TimestampMixin, SoftDeleteMixin):
     """Endereço associado a uma pessoa.
 
     Armazena endereços conhecidos de uma pessoa (residência, local de trabalho,

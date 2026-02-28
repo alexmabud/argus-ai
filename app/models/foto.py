@@ -10,10 +10,10 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 
-class Foto(Base, TimestampMixin):
+class Foto(Base, TimestampMixin, SoftDeleteMixin):
     """Foto de pessoa ou abordagem, com embedding facial opcional.
 
     Armazena fotos capturadas de pessoas ou durante abordagens.
