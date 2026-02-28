@@ -1,8 +1,18 @@
-name: Security Checks
+# ══════════════════════════════════════════════════════════════
+# Argus AI — Security Pipeline
+# ══════════════════════════════════════════════════════════════
+# Checks de segurança: secrets expostos, deps vulneráveis, SAST.
+# Roda em PRs, push na main e semanalmente (segunda 9h UTC).
+# Jobs independentes rodam em paralelo para feedback rápido.
+# ══════════════════════════════════════════════════════════════
+
+name: Security
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
   schedule:
     - cron: "0 9 * * 1"
   workflow_dispatch:
@@ -11,53 +21,68 @@ permissions:
   contents: read
 
 concurrency:
-  group: security-${{ github.workflow }}-${{ github.ref }}
+  group: security-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.11"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
-  PIP_NO_PYTHON_VERSION_WARNING: "1"
 
 defaults:
   run:
     shell: bash
 
+# ══════════════════════════════════════════════════════════════
 jobs:
-  security:
+
+  # ── Secrets Leak Detection ─────────────────────────────────
+  secrets-scan:
+    name: Secrets Scan
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
-
-      - name: Check for .env files
+      - name: Check for .env files tracked
         run: |
-          tracked_env_files="$(git ls-files '.env*' ':!.env.example')"
-          if [ -n "$tracked_env_files" ]; then
-            echo "ERROR: .env file found in repository!"
-            echo "$tracked_env_files"
+          tracked="$(git ls-files '.env*' ':!.env.example' ':!.env.production.example')"
+          if [ -n "$tracked" ]; then
+            echo "::error::Arquivo .env encontrado no repositório!"
+            echo "$tracked"
             exit 1
           fi
+          echo "Nenhum .env rastreado pelo git"
 
-      - name: Detect secrets
-        uses: trufflesecurity/trufflehog@main
+      - name: TruffleHog secrets detection
+        uses: trufflesecurity/trufflehog@v3.82.13
         with:
           extra_args: --only-verified
         continue-on-error: true
 
-      - name: Install security tools
-        run: python -m pip install --upgrade pip pip-audit
+  # ── Dependency Audit ───────────────────────────────────────
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
 
-      - name: Build audit dependency list
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-deps: none
+
+      - name: Install pip-audit
+        run: python -m pip install pip-audit
+
+      - name: Generate requirements from pyproject.toml
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -65,32 +90,103 @@ jobs:
 
           data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
           project = data.get("project", {})
-          dependencies = list(project.get("dependencies", []))
-          dependencies.extend(project.get("optional-dependencies", {}).get("dev", []))
+          deps = list(project.get("dependencies", []))
+          deps.extend(project.get("optional-dependencies", {}).get("dev", []))
 
           output = Path("requirements-audit.txt")
-          output.write_text("\n".join(dependencies) + "\n", encoding="utf-8")
-          print(f"Arquivo gerado: {output} ({len(dependencies)} dependências)")
+          output.write_text("\n".join(deps) + "\n", encoding="utf-8")
+          print(f"Gerado {output} com {len(deps)} dependências")
           PY
 
-      - name: Audit dependencies
+      - name: Audit dependencies for vulnerabilities
         run: |
-          pip-audit -r requirements-audit.txt --desc --format=json --output pip-audit-report.json || true
-        continue-on-error: true
+          pip-audit \
+            -r requirements-audit.txt \
+            --desc \
+            --format=json \
+            --output=pip-audit-report.json \
+            || true
 
-      - name: Run Bandit
-        run: |
-          python -m pip install bandit
-          bandit -r app/ -ll -f json -o bandit-report.json --exit-zero
-
-      - name: Upload security reports
-        uses: actions/upload-artifact@v4
+      - name: Print audit summary
         if: always()
+        run: |
+          if [ -f pip-audit-report.json ]; then
+            python -c "
+          import json
+          data = json.load(open('pip-audit-report.json'))
+          vulns = data.get('vulnerabilities', [])
+          if vulns:
+              print(f'::warning::{len(vulns)} vulnerabilidades encontradas')
+              for v in vulns[:5]:
+                  print(f\"  - {v.get('name', '?')}: {v.get('id', '?')}\")
+          else:
+              print('Nenhuma vulnerabilidade encontrada')
+          "
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: security-reports
+          name: dependency-audit
           path: |
-            bandit-report.json
             pip-audit-report.json
             requirements-audit.txt
-          if-no-files-found: warn
-          retention-days: 30
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ── Static Analysis (SAST) ─────────────────────────────────
+  sast:
+    name: SAST (Bandit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-deps: none
+
+      - name: Install Bandit
+        run: python -m pip install bandit
+
+      - name: Run Bandit SAST scan
+        run: |
+          bandit \
+            -r app/ \
+            -ll \
+            -f json \
+            -o bandit-report.json \
+            --exit-zero
+
+      - name: Print Bandit summary
+        if: always()
+        run: |
+          if [ -f bandit-report.json ]; then
+            python -c "
+          import json
+          data = json.load(open('bandit-report.json'))
+          results = data.get('results', [])
+          if results:
+              high = [r for r in results if r.get('issue_severity') == 'HIGH']
+              med = [r for r in results if r.get('issue_severity') == 'MEDIUM']
+              print(f'::warning::Bandit: {len(high)} HIGH, {len(med)} MEDIUM, {len(results)} total')
+              for r in high[:5]:
+                  print(f\"  - {r['filename']}:{r['line_number']} {r['issue_text']}\")
+          else:
+              print('Bandit: nenhum issue encontrado')
+          "
+          fi
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-report
+          path: bandit-report.json
+          if-no-files-found: ignore
+          retention-days: 14
