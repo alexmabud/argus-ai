@@ -106,7 +106,9 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("30/minute")
 async def refresh(
+    request: Request,
     data: RefreshRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
@@ -116,6 +118,7 @@ async def refresh(
     Útil para manter a sessão ativa sem exigir re-autenticação.
 
     Args:
+        request: Objeto Request do FastAPI.
         data: Requisição contendo o refresh token válido.
         db: Sessão do banco de dados (injetada automaticamente).
 
@@ -130,10 +133,7 @@ async def refresh(
     Status Code:
         200: Tokens renovados com sucesso.
         400: Refresh token inválido ou usuário não existe.
-
-    Note:
-        Não possui rate limiting, mas o usuário deve ter um refresh token
-        válido da sessão anterior.
+        429: Muitas requisições no período (rate limit: 30/minuto).
     """
     service = AuthService(db)
     return await service.refresh(data.refresh_token)

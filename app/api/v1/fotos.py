@@ -5,7 +5,7 @@ por pessoa ou abordagem, busca por similaridade facial
 (pgvector 512-dim) e extração de placas via OCR (EasyOCR).
 """
 
-from fastapi import APIRouter, Depends, Form, Request, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
@@ -16,10 +16,16 @@ from app.schemas.foto import (
     BuscaRostoItem,
     BuscaRostoResponse,
     FotoRead,
+    FotoTipo,
     FotoUploadResponse,
     OCRPlacaResponse,
 )
 from app.services.foto_service import FotoService
+
+#: Tamanho máximo de upload de imagem (10 MB).
+MAX_IMAGE_SIZE = 10 * 1024 * 1024
+#: MIME types permitidos para upload de imagem.
+ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp"}
 
 # Face service é opcional — requer insightface
 try:
@@ -41,7 +47,7 @@ router = APIRouter(prefix="/fotos", tags=["Fotos"])
 async def upload_foto(
     request: Request,
     file: UploadFile,
-    tipo: str = Form("rosto"),
+    tipo: FotoTipo = Form(FotoTipo.rosto),
     pessoa_id: int | None = Form(None),
     abordagem_id: int | None = Form(None),
     latitude: float | None = Form(None),
@@ -57,7 +63,7 @@ async def upload_foto(
     Args:
         request: Objeto Request do FastAPI.
         file: Arquivo de imagem (multipart/form-data).
-        tipo: Tipo de foto ("rosto", "corpo", "placa").
+        tipo: Tipo de foto (rosto, corpo, placa, documento).
         pessoa_id: ID da pessoa associada (opcional).
         abordagem_id: ID da abordagem associada (opcional).
         latitude: Latitude GPS da captura (opcional).
@@ -68,11 +74,27 @@ async def upload_foto(
     Returns:
         FotoUploadResponse com id, url e tipo.
 
+    Raises:
+        HTTPException: 400 se formato inválido, 413 se exceder 10 MB.
+
     Status Code:
         201: Foto enviada.
         429: Rate limit (10/min).
     """
+    if file.content_type not in ALLOWED_IMAGE_MIMES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Formato inválido. Permitidos: {', '.join(ALLOWED_IMAGE_MIMES)}",
+        )
+
     file_bytes = await file.read()
+
+    if len(file_bytes) > MAX_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Imagem excede o tamanho máximo de 10 MB",
+        )
+
     service = FotoService(db)
     foto = await service.upload_foto(
         file_bytes=file_bytes,
@@ -210,7 +232,19 @@ async def extrair_placa(
     if OCRService is None:
         return OCRPlacaResponse(placa=None, detectada=False)
 
+    if file.content_type not in ALLOWED_IMAGE_MIMES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Formato inválido. Permitidos: {', '.join(ALLOWED_IMAGE_MIMES)}",
+        )
+
     file_bytes = await file.read()
+
+    if len(file_bytes) > MAX_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Imagem excede o tamanho máximo de 10 MB",
+        )
     ocr = OCRService()
     placa = ocr.extrair_placa(file_bytes)
     return OCRPlacaResponse(placa=placa, detectada=placa is not None)

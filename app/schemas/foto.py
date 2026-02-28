@@ -8,8 +8,25 @@ similaridade facial e resultado de OCR de placas.
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import BaseModel
+
+
+class FotoTipo(StrEnum):
+    """Tipos válidos de foto.
+
+    Attributes:
+        rosto: Foto de rosto para reconhecimento facial.
+        corpo: Foto de corpo inteiro.
+        placa: Foto de placa veicular.
+        documento: Foto de documento.
+    """
+
+    rosto = "rosto"
+    corpo = "corpo"
+    placa = "placa"
+    documento = "documento"
 
 
 class FotoRead(BaseModel):

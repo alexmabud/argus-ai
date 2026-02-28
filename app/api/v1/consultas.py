@@ -23,7 +23,7 @@ router = APIRouter(prefix="/consultas", tags=["Consultas"])
 
 @router.get("/", response_model=ConsultaUnificadaResponse)
 async def consulta_unificada(
-    q: str = Query(..., min_length=2, description="Termo de busca"),
+    q: str = Query(..., min_length=2, max_length=500, description="Termo de busca"),
     tipo: str | None = Query(
         None,
         description="Tipo de entidade: pessoa, veiculo, abordagem (ou None para todas)",

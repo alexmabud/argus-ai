@@ -103,7 +103,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_HEAVY: str = "10/minute"  # endpoints de IA
 
     # CORS
-    CORS_ORIGINS: list[str] = ["*"]
+    CORS_ORIGINS: list[str] = ["http://localhost:8000", "http://localhost:3000"]
 
     # LGPD
     DATA_RETENTION_DAYS: int = 1825  # 5 anos

@@ -5,7 +5,9 @@ multi-tenant e detalhe individual. O processamento do PDF (extração de
 texto + embedding) é feito em background via arq worker.
 """
 
-from fastapi import APIRouter, Depends, Query, Request, UploadFile, status
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
@@ -14,6 +16,11 @@ from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.schemas.ocorrencia import OcorrenciaCreate, OcorrenciaRead
 from app.services.ocorrencia_service import OcorrenciaService
+
+logger = logging.getLogger("argus")
+
+#: Tamanho máximo de upload de PDF (50 MB).
+MAX_PDF_SIZE = 50 * 1024 * 1024
 
 router = APIRouter(prefix="/ocorrencias", tags=["Ocorrências"])
 
@@ -46,7 +53,20 @@ async def criar_ocorrencia(
         201: Ocorrência criada, processamento em background.
         429: Rate limit (10/min).
     """
+    if arquivo_pdf.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Formato inválido. Apenas arquivos PDF são aceitos",
+        )
+
     pdf_bytes = await arquivo_pdf.read()
+
+    if len(pdf_bytes) > MAX_PDF_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="PDF excede o tamanho máximo de 50 MB",
+        )
+
     service = OcorrenciaService(db)
     ocorrencia = await service.criar(
         numero_ocorrencia=data.numero_ocorrencia,
@@ -67,7 +87,7 @@ async def criar_ocorrencia(
         await redis_pool.enqueue_job("processar_pdf_task", ocorrencia.id)
         await redis_pool.close()
     except Exception:
-        pass  # Worker offline — processamento será feito depois
+        logger.warning("Worker offline — PDF %d será processado depois", ocorrencia.id)
 
     return OcorrenciaRead.model_validate(ocorrencia)
 

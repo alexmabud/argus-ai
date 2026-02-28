@@ -49,8 +49,8 @@ class AbordagemCreate(BaseModel):
     """
 
     data_hora: datetime
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float | None = Field(None, ge=-90, le=90)
+    longitude: float | None = Field(None, ge=-180, le=180)
     endereco_texto: str | None = Field(None, max_length=500)
     observacao: str | None = None
     origem: str = Field("online", max_length=20)

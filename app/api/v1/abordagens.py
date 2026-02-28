@@ -68,8 +68,8 @@ async def criar_abordagem(
 @router.get("/raio/", response_model=list[AbordagemRead])
 async def abordagens_por_raio(
     request: Request,
-    lat: float = Query(..., description="Latitude do ponto central"),
-    lon: float = Query(..., description="Longitude do ponto central"),
+    lat: float = Query(..., ge=-90, le=90, description="Latitude do ponto central"),
+    lon: float = Query(..., ge=-180, le=180, description="Longitude do ponto central"),
     raio_metros: int = Query(500, ge=50, le=50000, description="Raio em metros"),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
