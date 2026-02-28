@@ -6,7 +6,7 @@ exclusão lógica (soft delete) e isolamento multi-tenant por guarnição.
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -53,7 +53,7 @@ class SoftDeleteMixin:
 
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     desativado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    desativado_por_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    desativado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
 
 
 class MultiTenantMixin:
