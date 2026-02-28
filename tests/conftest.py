@@ -25,19 +25,33 @@ from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.models.veiculo import Veiculo
 
-test_engine = create_async_engine(
-    settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
-    echo=False,
-)
-TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
+@pytest.fixture(scope="session")
+def test_engine():
+    """Fixture que cria o engine de teste.
+
+    Escopo de sessão para reutilizar a conexão entre todos os testes.
+
+    Returns:
+        AsyncEngine: Engine assincrónico do SQLAlchemy para testes.
+    """
+    engine = create_async_engine(
+        settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+        echo=False,
+    )
+    yield engine
+    engine.sync_engine.dispose()
 
 
 @pytest.fixture(autouse=True)
-async def setup_db():
+async def setup_db(test_engine):
     """Fixture que prepara e limpa o banco de dados para cada teste.
 
     Cria todas as tabelas antes do teste e remove tudo após, garantindo
     isolamento entre testes. Executa automaticamente para cada teste.
+
+    Args:
+        test_engine: Engine assincrónico de teste.
     """
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -47,13 +61,17 @@ async def setup_db():
 
 
 @pytest.fixture
-async def db_session():
+async def db_session(test_engine):
     """Fixture que fornece uma sessão do banco de dados para testes.
+
+    Args:
+        test_engine: Engine assincrónico de teste.
 
     Returns:
         AsyncSession: Sessão assincrónica do SQLAlchemy para testes.
     """
-    async with TestSessionLocal() as session:
+    session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
         yield session
 
 
