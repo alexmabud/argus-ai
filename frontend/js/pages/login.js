@@ -81,9 +81,9 @@ function loginForm() {
       try {
         const user = await auth.login(this.matricula, this.senha);
         // Propagar para o app principal
-        const appEl = document.querySelector("[x-data]");
-        if (appEl && appEl.__x) {
-          appEl.__x.$data.onLogin(user);
+        const appEl = document.querySelector("[x-data='app()']");
+        if (appEl && appEl._x_dataStack) {
+          appEl._x_dataStack[0].onLogin(user);
         }
       } catch (err) {
         this.erro = err.message || "Erro ao fazer login. Tente novamente.";

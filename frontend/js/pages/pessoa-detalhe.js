@@ -117,7 +117,7 @@ function pessoaDetalhePage(pessoaId) {
 
     goBack() {
       const appEl = document.querySelector("[x-data]");
-      if (appEl?.__x) appEl.__x.$data.navigate("consulta");
+      if (appEl?._x_dataStack) appEl._x_dataStack[0].navigate("consulta");
     },
   };
 }

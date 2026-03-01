@@ -1,6 +1,12 @@
 .PHONY: dev test lint migrate init-db seed worker anonimizar
 
-VENV_BIN := .venv/bin
+# Detecta Windows (Scripts) vs Linux/Mac (bin)
+ifeq ($(OS),Windows_NT)
+  VENV_BIN := .venv/Scripts
+else
+  VENV_BIN := .venv/bin
+endif
+
 PYTHON := $(VENV_BIN)/python
 PIP := $(VENV_BIN)/pip
 UVICORN := $(VENV_BIN)/uvicorn

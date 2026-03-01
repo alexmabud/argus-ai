@@ -239,7 +239,7 @@ function abordagemForm() {
           this.sucesso = "Abordagem salva na fila offline. Será sincronizada automaticamente.";
           // Atualizar contador de pendentes
           const appEl = document.querySelector("[x-data]");
-          if (appEl?.__x) appEl.__x.$data._updateSyncCount();
+          if (appEl?._x_dataStack) appEl._x_dataStack[0]._updateSyncCount();
         }
 
         // Reset form

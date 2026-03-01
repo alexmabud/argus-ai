@@ -112,10 +112,10 @@ function consultaPage() {
     viewPessoa(id) {
       // Navegar para detalhe via app
       const appEl = document.querySelector("[x-data]");
-      if (appEl?.__x) {
-        appEl.__x.$data.currentPage = "pessoa-detalhe";
-        appEl.__x.$data._pessoaId = id;
-        appEl.__x.$data.renderPage("pessoa-detalhe");
+      if (appEl?._x_dataStack) {
+        appEl._x_dataStack[0].currentPage = "pessoa-detalhe";
+        appEl._x_dataStack[0]._pessoaId = id;
+        appEl._x_dataStack[0].renderPage("pessoa-detalhe");
       }
     },
   };
