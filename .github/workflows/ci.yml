@@ -233,7 +233,6 @@ jobs:
     needs: [lint, test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     timeout-minutes: 10
-    environment: production
 
     # Permissões mínimas para deploy
     permissions:
@@ -245,11 +244,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate deploy secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
           missing=""
-          [ -z "${{ secrets.DEPLOY_HOST }}" ] && missing="$missing DEPLOY_HOST"
-          [ -z "${{ secrets.DEPLOY_USER }}" ] && missing="$missing DEPLOY_USER"
-          [ -z "${{ secrets.DEPLOY_KEY }}" ] && missing="$missing DEPLOY_KEY"
+          [ -z "$DEPLOY_HOST" ] && missing="$missing DEPLOY_HOST"
+          [ -z "$DEPLOY_USER" ] && missing="$missing DEPLOY_USER"
+          [ -z "$DEPLOY_KEY" ] && missing="$missing DEPLOY_KEY"
           if [ -n "$missing" ]; then
             echo "::warning::Secrets de deploy não configurados:$missing"
             echo "SKIP_DEPLOY=true" >> "$GITHUB_ENV"
@@ -292,5 +295,5 @@ jobs:
           DEPLOY_SCRIPT
 
       - name: Cleanup SSH keys
-        if: always() && env.SKIP_DEPLOY != 'true'
-        run: rm -rf ~/.ssh/deploy_key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
