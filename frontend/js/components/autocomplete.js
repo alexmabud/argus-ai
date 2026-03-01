@@ -3,6 +3,8 @@
  *
  * Busca debounced na API (300ms) com fallback para cache
  * local (IndexedDB) quando offline. Suporta seleção múltipla.
+ * Para tipo "pessoa", detecta CPF automaticamente e exibe
+ * opção de cadastro quando não encontra resultados.
  */
 function autocompleteComponent(tipo) {
   return {
@@ -11,10 +13,16 @@ function autocompleteComponent(tipo) {
     selected: [],
     showDropdown: false,
     loading: false,
+    noResults: false,
     _debounceTimer: null,
+
+    _isCPF(value) {
+      return /^\d{3,}[\d.\-]*$/.test(value.trim());
+    },
 
     onInput() {
       clearTimeout(this._debounceTimer);
+      this.noResults = false;
       if (this.query.length < 2) {
         this.results = [];
         this.showDropdown = false;
@@ -25,10 +33,12 @@ function autocompleteComponent(tipo) {
 
     async search() {
       this.loading = true;
+      this.noResults = false;
       try {
         if (navigator.onLine) {
           if (tipo === "pessoa") {
-            const data = await api.get(`/pessoas/?nome=${encodeURIComponent(this.query)}&limit=10`);
+            const param = this._isCPF(this.query) ? "cpf" : "nome";
+            const data = await api.get(`/pessoas/?${param}=${encodeURIComponent(this.query)}&limit=10`);
             this.results = data;
           } else if (tipo === "veiculo") {
             const data = await api.get(`/veiculos/?placa=${encodeURIComponent(this.query)}&limit=10`);
@@ -42,7 +52,8 @@ function autocompleteComponent(tipo) {
             this.results = await searchVeiculosLocal(this.query);
           }
         }
-        this.showDropdown = this.results.length > 0;
+        this.noResults = this.results.length === 0 && this.query.length >= 2;
+        this.showDropdown = this.results.length > 0 || this.noResults;
       } catch {
         // Fallback offline em caso de erro
         if (tipo === "pessoa") {
@@ -50,7 +61,8 @@ function autocompleteComponent(tipo) {
         } else {
           this.results = await searchVeiculosLocal(this.query);
         }
-        this.showDropdown = this.results.length > 0;
+        this.noResults = this.results.length === 0 && this.query.length >= 2;
+        this.showDropdown = this.results.length > 0 || this.noResults;
       } finally {
         this.loading = false;
       }
@@ -63,6 +75,7 @@ function autocompleteComponent(tipo) {
       this.query = "";
       this.results = [];
       this.showDropdown = false;
+      this.noResults = false;
     },
 
     remove(id) {

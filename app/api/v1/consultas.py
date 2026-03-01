@@ -64,7 +64,7 @@ async def consulta_unificada(
             PessoaRead(
                 id=p.id,
                 nome=p.nome,
-                cpf_masked=PessoaService.mask_cpf(p.cpf_encrypted) if p.cpf_encrypted else None,
+                cpf_masked=PessoaService.mask_cpf(p) if p.cpf_encrypted else None,
                 data_nascimento=p.data_nascimento,
                 apelido=p.apelido,
                 foto_principal_url=p.foto_principal_url,
