@@ -26,17 +26,15 @@ class RegisterRequest(BaseModel):
 
     Attributes:
         nome: Nome completo do agente (2 a 200 caracteres).
-        matricula: Matrícula do agente (1 a 50 caracteres, único por guarnição).
+        matricula: Matrícula do agente (1 a 50 caracteres, único no sistema).
         senha: Senha em texto plano (mínimo 6 caracteres).
         email: Email do agente (opcional, máximo 200 caracteres).
-        guarnicao_id: Identificador da guarnição a que o agente pertence.
     """
 
     nome: str = Field(..., min_length=2, max_length=200)
     matricula: str = Field(..., min_length=1, max_length=50)
     senha: str = Field(..., min_length=6)
     email: str | None = Field(None, max_length=200)
-    guarnicao_id: int
 
 
 class TokenResponse(BaseModel):
@@ -84,7 +82,7 @@ class UsuarioRead(BaseModel):
     matricula: str
     email: str | None = None
     is_admin: bool
-    guarnicao_id: int
+    guarnicao_id: int | None = None
     criado_em: datetime
 
     model_config = {"from_attributes": True}

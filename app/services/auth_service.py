@@ -74,7 +74,6 @@ class AuthService:
             matricula=data.matricula,
             senha_hash=hash_senha(data.senha),
             email=data.email,
-            guarnicao_id=data.guarnicao_id,
         )
 
         self.db.add(usuario)
@@ -120,10 +119,9 @@ class AuthService:
         if not usuario or not verificar_senha(senha, usuario.senha_hash):
             raise CredenciaisInvalidasError()
 
-        token_data = {
-            "sub": str(usuario.id),
-            "guarnicao_id": usuario.guarnicao_id,
-        }
+        token_data: dict = {"sub": str(usuario.id)}
+        if usuario.guarnicao_id is not None:
+            token_data["guarnicao_id"] = usuario.guarnicao_id
         access_token = criar_access_token(token_data)
         refresh_token = criar_refresh_token(token_data)
 
@@ -171,10 +169,9 @@ class AuthService:
         if not usuario or not usuario.ativo:
             raise CredenciaisInvalidasError()
 
-        token_data = {
-            "sub": str(usuario.id),
-            "guarnicao_id": usuario.guarnicao_id,
-        }
+        token_data = {"sub": str(usuario.id)}
+        if usuario.guarnicao_id is not None:
+            token_data["guarnicao_id"] = usuario.guarnicao_id
 
         return TokenResponse(
             access_token=criar_access_token(token_data),

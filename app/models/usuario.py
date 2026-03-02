@@ -35,7 +35,7 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     matricula: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(200), unique=True, nullable=True)
     senha_hash: Mapped[str] = mapped_column(String(200))
-    guarnicao_id: Mapped[int] = mapped_column(ForeignKey("guarnicoes.id"))
+    guarnicao_id: Mapped[int | None] = mapped_column(ForeignKey("guarnicoes.id"), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
 
     guarnicao = relationship(
