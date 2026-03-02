@@ -31,7 +31,7 @@ class TenantFilter:
             Query filtrada se model tem guarnicao_id, caso contrário retorna query original.
         """
 
-        if hasattr(model_class, "guarnicao_id"):
+        if hasattr(model_class, "guarnicao_id") and user.guarnicao_id is not None:
             return query.where(model_class.guarnicao_id == user.guarnicao_id)
         return query
 
@@ -50,6 +50,6 @@ class TenantFilter:
             AcessoNegadoError: Se recurso pertence a outra guarnição.
         """
 
-        if hasattr(resource, "guarnicao_id"):
+        if hasattr(resource, "guarnicao_id") and user.guarnicao_id is not None:
             if resource.guarnicao_id != user.guarnicao_id:
                 raise AcessoNegadoError("Recurso de outra guarnição")
