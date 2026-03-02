@@ -14,8 +14,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml .
 
 # Instalar deps em /build/venv para copiar depois
+# Torch CPU-only primeiro (evita baixar versão CUDA de ~3GB)
 RUN python -m venv /build/venv && \
     /build/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    /build/venv/bin/pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
     /build/venv/bin/pip install --no-cache-dir .
 
 # ── Stage 2: Runtime ───────────────────────────────────────────
