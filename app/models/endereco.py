@@ -23,7 +23,9 @@ class EnderecoPessoa(Base, TimestampMixin, SoftDeleteMixin):
     Attributes:
         id: Identificador único (chave primária).
         pessoa_id: ID da pessoa (FK, CASCADE delete).
-        endereco: Endereço em texto livre (até 500 chars).
+        endereco: Endereço em texto livre — logradouro e número (até 500 chars).
+        bairro: Bairro do endereço (até 200 chars). Usado para filtros na consulta.
+        cidade: Cidade do endereço (até 200 chars). Usado para filtros na consulta.
         localizacao: Ponto geográfico POINT(lat, lon) em WGS84 (SRID 4326).
         data_inicio: Data do início da associação (opcional).
         data_fim: Data do fim da associação (opcional).
@@ -40,6 +42,8 @@ class EnderecoPessoa(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     pessoa_id: Mapped[int] = mapped_column(ForeignKey("pessoas.id", ondelete="CASCADE"))
     endereco: Mapped[str] = mapped_column(String(500))
+    bairro: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    cidade: Mapped[str | None] = mapped_column(String(200), nullable=True)
     localizacao = mapped_column(Geography("POINT", srid=4326), nullable=True)
     data_inicio: Mapped[date | None] = mapped_column(Date, nullable=True)
     data_fim: Mapped[date | None] = mapped_column(Date, nullable=True)

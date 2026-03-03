@@ -46,6 +46,8 @@ class ConsultaService:
         self,
         q: str,
         tipo: str | None = None,
+        bairro: str | None = None,
+        cidade: str | None = None,
         skip: int = 0,
         limit: int = 20,
         user: Usuario | None = None,
@@ -54,10 +56,12 @@ class ConsultaService:
 
         Distribui a busca conforme o tipo solicitado ou busca em todas
         as entidades simultaneamente. Aplica filtros multi-tenant via
-        guarnicao_id do usuário autenticado.
+        guarnicao_id do usuário autenticado. Suporta filtros adicionais
+        de bairro e cidade para busca de pessoas por endereço.
 
         Estratégias de busca por entidade:
-        - Pessoa: busca fuzzy por nome (pg_trgm) + busca exata por CPF (hash SHA-256).
+        - Pessoa: busca fuzzy por nome (pg_trgm) + busca exata por CPF (hash SHA-256)
+            + filtro por bairro/cidade quando informados.
         - Veículo: busca parcial por placa (ILIKE normalizado).
         - Abordagem: busca por endereço texto (ILIKE).
 
@@ -65,6 +69,8 @@ class ConsultaService:
             q: Termo de busca (nome, CPF, placa ou endereço).
             tipo: Tipo de entidade para filtrar ("pessoa", "veiculo", "abordagem").
                 Se None, busca em todas as entidades.
+            bairro: Filtrar pessoas por bairro do endereço (opcional, ILIKE).
+            cidade: Filtrar pessoas por cidade do endereço (opcional, ILIKE).
             skip: Número de registros a pular por entidade (paginação).
             limit: Número máximo de resultados por entidade.
             user: Usuário autenticado (para filtro multi-tenant).
@@ -79,13 +85,26 @@ class ConsultaService:
         abordagens = []
 
         if tipo is None or tipo == "pessoa":
-            pessoas = await self._buscar_pessoas(q, guarnicao_id, skip, limit)
+            if bairro or cidade:
+                pessoas = list(
+                    await self.pessoa_repo.search_by_bairro_cidade(
+                        bairro=bairro,
+                        cidade=cidade,
+                        guarnicao_id=guarnicao_id,
+                        skip=skip,
+                        limit=limit,
+                    )
+                )
+            else:
+                pessoas = await self._buscar_pessoas(q, guarnicao_id, skip, limit)
 
         if tipo is None or tipo == "veiculo":
-            veiculos = await self._buscar_veiculos(q, guarnicao_id, skip, limit)
+            if not (bairro or cidade):
+                veiculos = await self._buscar_veiculos(q, guarnicao_id, skip, limit)
 
         if tipo is None or tipo == "abordagem":
-            abordagens = await self._buscar_abordagens(q, guarnicao_id, skip, limit)
+            if not (bairro or cidade):
+                abordagens = await self._buscar_abordagens(q, guarnicao_id, skip, limit)
 
         return {
             "pessoas": pessoas,

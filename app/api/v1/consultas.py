@@ -28,6 +28,8 @@ async def consulta_unificada(
         None,
         description="Tipo de entidade: pessoa, veiculo, abordagem (ou None para todas)",
     ),
+    bairro: str | None = Query(None, max_length=200, description="Filtrar pessoas por bairro"),
+    cidade: str | None = Query(None, max_length=200, description="Filtrar pessoas por cidade"),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -37,15 +39,19 @@ async def consulta_unificada(
 
     Distribui a busca conforme o tipo solicitado ou busca em todas
     as entidades simultaneamente. Aplica filtro multi-tenant automático.
+    Quando bairro ou cidade informados, filtra apenas pessoas por endereço.
 
     Estratégias de busca por entidade:
-    - Pessoa: busca fuzzy por nome (pg_trgm) + busca exata por CPF (hash).
+    - Pessoa: busca fuzzy por nome (pg_trgm) + busca exata por CPF (hash)
+        + filtro por bairro/cidade quando informados.
     - Veículo: busca parcial por placa (ILIKE normalizado).
     - Abordagem: busca por endereço texto (ILIKE).
 
     Args:
         q: Termo de busca (mínimo 2 caracteres).
         tipo: Filtrar por tipo de entidade (opcional).
+        bairro: Filtrar pessoas por bairro do endereço (opcional).
+        cidade: Filtrar pessoas por cidade do endereço (opcional).
         skip: Registros a pular por entidade (paginação).
         limit: Máximo de resultados por entidade (1-100, padrão 20).
         db: Sessão do banco de dados.
@@ -56,7 +62,9 @@ async def consulta_unificada(
         abordagens e total de resultados.
     """
     service = ConsultaService(db)
-    resultados = await service.busca_unificada(q=q, tipo=tipo, skip=skip, limit=limit, user=user)
+    resultados = await service.busca_unificada(
+        q=q, tipo=tipo, bairro=bairro, cidade=cidade, skip=skip, limit=limit, user=user
+    )
 
     pessoas_read = []
     for p in resultados["pessoas"]:

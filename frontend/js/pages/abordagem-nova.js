@@ -63,7 +63,7 @@ function renderAbordagemNova() {
         <div x-show="showNovaPessoa" x-cloak class="bg-slate-800/50 border border-slate-600 rounded-lg p-4 space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-slate-200">Cadastrar novo abordado</h3>
-            <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',endereco:''}"
+            <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',endereco:'',bairro:'',cidade:''}"
                     class="text-slate-400 hover:text-white text-xs">Cancelar</button>
           </div>
 
@@ -79,7 +79,18 @@ function renderAbordagemNova() {
 
           <div>
             <label class="block text-xs text-slate-400 mb-1">Endereço</label>
-            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua, número, bairro..." class="w-full">
+            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e número" class="w-full">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Bairro</label>
+              <input type="text" x-model="novaPessoa.bairro" placeholder="Bairro" class="w-full">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Cidade</label>
+              <input type="text" x-model="novaPessoa.cidade" placeholder="Cidade" class="w-full">
+            </div>
           </div>
 
           <button @click="criarPessoa()" class="btn btn-primary text-sm" :disabled="salvandoPessoa || !novaPessoa.nome.trim()">
@@ -211,7 +222,7 @@ function abordagemForm() {
 
     // Cadastro nova pessoa
     showNovaPessoa: false,
-    novaPessoa: { nome: "", cpf: "", endereco: "" },
+    novaPessoa: { nome: "", cpf: "", endereco: "", bairro: "", cidade: "" },
     salvandoPessoa: false,
     erroPessoa: null,
 
@@ -260,9 +271,11 @@ function abordagemForm() {
         const pessoa = await api.post("/pessoas/", pessoaData);
 
         // Criar endereço se preenchido
-        if (this.novaPessoa.endereco.trim()) {
+        if (this.novaPessoa.endereco.trim() || this.novaPessoa.bairro.trim() || this.novaPessoa.cidade.trim()) {
           await api.post(`/pessoas/${pessoa.id}/enderecos`, {
-            endereco: this.novaPessoa.endereco.trim(),
+            endereco: this.novaPessoa.endereco.trim() || "-",
+            bairro: this.novaPessoa.bairro.trim() || null,
+            cidade: this.novaPessoa.cidade.trim() || null,
           });
         }
 
@@ -276,7 +289,7 @@ function abordagemForm() {
         }
 
         // Reset formulário
-        this.novaPessoa = { nome: "", cpf: "", endereco: "" };
+        this.novaPessoa = { nome: "", cpf: "", endereco: "", bairro: "", cidade: "" };
         this.showNovaPessoa = false;
       } catch (err) {
         this.erroPessoa = err.message || "Erro ao cadastrar pessoa.";
