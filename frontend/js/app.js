@@ -182,7 +182,7 @@ function renderHomePage(appState) {
     <div class="home-layout">
       <div>
         <h2 class="text-xl font-bold text-slate-100">Olá, ${nome}</h2>
-        <p class="text-slate-400 text-sm mt-1">Argus AI — Memória operacional da guarnição</p>
+        <p class="text-slate-400 text-sm mt-1">Argus AI — Memória Operacional</p>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
