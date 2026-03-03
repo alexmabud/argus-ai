@@ -11,28 +11,37 @@ function renderConsulta() {
       <h2 class="text-lg font-bold text-slate-100">Consulta</h2>
 
       <!-- Pessoa -->
-      <div class="space-y-1">
-        <label class="block text-xs text-slate-400 font-medium">Pessoa</label>
+      <div class="space-y-2">
+        <label class="block text-sm text-slate-300 font-semibold">Pessoa</label>
         <div class="relative">
           <input type="text" x-model="query" @input="onInput()"
                  placeholder="Nome completo ou CPF..."
-                 class="w-full pl-10">
-          <svg class="absolute left-3 top-3 w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                 class="w-full pl-12 py-3 text-base">
+          <svg class="absolute left-3.5 top-3.5 w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
           </svg>
         </div>
       </div>
 
       <!-- Endereço -->
-      <div class="space-y-1">
-        <label class="block text-xs text-slate-400 font-medium">Endereço</label>
+      <div class="space-y-2">
+        <label class="block text-sm text-slate-300 font-semibold">Endereço</label>
         <div class="grid grid-cols-3 gap-2">
-          <input type="text" list="lista-bairros-c" x-model="filtroBairro" @input="onInput()"
-                 placeholder="Bairro..." class="text-sm">
-          <input type="text" list="lista-cidades-c" x-model="filtroCidade" @input="onInput()"
-                 placeholder="Cidade..." class="text-sm">
-          <input type="text" list="lista-estados-c" x-model="filtroEstado" @input="onInput()"
-                 placeholder="UF" maxlength="2" class="text-sm uppercase">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Bairro</label>
+            <input type="text" list="lista-bairros-c" x-model="filtroBairro" @input="onInput()"
+                   placeholder="Bairro..." class="w-full py-3">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Cidade</label>
+            <input type="text" list="lista-cidades-c" x-model="filtroCidade" @input="onInput()"
+                   placeholder="Cidade..." class="w-full py-3">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Estado (UF)</label>
+            <input type="text" list="lista-estados-c" x-model="filtroEstado" @input="onInput()"
+                   placeholder="DF" maxlength="2" class="w-full py-3 uppercase">
+          </div>
         </div>
         <datalist id="lista-bairros-c">
           <template x-for="b in localidades.bairros" :key="b"><option :value="b"></option></template>
@@ -46,17 +55,25 @@ function renderConsulta() {
       </div>
 
       <!-- Veículo -->
-      <div class="space-y-1">
-        <label class="block text-xs text-slate-400 font-medium">Veículo</label>
+      <div class="space-y-2">
+        <label class="block text-sm text-slate-300 font-semibold">Veículo</label>
         <div class="grid gap-2" :class="filtroModelo.length > 0 ? 'grid-cols-3' : 'grid-cols-2'">
-          <input type="text" x-model="filtroPlaca" @input="onInput()"
-                 placeholder="Placa..." maxlength="10"
-                 class="text-sm uppercase" style="text-transform:uppercase">
-          <input type="text" x-model="filtroModelo" @input="onInput()"
-                 placeholder="Modelo..." class="text-sm">
-          <input x-show="filtroModelo.length > 0"
-                 type="text" x-model="filtroCor" @input="onInput()"
-                 placeholder="Cor..." class="text-sm">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Placa</label>
+            <input type="text" x-model="filtroPlaca" @input="onInput()"
+                   placeholder="ABC1234..." maxlength="10"
+                   class="w-full py-3 uppercase" style="text-transform:uppercase">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Modelo</label>
+            <input type="text" x-model="filtroModelo" @input="onInput()"
+                   placeholder="Modelo..." class="w-full py-3">
+          </div>
+          <div x-show="filtroModelo.length > 0">
+            <label class="block text-xs text-slate-500 mb-1">Cor</label>
+            <input type="text" x-model="filtroCor" @input="onInput()"
+                   placeholder="Cor..." class="w-full py-3">
+          </div>
         </div>
       </div>
 
