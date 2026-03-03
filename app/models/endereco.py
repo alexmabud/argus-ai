@@ -26,6 +26,7 @@ class EnderecoPessoa(Base, TimestampMixin, SoftDeleteMixin):
         endereco: Endereço em texto livre — logradouro e número (até 500 chars).
         bairro: Bairro do endereço (até 200 chars). Usado para filtros na consulta.
         cidade: Cidade do endereço (até 200 chars). Usado para filtros na consulta.
+        estado: Sigla do estado (UF, até 2 chars). Usado para filtros na consulta.
         localizacao: Ponto geográfico POINT(lat, lon) em WGS84 (SRID 4326).
         data_inicio: Data do início da associação (opcional).
         data_fim: Data do fim da associação (opcional).
@@ -44,6 +45,7 @@ class EnderecoPessoa(Base, TimestampMixin, SoftDeleteMixin):
     endereco: Mapped[str] = mapped_column(String(500))
     bairro: Mapped[str | None] = mapped_column(String(200), nullable=True)
     cidade: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    estado: Mapped[str | None] = mapped_column(String(2), nullable=True)
     localizacao = mapped_column(Geography("POINT", srid=4326), nullable=True)
     data_inicio: Mapped[date | None] = mapped_column(Date, nullable=True)
     data_fim: Mapped[date | None] = mapped_column(Date, nullable=True)

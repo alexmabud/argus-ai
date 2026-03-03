@@ -89,6 +89,7 @@ class EnderecoCreate(BaseModel):
         endereco: Logradouro e número (até 500 caracteres).
         bairro: Bairro do endereço (opcional, até 200 caracteres).
         cidade: Cidade do endereço (opcional, até 200 caracteres).
+        estado: Sigla do estado UF (opcional, até 2 caracteres).
         latitude: Latitude GPS (opcional, para PostGIS).
         longitude: Longitude GPS (opcional, para PostGIS).
         data_inicio: Data de início da associação com endereço.
@@ -98,6 +99,7 @@ class EnderecoCreate(BaseModel):
     endereco: str = Field(..., min_length=1, max_length=500)
     bairro: str | None = Field(None, max_length=200)
     cidade: str | None = Field(None, max_length=200)
+    estado: str | None = Field(None, max_length=2)
     latitude: float | None = None
     longitude: float | None = None
     data_inicio: date | None = None
@@ -112,6 +114,7 @@ class EnderecoRead(BaseModel):
         endereco: Logradouro e número em texto livre.
         bairro: Bairro do endereço.
         cidade: Cidade do endereço.
+        estado: Sigla do estado UF.
         data_inicio: Data de início da associação.
         data_fim: Data de fim da associação.
         criado_em: Timestamp de criação.
@@ -121,6 +124,7 @@ class EnderecoRead(BaseModel):
     endereco: str
     bairro: str | None = None
     cidade: str | None = None
+    estado: str | None = None
     data_inicio: date | None = None
     data_fim: date | None = None
     criado_em: datetime

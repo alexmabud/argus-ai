@@ -96,24 +96,26 @@ class PessoaRepository(BaseRepository[Pessoa]):
         self,
         bairro: str | None,
         cidade: str | None,
+        estado: str | None,
         guarnicao_id: int | None,
         skip: int = 0,
         limit: int = 20,
     ) -> Sequence[Pessoa]:
-        """Busca pessoas pelo bairro ou cidade dos endereços cadastrados.
+        """Busca pessoas pelo bairro, cidade ou estado dos endereços cadastrados.
 
-        Realiza JOIN com enderecos_pessoa filtrando por bairro e/ou cidade
+        Realiza JOIN com enderecos_pessoa filtrando por bairro, cidade e/ou estado
         via ILIKE (busca parcial case-insensitive).
 
         Args:
             bairro: Bairro para filtrar (parcial, opcional).
             cidade: Cidade para filtrar (parcial, opcional).
+            estado: Sigla UF para filtrar (parcial, opcional).
             guarnicao_id: ID da guarnição para filtro multi-tenant.
             skip: Número de registros a pular.
             limit: Número máximo de resultados.
 
         Returns:
-            Sequência de Pessoas com endereço no bairro/cidade informados.
+            Sequência de Pessoas com endereço no bairro/cidade/estado informados.
         """
         query = (
             select(Pessoa)
@@ -127,12 +129,58 @@ class PessoaRepository(BaseRepository[Pessoa]):
             query = query.where(EnderecoPessoa.bairro.ilike(f"%{bairro}%"))
         if cidade:
             query = query.where(EnderecoPessoa.cidade.ilike(f"%{cidade}%"))
+        if estado:
+            query = query.where(EnderecoPessoa.estado.ilike(f"%{estado}%"))
         if guarnicao_id is not None:
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
 
         query = query.distinct().offset(skip).limit(limit)
         result = await self.db.execute(query)
         return result.scalars().all()
+
+    async def get_localidades(self, guarnicao_id: int | None) -> dict:
+        """Retorna valores distintos de bairro, cidade e estado cadastrados.
+
+        Utilizado para popular autocomplete/datalist no frontend. Filtra
+        registros ativos e com valor não nulo, ordenando alfabeticamente.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+
+        Returns:
+            Dicionário com chaves "bairros", "cidades" e "estados",
+            cada uma contendo lista de strings distintas ordenadas.
+        """
+        base_filter = [EnderecoPessoa.ativo == True]  # noqa: E712
+
+        q_bairros = (
+            select(func.distinct(EnderecoPessoa.bairro))
+            .where(*base_filter, EnderecoPessoa.bairro.isnot(None))
+            .order_by(EnderecoPessoa.bairro)
+        )
+        q_cidades = (
+            select(func.distinct(EnderecoPessoa.cidade))
+            .where(*base_filter, EnderecoPessoa.cidade.isnot(None))
+            .order_by(EnderecoPessoa.cidade)
+        )
+        q_estados = (
+            select(func.distinct(EnderecoPessoa.estado))
+            .where(*base_filter, EnderecoPessoa.estado.isnot(None))
+            .order_by(EnderecoPessoa.estado)
+        )
+
+        if guarnicao_id is not None:
+            join_clause = EnderecoPessoa.pessoa_id == Pessoa.id
+            tenant_filter = Pessoa.guarnicao_id == guarnicao_id
+            q_bairros = q_bairros.join(Pessoa, join_clause).where(tenant_filter)
+            q_cidades = q_cidades.join(Pessoa, join_clause).where(tenant_filter)
+            q_estados = q_estados.join(Pessoa, join_clause).where(tenant_filter)
+
+        bairros = list((await self.db.execute(q_bairros)).scalars().all())
+        cidades = list((await self.db.execute(q_cidades)).scalars().all())
+        estados = list((await self.db.execute(q_estados)).scalars().all())
+
+        return {"bairros": bairros, "cidades": cidades, "estados": estados}
 
     async def get_detail(self, id: int, guarnicao_id: int) -> Pessoa | None:
         """Obtém pessoa com todos os relacionamentos carregados (eager load).

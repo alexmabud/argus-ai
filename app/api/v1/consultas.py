@@ -2,7 +2,8 @@
 
 Fornece endpoint de busca simultânea em pessoas, veículos e
 abordagens através de um único termo de busca, consolidando
-resultados em uma resposta unificada.
+resultados em uma resposta unificada. Também expõe endpoint
+de localidades para autocomplete de bairro, cidade e estado.
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
+from app.repositories.pessoa_repo import PessoaRepository
 from app.schemas.abordagem import AbordagemRead
 from app.schemas.consulta import ConsultaUnificadaResponse
 from app.schemas.pessoa import PessoaRead
@@ -19,6 +21,28 @@ from app.services.consulta_service import ConsultaService
 from app.services.pessoa_service import PessoaService
 
 router = APIRouter(prefix="/consultas", tags=["Consultas"])
+
+
+@router.get("/localidades")
+async def listar_localidades(
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> dict:
+    """Retorna valores distintos de bairro, cidade e estado cadastrados.
+
+    Utilizado pelo frontend para popular datalists de autocomplete nos
+    campos de localização. Filtra por guarnição do usuário autenticado.
+
+    Args:
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Dicionário com "bairros", "cidades" e "estados" — listas de strings
+        distintas ordenadas alfabeticamente.
+    """
+    repo = PessoaRepository(db)
+    return await repo.get_localidades(guarnicao_id=user.guarnicao_id)
 
 
 @router.get("/", response_model=ConsultaUnificadaResponse)
@@ -30,6 +54,7 @@ async def consulta_unificada(
     ),
     bairro: str | None = Query(None, max_length=200, description="Filtrar pessoas por bairro"),
     cidade: str | None = Query(None, max_length=200, description="Filtrar pessoas por cidade"),
+    estado: str | None = Query(None, max_length=2, description="Filtrar pessoas por estado (UF)"),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -39,11 +64,11 @@ async def consulta_unificada(
 
     Distribui a busca conforme o tipo solicitado ou busca em todas
     as entidades simultaneamente. Aplica filtro multi-tenant automático.
-    Quando bairro ou cidade informados, filtra apenas pessoas por endereço.
+    Quando bairro, cidade ou estado informados, filtra apenas pessoas por endereço.
 
     Estratégias de busca por entidade:
     - Pessoa: busca fuzzy por nome (pg_trgm) + busca exata por CPF (hash)
-        + filtro por bairro/cidade quando informados.
+        + filtro por bairro/cidade/estado quando informados.
     - Veículo: busca parcial por placa (ILIKE normalizado).
     - Abordagem: busca por endereço texto (ILIKE).
 
@@ -52,6 +77,7 @@ async def consulta_unificada(
         tipo: Filtrar por tipo de entidade (opcional).
         bairro: Filtrar pessoas por bairro do endereço (opcional).
         cidade: Filtrar pessoas por cidade do endereço (opcional).
+        estado: Filtrar pessoas por estado UF do endereço (opcional).
         skip: Registros a pular por entidade (paginação).
         limit: Máximo de resultados por entidade (1-100, padrão 20).
         db: Sessão do banco de dados.
@@ -63,7 +89,14 @@ async def consulta_unificada(
     """
     service = ConsultaService(db)
     resultados = await service.busca_unificada(
-        q=q, tipo=tipo, bairro=bairro, cidade=cidade, skip=skip, limit=limit, user=user
+        q=q,
+        tipo=tipo,
+        bairro=bairro,
+        cidade=cidade,
+        estado=estado,
+        skip=skip,
+        limit=limit,
+        user=user,
     )
 
     pessoas_read = []

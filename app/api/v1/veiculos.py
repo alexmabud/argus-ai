@@ -11,6 +11,7 @@ from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
+from app.repositories.veiculo_repo import VeiculoRepository
 from app.schemas.veiculo import VeiculoCreate, VeiculoRead, VeiculoUpdate
 from app.services.veiculo_service import VeiculoService
 
@@ -88,6 +89,28 @@ async def listar_veiculos(
     service = VeiculoService(db)
     veiculos = await service.buscar(placa=placa, skip=skip, limit=limit, user=user)
     return [VeiculoRead.model_validate(v) for v in veiculos]
+
+
+@router.get("/localidades")
+async def listar_localidades_veiculos(
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> dict:
+    """Retorna valores distintos de modelo e cor cadastrados.
+
+    Utilizado pelo frontend para popular datalists de autocomplete nos
+    campos de modelo e cor do formulário de veículo.
+
+    Args:
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Dicionário com "modelos" e "cores" — listas de strings distintas
+        ordenadas alfabeticamente.
+    """
+    repo = VeiculoRepository(db)
+    return await repo.get_localidades(guarnicao_id=user.guarnicao_id)
 
 
 @router.get("/{veiculo_id}", response_model=VeiculoRead)

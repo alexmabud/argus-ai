@@ -3,10 +3,11 @@
  *
  * Busca cross-domain (pessoas, veículos, abordagens)
  * via endpoint GET /consultas/?q= com resultados agrupados.
+ * Suporta filtros de localização com autocomplete via datalist.
  */
 function renderConsulta() {
   return `
-    <div x-data="consultaPage()" class="space-y-4">
+    <div x-data="consultaPage()" x-init="init()" class="space-y-4">
       <h2 class="text-lg font-bold text-slate-100">Consulta</h2>
 
       <!-- Campo de busca -->
@@ -21,18 +22,34 @@ function renderConsulta() {
       </div>
 
       <!-- Filtros de localização -->
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-3 gap-2">
         <div>
           <label class="block text-xs text-slate-400 mb-1">Bairro</label>
-          <input type="text" x-model="filtroBairro" @input="onInput()"
+          <input type="text" list="lista-bairros-consulta" x-model="filtroBairro" @input="onInput()"
                  placeholder="Filtrar por bairro" class="w-full text-sm">
         </div>
         <div>
           <label class="block text-xs text-slate-400 mb-1">Cidade</label>
-          <input type="text" x-model="filtroCidade" @input="onInput()"
+          <input type="text" list="lista-cidades-consulta" x-model="filtroCidade" @input="onInput()"
                  placeholder="Filtrar por cidade" class="w-full text-sm">
         </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Estado (UF)</label>
+          <input type="text" list="lista-estados-consulta" x-model="filtroEstado" @input="onInput()"
+                 placeholder="DF" maxlength="2" class="w-full text-sm uppercase">
+        </div>
       </div>
+
+      <!-- Datalists para autocomplete -->
+      <datalist id="lista-bairros-consulta">
+        <template x-for="b in localidades.bairros" :key="b"><option :value="b"></option></template>
+      </datalist>
+      <datalist id="lista-cidades-consulta">
+        <template x-for="c in localidades.cidades" :key="c"><option :value="c"></option></template>
+      </datalist>
+      <datalist id="lista-estados-consulta">
+        <template x-for="e in localidades.estados" :key="e"><option :value="e"></option></template>
+      </datalist>
 
       <!-- Resultados -->
       <div x-show="searched" class="space-y-4">
@@ -99,14 +116,22 @@ function consultaPage() {
     query: "",
     filtroBairro: "",
     filtroCidade: "",
+    filtroEstado: "",
+    localidades: { bairros: [], cidades: [], estados: [] },
     results: {},
     loading: false,
     searched: false,
     _timer: null,
 
+    async init() {
+      try {
+        this.localidades = await api.get("/consultas/localidades");
+      } catch { /* silencioso */ }
+    },
+
     onInput() {
       clearTimeout(this._timer);
-      const temFiltroLocal = this.filtroBairro.length >= 2 || this.filtroCidade.length >= 2;
+      const temFiltroLocal = this.filtroBairro.length >= 2 || this.filtroCidade.length >= 2 || this.filtroEstado.length >= 1;
       if (this.query.length < 2 && !temFiltroLocal) {
         this.results = {};
         this.searched = false;
@@ -122,6 +147,7 @@ function consultaPage() {
         let url = `/consultas/?q=${encodeURIComponent(q)}`;
         if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
         if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
+        if (this.filtroEstado.length >= 1) url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
         this.results = await api.get(url);
         this.searched = true;
       } catch {
