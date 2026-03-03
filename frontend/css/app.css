@@ -192,6 +192,15 @@ input::placeholder, textarea::placeholder {
   min-height: 100vh;
 }
 
+/* Home layout — empurra botões para baixo */
+.home-layout {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: calc(100vh - 80px);
+  padding-bottom: 16px;
+}
+
 /* Offline badge */
 .offline-badge {
   position: fixed;
