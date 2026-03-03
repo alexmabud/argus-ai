@@ -67,7 +67,7 @@ function app() {
       if (auth.isAuthenticated()) {
         this.authenticated = true;
         this.user = auth.getUser();
-        this.navigate("home");
+        this.$nextTick(() => this.$nextTick(() => this.navigate("home")));
       } else {
         this.$nextTick(() => this.renderLogin());
       }

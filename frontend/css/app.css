@@ -1,5 +1,8 @@
 /* Argus AI — Custom styles */
 
+/* Esconde elementos Alpine até a inicialização para evitar flash */
+[x-cloak] { display: none !important; }
+
 :root {
   --color-bg: #0f172a;
   --color-surface: #1e293b;
