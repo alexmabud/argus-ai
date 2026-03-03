@@ -1,96 +1,68 @@
 /**
  * Página de consulta unificada — Argus AI.
  *
- * Busca por três domínios separados via abas:
- * - Pessoa: busca por nome ou CPF
- * - Endereço: filtros de bairro, cidade e estado com autocomplete
- * - Veículo: busca por placa com filtros de modelo e cor
+ * Todos os filtros em uma única página: nome/CPF, localização
+ * e veículo. Busca paralela nas entidades relevantes conforme
+ * os campos preenchidos.
  */
 function renderConsulta() {
   return `
     <div x-data="consultaPage()" x-init="init()" class="space-y-4">
       <h2 class="text-lg font-bold text-slate-100">Consulta</h2>
 
-      <!-- Abas -->
-      <div class="flex gap-1 bg-slate-800/60 p-1 rounded-lg">
-        <button type="button" @click="trocarAba('pessoa')"
-                class="flex-1 text-sm py-1.5 rounded-md transition-colors"
-                :class="aba === 'pessoa' ? 'bg-blue-600 text-white font-medium' : 'text-slate-400 hover:text-slate-200'">
-          Pessoa
-        </button>
-        <button type="button" @click="trocarAba('endereco')"
-                class="flex-1 text-sm py-1.5 rounded-md transition-colors"
-                :class="aba === 'endereco' ? 'bg-blue-600 text-white font-medium' : 'text-slate-400 hover:text-slate-200'">
-          Endereço
-        </button>
-        <button type="button" @click="trocarAba('veiculo')"
-                class="flex-1 text-sm py-1.5 rounded-md transition-colors"
-                :class="aba === 'veiculo' ? 'bg-blue-600 text-white font-medium' : 'text-slate-400 hover:text-slate-200'">
-          Veículo
-        </button>
-      </div>
-
-      <!-- Aba: Pessoa -->
-      <div x-show="aba === 'pessoa'">
+      <!-- Pessoa -->
+      <div class="space-y-1">
+        <label class="block text-xs text-slate-400 font-medium">Pessoa</label>
         <div class="relative">
           <input type="text" x-model="query" @input="onInput()"
                  placeholder="Nome completo ou CPF..."
                  class="w-full pl-10">
           <svg class="absolute left-3 top-3 w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
           </svg>
-          <span x-show="loading" class="absolute right-3 top-3"><span class="spinner"></span></span>
         </div>
       </div>
 
-      <!-- Aba: Endereço -->
-      <div x-show="aba === 'endereco'" class="space-y-2">
+      <!-- Endereço -->
+      <div class="space-y-1">
+        <label class="block text-xs text-slate-400 font-medium">Endereço</label>
         <div class="grid grid-cols-3 gap-2">
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Bairro</label>
-            <input type="text" list="lista-bairros-consulta" x-model="filtroBairro" @input="onInput()"
-                   placeholder="Bairro..." class="w-full text-sm">
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Cidade</label>
-            <input type="text" list="lista-cidades-consulta" x-model="filtroCidade" @input="onInput()"
-                   placeholder="Cidade..." class="w-full text-sm">
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Estado (UF)</label>
-            <input type="text" list="lista-estados-consulta" x-model="filtroEstado" @input="onInput()"
-                   placeholder="DF" maxlength="2" class="w-full text-sm uppercase">
-          </div>
+          <input type="text" list="lista-bairros-c" x-model="filtroBairro" @input="onInput()"
+                 placeholder="Bairro..." class="text-sm">
+          <input type="text" list="lista-cidades-c" x-model="filtroCidade" @input="onInput()"
+                 placeholder="Cidade..." class="text-sm">
+          <input type="text" list="lista-estados-c" x-model="filtroEstado" @input="onInput()"
+                 placeholder="UF" maxlength="2" class="text-sm uppercase">
         </div>
-        <div class="flex justify-center" x-show="loading"><span class="spinner"></span></div>
-        <datalist id="lista-bairros-consulta">
+        <datalist id="lista-bairros-c">
           <template x-for="b in localidades.bairros" :key="b"><option :value="b"></option></template>
         </datalist>
-        <datalist id="lista-cidades-consulta">
+        <datalist id="lista-cidades-c">
           <template x-for="c in localidades.cidades" :key="c"><option :value="c"></option></template>
         </datalist>
-        <datalist id="lista-estados-consulta">
+        <datalist id="lista-estados-c">
           <template x-for="e in localidades.estados" :key="e"><option :value="e"></option></template>
         </datalist>
       </div>
 
-      <!-- Aba: Veículo -->
-      <div x-show="aba === 'veiculo'" class="space-y-2">
-        <div class="relative">
+      <!-- Veículo -->
+      <div class="space-y-1">
+        <label class="block text-xs text-slate-400 font-medium">Veículo</label>
+        <div class="grid gap-2" :class="filtroModelo.length > 0 ? 'grid-cols-3' : 'grid-cols-2'">
           <input type="text" x-model="filtroPlaca" @input="onInput()"
-                 placeholder="Placa (ex: ABC1234)..." maxlength="10"
-                 class="w-full pl-10 uppercase" style="text-transform:uppercase">
-          <svg class="absolute left-3 top-3 w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-          </svg>
-          <span x-show="loading" class="absolute right-3 top-3"><span class="spinner"></span></span>
+                 placeholder="Placa..." maxlength="10"
+                 class="text-sm uppercase" style="text-transform:uppercase">
+          <input type="text" x-model="filtroModelo" @input="onInput()"
+                 placeholder="Modelo..." class="text-sm">
+          <input x-show="filtroModelo.length > 0"
+                 type="text" x-model="filtroCor" @input="onInput()"
+                 placeholder="Cor..." class="text-sm">
         </div>
-        <input type="text" x-model="filtroModelo" @input="onInput()"
-               placeholder="Modelo (opcional)..." class="w-full text-sm">
-        <div x-show="filtroModelo.length > 0">
-          <input type="text" x-model="filtroCor" @input="onInput()"
-                 placeholder="Cor (opcional)..." class="w-full text-sm">
-        </div>
+      </div>
+
+      <!-- Spinner -->
+      <div x-show="loading" class="flex justify-center py-2">
+        <span class="spinner"></span>
       </div>
 
       <!-- Resultados: Pessoas -->
@@ -117,7 +89,7 @@ function renderConsulta() {
       </div>
 
       <!-- Resultados: Veículos -->
-      <div x-show="aba === 'veiculo' && searched && veiculosFiltrados.length > 0">
+      <div x-show="searched && veiculosFiltrados.length > 0">
         <h3 class="text-sm font-semibold text-slate-400 mb-2">
           Veículos (<span x-text="veiculosFiltrados.length"></span>)
         </h3>
@@ -130,8 +102,6 @@ function renderConsulta() {
               </div>
               <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
                  x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
-              <p x-show="v.observacoes" class="text-xs text-slate-500 line-clamp-2" x-text="v.observacoes"></p>
-              <!-- Pessoa vinculada (extraída da observação da abordagem) -->
               <div x-show="vinculoPorVeiculo[v.placa]" class="flex items-center gap-1 pt-0.5">
                 <svg class="w-3 h-3 text-blue-400 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
@@ -154,9 +124,6 @@ function renderConsulta() {
 
 function consultaPage() {
   return {
-    aba: "pessoa",
-
-    // Campos de busca
     query: "",
     filtroBairro: "",
     filtroCidade: "",
@@ -166,7 +133,8 @@ function consultaPage() {
     filtroCor: "",
 
     localidades: { bairros: [], cidades: [], estados: [] },
-    results: {},
+    pessoas: [],
+    veiculos: [],
     vinculoPorVeiculo: {},
     loading: false,
     searched: false,
@@ -175,13 +143,11 @@ function consultaPage() {
     // --- computed ---
 
     get pessoasVisiveis() {
-      if (this.aba === "veiculo") return [];
-      return this.results.pessoas || [];
+      return this.pessoas;
     },
 
     get veiculosFiltrados() {
-      const vs = this.results.veiculos || [];
-      return vs.filter((v) => {
+      return this.veiculos.filter((v) => {
         if (
           this.filtroModelo.length > 0 &&
           !(v.modelo || "").toLowerCase().includes(this.filtroModelo.toLowerCase())
@@ -197,8 +163,7 @@ function consultaPage() {
     },
 
     get semResultados() {
-      if (this.aba === "veiculo") return this.veiculosFiltrados.length === 0;
-      return this.pessoasVisiveis.length === 0;
+      return this.pessoasVisiveis.length === 0 && this.veiculosFiltrados.length === 0;
     },
 
     // --- lifecycle ---
@@ -213,65 +178,69 @@ function consultaPage() {
 
     // --- actions ---
 
-    trocarAba(novaAba) {
-      this.aba = novaAba;
-      this.query = "";
-      this.filtroBairro = "";
-      this.filtroCidade = "";
-      this.filtroEstado = "";
-      this.filtroPlaca = "";
-      this.filtroModelo = "";
-      this.filtroCor = "";
-      this.results = {};
-      this.vinculoPorVeiculo = {};
-      this.searched = false;
-      clearTimeout(this._timer);
-    },
-
     onInput() {
       clearTimeout(this._timer);
-      if (!this._pronto()) {
-        this.results = {};
+      if (!this._algumCampoPreenchido()) {
+        this.pessoas = [];
+        this.veiculos = [];
+        this.vinculoPorVeiculo = {};
         this.searched = false;
         return;
       }
       this._timer = setTimeout(() => this.search(), 400);
     },
 
-    _pronto() {
-      if (this.aba === "pessoa") return this.query.length >= 2;
-      if (this.aba === "endereco")
-        return (
-          this.filtroBairro.length >= 2 ||
-          this.filtroCidade.length >= 2 ||
-          this.filtroEstado.length >= 1
-        );
-      if (this.aba === "veiculo") return this.filtroPlaca.length >= 2;
-      return false;
+    _algumCampoPreenchido() {
+      return (
+        this.query.length >= 2 ||
+        this.filtroBairro.length >= 2 ||
+        this.filtroCidade.length >= 2 ||
+        this.filtroEstado.length >= 1 ||
+        this.filtroPlaca.length >= 2
+      );
     },
 
     async search() {
       this.loading = true;
       try {
-        if (this.aba === "pessoa") {
-          this.results = await api.get(
-            `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa`
-          );
-        } else if (this.aba === "endereco") {
-          let url = "/consultas/?q=a&tipo=pessoa";
+        const tarefas = [];
+
+        // Busca pessoas: por nome/CPF e/ou endereço
+        const buscaPessoa =
+          this.query.length >= 2 ||
+          this.filtroBairro.length >= 2 ||
+          this.filtroCidade.length >= 2 ||
+          this.filtroEstado.length >= 1;
+
+        if (buscaPessoa) {
+          const q = this.query.length >= 2 ? this.query : "a";
+          let url = `/consultas/?q=${encodeURIComponent(q)}&tipo=pessoa`;
           if (this.filtroBairro.length >= 2)
             url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
           if (this.filtroCidade.length >= 2)
             url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
           if (this.filtroEstado.length >= 1)
             url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
-          this.results = await api.get(url);
-        } else if (this.aba === "veiculo") {
-          this.results = await api.get(
-            `/consultas/?q=${encodeURIComponent(this.filtroPlaca)}&tipo=veiculo`
-          );
-          this._extrairVinculos();
+          tarefas.push(api.get(url).then((r) => { this.pessoas = r.pessoas || []; }));
+        } else {
+          this.pessoas = [];
         }
+
+        // Busca veículos: por placa
+        if (this.filtroPlaca.length >= 2) {
+          const url = `/consultas/?q=${encodeURIComponent(this.filtroPlaca)}&tipo=veiculo`;
+          tarefas.push(
+            api.get(url).then((r) => {
+              this.veiculos = r.veiculos || [];
+              this._extrairVinculos(r.abordagens || []);
+            })
+          );
+        } else {
+          this.veiculos = [];
+          this.vinculoPorVeiculo = {};
+        }
+
+        await Promise.all(tarefas);
         this.searched = true;
       } catch {
         showToast("Erro na busca", "error");
@@ -280,11 +249,9 @@ function consultaPage() {
       }
     },
 
-    _extrairVinculos() {
-      // Extrai vínculos veículo→pessoa da observação das abordagens retornadas.
-      // Formato armazenado: "Vínculos: ABC1234 → João Silva, XYZ5678 → Maria"
+    _extrairVinculos(abordagens) {
       const vinculos = {};
-      for (const a of this.results.abordagens || []) {
+      for (const a of abordagens) {
         if (!a.observacao) continue;
         const match = a.observacao.match(/V[ií]nculos?:\s*(.+)/i);
         if (!match) continue;
