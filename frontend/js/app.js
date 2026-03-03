@@ -5,9 +5,9 @@
  * global (autenticação, navegação, online/offline).
  */
 
-// Registrar Service Worker
+// Registrar Service Worker (após limpeza feita no head)
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=3").catch(() => {});
 }
 
 /**
@@ -67,7 +67,9 @@ function app() {
       if (auth.isAuthenticated()) {
         this.authenticated = true;
         this.user = auth.getUser();
-        setTimeout(() => this.navigate("home"), 0);
+        this.currentPage = "home";
+        // Renderizar home sincronamente — o elemento existe no DOM (x-show não remove)
+        this.renderPage("home");
       } else {
         this.$nextTick(() => this.renderLogin());
       }
@@ -103,8 +105,21 @@ function app() {
 
     renderPage(page) {
       const container = document.getElementById("page-content");
-      if (!container) return;
+      if (!container) {
+        // Fallback: tentar novamente após Alpine processar o DOM
+        const self = this;
+        requestAnimationFrame(function() {
+          const el = document.getElementById("page-content");
+          if (el) {
+            self._renderInto(el, page);
+          }
+        });
+        return;
+      }
+      this._renderInto(container, page);
+    },
 
+    _renderInto(container, page) {
       const renderers = {
         home: renderHomePage,
         "abordagem-nova": renderAbordagemNova,
@@ -119,11 +134,13 @@ function app() {
       if (render) {
         container.innerHTML = render(this);
         // Re-init Alpine para novos elementos
-        this.$nextTick(() => {
-          container.querySelectorAll("[x-data]").forEach((el) => {
-            if (!el._x_dataStack) Alpine.initTree(el);
+        if (this.$nextTick) {
+          this.$nextTick(() => {
+            container.querySelectorAll("[x-data]").forEach((el) => {
+              if (!el._x_dataStack) Alpine.initTree(el);
+            });
           });
-        });
+        }
       } else {
         container.innerHTML = `<p class="text-slate-400">Página não encontrada.</p>`;
       }
