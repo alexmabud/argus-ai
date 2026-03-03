@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.endereco import EnderecoPessoa
 from app.models.pessoa import Pessoa
 from app.repositories.base import BaseRepository
 
@@ -90,6 +91,48 @@ class PessoaRepository(BaseRepository[Pessoa]):
 
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
+
+    async def search_by_bairro_cidade(
+        self,
+        bairro: str | None,
+        cidade: str | None,
+        guarnicao_id: int | None,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> Sequence[Pessoa]:
+        """Busca pessoas pelo bairro ou cidade dos endereços cadastrados.
+
+        Realiza JOIN com enderecos_pessoa filtrando por bairro e/ou cidade
+        via ILIKE (busca parcial case-insensitive).
+
+        Args:
+            bairro: Bairro para filtrar (parcial, opcional).
+            cidade: Cidade para filtrar (parcial, opcional).
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            skip: Número de registros a pular.
+            limit: Número máximo de resultados.
+
+        Returns:
+            Sequência de Pessoas com endereço no bairro/cidade informados.
+        """
+        query = (
+            select(Pessoa)
+            .join(EnderecoPessoa, EnderecoPessoa.pessoa_id == Pessoa.id)
+            .where(
+                Pessoa.ativo == True,  # noqa: E712
+                EnderecoPessoa.ativo == True,  # noqa: E712
+            )
+        )
+        if bairro:
+            query = query.where(EnderecoPessoa.bairro.ilike(f"%{bairro}%"))
+        if cidade:
+            query = query.where(EnderecoPessoa.cidade.ilike(f"%{cidade}%"))
+        if guarnicao_id is not None:
+            query = query.where(Pessoa.guarnicao_id == guarnicao_id)
+
+        query = query.distinct().offset(skip).limit(limit)
+        result = await self.db.execute(query)
+        return result.scalars().all()
 
     async def get_detail(self, id: int, guarnicao_id: int) -> Pessoa | None:
         """Obtém pessoa com todos os relacionamentos carregados (eager load).

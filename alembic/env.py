@@ -23,6 +23,54 @@ config.set_main_option(
     settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
 )
 
+# Tabelas do PostGIS/Tiger geocoder que devem ser ignoradas pelo autogenerate
+POSTGIS_TABLES = {
+    "spatial_ref_sys",
+    "topology",
+    "layer",
+    "geocode_settings",
+    "geocode_settings_default",
+    "pagc_gaz",
+    "pagc_lex",
+    "pagc_rules",
+    "state_lookup",
+    "county_lookup",
+    "countysub_lookup",
+    "place_lookup",
+    "street_type_lookup",
+    "direction_lookup",
+    "secondary_unit_lookup",
+    "zip_lookup",
+    "zip_lookup_all",
+    "zip_lookup_base",
+    "zip_state",
+    "zip_state_loc",
+    "state",
+    "county",
+    "cousub",
+    "place",
+    "tract",
+    "bg",
+    "tabblock",
+    "tabblock20",
+    "zcta5",
+    "faces",
+    "edges",
+    "addrfeat",
+    "addr",
+    "featnames",
+    "loader_variables",
+    "loader_platform",
+    "loader_lookuptables",
+}
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    """Filtra objetos ignorados pelo autogenerate (tabelas PostGIS/Tiger)."""
+    if type_ == "table" and name in POSTGIS_TABLES:
+        return False
+    return True
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
@@ -32,6 +80,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -39,7 +88,11 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

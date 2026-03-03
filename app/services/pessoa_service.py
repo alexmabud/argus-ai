@@ -327,6 +327,8 @@ class PessoaService:
         endereco = EnderecoPessoa(
             pessoa_id=pessoa_id,
             endereco=data.endereco,
+            bairro=data.bairro,
+            cidade=data.cidade,
             localizacao=localizacao,
             data_inicio=data.data_inicio,
             data_fim=data.data_fim,

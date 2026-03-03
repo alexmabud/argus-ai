@@ -20,6 +20,20 @@ function renderConsulta() {
         <span x-show="loading" class="absolute right-3 top-3"><span class="spinner"></span></span>
       </div>
 
+      <!-- Filtros de localização -->
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Bairro</label>
+          <input type="text" x-model="filtroBairro" @input="onInput()"
+                 placeholder="Filtrar por bairro" class="w-full text-sm">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Cidade</label>
+          <input type="text" x-model="filtroCidade" @input="onInput()"
+                 placeholder="Filtrar por cidade" class="w-full text-sm">
+        </div>
+      </div>
+
       <!-- Resultados -->
       <div x-show="searched" class="space-y-4">
         <!-- Pessoas -->
@@ -83,6 +97,8 @@ function renderConsulta() {
 function consultaPage() {
   return {
     query: "",
+    filtroBairro: "",
+    filtroCidade: "",
     results: {},
     loading: false,
     searched: false,
@@ -90,7 +106,8 @@ function consultaPage() {
 
     onInput() {
       clearTimeout(this._timer);
-      if (this.query.length < 2) {
+      const temFiltroLocal = this.filtroBairro.length >= 2 || this.filtroCidade.length >= 2;
+      if (this.query.length < 2 && !temFiltroLocal) {
         this.results = {};
         this.searched = false;
         return;
@@ -101,7 +118,11 @@ function consultaPage() {
     async search() {
       this.loading = true;
       try {
-        this.results = await api.get(`/consultas/?q=${encodeURIComponent(this.query)}`);
+        const q = this.query.length >= 2 ? this.query : "a";
+        let url = `/consultas/?q=${encodeURIComponent(q)}`;
+        if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
+        if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
+        this.results = await api.get(url);
         this.searched = true;
       } catch {
         showToast("Erro na busca", "error");
