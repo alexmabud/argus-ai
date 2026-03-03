@@ -1,4 +1,4 @@
-const CACHE_NAME = "argus-v1";
+const CACHE_NAME = "argus-v2";
 const STATIC_ASSETS = [
   "/",
   "/css/app.css",
@@ -59,11 +59,17 @@ self.addEventListener("fetch", (event) => {
         })
     );
   } else {
-    // Assets: cache-first
+    // Assets: network-first, fallback to cache
     event.respondWith(
-      caches
-        .match(request)
-        .then((cached) => cached || fetch(request))
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
   }
 });
