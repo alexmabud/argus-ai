@@ -67,7 +67,7 @@ function app() {
       if (auth.isAuthenticated()) {
         this.authenticated = true;
         this.user = auth.getUser();
-        this.navigate("home");
+        this.$nextTick(() => this.navigate("home"));
       } else {
         this.$nextTick(() => this.renderLogin());
       }
@@ -144,7 +144,7 @@ function app() {
     async onLogin(user) {
       this.authenticated = true;
       this.user = user;
-      this.navigate("home");
+      this.$nextTick(() => this.navigate("home"));
     },
 
     logout() {
