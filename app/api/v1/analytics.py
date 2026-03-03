@@ -1,8 +1,7 @@
 """Router de analytics e métricas operacionais.
 
 Fornece endpoints para o dashboard analítico: resumo,
-mapa de calor, horários de pico, pessoas recorrentes
-e métricas de qualidade RAG.
+mapa de calor, horários de pico e pessoas recorrentes.
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -94,21 +93,3 @@ async def pessoas_recorrentes(
     """
     service = AnalyticsService(db)
     return await service.pessoas_recorrentes(user.guarnicao_id, limit)
-
-
-@router.get("/rag-qualidade")
-async def rag_qualidade(
-    db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
-) -> dict:
-    """Retorna métricas de qualidade do RAG.
-
-    Args:
-        db: Sessão do banco de dados.
-        user: Usuário autenticado.
-
-    Returns:
-        Métricas com total_ocorrencias e ocorrencias_indexadas.
-    """
-    service = AnalyticsService(db)
-    return await service.metricas_rag(user.guarnicao_id)

@@ -1,7 +1,7 @@
 """Serviço de analytics operacional.
 
 Fornece métricas agregadas para o dashboard: resumo de abordagens,
-mapa de calor, distribuição horária, pessoas recorrentes e qualidade RAG.
+mapa de calor, distribuição horária e pessoas recorrentes.
 Respeita multi-tenancy (guarnicao_id) e soft delete em todas as queries.
 """
 
@@ -11,7 +11,6 @@ from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.abordagem import Abordagem, AbordagemPessoa
-from app.models.ocorrencia import Ocorrencia
 from app.models.pessoa import Pessoa
 
 
@@ -20,7 +19,7 @@ class AnalyticsService:
 
     Gera dados agregados para visualização no dashboard:
     resumo operacional, heatmap geográfico, picos horários,
-    pessoas mais abordadas e métricas de qualidade RAG.
+    pessoas mais abordadas.
 
     Attributes:
         db: Sessão assíncrona do SQLAlchemy.
@@ -165,30 +164,3 @@ class AnalyticsService:
             }
             for row in result.all()
         ]
-
-    async def metricas_rag(self, guarnicao_id: int) -> dict:
-        """Retorna métricas de qualidade do RAG.
-
-        Args:
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
-
-        Returns:
-            Dicionário com total_ocorrencias e ocorrencias_indexadas.
-        """
-        total_q = select(func.count(Ocorrencia.id)).where(
-            Ocorrencia.guarnicao_id == guarnicao_id,
-            Ocorrencia.ativo,
-        )
-        total = (await self.db.execute(total_q)).scalar() or 0
-
-        indexadas_q = select(func.count(Ocorrencia.id)).where(
-            Ocorrencia.guarnicao_id == guarnicao_id,
-            Ocorrencia.ativo,
-            Ocorrencia.processada.is_(True),
-        )
-        indexadas = (await self.db.execute(indexadas_q)).scalar() or 0
-
-        return {
-            "total_ocorrencias": total,
-            "ocorrencias_indexadas": indexadas,
-        }
