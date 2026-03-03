@@ -1,9 +1,8 @@
 /**
  * Página de dashboard analítico — Argus AI.
  *
- * Cards de resumo operacional, mapa de calor (Leaflet),
- * gráfico de horários de pico (canvas), tabela de
- * pessoas mais abordadas e métricas RAG.
+ * Cards de resumo operacional, gráfico de horários de pico
+ * e tabela de pessoas mais abordadas.
  */
 function renderDashboard() {
   return `
@@ -79,25 +78,6 @@ function renderDashboard() {
             </div>
           </div>
 
-          <!-- Métricas RAG -->
-          <div class="card">
-            <h3 class="text-sm font-semibold text-slate-300 mb-2">Qualidade RAG</h3>
-            <div class="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p class="text-slate-500">Ocorrências</p>
-                <p class="text-slate-200 font-medium" x-text="rag.total_ocorrencias || 0"></p>
-              </div>
-              <div>
-                <p class="text-slate-500">Indexadas</p>
-                <p class="text-slate-200 font-medium" x-text="rag.ocorrencias_indexadas || 0"></p>
-              </div>
-            </div>
-            <div class="mt-2 bg-slate-700 rounded-full h-2 overflow-hidden">
-              <div class="bg-green-500 h-2 rounded-full transition-all"
-                   :style="'width: ' + (rag.total_ocorrencias > 0 ? (rag.ocorrencias_indexadas / rag.total_ocorrencias * 100) : 0) + '%'">
-              </div>
-            </div>
-          </div>
         </div>
       </template>
     </div>
@@ -110,7 +90,6 @@ function dashboardPage() {
     resumo: {},
     horarios: [],
     pessoas: [],
-    rag: {},
     maxHorario: 1,
 
     get horariosCompletos() {
@@ -122,16 +101,14 @@ function dashboardPage() {
 
     async load() {
       try {
-        const [resumo, horarios, pessoas, rag] = await Promise.all([
+        const [resumo, horarios, pessoas] = await Promise.all([
           api.get("/analytics/resumo").catch(() => ({})),
           api.get("/analytics/horarios-pico").catch(() => []),
           api.get("/analytics/pessoas-recorrentes?limit=10").catch(() => []),
-          api.get("/analytics/rag-qualidade").catch(() => ({})),
         ]);
         this.resumo = resumo;
         this.horarios = horarios;
         this.pessoas = pessoas;
-        this.rag = rag;
         this.maxHorario = Math.max(1, ...horarios.map((h) => h.total));
       } catch {
         showToast("Erro ao carregar dashboard", "error");
