@@ -11,6 +11,35 @@ if ("serviceWorker" in navigator) {
 }
 
 /**
+ * Formata string de placa veicular inserindo traço automaticamente.
+ * Aceita formato antigo (ABC-1234) e Mercosul (ABC1D23).
+ * Remove caracteres inválidos e converte para maiúsculas.
+ *
+ * @param {string} value - Valor bruto do input.
+ * @returns {string} Placa formatada (ex: ABC-1234).
+ */
+function formatarPlaca(value) {
+  const raw = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 7);
+  if (raw.length <= 3) return raw;
+  return `${raw.slice(0, 3)}-${raw.slice(3)}`;
+}
+
+/**
+ * Formata string de CPF inserindo pontos e traço automaticamente.
+ * Remove caracteres não numéricos e aplica a máscara 000.000.000-00.
+ *
+ * @param {string} value - Valor bruto do input.
+ * @returns {string} CPF formatado.
+ */
+function formatarCPF(value) {
+  const d = value.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
+/**
  * Componente Alpine.js principal da aplicação.
  */
 function app() {

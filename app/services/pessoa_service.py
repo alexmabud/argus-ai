@@ -329,6 +329,7 @@ class PessoaService:
             endereco=data.endereco,
             bairro=data.bairro,
             cidade=data.cidade,
+            estado=data.estado,
             localizacao=localizacao,
             data_inicio=data.data_inicio,
             data_fim=data.data_fim,
