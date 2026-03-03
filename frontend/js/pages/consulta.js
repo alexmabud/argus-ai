@@ -11,8 +11,8 @@ function renderConsulta() {
       <h2 class="text-lg font-bold text-slate-100">Consulta</h2>
 
       <!-- Pessoa -->
-      <div class="space-y-2">
-        <label class="block text-sm text-slate-300 font-semibold">Pessoa</label>
+      <div class="card space-y-3">
+        <p class="text-sm font-semibold text-slate-300">Pessoa</p>
         <div class="relative">
           <input type="text" x-model="query" @input="onInput()"
                  placeholder="Nome completo ou CPF..."
@@ -23,10 +23,17 @@ function renderConsulta() {
         </div>
       </div>
 
+      <!-- Separador Ou -->
+      <div class="flex items-center gap-3">
+        <div class="flex-1 h-px bg-slate-700"></div>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Ou</span>
+        <div class="flex-1 h-px bg-slate-700"></div>
+      </div>
+
       <!-- Endereço -->
-      <div class="space-y-2">
-        <label class="block text-sm text-slate-300 font-semibold">Endereço</label>
-        <div class="grid grid-cols-3 gap-2">
+      <div class="card space-y-3">
+        <p class="text-sm font-semibold text-slate-300">Endereço</p>
+        <div class="grid grid-cols-3 gap-3">
           <div>
             <label class="block text-xs text-slate-500 mb-1">Bairro</label>
             <input type="text" list="lista-bairros-c" x-model="filtroBairro" @input="onInput()"
@@ -54,10 +61,17 @@ function renderConsulta() {
         </datalist>
       </div>
 
+      <!-- Separador Ou -->
+      <div class="flex items-center gap-3">
+        <div class="flex-1 h-px bg-slate-700"></div>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Ou</span>
+        <div class="flex-1 h-px bg-slate-700"></div>
+      </div>
+
       <!-- Veículo -->
-      <div class="space-y-2">
-        <label class="block text-sm text-slate-300 font-semibold">Veículo</label>
-        <div class="grid gap-2" :class="filtroModelo.length > 0 ? 'grid-cols-3' : 'grid-cols-2'">
+      <div class="card space-y-3">
+        <p class="text-sm font-semibold text-slate-300">Veículo</p>
+        <div class="grid gap-3" :class="filtroModelo.length > 0 ? 'grid-cols-3' : 'grid-cols-2'">
           <div>
             <label class="block text-xs text-slate-500 mb-1">Placa</label>
             <input type="text" x-model="filtroPlaca" @input="onInput()"
