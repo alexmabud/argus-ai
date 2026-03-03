@@ -18,7 +18,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/alexmabud/argus-ai.git"
-APP_DIR="$HOME/argus-ai"
+APP_DIR="$HOME/argus_ai"
 COMPOSE_FILE="docker-compose.prod.yml"
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
