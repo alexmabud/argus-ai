@@ -1,5 +1,5 @@
 # Docker Compose de produção — Google Cloud / Oracle Cloud
-# Storage: Cloudflare R2 (S3-compatível, externo)
+# HTTPS automático via Caddy (Let's Encrypt)
 # Uso: docker compose -f docker-compose.prod.yml up -d
 
 services:
@@ -43,12 +43,12 @@ services:
       dockerfile: Dockerfile.prod
     restart: always
     env_file:
-      - .env.production
+      - .env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://redis:6379
-    ports:
-      - "127.0.0.1:8000:8000"
+    expose:
+      - "8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -68,7 +68,7 @@ services:
     restart: always
     command: python -m arq app.worker.WorkerSettings
     env_file:
-      - .env.production
+      - .env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://redis:6379
@@ -78,27 +78,23 @@ services:
       redis:
         condition: service_healthy
 
-  nginx:
-    image: nginx:alpine
+  caddy:
+    image: caddy:2-alpine
     restart: always
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"
     volumes:
-      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./deploy/certbot/conf:/etc/letsencrypt:ro
-      - ./deploy/certbot/www:/var/www/certbot:ro
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
-      - api
-
-  # Renovação automática de certificado SSL
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./deploy/certbot/conf:/etc/letsencrypt
-      - ./deploy/certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+      api:
+        condition: service_healthy
 
 volumes:
   pgdata:
   redis_data:
+  caddy_data:
+  caddy_config:
