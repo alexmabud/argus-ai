@@ -14,8 +14,7 @@ from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.repositories.pessoa_repo import PessoaRepository
 from app.schemas.abordagem import AbordagemRead
-from app.schemas.consulta import ConsultaUnificadaResponse
-from app.schemas.pessoa import PessoaRead
+from app.schemas.consulta import ConsultaUnificadaResponse, PessoaComEnderecoRead
 from app.schemas.veiculo import VeiculoRead
 from app.services.consulta_service import ConsultaService
 from app.services.pessoa_service import PessoaService
@@ -100,9 +99,16 @@ async def consulta_unificada(
     )
 
     pessoas_read = []
-    for p in resultados["pessoas"]:
+    pessoas_com_endereco = resultados.get("pessoas_com_endereco", False)
+
+    for item in resultados["pessoas"]:
+        if pessoas_com_endereco:
+            p, endereco_criado_em = item
+        else:
+            p, endereco_criado_em = item, None
+
         pessoas_read.append(
-            PessoaRead(
+            PessoaComEnderecoRead(
                 id=p.id,
                 nome=p.nome,
                 cpf_masked=PessoaService.mask_cpf(p) if p.cpf_encrypted else None,
@@ -113,6 +119,7 @@ async def consulta_unificada(
                 guarnicao_id=p.guarnicao_id,
                 criado_em=p.criado_em,
                 atualizado_em=p.atualizado_em,
+                endereco_criado_em=endereco_criado_em,
             )
         )
 
