@@ -88,11 +88,13 @@ function renderPessoaDetalhe(appState) {
                 <div class="border-l-2 pl-3 py-1"
                      :class="idx === 0 ? 'border-blue-500' : 'border-slate-600'">
                   <p class="text-sm text-slate-300" x-text="formatEndereco(end)"></p>
-                  <div class="flex gap-3 text-[10px] text-slate-500 mt-0.5">
-                    <span x-show="end.data_inicio" x-text="'Desde ' + new Date(end.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
-                    <span x-show="end.data_fim" x-text="'Até ' + new Date(end.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
-                    <span x-show="end.criado_em" x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
-                    <span x-show="idx === 0" class="text-blue-400 font-medium">Atual</span>
+                  <div class="flex items-center justify-between text-[10px] mt-0.5">
+                    <div class="flex gap-3 text-slate-500">
+                      <span x-show="end.data_inicio" x-text="'Desde ' + new Date(end.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
+                      <span x-show="end.data_fim" x-text="'Até ' + new Date(end.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
+                      <span x-show="idx === 0" class="text-blue-400 font-medium">Atual</span>
+                    </div>
+                    <span x-show="end.criado_em" class="text-slate-500" x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
                   </div>
                 </div>
               </template>
@@ -106,14 +108,14 @@ function renderPessoaDetalhe(appState) {
             </h3>
             <div class="space-y-2">
               <template x-for="v in veiculos" :key="v.id">
-                <div class="flex items-center gap-3 bg-slate-800/50 rounded-lg p-2">
+                <div class="flex items-center justify-between bg-slate-800/50 rounded-lg p-2">
                   <div>
                     <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="v.placa"></span>
                     <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
                        x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
-                    <p x-show="v.criado_em" class="text-xs text-slate-500"
-                       x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></p>
                   </div>
+                  <span x-show="v.criado_em" class="text-xs text-slate-500"
+                        x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></span>
                 </div>
               </template>
             </div>
