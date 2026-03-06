@@ -139,11 +139,13 @@ class PessoaDetail(PessoaRead):
     vínculos com outras pessoas.
 
     Attributes:
+        cpf: CPF completo descriptografado (exibido apenas no detalhe).
         enderecos: Lista de endereços conhecidos.
         abordagens_count: Número total de abordagens.
         relacionamentos: Lista simplificada de vínculos (pessoa, frequência).
     """
 
+    cpf: str | None = None
     enderecos: list[EnderecoRead] = []
     abordagens_count: int = 0
     relacionamentos: list[VinculoRead] = []
