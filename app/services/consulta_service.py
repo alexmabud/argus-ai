@@ -90,15 +90,13 @@ class ConsultaService:
 
         if tipo is None or tipo == "pessoa":
             if filtro_local:
-                pessoas = list(
-                    await self.pessoa_repo.search_by_bairro_cidade(
-                        bairro=bairro,
-                        cidade=cidade,
-                        estado=estado,
-                        guarnicao_id=guarnicao_id,
-                        skip=skip,
-                        limit=limit,
-                    )
+                pessoas = await self.pessoa_repo.search_by_bairro_cidade_com_endereco(
+                    bairro=bairro,
+                    cidade=cidade,
+                    estado=estado,
+                    guarnicao_id=guarnicao_id,
+                    skip=skip,
+                    limit=limit,
                 )
             else:
                 pessoas = await self._buscar_pessoas(q, guarnicao_id, skip, limit)
@@ -116,6 +114,7 @@ class ConsultaService:
             "veiculos": veiculos,
             "abordagens": abordagens,
             "total_resultados": len(pessoas) + len(veiculos) + len(abordagens),
+            "pessoas_com_endereco": bool(filtro_local),
         }
 
     async def _buscar_pessoas(
