@@ -5,6 +5,9 @@ e abordagens através de um único termo de busca.
 """
 
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.guarnicao import Guarnicao
 
 
 class TestConsultaUnificada:
@@ -41,14 +44,14 @@ class TestConsultaUnificada:
         )
         assert response.status_code == 422
 
-    async def test_consulta_sem_auth_retorna_403(self, client: AsyncClient):
-        """Testa que consulta sem autenticação retorna 403.
+    async def test_consulta_sem_auth_retorna_401(self, client: AsyncClient):
+        """Testa que consulta sem autenticação retorna 401.
 
         Args:
             client: Cliente HTTP assincrónico.
         """
         response = await client.get("/api/v1/consultas/?q=teste")
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     async def test_consulta_filtro_tipo_pessoa(self, client: AsyncClient, auth_headers: dict):
         """Testa consulta filtrando por tipo 'pessoa'.
@@ -79,3 +82,46 @@ class TestConsultaUnificada:
             headers=auth_headers,
         )
         assert response.status_code == 200
+
+    async def test_consulta_por_bairro_retorna_endereco_criado_em(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        db_session: AsyncSession,
+        guarnicao: Guarnicao,
+    ):
+        """Testa que busca por bairro retorna endereco_criado_em nos resultados.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+            db_session: Sessão do banco de dados de teste.
+            guarnicao: Guarnição de teste.
+        """
+        from app.models.endereco import EnderecoPessoa
+        from app.models.pessoa import Pessoa
+
+        # Criar pessoa com endereço
+        pessoa = Pessoa(nome="Teste Bairro", guarnicao_id=guarnicao.id)
+        db_session.add(pessoa)
+        await db_session.flush()
+
+        endereco = EnderecoPessoa(
+            pessoa_id=pessoa.id,
+            endereco="Rua A, 1",
+            bairro="Asa Norte",
+            cidade="Brasília",
+            estado="DF",
+        )
+        db_session.add(endereco)
+        await db_session.commit()
+
+        response = await client.get(
+            "/api/v1/consultas/?q=Te&tipo=pessoa&bairro=Asa+Norte",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["pessoas"]) >= 1
+        pessoa_data = next(p for p in data["pessoas"] if p["nome"] == "Teste Bairro")
+        assert pessoa_data["endereco_criado_em"] is not None
