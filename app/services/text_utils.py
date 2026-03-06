@@ -53,7 +53,7 @@ def chunk_text_semantico(texto: str) -> list[dict]:
         inicio = secoes_encontradas[i]
         fim = secoes_encontradas[i + 1]
         trecho = texto_limpo[inicio:fim].strip()
-        if len(trecho) > 50:
+        if len(trecho) > 10:
             chunks.append(
                 {
                     "texto": trecho,
@@ -103,7 +103,24 @@ def chunk_text_paragrafos(
     buffer_words = 0
 
     for paragrafo in paragrafos:
-        words = len(paragrafo.split())
+        paragrafo_words = paragrafo.split()
+        # Parágrafo único maior que max_tokens: divide internamente
+        if len(paragrafo_words) > max_tokens:
+            if buffer.strip():
+                chunks.append(
+                    {"texto": buffer.strip(), "tipo": "paragrafo", "posicao": len(chunks)}
+                )
+                buffer = ""
+                buffer_words = 0
+            inicio = 0
+            while inicio < len(paragrafo_words):
+                fim = inicio + max_tokens
+                trecho = " ".join(paragrafo_words[inicio:fim])
+                chunks.append({"texto": trecho, "tipo": "paragrafo", "posicao": len(chunks)})
+                inicio = fim - overlap if fim - overlap > inicio else fim
+            continue
+
+        words = len(paragrafo_words)
         if buffer_words + words > max_tokens and buffer:
             chunks.append(
                 {
