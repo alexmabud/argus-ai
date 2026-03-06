@@ -12,6 +12,7 @@ from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
+from app.schemas.abordagem import AbordagemDetail
 from app.schemas.pessoa import (
     EnderecoCreate,
     EnderecoRead,
@@ -21,6 +22,8 @@ from app.schemas.pessoa import (
     PessoaUpdate,
     VinculoRead,
 )
+from app.schemas.veiculo import VeiculoRead
+from app.services.abordagem_service import AbordagemService
 from app.services.pessoa_service import PessoaService
 
 router = APIRouter(prefix="/pessoas", tags=["Pessoas"])
@@ -178,6 +181,7 @@ async def detalhe_pessoa(
         id=pessoa.id,
         nome=pessoa.nome,
         cpf_masked=service.mask_cpf(pessoa),
+        cpf=service.decrypt_cpf(pessoa),
         data_nascimento=pessoa.data_nascimento,
         apelido=pessoa.apelido,
         foto_principal_url=pessoa.foto_principal_url,
@@ -298,3 +302,69 @@ async def adicionar_endereco(
     service = PessoaService(db)
     endereco = await service.adicionar_endereco(pessoa_id, data, user)
     return EnderecoRead.model_validate(endereco)
+
+
+@router.get("/{pessoa_id}/abordagens", response_model=list[AbordagemDetail])
+async def listar_abordagens_pessoa(
+    pessoa_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[AbordagemDetail]:
+    """Lista abordagens de uma pessoa com detalhes completos.
+
+    Retorna abordagens com pessoas e veículos vinculados,
+    ordenadas por data/hora decrescente.
+
+    Args:
+        pessoa_id: ID da pessoa.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista de AbordagemDetail com pessoas e veículos.
+    """
+    pessoa_service = PessoaService(db)
+    abordagem_service = AbordagemService(db)
+
+    abordagens = await abordagem_service.listar_por_pessoa(pessoa_id, user.guarnicao_id)
+
+    result = []
+    for ab in abordagens:
+        pessoas = []
+        for ap in ab.pessoas:
+            p = ap.pessoa
+            pessoas.append(
+                PessoaRead(
+                    id=p.id,
+                    nome=p.nome,
+                    cpf_masked=pessoa_service.mask_cpf(p),
+                    data_nascimento=p.data_nascimento,
+                    apelido=p.apelido,
+                    foto_principal_url=p.foto_principal_url,
+                    observacoes=p.observacoes,
+                    guarnicao_id=p.guarnicao_id,
+                    criado_em=p.criado_em,
+                    atualizado_em=p.atualizado_em,
+                )
+            )
+        veiculos = [VeiculoRead.model_validate(av.veiculo) for av in ab.veiculos]
+        result.append(
+            AbordagemDetail(
+                id=ab.id,
+                data_hora=ab.data_hora,
+                latitude=ab.latitude,
+                longitude=ab.longitude,
+                endereco_texto=ab.endereco_texto,
+                observacao=ab.observacao,
+                usuario_id=ab.usuario_id,
+                guarnicao_id=ab.guarnicao_id,
+                origem=ab.origem,
+                criado_em=ab.criado_em,
+                atualizado_em=ab.atualizado_em,
+                pessoas=pessoas,
+                veiculos=veiculos,
+                fotos=[],
+                passagens=[],
+            )
+        )
+    return result

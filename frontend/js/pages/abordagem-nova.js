@@ -63,7 +63,7 @@ function renderAbordagemNova() {
         <div x-show="showNovaPessoa" x-cloak class="bg-slate-800/50 border border-slate-600 rounded-lg p-4 space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-slate-200">Cadastrar novo abordado</h3>
-            <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',endereco:'',bairro:'',cidade:'',estado:''}"
+            <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',data_nascimento:'',apelido:'',endereco:'',bairro:'',cidade:'',estado:''}"
                     class="text-slate-400 hover:text-white text-xs">Cancelar</button>
           </div>
 
@@ -75,6 +75,17 @@ function renderAbordagemNova() {
           <div>
             <label class="block text-xs text-slate-400 mb-1">CPF</label>
             <input type="text" :value="novaPessoa.cpf" @input="novaPessoa.cpf = formatarCPF($event.target.value)" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" class="w-full">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Data de nascimento</label>
+              <input type="date" x-model="novaPessoa.data_nascimento" class="w-full">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Vulgo</label>
+              <input type="text" x-model="novaPessoa.apelido" placeholder="Apelido" class="w-full">
+            </div>
           </div>
 
           <div>
@@ -117,20 +128,56 @@ function renderAbordagemNova() {
           <p x-show="erroPessoa" class="text-xs text-red-400" x-text="erroPessoa"></p>
         </div>
 
-        <!-- Fotos por abordado -->
-        <div x-show="pessoasSelecionadas.length > 0" class="border-t border-slate-700 pt-3 space-y-2">
-          <p class="text-xs text-slate-400">Foto de cada abordado:</p>
+        <!-- Info e ações por abordado selecionado -->
+        <div x-show="pessoasSelecionadas.length > 0" class="border-t border-slate-700 pt-3 space-y-3">
           <template x-for="p in pessoasSelecionadas" :key="p.id">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-sm text-slate-300 flex-1 truncate" x-text="p.nome"></span>
-              <label :for="'foto-p-' + p.id"
-                     class="cursor-pointer text-xs px-2 py-1 rounded flex items-center gap-1"
-                     :class="fotosPessoas[p.id] ? 'bg-green-900/50 text-green-400' : 'bg-slate-700 text-blue-400 hover:bg-slate-600'">
-                <span x-text="fotosPessoas[p.id] ? '✓ ' + fotosPessoas[p.id].name : '📷 Tirar foto'"></span>
-              </label>
-              <input type="file" accept="image/*" capture="environment"
-                     :id="'foto-p-' + p.id" class="hidden"
-                     @change="fotosPessoas = {...fotosPessoas, [p.id]: $event.target.files[0]}">
+            <div class="bg-slate-800/30 rounded-lg p-3 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-sm text-slate-300 flex-1 truncate" x-text="p.nome"></span>
+                <label :for="'foto-p-' + p.id"
+                       class="cursor-pointer text-xs px-2 py-1 rounded flex items-center gap-1"
+                       :class="fotosPessoas[p.id] ? 'bg-green-900/50 text-green-400' : 'bg-slate-700 text-blue-400 hover:bg-slate-600'">
+                  <span x-text="fotosPessoas[p.id] ? '✓ Foto' : '📷 Foto'"></span>
+                </label>
+                <input type="file" accept="image/*" capture="environment"
+                       :id="'foto-p-' + p.id" class="hidden"
+                       @change="fotosPessoas = {...fotosPessoas, [p.id]: $event.target.files[0]}">
+              </div>
+
+              <!-- Endereço atual (se houver) -->
+              <div x-show="pessoaEnderecos[p.id]?.length > 0" class="text-xs text-slate-400">
+                <span class="text-slate-500">Endereço atual:</span>
+                <span x-text="formatEndereco(pessoaEnderecos[p.id]?.[0])"></span>
+              </div>
+
+              <!-- Botão novo endereço -->
+              <button x-show="!novoEnderecoAberto[p.id]" @click="novoEnderecoAberto = {...novoEnderecoAberto, [p.id]: true}"
+                      class="text-xs text-blue-400 hover:text-blue-300">
+                + Cadastrar novo endereço
+              </button>
+
+              <!-- Mini-form novo endereço -->
+              <div x-show="novoEnderecoAberto[p.id]" x-cloak class="bg-slate-800/50 border border-slate-600 rounded-lg p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-medium text-slate-300">Novo endereço</span>
+                  <button @click="novoEnderecoAberto = {...novoEnderecoAberto, [p.id]: false}"
+                          class="text-slate-400 hover:text-white text-xs">Cancelar</button>
+                </div>
+                <input type="text" x-model="novoEnderecoData[p.id + '_endereco']" placeholder="Rua e número" class="w-full text-sm">
+                <div class="grid grid-cols-3 gap-2">
+                  <input type="text" list="lista-bairros-pessoa" x-model="novoEnderecoData[p.id + '_bairro']" placeholder="Bairro" class="w-full text-sm">
+                  <input type="text" list="lista-cidades-pessoa" x-model="novoEnderecoData[p.id + '_cidade']" placeholder="Cidade" class="w-full text-sm">
+                  <input type="text" list="lista-estados-pessoa" x-model="novoEnderecoData[p.id + '_estado']" placeholder="UF" maxlength="2" class="w-full text-sm uppercase">
+                </div>
+                <button @click="salvarNovoEndereco(p.id)" class="btn btn-primary text-xs py-1"
+                        :disabled="salvandoEndereco[p.id] || !novoEnderecoData[p.id + '_endereco']?.trim()">
+                  <span x-show="!salvandoEndereco[p.id]">Salvar endereço</span>
+                  <span x-show="salvandoEndereco[p.id]" class="flex items-center gap-1">
+                    <span class="spinner"></span> Salvando...
+                  </span>
+                </button>
+                <p x-show="erroEndereco[p.id]" class="text-xs text-red-400" x-text="erroEndereco[p.id]"></p>
+              </div>
             </div>
           </template>
         </div>
@@ -328,6 +375,7 @@ function abordagemForm() {
     veiculoPorPessoa: {},
     fotoVeiculoFile: null,
     submitting: false,
+    clientId: null,
     erro: null,
     sucesso: null,
 
@@ -337,7 +385,7 @@ function abordagemForm() {
 
     // Cadastro nova pessoa
     showNovaPessoa: false,
-    novaPessoa: { nome: "", cpf: "", endereco: "", bairro: "", cidade: "", estado: "" },
+    novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" },
     salvandoPessoa: false,
     erroPessoa: null,
 
@@ -346,6 +394,13 @@ function abordagemForm() {
     novoVeiculo: { placa: "", modelo: "", cor: "", ano: "" },
     salvandoVeiculo: false,
     erroVeiculo: null,
+
+    // Endereço de pessoa existente
+    pessoaEnderecos: {},
+    novoEnderecoAberto: {},
+    novoEnderecoData: {},
+    salvandoEndereco: {},
+    erroEndereco: {},
 
     // Autocomplete de localidades (endereço pessoa)
     localidades: { bairros: [], cidades: [], estados: [] },
@@ -369,6 +424,12 @@ function abordagemForm() {
       this.$el.addEventListener("pessoa-selected", (e) => {
         this.pessoaIds = e.detail.selected.map((s) => s.id);
         this.pessoasSelecionadas = e.detail.selected;
+        // Buscar endereços das pessoas selecionadas
+        for (const p of e.detail.selected) {
+          if (!this.pessoaEnderecos[p.id]) {
+            this.carregarEnderecos(p.id);
+          }
+        }
       });
       this.$el.addEventListener("veiculo-selected", (e) => {
         this.veiculoIds = e.detail.selected.map((s) => s.id);
@@ -411,6 +472,12 @@ function abordagemForm() {
         if (this.novaPessoa.cpf.trim()) {
           pessoaData.cpf = this.novaPessoa.cpf.trim();
         }
+        if (this.novaPessoa.data_nascimento) {
+          pessoaData.data_nascimento = this.novaPessoa.data_nascimento;
+        }
+        if (this.novaPessoa.apelido.trim()) {
+          pessoaData.apelido = this.novaPessoa.apelido.trim();
+        }
 
         const pessoa = await api.post("/pessoas/", pessoaData);
 
@@ -442,6 +509,51 @@ function abordagemForm() {
       } finally {
         this.salvandoPessoa = false;
       }
+    },
+
+    async carregarEnderecos(pessoaId) {
+      try {
+        const detalhe = await api.get(`/pessoas/${pessoaId}`);
+        this.pessoaEnderecos = { ...this.pessoaEnderecos, [pessoaId]: detalhe.enderecos || [] };
+      } catch { /* silencioso */ }
+    },
+
+    async salvarNovoEndereco(pessoaId) {
+      const endereco = this.novoEnderecoData[pessoaId + "_endereco"]?.trim();
+      if (!endereco) return;
+
+      this.salvandoEndereco = { ...this.salvandoEndereco, [pessoaId]: true };
+      this.erroEndereco = { ...this.erroEndereco, [pessoaId]: null };
+
+      try {
+        await api.post(`/pessoas/${pessoaId}/enderecos`, {
+          endereco: endereco,
+          bairro: this.novoEnderecoData[pessoaId + "_bairro"]?.trim() || null,
+          cidade: this.novoEnderecoData[pessoaId + "_cidade"]?.trim() || null,
+          estado: this.novoEnderecoData[pessoaId + "_estado"]?.trim().toUpperCase() || null,
+        });
+
+        // Recarregar endereços e fechar form
+        await this.carregarEnderecos(pessoaId);
+        this.novoEnderecoAberto = { ...this.novoEnderecoAberto, [pessoaId]: false };
+        this.novoEnderecoData = {
+          ...this.novoEnderecoData,
+          [pessoaId + "_endereco"]: "",
+          [pessoaId + "_bairro"]: "",
+          [pessoaId + "_cidade"]: "",
+          [pessoaId + "_estado"]: "",
+        };
+      } catch (err) {
+        this.erroEndereco = { ...this.erroEndereco, [pessoaId]: err.message || "Erro ao salvar endereço." };
+      } finally {
+        this.salvandoEndereco = { ...this.salvandoEndereco, [pessoaId]: false };
+      }
+    },
+
+    formatEndereco(end) {
+      if (!end) return "";
+      const parts = [end.endereco, end.bairro, end.cidade, end.estado].filter(Boolean);
+      return parts.join(", ");
     },
 
     async criarVeiculo() {
@@ -518,9 +630,15 @@ function abordagemForm() {
     },
 
     async submit() {
+      if (this.submitting) return;
       this.submitting = true;
       this.erro = null;
       this.sucesso = null;
+
+      // Gerar client_id único para deduplicação (idempotência)
+      if (!this.clientId) {
+        this.clientId = crypto.randomUUID();
+      }
 
       // Montar nota de vínculos veículo → abordado na observação
       const vinculos = Object.entries(this.veiculoPorPessoa)
@@ -543,6 +661,7 @@ function abordagemForm() {
         endereco_texto: this.endereco || null,
         observacao: obsTexto || null,
         origem: navigator.onLine ? "online" : "offline",
+        client_id: this.clientId,
         pessoa_ids: this.pessoaIds,
         veiculo_ids: this.veiculoIds,
         passagens: [],
@@ -582,10 +701,14 @@ function abordagemForm() {
         }
 
         // Reset form
+        this.clientId = null;
         this.observacao = "";
         this.pessoaIds = [];
         this.pessoasSelecionadas = [];
         this.fotosPessoas = {};
+        this.pessoaEnderecos = {};
+        this.novoEnderecoAberto = {};
+        this.novoEnderecoData = {};
         this.veiculoIds = [];
         this.veiculosSelecionados = [];
         this.veiculoPorPessoa = {};

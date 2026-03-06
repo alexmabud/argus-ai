@@ -361,3 +361,25 @@ class PessoaService:
         except Exception:
             logger.warning("Falha ao descriptografar CPF da pessoa %s", pessoa.id)
             return None
+
+    @staticmethod
+    def decrypt_cpf(pessoa: Pessoa) -> str | None:
+        """Descriptografa CPF completo para exibição no detalhe.
+
+        Args:
+            pessoa: Instância de Pessoa com cpf_encrypted.
+
+        Returns:
+            CPF formatado (XXX.XXX.XXX-XX) ou None se sem CPF.
+        """
+        if not pessoa.cpf_encrypted:
+            return None
+        try:
+            cpf = decrypt(pessoa.cpf_encrypted)
+            clean = cpf.replace(".", "").replace("-", "")
+            if len(clean) == 11:
+                return f"{clean[:3]}.{clean[3:6]}.{clean[6:9]}-{clean[9:]}"
+            return cpf
+        except Exception:
+            logger.warning("Falha ao descriptografar CPF da pessoa %s", pessoa.id)
+            return None

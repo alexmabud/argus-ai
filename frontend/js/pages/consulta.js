@@ -3,7 +3,8 @@
  *
  * Todos os filtros em uma única página: nome/CPF, localização
  * e veículo. Busca paralela nas entidades relevantes conforme
- * os campos preenchidos.
+ * os campos preenchidos. Resultados aparecem logo abaixo de
+ * cada seção de busca correspondente.
  */
 function renderConsulta() {
   return `
@@ -21,6 +22,33 @@ function renderConsulta() {
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
           </svg>
         </div>
+
+        <!-- Resultados: Pessoas (por nome/CPF) -->
+        <div x-show="searched && pessoasVisiveis.length > 0 && buscouPessoa" class="space-y-2 pt-1">
+          <p class="text-xs font-semibold text-slate-500">
+            Resultados (<span x-text="pessoasVisiveis.length"></span>)
+          </p>
+          <template x-for="p in pessoasVisiveis" :key="p.id">
+            <div @click="viewPessoa(p.id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-slate-200" x-text="p.nome"></p>
+                  <p x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + p.cpf_masked"></p>
+                  <p x-show="p.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + p.apelido"></p>
+                </div>
+                <svg class="w-4 h-4 text-slate-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Sem resultados pessoa -->
+        <p x-show="searched && !loading && buscouPessoa && pessoasVisiveis.length === 0 && !buscouEndereco"
+           class="text-xs text-slate-500 pt-1">
+          Nenhuma pessoa encontrada.
+        </p>
       </div>
 
       <!-- Separador Ou -->
@@ -59,6 +87,33 @@ function renderConsulta() {
         <datalist id="lista-estados-c">
           <template x-for="e in localidades.estados" :key="e"><option :value="e"></option></template>
         </datalist>
+
+        <!-- Resultados: Pessoas (por endereço) -->
+        <div x-show="searched && pessoasVisiveis.length > 0 && buscouEndereco" class="space-y-2 pt-1">
+          <p class="text-xs font-semibold text-slate-500">
+            Pessoas neste endereço (<span x-text="pessoasVisiveis.length"></span>)
+          </p>
+          <template x-for="p in pessoasVisiveis" :key="p.id">
+            <div @click="viewPessoa(p.id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-slate-200" x-text="p.nome"></p>
+                  <p x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + p.cpf_masked"></p>
+                  <p x-show="p.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + p.apelido"></p>
+                </div>
+                <svg class="w-4 h-4 text-slate-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Sem resultados endereço -->
+        <p x-show="searched && !loading && buscouEndereco && pessoasVisiveis.length === 0 && !buscouPessoa"
+           class="text-xs text-slate-500 pt-1">
+          Nenhuma pessoa encontrada neste endereço.
+        </p>
       </div>
 
       <!-- Separador Ou -->
@@ -89,44 +144,14 @@ function renderConsulta() {
                    placeholder="Cor..." class="w-full py-3">
           </div>
         </div>
-      </div>
 
-      <!-- Spinner -->
-      <div x-show="loading" class="flex justify-center py-2">
-        <span class="spinner"></span>
-      </div>
-
-      <!-- Resultados: Pessoas -->
-      <div x-show="searched && pessoasVisiveis.length > 0">
-        <h3 class="text-sm font-semibold text-slate-400 mb-2">
-          Pessoas (<span x-text="pessoasVisiveis.length"></span>)
-        </h3>
-        <div class="space-y-2">
-          <template x-for="p in pessoasVisiveis" :key="p.id">
-            <div @click="viewPessoa(p.id)" class="card cursor-pointer hover:border-blue-500 transition-colors">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-slate-200" x-text="p.nome"></p>
-                  <p x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + p.cpf_masked"></p>
-                  <p x-show="p.apelido" class="text-xs text-slate-400" x-text="'Apelido: ' + p.apelido"></p>
-                </div>
-                <svg class="w-4 h-4 text-slate-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-                </svg>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <!-- Resultados: Veículos -->
-      <div x-show="searched && veiculosFiltrados.length > 0">
-        <h3 class="text-sm font-semibold text-slate-400 mb-2">
-          Veículos (<span x-text="veiculosFiltrados.length"></span>)
-        </h3>
-        <div class="space-y-2">
+        <!-- Resultados: Veículos -->
+        <div x-show="searched && veiculosFiltrados.length > 0" class="space-y-2 pt-1">
+          <p class="text-xs font-semibold text-slate-500">
+            Resultados (<span x-text="veiculosFiltrados.length"></span>)
+          </p>
           <template x-for="v in veiculosFiltrados" :key="v.id">
-            <div class="card space-y-1">
+            <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-1">
               <div class="flex items-center gap-2">
                 <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="v.placa"></span>
                 <span x-show="v.tipo" class="text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded" x-text="v.tipo"></span>
@@ -142,13 +167,18 @@ function renderConsulta() {
             </div>
           </template>
         </div>
+
+        <!-- Sem resultados veículo -->
+        <p x-show="searched && !loading && buscouVeiculo && veiculosFiltrados.length === 0"
+           class="text-xs text-slate-500 pt-1">
+          Nenhum veículo encontrado.
+        </p>
       </div>
 
-      <!-- Sem resultados -->
-      <p x-show="searched && !loading && semResultados"
-         class="text-sm text-slate-500 text-center py-8">
-        Nenhum resultado encontrado.
-      </p>
+      <!-- Spinner -->
+      <div x-show="loading" class="flex justify-center py-2">
+        <span class="spinner"></span>
+      </div>
     </div>
   `;
 }
@@ -169,6 +199,9 @@ function consultaPage() {
     vinculoPorVeiculo: {},
     loading: false,
     searched: false,
+    buscouPessoa: false,
+    buscouEndereco: false,
+    buscouVeiculo: false,
     _timer: null,
 
     // --- computed ---
@@ -216,6 +249,9 @@ function consultaPage() {
         this.veiculos = [];
         this.vinculoPorVeiculo = {};
         this.searched = false;
+        this.buscouPessoa = false;
+        this.buscouEndereco = false;
+        this.buscouVeiculo = false;
         return;
       }
       this._timer = setTimeout(() => this.search(), 400);
@@ -233,15 +269,15 @@ function consultaPage() {
 
     async search() {
       this.loading = true;
+      this.buscouPessoa = this.query.length >= 2;
+      this.buscouEndereco = this.filtroBairro.length >= 2 || this.filtroCidade.length >= 2 || this.filtroEstado.length >= 1;
+      this.buscouVeiculo = this.filtroPlaca.length >= 2;
+
       try {
         const tarefas = [];
 
         // Busca pessoas: por nome/CPF e/ou endereço
-        const buscaPessoa =
-          this.query.length >= 2 ||
-          this.filtroBairro.length >= 2 ||
-          this.filtroCidade.length >= 2 ||
-          this.filtroEstado.length >= 1;
+        const buscaPessoa = this.buscouPessoa || this.buscouEndereco;
 
         if (buscaPessoa) {
           const q = this.query.length >= 2 ? this.query : "a";
@@ -258,7 +294,7 @@ function consultaPage() {
         }
 
         // Busca veículos: por placa
-        if (this.filtroPlaca.length >= 2) {
+        if (this.buscouVeiculo) {
           const url = `/consultas/?q=${encodeURIComponent(this.filtroPlaca)}&tipo=veiculo`;
           tarefas.push(
             api.get(url).then((r) => {

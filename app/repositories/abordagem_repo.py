@@ -138,6 +138,40 @@ class AbordagemRepository(BaseRepository[Abordagem]):
         result = await self.db.execute(query)
         return result.scalars().all()
 
+    async def list_by_pessoa(
+        self,
+        pessoa_id: int,
+        guarnicao_id: int,
+        limit: int = 50,
+    ) -> Sequence[Abordagem]:
+        """Lista abordagens de uma pessoa com relacionamentos carregados.
+
+        Args:
+            pessoa_id: ID da pessoa.
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            limit: Número máximo de resultados.
+
+        Returns:
+            Sequência de Abordagens com pessoas e veículos carregados.
+        """
+        query = (
+            select(Abordagem)
+            .join(AbordagemPessoa, AbordagemPessoa.abordagem_id == Abordagem.id)
+            .options(
+                selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
+                selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
+            )
+            .where(
+                AbordagemPessoa.pessoa_id == pessoa_id,
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo == True,  # noqa: E712
+            )
+            .order_by(Abordagem.data_hora.desc())
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().unique().all()
+
     async def get_by_client_id(self, client_id: str) -> Abordagem | None:
         """Busca abordagem por client_id para deduplicação offline.
 

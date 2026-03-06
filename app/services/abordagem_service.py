@@ -253,6 +253,24 @@ class AbordagemService:
         """
         return await self.repo.list_by_guarnicao(guarnicao_id, skip, limit)
 
+    async def listar_por_pessoa(
+        self,
+        pessoa_id: int,
+        guarnicao_id: int,
+        limit: int = 50,
+    ) -> Sequence[Abordagem]:
+        """Lista abordagens de uma pessoa com relacionamentos.
+
+        Args:
+            pessoa_id: ID da pessoa.
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            limit: Número máximo de resultados.
+
+        Returns:
+            Sequência de Abordagens com pessoas e veículos carregados.
+        """
+        return await self.repo.list_by_pessoa(pessoa_id, guarnicao_id, limit)
+
     async def buscar_por_raio(
         self,
         latitude: float,

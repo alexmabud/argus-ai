@@ -73,7 +73,9 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new ApiError(response.status, errorData.detail || "Erro na requisição");
+        const detail = errorData.detail;
+        const msg = typeof detail === "string" ? detail : Array.isArray(detail) ? detail.map((d) => d.msg || d).join("; ") : "Erro na requisição";
+        throw new ApiError(response.status, msg);
       }
 
       if (response.status === 204) return null;
