@@ -1,5 +1,17 @@
 # CLAUDE.md — Argus AI
 
+## Skills — Processo de Trabalho
+
+Antes de qualquer tarefa, verifique se existe uma skill aplicável em `.claude/skills/`.
+Consulte `.claude/skills/GUIA.md` para referência rápida.
+
+Regras:
+- Implementar feature nova → usar `brainstorming` + `writing-plans` antes de codar
+- Bug reportado → usar `systematic-debugging`
+- Tarefa concluída → usar `verification-before-completion` para confirmar
+- Code review → usar `requesting-code-review`
+- Se houver 1% de chance de uma skill se aplicar, use-a
+
 ## Projeto
 Argus AI — Sistema de apoio operacional com IA para equipes de patrulhamento.
 Memória operacional da guarnição: abordagens, ocorrências, RAG, reconhecimento facial, análise geoespacial.
