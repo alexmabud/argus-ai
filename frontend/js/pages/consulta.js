@@ -158,6 +158,8 @@ function renderConsulta() {
               </div>
               <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
                  x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
+              <p x-show="v.criado_em" class="text-xs text-slate-500"
+                 x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></p>
               <div x-show="vinculoPorVeiculo[v.placa]" class="flex items-center gap-1 pt-0.5">
                 <svg class="w-3 h-3 text-blue-400 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
