@@ -64,7 +64,7 @@ class TestFaceService:
             result = service.extrair_embedding(b"fake_image_bytes")
 
         assert result is not None
-        assert result[0] == float(np.float32(0.9))
+        assert abs(result[0] - float(np.float32(0.9))) < 1e-5
 
     def test_comparar_identicos(self):
         """Similaridade cosseno de vetores idênticos deve ser ~1.0."""

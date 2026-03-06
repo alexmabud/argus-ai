@@ -98,11 +98,9 @@ def chunk_text_paragrafos(
                 else []
             )
 
-        chunks: list[dict] = []
-
-        buffer = ""
-
-        buffer_words = 0
+    chunks: list[dict] = []
+    buffer = ""
+    buffer_words = 0
 
     for paragrafo in paragrafos:
         words = len(paragrafo.split())
