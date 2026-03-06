@@ -150,5 +150,11 @@ yarn.lock
 # RUFF / LINT
 # ══════════════════════════════════
 .ruff_cache/
+
+# ══════════════════════════════════
+# CLAUDE CODE
+# ══════════════════════════════════
+.claude/skills/
+.claude/settings.local.json
 # Credenciais e chaves privadas
 Claude Flare - Argus.txt
