@@ -100,6 +100,8 @@ function renderConsulta() {
                   <p class="text-sm font-medium text-slate-200" x-text="p.nome"></p>
                   <p x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + p.cpf_masked"></p>
                   <p x-show="p.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + p.apelido"></p>
+                  <p x-show="p.endereco_criado_em" class="text-xs text-slate-500"
+                     x-text="'Endereço cadastrado em ' + new Date(p.endereco_criado_em).toLocaleDateString('pt-BR')"></p>
                 </div>
                 <svg class="w-4 h-4 text-slate-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
