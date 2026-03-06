@@ -5,6 +5,7 @@ CPF hash (SHA-256) e carregamento eager de relacionamentos.
 """
 
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -137,6 +138,59 @@ class PessoaRepository(BaseRepository[Pessoa]):
         query = query.distinct().offset(skip).limit(limit)
         result = await self.db.execute(query)
         return result.scalars().all()
+
+    async def search_by_bairro_cidade_com_endereco(
+        self,
+        bairro: str | None,
+        cidade: str | None,
+        estado: str | None,
+        guarnicao_id: int | None,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> list[tuple[Pessoa, datetime]]:
+        """Busca pessoas por bairro/cidade/estado retornando tuplas com criado_em do endereço.
+
+        Idêntico a search_by_bairro_cidade, mas retorna também o criado_em
+        do EnderecoPessoa que gerou o match, para exibição no frontend.
+
+        Args:
+            bairro: Bairro para filtrar (parcial, opcional).
+            cidade: Cidade para filtrar (parcial, opcional).
+            estado: Sigla UF para filtrar (parcial, opcional).
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            skip: Número de registros a pular.
+            limit: Número máximo de resultados.
+
+        Returns:
+            Lista de tuplas (Pessoa, endereco_criado_em: datetime). Quando a pessoa
+            tem múltiplos endereços no bairro/cidade/estado filtrado, retorna o
+            endereço cadastrado mais recentemente (criado_em DESC).
+        """
+        query = (
+            select(Pessoa, EnderecoPessoa.criado_em)
+            .join(EnderecoPessoa, EnderecoPessoa.pessoa_id == Pessoa.id)
+            .where(
+                Pessoa.ativo == True,  # noqa: E712
+                EnderecoPessoa.ativo == True,  # noqa: E712
+            )
+        )
+        if bairro:
+            query = query.where(EnderecoPessoa.bairro.ilike(f"%{bairro}%"))
+        if cidade:
+            query = query.where(EnderecoPessoa.cidade.ilike(f"%{cidade}%"))
+        if estado:
+            query = query.where(EnderecoPessoa.estado.ilike(f"%{estado}%"))
+        if guarnicao_id is not None:
+            query = query.where(Pessoa.guarnicao_id == guarnicao_id)
+
+        query = (
+            query.order_by(Pessoa.id, EnderecoPessoa.criado_em.desc())
+            .distinct(Pessoa.id)
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return list(result.all())
 
     async def get_localidades(self, guarnicao_id: int | None) -> dict:
         """Retorna valores distintos de bairro, cidade e estado cadastrados.
