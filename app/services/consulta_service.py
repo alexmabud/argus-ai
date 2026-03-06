@@ -78,8 +78,10 @@ class ConsultaService:
             user: Usuário autenticado (para filtro multi-tenant).
 
         Returns:
-            Dicionário com chaves "pessoas", "veiculos", "abordagens"
-            e "total_resultados" com a contagem combinada.
+            Dicionário com chaves "pessoas", "veiculos", "abordagens",
+            "total_resultados" e "pessoas_com_endereco". A chave
+            "pessoas_com_endereco" é True quando "pessoas" contém tuplas
+            (Pessoa, datetime) — caso de busca por filtro de localidade.
         """
         guarnicao_id = user.guarnicao_id if user else None
         pessoas = []
