@@ -13,6 +13,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 from app.core.security import criar_access_token, hash_senha
@@ -27,7 +28,7 @@ from app.models.usuario import Usuario
 from app.models.veiculo import Veiculo
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def test_engine():
     """Fixture que cria o engine de teste.
 
@@ -39,9 +40,9 @@ def test_engine():
     engine = create_async_engine(
         settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
         echo=False,
+        poolclass=NullPool,
     )
     yield engine
-    engine.sync_engine.dispose()
 
 
 @pytest.fixture(autouse=True)

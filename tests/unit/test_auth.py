@@ -204,4 +204,4 @@ class TestMe:
             client: Cliente HTTP assincrónico para testes.
         """
         response = await client.get("/api/v1/auth/me")
-        assert response.status_code == 403
+        assert response.status_code == 401
