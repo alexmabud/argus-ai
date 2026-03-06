@@ -164,3 +164,32 @@ class AnalyticsService:
             }
             for row in result.all()
         ]
+
+    async def metricas_rag(self, guarnicao_id: int) -> dict:
+        """Retorna métricas de ocorrências para o módulo RAG.
+
+        Conta total de ocorrências e quantas estão indexadas (com embedding).
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+
+        Returns:
+            Dict com total_ocorrencias e ocorrencias_indexadas.
+        """
+        from sqlalchemy import text as sql_text
+
+        result_total = await self.db.execute(
+            sql_text("SELECT COUNT(*) FROM ocorrencias WHERE guarnicao_id = :gid AND ativo = true"),
+            {"gid": guarnicao_id},
+        )
+        result_indexadas = await self.db.execute(
+            sql_text(
+                "SELECT COUNT(*) FROM ocorrencias"
+                " WHERE guarnicao_id = :gid AND ativo = true AND embedding IS NOT NULL"
+            ),
+            {"gid": guarnicao_id},
+        )
+        return {
+            "total_ocorrencias": result_total.scalar() or 0,
+            "ocorrencias_indexadas": result_indexadas.scalar() or 0,
+        }

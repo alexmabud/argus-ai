@@ -73,6 +73,7 @@ class TestCriarAbordagem:
             user_id=usuario.id,
             guarnicao_id=guarnicao.id,
         )
+        await db_session.refresh(abordagem, attribute_names=["pessoas"])
         assert len(abordagem.pessoas) == 1
         assert abordagem.pessoas[0].pessoa_id == pessoa.id
 
@@ -102,6 +103,7 @@ class TestCriarAbordagem:
             user_id=usuario.id,
             guarnicao_id=guarnicao.id,
         )
+        await db_session.refresh(abordagem, attribute_names=["veiculos"])
         assert len(abordagem.veiculos) == 1
         assert abordagem.veiculos[0].veiculo_id == veiculo.id
 

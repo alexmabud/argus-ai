@@ -118,9 +118,11 @@ class TestMetricasRAG:
     async def test_metricas_rag_retorna_totais(self):
         """Deve retornar total de ocorrências e indexadas."""
         db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar.side_effect = [10, 7]
-        db.execute = AsyncMock(return_value=mock_result)
+        mock_total = MagicMock()
+        mock_total.scalar.return_value = 10
+        mock_indexadas = MagicMock()
+        mock_indexadas.scalar.return_value = 7
+        db.execute = AsyncMock(side_effect=[mock_total, mock_indexadas])
         service = AnalyticsService(db)
 
         result = await service.metricas_rag(guarnicao_id=1)
