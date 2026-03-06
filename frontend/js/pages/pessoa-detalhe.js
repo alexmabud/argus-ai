@@ -91,6 +91,7 @@ function renderPessoaDetalhe(appState) {
                   <div class="flex gap-3 text-[10px] text-slate-500 mt-0.5">
                     <span x-show="end.data_inicio" x-text="'Desde ' + new Date(end.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
                     <span x-show="end.data_fim" x-text="'Até ' + new Date(end.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
+                    <span x-show="end.criado_em" x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
                     <span x-show="idx === 0" class="text-blue-400 font-medium">Atual</span>
                   </div>
                 </div>
@@ -110,6 +111,8 @@ function renderPessoaDetalhe(appState) {
                     <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="v.placa"></span>
                     <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
                        x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
+                    <p x-show="v.criado_em" class="text-xs text-slate-500"
+                       x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></p>
                   </div>
                 </div>
               </template>
