@@ -41,12 +41,12 @@ function renderPessoaDetalhe(appState) {
                 <span class="text-slate-300 ml-1" x-text="pessoa.data_nascimento ? new Date(pessoa.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'"></span>
               </div>
               <div>
-                <span class="text-slate-500">Abordagens:</span>
-                <span class="text-slate-300 ml-1" x-text="pessoa.abordagens_count || 0"></span>
-              </div>
-              <div>
                 <span class="text-slate-500">Cadastro:</span>
                 <span class="text-slate-300 ml-1" x-text="new Date(pessoa.criado_em).toLocaleDateString('pt-BR')"></span>
+              </div>
+              <div>
+                <span class="text-slate-500">Abordagens:</span>
+                <span class="text-slate-300 ml-1" x-text="pessoa.abordagens_count || 0"></span>
               </div>
             </div>
             <div x-show="pessoa.observacoes" class="pt-1">
