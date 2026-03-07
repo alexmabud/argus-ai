@@ -74,7 +74,7 @@ class StorageService:
                 ContentType=content_type,
             )
 
-        url = f"{settings.S3_ENDPOINT}/{settings.S3_BUCKET}/{key}"
+        url = f"{settings.s3_public_url}/{settings.S3_BUCKET}/{key}"
         logger.info("Upload concluído: %s", key)
         return url
 
