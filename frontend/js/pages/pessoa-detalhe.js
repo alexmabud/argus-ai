@@ -152,7 +152,7 @@ function renderPessoaDetalhe(appState) {
             </h3>
             <div class="space-y-2">
               <template x-for="rel in pessoa.relacionamentos" :key="rel.pessoa_id">
-                <div @click="viewPessoa(rel.pessoa_id)" class="flex items-center justify-between bg-slate-800/50 rounded-lg p-2 cursor-pointer hover:bg-slate-700/50">
+                <div @click="viewPessoa(rel.pessoa_id)" class="flex items-center justify-between border border-slate-700/40 border-l-4 border-l-orange-500 rounded-lg p-3 cursor-pointer hover:bg-slate-800/50">
                   <span class="text-sm text-slate-300" x-text="rel.nome"></span>
                   <div class="text-right">
                     <span class="text-xs text-blue-400 font-medium" x-text="rel.frequencia + 'x juntos'"></span>
