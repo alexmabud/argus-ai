@@ -238,7 +238,7 @@ function pessoaDetalhePage(pessoaId) {
 
     formatPlaca(placa) {
       if (!placa) return '—';
-      const p = placa.toUpperCase().replace('-', '');
+      const p = placa.toUpperCase().replace(/-/g, '');
       if (p.length >= 4) return p.slice(0, 3) + '-' + p.slice(3);
       return p;
     },
