@@ -29,7 +29,7 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Dados pessoais -->
-          <div class="card space-y-2">
+          <div class="card space-y-2 border-l-4 border-l-slate-400">
             <h3 class="text-sm font-semibold text-slate-300">Dados Pessoais</h3>
             <div class="grid grid-cols-2 gap-2 text-sm">
               <div>
