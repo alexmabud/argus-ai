@@ -584,7 +584,7 @@ function abordagemForm() {
           veiculoAutoEl._x_dataStack[0].selected.push(veiculo);
         }
 
-        // Reset
+        // Reset (fotoVeiculoFile mantida — será enviada no submit() com o abordagem_id)
         this.novoVeiculo = { placa: "", modelo: "", cor: "", ano: "" };
         this.showNovoVeiculo = false;
       } catch (err) {
