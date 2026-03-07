@@ -29,10 +29,16 @@ class Settings(BaseSettings):
         ALGORITHM: Algoritmo JWT (HS256).
         ENCRYPTION_KEY: Chave Fernet para criptografia de campos sensíveis LGPD.
         S3_ENDPOINT: Endpoint de armazenamento S3-compatível (R2, MinIO).
+            Usado pelo backend para upload/download. Em Docker Compose
+            tipicamente aponta para hostname interno (ex: http://minio:9000).
         S3_ACCESS_KEY: Credencial de acesso S3.
         S3_SECRET_KEY: Credencial secreta S3.
         S3_BUCKET: Nome do bucket S3 para armazenamento de arquivos.
         S3_REGION: Região S3 (auto para Cloudflare R2).
+        S3_PUBLIC_URL: URL pública do storage acessível pelo browser (opcional).
+            Quando não definida, S3_ENDPOINT é usado como fallback. Necessária
+            em Docker Compose onde S3_ENDPOINT usa hostname interno Docker
+            inacessível pelo browser (ex: S3_PUBLIC_URL=http://localhost:9000).
         LLM_PROVIDER: Provedor LLM (anthropic ou ollama).
         ANTHROPIC_API_KEY: Chave de API Anthropic para modelos Claude.
         OLLAMA_BASE_URL: URL do servidor Ollama para LLM local.
@@ -78,6 +84,20 @@ class Settings(BaseSettings):
     S3_SECRET_KEY: str
     S3_BUCKET: str = "argus"
     S3_REGION: str = "auto"
+    S3_PUBLIC_URL: str | None = None
+
+    @property
+    def s3_public_url(self) -> str:
+        """Retorna URL pública do storage acessível pelo browser.
+
+        Se S3_PUBLIC_URL não for definida, usa S3_ENDPOINT como fallback.
+        Necessário em Docker Compose onde o backend usa hostname interno
+        (ex: http://minio:9000) inacessível pelo browser.
+
+        Returns:
+            URL pública do storage para ser usada em URLs retornadas ao browser.
+        """
+        return self.S3_PUBLIC_URL or self.S3_ENDPOINT
 
     # LLM
     LLM_PROVIDER: str = "anthropic"  # anthropic | ollama
