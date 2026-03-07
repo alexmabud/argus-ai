@@ -94,7 +94,7 @@ function renderPessoaDetalhe(appState) {
                       <span x-show="end.data_fim" x-text="'Até ' + new Date(end.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
                       <span x-show="idx === 0" class="text-blue-400 font-medium">Atual</span>
                     </div>
-                    <span x-show="end.criado_em" class="text-slate-500" x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
+                    <span x-show="end.criado_em" class="text-xs text-slate-500" x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
                   </div>
                 </div>
               </template>
