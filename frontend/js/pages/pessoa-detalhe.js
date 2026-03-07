@@ -111,7 +111,7 @@ function renderPessoaDetalhe(appState) {
             </h3>
             <div class="space-y-2">
               <template x-for="v in veiculos" :key="v.id">
-                <div class="flex items-center justify-between bg-slate-800/50 rounded-lg p-2">
+                <div class="flex items-center justify-between border border-slate-700/40 border-l-4 border-l-green-500 rounded-lg p-3">
                   <div>
                     <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="formatPlaca(v.placa)"></span>
                     <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
