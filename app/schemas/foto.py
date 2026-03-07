@@ -20,12 +20,14 @@ class FotoTipo(StrEnum):
         rosto: Foto de rosto para reconhecimento facial.
         corpo: Foto de corpo inteiro.
         placa: Foto de placa veicular.
+        veiculo: Foto geral do veículo envolvido na abordagem.
         documento: Foto de documento.
     """
 
     rosto = "rosto"
     corpo = "corpo"
     placa = "placa"
+    veiculo = "veiculo"
     documento = "documento"
 
 

@@ -8,8 +8,9 @@ modelos de ML e ciclo de vida de conexões com banco de dados.
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.health import router as health_router
@@ -79,6 +80,16 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Handler global para exceções não-tratadas — garante resposta JSON em vez de plain text
+    @app.exception_handler(Exception)
+    async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        """Retorna JSON para qualquer exceção não-tratada, evitando plain text 500."""
+        logger.exception("Erro interno não tratado: %s", exc)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Erro interno do servidor. Tente novamente."},
+        )
 
     # Routers
     app.include_router(health_router)
