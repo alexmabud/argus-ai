@@ -171,7 +171,7 @@ function renderPessoaDetalhe(appState) {
             </h3>
             <div class="space-y-3">
               <template x-for="ab in abordagens" :key="ab.id">
-                <div class="border border-slate-700 rounded-lg p-3 space-y-2">
+                <div class="border border-slate-700/40 border-l-4 border-l-purple-500 rounded-lg p-3 space-y-2">
                   <div class="flex items-center justify-between">
                     <span class="text-xs font-medium text-blue-400" x-text="'#' + ab.id"></span>
                     <span class="text-xs text-slate-400" x-text="new Date(ab.data_hora).toLocaleString('pt-BR')"></span>
