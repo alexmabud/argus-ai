@@ -121,6 +121,23 @@ function renderPessoaDetalhe(appState) {
             </div>
           </div>
 
+          <!-- Fotos de veículos -->
+          <div x-show="fotosVeiculos.length > 0" class="card space-y-2">
+            <h3 class="text-sm font-semibold text-slate-300">
+              Fotos de Veículos (<span x-text="fotosVeiculos.length"></span>)
+            </h3>
+            <div class="grid grid-cols-3 gap-2">
+              <template x-for="foto in fotosVeiculos" :key="foto.id">
+                <div class="relative">
+                  <img :src="foto.arquivo_url" class="w-full h-28 object-cover rounded-lg" loading="lazy"
+                       @click="fotoAmpliada = foto.arquivo_url">
+                  <span class="absolute bottom-1 left-1 bg-black/60 text-[10px] text-slate-300 px-1 rounded"
+                        x-text="foto.tipo"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
           <!-- Relacionamentos (vínculos) -->
           <div x-show="pessoa.relacionamentos?.length > 0" class="card space-y-2">
             <h3 class="text-sm font-semibold text-slate-300">
@@ -188,6 +205,7 @@ function pessoaDetalhePage(pessoaId) {
   return {
     pessoa: null,
     fotos: [],
+    fotosVeiculos: [],
     abordagens: [],
     veiculos: [],
     fotoAmpliada: null,
@@ -219,6 +237,16 @@ function pessoaDetalhePage(pessoaId) {
       try {
         const abordagens = await api.get(`/pessoas/${pessoaId}/abordagens`);
         this.abordagens = abordagens;
+
+        // Carregar fotos de veículo/placa de todas as abordagens em paralelo
+        const fotosPromises = abordagens.map(ab =>
+          api.get(`/fotos/abordagem/${ab.id}`).catch(() => [])
+        );
+        const fotosResultados = await Promise.all(fotosPromises);
+        const tiposVeiculo = ['veiculo', 'placa'];
+        this.fotosVeiculos = fotosResultados
+          .flat()
+          .filter(f => tiposVeiculo.includes(f.tipo));
 
         // Coletar veículos únicos de todas as abordagens
         const veiculosMap = {};
