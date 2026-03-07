@@ -54,7 +54,7 @@ async def main() -> None:
 
         # 3. Criar novo admin
         matricula = "admin001"
-        senha = _gerar_senha()
+        senha = "admin123"
 
         session.add(
             Usuario(
