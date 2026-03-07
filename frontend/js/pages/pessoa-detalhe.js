@@ -152,22 +152,23 @@ function renderPessoaDetalhe(appState) {
                     <span class="text-xs font-medium text-blue-400" x-text="'#' + ab.id"></span>
                     <span class="text-xs text-slate-400" x-text="new Date(ab.data_hora).toLocaleString('pt-BR')"></span>
                   </div>
-                  <p x-show="ab.endereco_texto" class="text-xs text-slate-400" x-text="ab.endereco_texto"></p>
-                  <p x-show="ab.observacao" class="text-xs text-slate-300" x-text="ab.observacao"></p>
-
-                  <!-- Pessoas nesta abordagem -->
-                  <div x-show="ab.pessoas?.length > 0" class="flex flex-wrap gap-1">
-                    <template x-for="ap in ab.pessoas" :key="ap.id">
-                      <span class="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded"
-                            x-text="ap.nome"></span>
-                    </template>
+                  <!-- Endereço da Abordagem -->
+                  <div x-show="ab.endereco_texto" class="text-xs">
+                    <span class="text-slate-500 font-medium">Endereço da Abordagem:</span>
+                    <span class="text-slate-400 ml-1" x-text="ab.endereco_texto"></span>
                   </div>
 
-                  <!-- Veículos nesta abordagem -->
-                  <div x-show="ab.veiculos?.length > 0" class="flex flex-wrap gap-1">
+                  <!-- Observação -->
+                  <div x-show="ab.observacao" class="text-xs">
+                    <span class="text-slate-500 font-medium">Observação:</span>
+                    <span class="text-slate-300 ml-1" x-text="ab.observacao"></span>
+                  </div>
+
+                  <!-- Veículos nesta abordagem (um por linha, sem dono) -->
+                  <div x-show="ab.veiculos?.length > 0" class="space-y-0.5">
                     <template x-for="av in ab.veiculos" :key="av.id">
-                      <span class="text-[10px] bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded font-mono"
-                            x-text="av.placa"></span>
+                      <div class="text-xs text-slate-400"
+                           x-text="[formatPlaca(av.placa), av.modelo, av.cor, av.ano].filter(Boolean).join(' · ')"></div>
                     </template>
                   </div>
                 </div>
