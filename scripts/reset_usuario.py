@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 import app.models  # noqa: F401 — registra todos os models no metadata
 from app.config import settings
 from app.core.security import hash_senha
+from app.models.audit_log import AuditLog
 from app.models.guarnicao import Guarnicao
 from app.models.usuario import Usuario
 
@@ -35,7 +36,11 @@ async def main() -> None:
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async with session_factory() as session:
-        # 1. Apagar todos os usuários (hard delete)
+        # 1. Apagar audit_logs primeiro (FK -> usuarios.id)
+        await session.execute(delete(AuditLog))
+        await session.flush()
+
+        # 2. Apagar todos os usuários (hard delete)
         await session.execute(delete(Usuario))
         await session.flush()
 
