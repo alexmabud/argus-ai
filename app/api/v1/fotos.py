@@ -96,19 +96,25 @@ async def upload_foto(
         )
 
     service = FotoService(db)
-    foto = await service.upload_foto(
-        file_bytes=file_bytes,
-        filename=file.filename or "foto.jpg",
-        content_type=file.content_type or "image/jpeg",
-        pessoa_id=pessoa_id,
-        abordagem_id=abordagem_id,
-        tipo=tipo,
-        latitude=latitude,
-        longitude=longitude,
-        user_id=user.id,
-        ip_address=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
-    )
+    try:
+        foto = await service.upload_foto(
+            file_bytes=file_bytes,
+            filename=file.filename or "foto.jpg",
+            content_type=file.content_type or "image/jpeg",
+            pessoa_id=pessoa_id,
+            abordagem_id=abordagem_id,
+            tipo=tipo,
+            latitude=latitude,
+            longitude=longitude,
+            user_id=user.id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao fazer upload da foto. Verifique o storage e tente novamente.",
+        ) from exc
     return FotoUploadResponse(id=foto.id, arquivo_url=foto.arquivo_url, tipo=foto.tipo)
 
 
