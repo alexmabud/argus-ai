@@ -70,6 +70,7 @@ function renderPessoaDetalhe(appState) {
                           x-text="foto.tipo || 'foto'"></span>
                   </div>
                   <p class="text-xs text-slate-400 text-center mt-1"
+                     x-show="foto.criado_em"
                      x-text="foto.criado_em ? new Date(foto.criado_em).toLocaleDateString('pt-BR') : ''"></p>
                 </div>
               </template>
@@ -136,9 +137,10 @@ function renderPessoaDetalhe(appState) {
                     <img :src="foto.arquivo_url" class="w-full h-28 object-cover rounded-lg" loading="lazy"
                          @click="fotoAmpliada = foto.arquivo_url">
                     <span class="absolute bottom-1 left-1 bg-black/60 text-[10px] text-slate-300 px-1 rounded"
-                          x-text="foto.tipo"></span>
+                          x-text="foto.tipo || 'foto'"></span>
                   </div>
                   <p class="text-xs text-slate-400 text-center mt-1"
+                     x-show="foto.criado_em"
                      x-text="foto.criado_em ? new Date(foto.criado_em).toLocaleDateString('pt-BR') : ''"></p>
                 </div>
               </template>
