@@ -110,7 +110,7 @@ function renderPessoaDetalhe(appState) {
               <template x-for="v in veiculos" :key="v.id">
                 <div class="flex items-center justify-between bg-slate-800/50 rounded-lg p-2">
                   <div>
-                    <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="v.placa"></span>
+                    <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="formatPlaca(v.placa)"></span>
                     <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
                        x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
                   </div>
@@ -234,6 +234,13 @@ function pessoaDetalhePage(pessoaId) {
       if (!end) return "";
       const parts = [end.endereco, end.bairro, end.cidade, end.estado].filter(Boolean);
       return parts.join(", ");
+    },
+
+    formatPlaca(placa) {
+      if (!placa) return '—';
+      const p = placa.toUpperCase().replace('-', '');
+      if (p.length >= 4) return p.slice(0, 3) + '-' + p.slice(3);
+      return p;
     },
 
     viewPessoa(id) {
