@@ -5,6 +5,17 @@
  * (vínculos com outras pessoas), veículos e histórico de abordagens.
  * Todas as informações aparecem sem ocultação.
  */
+const PALETTE = [
+  'border-l-blue-500',
+  'border-l-green-500',
+  'border-l-orange-500',
+  'border-l-purple-500',
+  'border-l-teal-500',
+  'border-l-yellow-500',
+  'border-l-red-400',
+  'border-l-pink-500',
+];
+
 function renderPessoaDetalhe(appState) {
   const pessoaId = appState._pessoaId;
   if (!pessoaId) {
@@ -84,7 +95,7 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Endereços -->
-          <div x-show="pessoa.enderecos?.length > 0" class="card space-y-2">
+          <div x-show="pessoa.enderecos?.length > 0" class="card space-y-2 border-l-4 border-l-blue-600">
             <h3 class="text-sm font-semibold text-slate-300">
               Endereços (<span x-text="pessoa.enderecos.length"></span>)
             </h3>
@@ -106,7 +117,7 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Veículos vinculados -->
-          <div x-show="veiculos.length > 0" class="card space-y-2">
+          <div x-show="veiculos.length > 0" class="card space-y-2 border-l-4 border-l-green-600">
             <h3 class="text-sm font-semibold text-slate-300">
               Veículos (<span x-text="veiculos.length"></span>)
             </h3>
@@ -167,7 +178,7 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Histórico de abordagens -->
-          <div x-show="abordagens.length > 0" class="card space-y-2">
+          <div x-show="abordagens.length > 0" class="card space-y-2 border-l-4 border-l-purple-600">
             <h3 class="text-sm font-semibold text-slate-300">
               Histórico de Abordagens (<span x-text="abordagens.length"></span>)
             </h3>
