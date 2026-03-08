@@ -220,6 +220,36 @@ function renderPessoaDetalhe(appState) {
               </template>
             </div>
           </div>
+
+          <!-- Mapa de Abordagens -->
+          <div x-show="pontosComLocalizacao.length > 0" class="card space-y-2 border-l-4 border-l-teal-500">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-slate-300">
+                Mapa de Abordagens (<span x-text="pontosComLocalizacao.length"></span>)
+              </h3>
+              <div class="flex gap-1">
+                <button
+                  @click="toggleModoMapa('marcadores')"
+                  class="text-xs px-2 py-1 rounded transition-colors"
+                  :class="modoMapa === 'marcadores' ? 'bg-teal-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'"
+                >
+                  Marcadores
+                </button>
+                <button
+                  @click="toggleModoMapa('calor')"
+                  class="text-xs px-2 py-1 rounded transition-colors"
+                  :class="modoMapa === 'calor' ? 'bg-teal-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'"
+                >
+                  Calor
+                </button>
+              </div>
+            </div>
+            <div
+              :id="'mapa-pessoa-' + ${pessoaId}"
+              style="height: 350px; border-radius: 8px; z-index: 1;"
+              class="w-full bg-slate-800"
+            ></div>
+          </div>
         </div>
       </template>
 
