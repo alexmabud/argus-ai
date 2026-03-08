@@ -245,7 +245,7 @@ function renderPessoaDetalhe(appState) {
               </div>
             </div>
             <div
-              :id="'mapa-pessoa-' + ${pessoaId}"
+              id="mapa-pessoa-${pessoaId}"
               style="height: 350px; border-radius: 8px; z-index: 1;"
               class="w-full bg-slate-800"
             ></div>
