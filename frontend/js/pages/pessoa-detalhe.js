@@ -101,7 +101,7 @@ function renderPessoaDetalhe(appState) {
             </h3>
             <div class="space-y-2">
               <template x-for="(end, idx) in pessoa.enderecos" :key="end.id">
-                <div class="border border-slate-700/40 border-l-4 border-l-blue-500 rounded-lg p-3">
+                <div class="border border-slate-700/40 border-l-4 rounded-lg p-3" :class="PALETTE[idx % PALETTE.length]">
                   <p class="text-sm text-slate-300" x-text="formatEndereco(end)"></p>
                   <div class="flex items-center justify-between text-[10px] mt-0.5">
                     <div class="flex gap-3 text-slate-500">
