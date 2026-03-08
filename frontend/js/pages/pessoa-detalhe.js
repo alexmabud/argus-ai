@@ -81,8 +81,8 @@ function renderPessoaDetalhe(appState) {
                           x-text="foto.tipo || 'foto'"></span>
                   </div>
                   <p class="text-xs text-slate-400 text-center mt-1"
-                     x-show="foto.criado_em"
-                     x-text="foto.criado_em ? new Date(foto.criado_em).toLocaleDateString('pt-BR') : ''"></p>
+                     x-show="foto.data_hora"
+                     x-text="foto.data_hora ? new Date(foto.data_hora).toLocaleDateString('pt-BR') : ''"></p>
                 </div>
               </template>
             </div>
@@ -153,8 +153,8 @@ function renderPessoaDetalhe(appState) {
                             x-text="foto.tipo || 'foto'"></span>
                     </div>
                     <p class="text-xs text-slate-400 text-center mt-1"
-                       x-show="foto.criado_em"
-                       x-text="foto.criado_em ? new Date(foto.criado_em).toLocaleDateString('pt-BR') : ''"></p>
+                       x-show="foto.data_hora"
+                       x-text="foto.data_hora ? new Date(foto.data_hora).toLocaleDateString('pt-BR') : ''"></p>
                   </div>
                 </template>
               </div>
