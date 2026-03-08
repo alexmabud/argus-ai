@@ -230,6 +230,7 @@ function renderPessoaDetalhe(appState) {
               <div class="flex gap-1">
                 <button
                   @click="toggleModoMapa('marcadores')"
+                  :aria-pressed="modoMapa === 'marcadores'"
                   class="text-xs px-2 py-1 rounded transition-colors"
                   :class="modoMapa === 'marcadores' ? 'bg-teal-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'"
                 >
@@ -237,6 +238,7 @@ function renderPessoaDetalhe(appState) {
                 </button>
                 <button
                   @click="toggleModoMapa('calor')"
+                  :aria-pressed="modoMapa === 'calor'"
                   class="text-xs px-2 py-1 rounded transition-colors"
                   :class="modoMapa === 'calor' ? 'bg-teal-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'"
                 >
@@ -246,8 +248,7 @@ function renderPessoaDetalhe(appState) {
             </div>
             <div
               id="mapa-pessoa-${pessoaId}"
-              style="height: 350px; border-radius: 8px; z-index: 1;"
-              class="w-full bg-slate-800"
+              class="w-full h-[350px] rounded-lg bg-slate-800 z-[1]"
             ></div>
           </div>
         </div>
