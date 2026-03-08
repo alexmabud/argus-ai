@@ -270,6 +270,11 @@ function pessoaDetalhePage(pessoaId) {
     fotoAmpliada: null,
     loading: true,
     erro: null,
+    mapaInst: null,
+    clusterLayer: null,
+    heatLayer: null,
+    modoMapa: 'marcadores',
+    pontosComLocalizacao: [],
 
     async load() {
       try {
@@ -315,7 +320,90 @@ function pessoaDetalhePage(pessoaId) {
           }
         }
         this.veiculos = Object.values(veiculosMap);
+
+        // Extrair pontos com coordenadas para o mapa
+        this.pontosComLocalizacao = abordagens
+          .filter(ab => ab.latitude != null && ab.longitude != null)
+          .map(ab => ({
+            lat: ab.latitude,
+            lng: ab.longitude,
+            dataHora: ab.data_hora
+              ? new Date(ab.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+              : (ab.criado_em ? new Date(ab.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'),
+            endereco: ab.endereco_texto || '',
+          }));
+
+        // Inicializar mapa lazy via IntersectionObserver
+        if (this.pontosComLocalizacao.length > 0) {
+          await this.$nextTick();
+          const divId = `mapa-pessoa-${pessoaId}`;
+          const div = document.getElementById(divId);
+          if (div) {
+            const observer = new IntersectionObserver((entries) => {
+              if (entries[0].isIntersecting) {
+                observer.disconnect();
+                this.initMapa();
+              }
+            }, { threshold: 0.1 });
+            observer.observe(div);
+          }
+        }
       } catch { /* silencioso */ }
+    },
+
+    initMapa() {
+      const divId = `mapa-pessoa-${pessoaId}`;
+      const div = document.getElementById(divId);
+      if (!div || this.mapaInst) return;
+
+      this.mapaInst = L.map(div, { zoomControl: true });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19,
+      }).addTo(this.mapaInst);
+
+      const pontos = this.pontosComLocalizacao;
+
+      // Camada de marcadores agrupados
+      this.clusterLayer = L.markerClusterGroup();
+      for (const p of pontos) {
+        const marker = L.marker([p.lat, p.lng]);
+        marker.bindPopup(`<b>${p.dataHora}</b><br>${p.endereco || 'Endereço não informado'}`);
+        this.clusterLayer.addLayer(marker);
+      }
+
+      // Camada de calor
+      const heatPontos = pontos.map(p => [p.lat, p.lng, 1]);
+      this.heatLayer = L.heatLayer(heatPontos, {
+        radius: 30,
+        blur: 20,
+        maxZoom: 17,
+        gradient: { 0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red' },
+      });
+
+      // Modo inicial: marcadores
+      this.mapaInst.addLayer(this.clusterLayer);
+
+      // Ajusta zoom para cobrir todos os pontos
+      if (pontos.length === 1) {
+        this.mapaInst.setView([pontos[0].lat, pontos[0].lng], 15);
+      } else {
+        const bounds = L.latLngBounds(pontos.map(p => [p.lat, p.lng]));
+        this.mapaInst.fitBounds(bounds, { padding: [30, 30] });
+      }
+    },
+
+    toggleModoMapa(modo) {
+      if (!this.mapaInst || modo === this.modoMapa) return;
+      this.modoMapa = modo;
+      if (modo === 'marcadores') {
+        this.mapaInst.removeLayer(this.heatLayer);
+        this.mapaInst.addLayer(this.clusterLayer);
+      } else {
+        this.mapaInst.removeLayer(this.clusterLayer);
+        this.mapaInst.addLayer(this.heatLayer);
+      }
     },
 
     formatEndereco(end) {
