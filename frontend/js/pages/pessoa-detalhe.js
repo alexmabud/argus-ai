@@ -275,6 +275,7 @@ function pessoaDetalhePage(pessoaId) {
     heatLayer: null,
     modoMapa: 'marcadores',
     pontosComLocalizacao: [],
+    _mapaObserver: null,
 
     async load() {
       try {
@@ -298,6 +299,12 @@ function pessoaDetalhePage(pessoaId) {
     },
 
     async carregarAbordagens() {
+      // Limpar observer anterior se existir
+      if (this._mapaObserver) {
+        this._mapaObserver.disconnect();
+        this._mapaObserver = null;
+      }
+
       try {
         const abordagens = await api.get(`/pessoas/${pessoaId}/abordagens`);
         this.abordagens = abordagens;
@@ -323,7 +330,8 @@ function pessoaDetalhePage(pessoaId) {
 
         // Extrair pontos com coordenadas para o mapa
         this.pontosComLocalizacao = abordagens
-          .filter(ab => ab.latitude != null && ab.longitude != null)
+          .filter(ab => typeof ab.latitude === 'number' && isFinite(ab.latitude)
+                     && typeof ab.longitude === 'number' && isFinite(ab.longitude))
           .map(ab => ({
             lat: ab.latitude,
             lng: ab.longitude,
@@ -346,6 +354,7 @@ function pessoaDetalhePage(pessoaId) {
               }
             }, { threshold: 0.1 });
             observer.observe(div);
+            this._mapaObserver = observer;
           }
         }
       } catch { /* silencioso */ }
@@ -355,6 +364,7 @@ function pessoaDetalhePage(pessoaId) {
       const divId = `mapa-pessoa-${pessoaId}`;
       const div = document.getElementById(divId);
       if (!div || this.mapaInst) return;
+      if (typeof L === 'undefined') return;
 
       this.mapaInst = L.map(div, { zoomControl: true });
 
