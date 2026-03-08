@@ -117,12 +117,12 @@ function renderPessoaDetalhe(appState) {
             </div>
           </div>
 
-          <!-- Veículos vinculados -->
-          <div x-show="veiculos.length > 0" class="card space-y-2 border-l-4 border-l-green-600">
-            <h3 class="text-sm font-semibold text-slate-300">
-              Veículos (<span x-text="veiculos.length"></span>)
-            </h3>
-            <div class="space-y-2">
+          <!-- Veículos Vinculados ao Abordado (container pai) -->
+          <div x-show="veiculos.length > 0 || fotosVeiculos.length > 0" class="card space-y-3 border-l-4 border-l-emerald-500">
+            <h3 class="text-sm font-semibold text-slate-300">Veículos Vinculados ao Abordado</h3>
+
+            <!-- Lista de veículos -->
+            <div x-show="veiculos.length > 0" class="space-y-2">
               <template x-for="(v, idx) in veiculos" :key="v.id">
                 <div class="flex items-center border border-slate-700/40 border-l-4 rounded-lg p-3" :class="PALETTE[idx % PALETTE.length]">
                   <div class="flex items-start justify-between gap-2 w-full">
@@ -137,27 +137,27 @@ function renderPessoaDetalhe(appState) {
                 </div>
               </template>
             </div>
-          </div>
 
-          <!-- Fotos de veículos -->
-          <div x-show="fotosVeiculos.length > 0" class="card space-y-2 border-l-4 border-l-teal-500">
-            <h3 class="text-sm font-semibold text-slate-300">
-              Fotos de Veículos (<span x-text="fotosVeiculos.length"></span>)
-            </h3>
-            <div class="grid grid-cols-3 gap-2">
-              <template x-for="foto in fotosVeiculos" :key="foto.id">
-                <div>
-                  <div class="relative">
-                    <img :src="foto.arquivo_url" class="w-full h-28 object-cover rounded-lg" loading="lazy"
-                         @click="fotoAmpliada = foto.arquivo_url">
-                    <span class="absolute bottom-1 left-1 bg-black/60 text-[10px] text-slate-300 px-1 rounded"
-                          x-text="foto.tipo || 'foto'"></span>
+            <!-- Fotos de veículos -->
+            <div x-show="fotosVeiculos.length > 0" class="space-y-2">
+              <p class="text-xs font-semibold text-slate-500">
+                Fotos de Veículos Vinculados ao Abordado (<span x-text="fotosVeiculos.length"></span>)
+              </p>
+              <div class="grid grid-cols-3 gap-2">
+                <template x-for="foto in fotosVeiculos" :key="foto.id">
+                  <div>
+                    <div class="relative">
+                      <img :src="foto.arquivo_url" class="w-full h-28 object-cover rounded-lg" loading="lazy"
+                           @click="fotoAmpliada = foto.arquivo_url">
+                      <span class="absolute bottom-1 left-1 bg-black/60 text-[10px] text-slate-300 px-1 rounded"
+                            x-text="foto.tipo || 'foto'"></span>
+                    </div>
+                    <p class="text-xs text-slate-400 text-center mt-1"
+                       x-show="foto.criado_em"
+                       x-text="foto.criado_em ? new Date(foto.criado_em).toLocaleDateString('pt-BR') : ''"></p>
                   </div>
-                  <p class="text-xs text-slate-400 text-center mt-1"
-                     x-show="foto.criado_em"
-                     x-text="foto.criado_em ? new Date(foto.criado_em).toLocaleDateString('pt-BR') : ''"></p>
-                </div>
-              </template>
+                </template>
+              </div>
             </div>
           </div>
 
