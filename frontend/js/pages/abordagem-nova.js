@@ -640,19 +640,7 @@ function abordagemForm() {
         this.clientId = crypto.randomUUID();
       }
 
-      // Montar nota de vínculos veículo → abordado na observação
-      const vinculos = Object.entries(this.veiculoPorPessoa)
-        .filter(([vId, pId]) => pId && this.veiculoIds.includes(parseInt(vId)))
-        .map(([vId, pId]) => {
-          const veiculo = this.veiculosSelecionados.find((v) => v.id === parseInt(vId));
-          const pessoa = this.pessoasSelecionadas.find((p) => p.id === pId);
-          return veiculo && pessoa ? `${veiculo.placa} → ${pessoa.nome}` : null;
-        })
-        .filter(Boolean);
-      let obsTexto = this.observacao || "";
-      if (vinculos.length > 0) {
-        obsTexto = (obsTexto ? obsTexto + "\n" : "") + "Vínculos: " + vinculos.join(", ");
-      }
+      const obsTexto = this.observacao || "";
 
       const payload = {
         data_hora: new Date().toISOString(),
