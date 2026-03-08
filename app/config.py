@@ -128,7 +128,7 @@ class Settings(BaseSettings):
     # LGPD
     DATA_RETENTION_DAYS: int = 1825  # 5 anos
 
-    model_config = {"env_file": ".env"}
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()
