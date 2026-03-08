@@ -191,8 +191,6 @@ function renderPessoaDetalhe(appState) {
                   <div class="flex items-start justify-between gap-2">
                     <div>
                       <span class="text-xs font-medium text-blue-400" x-text="'#' + ab.id"></span>
-                      <span x-show="ab.data_hora" class="text-xs text-slate-400 ml-2"
-                            x-text="'Data da Abordagem: ' + new Date(ab.data_hora).toLocaleString('pt-BR')"></span>
                     </div>
                     <span x-show="ab.criado_em" class="text-xs text-slate-500 shrink-0"
                           x-text="'Cadastrada em ' + new Date(ab.criado_em).toLocaleDateString('pt-BR') + ' às ' + new Date(ab.criado_em).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})"></span>
