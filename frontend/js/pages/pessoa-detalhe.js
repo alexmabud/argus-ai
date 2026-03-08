@@ -296,6 +296,8 @@ function pessoaDetalhePage(pessoaId) {
       } finally {
         this.loading = false;
       }
+      // Após loading=false o x-if renderiza o conteúdo — agora o div do mapa existe
+      await this.setupMapaObserver();
     },
 
     async carregarAbordagens() {
@@ -341,23 +343,28 @@ function pessoaDetalhePage(pessoaId) {
             endereco: ab.endereco_texto || '',
           }));
 
-        // Inicializar mapa lazy via IntersectionObserver
-        if (this.pontosComLocalizacao.length > 0) {
-          await this.$nextTick();
-          const divId = `mapa-pessoa-${pessoaId}`;
-          const div = document.getElementById(divId);
-          if (div) {
-            const observer = new IntersectionObserver((entries) => {
-              if (entries[0].isIntersecting) {
-                observer.disconnect();
-                this.initMapa();
-              }
-            }, { threshold: 0.1 });
-            observer.observe(div);
-            this._mapaObserver = observer;
-          }
-        }
       } catch { /* silencioso */ }
+    },
+
+    async setupMapaObserver() {
+      if (this.pontosComLocalizacao.length === 0) return;
+      if (this._mapaObserver) {
+        this._mapaObserver.disconnect();
+        this._mapaObserver = null;
+      }
+      // x-if já renderizou o conteúdo, mas aguarda Alpine processar o DOM
+      await this.$nextTick();
+      const divId = `mapa-pessoa-${pessoaId}`;
+      const div = document.getElementById(divId);
+      if (!div) return;
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          observer.disconnect();
+          this.initMapa();
+        }
+      }, { threshold: 0.1 });
+      observer.observe(div);
+      this._mapaObserver = observer;
     },
 
     initMapa() {
