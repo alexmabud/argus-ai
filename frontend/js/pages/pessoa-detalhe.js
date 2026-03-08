@@ -102,14 +102,15 @@ function renderPessoaDetalhe(appState) {
             <div class="space-y-2">
               <template x-for="(end, idx) in pessoa.enderecos" :key="end.id">
                 <div class="border border-slate-700/40 border-l-4 rounded-lg p-3" :class="PALETTE[idx % PALETTE.length]">
-                  <p class="text-sm text-slate-300" x-text="formatEndereco(end)"></p>
-                  <div class="flex items-center justify-between text-[10px] mt-0.5">
-                    <div class="flex gap-3 text-slate-500">
-                      <span x-show="end.data_inicio" x-text="'Desde ' + new Date(end.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
-                      <span x-show="end.data_fim" x-text="'Até ' + new Date(end.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
-                      <span x-show="idx === 0" class="text-blue-400 font-medium">Atual</span>
-                    </div>
-                    <span x-show="end.criado_em" class="text-xs text-slate-500" x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-sm text-slate-300" x-text="formatEndereco(end)"></p>
+                    <span x-show="end.criado_em" class="text-xs text-slate-500 shrink-0"
+                          x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
+                  </div>
+                  <div class="flex gap-3 text-[10px] text-slate-500 mt-0.5">
+                    <span x-show="end.data_inicio" x-text="'Desde ' + new Date(end.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
+                    <span x-show="end.data_fim" x-text="'Até ' + new Date(end.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
+                    <span x-show="idx === 0" class="text-blue-400 font-medium">Atual</span>
                   </div>
                 </div>
               </template>
@@ -123,14 +124,16 @@ function renderPessoaDetalhe(appState) {
             </h3>
             <div class="space-y-2">
               <template x-for="(v, idx) in veiculos" :key="v.id">
-                <div class="flex items-center justify-between border border-slate-700/40 border-l-4 rounded-lg p-3" :class="PALETTE[idx % PALETTE.length]">
-                  <div>
-                    <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="formatPlaca(v.placa)"></span>
-                    <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
-                       x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
+                <div class="flex items-center border border-slate-700/40 border-l-4 rounded-lg p-3" :class="PALETTE[idx % PALETTE.length]">
+                  <div class="flex items-start justify-between gap-2 w-full">
+                    <div>
+                      <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="formatPlaca(v.placa)"></span>
+                      <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
+                         x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
+                    </div>
+                    <span x-show="v.criado_em" class="text-xs text-slate-500 shrink-0"
+                          x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></span>
                   </div>
-                  <span x-show="v.criado_em" class="text-xs text-slate-500"
-                        x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></span>
                 </div>
               </template>
             </div>
