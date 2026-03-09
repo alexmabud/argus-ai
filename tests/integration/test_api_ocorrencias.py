@@ -212,7 +212,7 @@ class TestBuscarOcorrencias:
         db_session.add(abordagem2)
         await db_session.flush()
 
-        from datetime import date as date_type
+        from datetime import date
 
         oc2 = Ocorrencia(
             numero_ocorrencia="RAP 2026/999999",
@@ -222,7 +222,7 @@ class TestBuscarOcorrencias:
             processada=True,
             usuario_id=usuario2.id,
             guarnicao_id=guarnicao2.id,
-            data_ocorrencia=date_type.today(),
+            data_ocorrencia=date.today(),
         )
         db_session.add(oc2)
         await db_session.flush()

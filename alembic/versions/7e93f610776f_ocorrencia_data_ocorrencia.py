@@ -34,6 +34,8 @@ def upgrade() -> None:
             server_default=sa.text("CURRENT_DATE"),
         ),
     )
+    # Remove server_default após backfill para evitar silenciar erros de INSERT
+    op.alter_column("ocorrencias", "data_ocorrencia", server_default=None)
     # ### end Alembic commands ###
 
 
