@@ -1,8 +1,8 @@
 """Router de Ocorrências (boletins de ocorrência).
 
-Fornece endpoints para upload de PDF de ocorrência, listagem com filtros
-multi-tenant e detalhe individual. O processamento do PDF (extração de
-texto + embedding) é feito em background via arq worker.
+Fornece endpoints para upload de PDF de ocorrência, busca por nome/RAP/data,
+listagem com filtros multi-tenant e detalhe individual. O processamento do
+PDF (extração de texto + embedding) é feito em background via arq worker.
 """
 
 import logging
@@ -119,6 +119,7 @@ async def listar_ocorrencias(
 
 
 @router.get("/buscar", response_model=list[OcorrenciaRead])
+@limiter.limit("30/minute")
 async def buscar_ocorrencias(
     request: Request,
     nome: str | None = Query(None, description="Nome do abordado no texto do PDF"),
