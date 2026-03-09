@@ -6,6 +6,7 @@ de texto e geração de embedding via arq worker) e consultas.
 """
 
 import logging
+from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -134,3 +135,31 @@ class OcorrenciaService:
         """
         result = await self.repo.get_all(skip=skip, limit=limit, guarnicao_id=guarnicao_id)
         return list(result)
+
+    async def buscar(
+        self,
+        guarnicao_id: int,
+        nome: str | None = None,
+        rap: str | None = None,
+        data: date | None = None,
+    ) -> list[Ocorrencia]:
+        """Busca ocorrências por nome, número RAP ou data de criação.
+
+        Delega ao repositório combinando filtros opcionais com AND.
+        Busca por nome opera apenas em ocorrências já processadas pelo worker.
+
+        Args:
+            guarnicao_id: ID da guarnição (filtro multi-tenant).
+            nome: Trecho do nome a buscar no texto extraído do PDF.
+            rap: Trecho do número RAP para busca parcial.
+            data: Data exata de criação da ocorrência.
+
+        Returns:
+            Lista de ocorrências ordenadas por data de criação decrescente.
+        """
+        return await self.repo.buscar(
+            guarnicao_id=guarnicao_id,
+            nome=nome,
+            rap=rap,
+            data=data,
+        )
