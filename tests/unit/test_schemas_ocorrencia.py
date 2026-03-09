@@ -49,3 +49,9 @@ def test_parse_nomes_espacos_extras():
     """Espaços ao redor do pipe são removidos."""
     oc = OcorrenciaRead(**_base_data(nomes_envolvidos=" João  | Maria "))
     assert oc.nomes_envolvidos == ["João", "Maria"]
+
+
+def test_parse_nomes_pipes_duplos():
+    """Pipes duplos (segmentos vazios) são ignorados."""
+    oc = OcorrenciaRead(**_base_data(nomes_envolvidos="João||Maria"))
+    assert oc.nomes_envolvidos == ["João", "Maria"]
