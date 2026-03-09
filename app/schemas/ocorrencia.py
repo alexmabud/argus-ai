@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class OcorrenciaCreate(BaseModel):
@@ -19,11 +19,11 @@ class OcorrenciaCreate(BaseModel):
 
     Attributes:
         numero_ocorrencia: Número único do BO (ex: "2024.0001234-5").
-        abordagem_id: ID da abordagem associada.
+        abordagem_id: ID da abordagem associada (opcional).
     """
 
     numero_ocorrencia: str = Field(..., min_length=1, max_length=50)
-    abordagem_id: int
+    abordagem_id: int | None = None
 
 
 class OcorrenciaRead(BaseModel):
@@ -35,6 +35,7 @@ class OcorrenciaRead(BaseModel):
         abordagem_id: ID da abordagem associada.
         arquivo_pdf_url: URL do PDF em S3/R2.
         processada: Se o PDF já foi extraído e embedado.
+        nomes_envolvidos: Lista de nomes dos envolvidos (texto livre).
         usuario_id: ID do usuário que cadastrou.
         guarnicao_id: ID da guarnição.
         criado_em: Timestamp de criação.
@@ -43,9 +44,28 @@ class OcorrenciaRead(BaseModel):
 
     id: int
     numero_ocorrencia: str
-    abordagem_id: int
+    abordagem_id: int | None
     arquivo_pdf_url: str
     processada: bool
+    nomes_envolvidos: list[str] = Field(default_factory=list)
+
+    @field_validator("nomes_envolvidos", mode="before")
+    @classmethod
+    def parse_nomes(cls, v: object) -> list[str]:
+        """Converte pipe-string em lista de nomes.
+
+        Args:
+            v: Valor bruto do banco (str com pipe, None, ou já list).
+
+        Returns:
+            Lista de nomes sem espaços extras.
+        """
+        if v is None or v == "":
+            return []
+        if isinstance(v, list):
+            return v
+        return [n.strip() for n in str(v).split("|") if n.strip()]
+
     usuario_id: int
     guarnicao_id: int
     criado_em: datetime
