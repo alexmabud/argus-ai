@@ -136,6 +136,8 @@ class TestBuscarOcorrencias:
             guarnicao: Fixture de guarnição.
             usuario: Fixture de usuário.
         """
+        from datetime import date
+
         from app.models.ocorrencia import Ocorrencia
 
         oc = Ocorrencia(
@@ -145,6 +147,7 @@ class TestBuscarOcorrencias:
             processada=False,
             usuario_id=usuario.id,
             guarnicao_id=guarnicao.id,
+            data_ocorrencia=date.today(),
         )
         db_session.add(oc)
         await db_session.flush()
@@ -209,6 +212,8 @@ class TestBuscarOcorrencias:
         db_session.add(abordagem2)
         await db_session.flush()
 
+        from datetime import date as date_type
+
         oc2 = Ocorrencia(
             numero_ocorrencia="RAP 2026/999999",
             abordagem_id=abordagem2.id,
@@ -217,6 +222,7 @@ class TestBuscarOcorrencias:
             processada=True,
             usuario_id=usuario2.id,
             guarnicao_id=guarnicao2.id,
+            data_ocorrencia=date_type.today(),
         )
         db_session.add(oc2)
         await db_session.flush()

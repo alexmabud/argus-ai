@@ -7,7 +7,7 @@ Fornece fixtures para:
 - Headers com autenticação JWT
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -302,6 +302,7 @@ async def ocorrencia(
         processada=True,
         usuario_id=usuario.id,
         guarnicao_id=guarnicao.id,
+        data_ocorrencia=date.today(),
     )
     db_session.add(o)
     await db_session.flush()
