@@ -162,6 +162,28 @@ class TestBuscarOcorrencias:
         assert data[0]["numero_ocorrencia"] == "RAP 2026/000002"
         assert "Fulano de Tal" in data[0]["nomes_envolvidos"]
 
+    async def test_busca_por_data_ocorrencia_retorna_ocorrencia(
+        self, client: AsyncClient, auth_headers: dict, ocorrencia: Ocorrencia
+    ):
+        """Testa que busca por data filtra por data_ocorrencia (não criado_em).
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+            ocorrencia: Fixture com data_ocorrencia=hoje.
+        """
+        from datetime import date
+
+        hoje = date.today().isoformat()
+        response = await client.get(
+            f"/api/v1/ocorrencias/buscar?data={hoje}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 1
+        assert data[0]["data_ocorrencia"] == hoje
+
     async def test_busca_nao_retorna_ocorrencia_de_outra_guarnicao(
         self,
         client: AsyncClient,

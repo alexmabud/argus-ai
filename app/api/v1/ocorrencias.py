@@ -34,6 +34,7 @@ async def criar_ocorrencia(
     numero_ocorrencia: str = Form(..., min_length=1, max_length=50),
     abordagem_id: int | None = Form(None),
     nomes_envolvidos: str | None = Form(None),
+    data_ocorrencia: date = Form(..., description="Data real do fato (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> OcorrenciaRead:
@@ -48,6 +49,7 @@ async def criar_ocorrencia(
         numero_ocorrencia: Número único do BO (ex: "RAP 2026/000123").
         abordagem_id: ID da abordagem vinculada (opcional).
         nomes_envolvidos: Nomes dos envolvidos separados por pipe (opcional).
+        data_ocorrencia: Data real do fato ocorrido (formato YYYY-MM-DD).
         db: Sessão do banco de dados.
         user: Usuário autenticado.
 
@@ -77,6 +79,7 @@ async def criar_ocorrencia(
         numero_ocorrencia=numero_ocorrencia,
         abordagem_id=abordagem_id,
         nomes_envolvidos=nomes_envolvidos,
+        data_ocorrencia=data_ocorrencia,
         arquivo_pdf=pdf_bytes,
         filename=arquivo_pdf.filename or "ocorrencia.pdf",
         usuario_id=user.id,

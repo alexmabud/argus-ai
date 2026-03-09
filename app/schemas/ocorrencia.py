@@ -6,7 +6,7 @@ leitura e busca semântica de ocorrências policiais.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -36,6 +36,7 @@ class OcorrenciaRead(BaseModel):
         arquivo_pdf_url: URL do PDF em S3/R2.
         processada: Se o PDF já foi extraído e embedado.
         nomes_envolvidos: Lista de nomes dos envolvidos (texto livre).
+        data_ocorrencia: Data real do fato ocorrido (informada no cadastro).
         usuario_id: ID do usuário que cadastrou.
         guarnicao_id: ID da guarnição.
         criado_em: Timestamp de criação.
@@ -48,6 +49,7 @@ class OcorrenciaRead(BaseModel):
     arquivo_pdf_url: str
     processada: bool
     nomes_envolvidos: list[str] = Field(default_factory=list)
+    data_ocorrencia: date
 
     @field_validator("nomes_envolvidos", mode="before")
     @classmethod

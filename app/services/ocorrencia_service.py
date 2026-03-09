@@ -49,6 +49,7 @@ class OcorrenciaService:
         numero_ocorrencia: str,
         abordagem_id: int | None,
         nomes_envolvidos: str | None,
+        data_ocorrencia: date,
         arquivo_pdf: bytes,
         filename: str,
         usuario_id: int,
@@ -64,6 +65,7 @@ class OcorrenciaService:
             numero_ocorrencia: Número único do BO.
             abordagem_id: ID da abordagem associada.
             nomes_envolvidos: Nomes dos envolvidos separados por pipe (opcional).
+            data_ocorrencia: Data real do fato ocorrido.
             arquivo_pdf: Conteúdo do PDF em bytes.
             filename: Nome original do arquivo PDF.
             usuario_id: ID do usuário que cadastrou.
@@ -79,6 +81,7 @@ class OcorrenciaService:
             numero_ocorrencia=numero_ocorrencia,
             abordagem_id=abordagem_id,
             nomes_envolvidos=nomes_envolvidos,
+            data_ocorrencia=data_ocorrencia,
             arquivo_pdf_url=url,
             processada=False,
             usuario_id=usuario_id,
@@ -155,7 +158,7 @@ class OcorrenciaService:
             guarnicao_id: ID da guarnição (filtro multi-tenant).
             nome: Trecho do nome a buscar no texto extraído do PDF.
             rap: Trecho do número RAP para busca parcial.
-            data: Data exata de criação da ocorrência.
+            data: Data exata do fato ocorrido.
 
         Returns:
             Lista de ocorrências ordenadas por data de criação decrescente.
