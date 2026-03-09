@@ -1,6 +1,6 @@
 """Testes unitários dos schemas de Ocorrência."""
 
-from datetime import datetime
+from datetime import UTC, date, datetime
 
 from app.schemas.ocorrencia import OcorrenciaRead
 
@@ -13,6 +13,7 @@ def _base_data(**kwargs) -> dict:
         "abordagem_id": None,
         "arquivo_pdf_url": "https://r2.example.com/test.pdf",
         "processada": False,
+        "data_ocorrencia": date(2026, 1, 1),
         "usuario_id": 1,
         "guarnicao_id": 1,
         "criado_em": datetime(2026, 1, 1),
@@ -55,3 +56,26 @@ def test_parse_nomes_pipes_duplos():
     """Pipes duplos (segmentos vazios) são ignorados."""
     oc = OcorrenciaRead(**_base_data(nomes_envolvidos="João||Maria"))
     assert oc.nomes_envolvidos == ["João", "Maria"]
+
+
+def test_ocorrencia_read_expoe_data_ocorrencia():
+    """Testa que OcorrenciaRead expõe o campo data_ocorrencia."""
+    from datetime import date, datetime
+
+    from app.schemas.ocorrencia import OcorrenciaRead
+
+    now = datetime.now(UTC)
+    schema = OcorrenciaRead(
+        id=1,
+        numero_ocorrencia="RAP 2026/000001",
+        abordagem_id=None,
+        arquivo_pdf_url="https://example.com/file.pdf",
+        processada=False,
+        nomes_envolvidos=None,
+        data_ocorrencia=date(2026, 3, 7),
+        usuario_id=1,
+        guarnicao_id=1,
+        criado_em=now,
+        atualizado_em=now,
+    )
+    assert schema.data_ocorrencia == date(2026, 3, 7)

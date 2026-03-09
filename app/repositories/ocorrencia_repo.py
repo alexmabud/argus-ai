@@ -5,7 +5,7 @@ cosseno para ocorrências policiais, com filtros multi-tenant e threshold.
 """
 
 from collections.abc import Sequence
-from datetime import UTC, date, datetime, time
+from datetime import date
 from typing import cast
 
 from sqlalchemy import or_, select
@@ -110,7 +110,7 @@ class OcorrenciaRepository(BaseRepository[Ocorrencia]):
             guarnicao_id: ID da guarnição para isolamento multi-tenant.
             nome: Trecho do nome a buscar no texto extraído do PDF ou nos nomes dos envolvidos.
             rap: Trecho do número RAP para busca parcial.
-            data: Data exata de criação da ocorrência.
+            data: Data exata do fato ocorrido.
             limit: Número máximo de resultados (padrão: 20).
 
         Returns:
@@ -131,12 +131,7 @@ class OcorrenciaRepository(BaseRepository[Ocorrencia]):
         if rap:
             query = query.where(Ocorrencia.numero_ocorrencia.ilike(f"%{_escape_like(rap)}%"))
         if data:
-            data_inicio = datetime.combine(data, time.min).replace(tzinfo=UTC)
-            data_fim = datetime.combine(data, time.max).replace(tzinfo=UTC)
-            query = query.where(
-                Ocorrencia.criado_em >= data_inicio,
-                Ocorrencia.criado_em <= data_fim,
-            )
+            query = query.where(Ocorrencia.data_ocorrencia == data)
 
         query = query.order_by(Ocorrencia.criado_em.desc()).limit(limit)
         result = await self.db.execute(query)
