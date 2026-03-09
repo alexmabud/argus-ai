@@ -3,7 +3,7 @@
 Fornece fixtures para:
 - Configuração do banco de dados de testes
 - Cliente HTTP assincrónico para testes de API
-- Dados de teste (guarnição, usuário, pessoa, veículo, abordagem, passagem)
+- Dados de teste (guarnição, usuário, pessoa, veículo, abordagem, passagem, ocorrência)
 - Headers com autenticação JWT
 """
 
@@ -22,6 +22,7 @@ from app.main import create_app
 from app.models.abordagem import Abordagem
 from app.models.base import Base
 from app.models.guarnicao import Guarnicao
+from app.models.ocorrencia import Ocorrencia
 from app.models.passagem import Passagem
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
@@ -273,3 +274,36 @@ async def passagem(db_session: AsyncSession) -> Passagem:
     db_session.add(p)
     await db_session.flush()
     return p
+
+
+@pytest.fixture
+async def ocorrencia(
+    db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario, abordagem: Abordagem
+) -> Ocorrencia:
+    """Fixture que cria uma ocorrência de teste com texto extraído.
+
+    Insere uma ocorrência já processada com texto extraído simulado,
+    útil para testes de busca por nome e conteúdo de PDF.
+
+    Args:
+        db_session: Sessão do banco de testes.
+        guarnicao: Fixture de guarnição.
+        usuario: Fixture de usuário que cadastrou.
+        abordagem: Fixture de abordagem vinculada.
+
+    Returns:
+        Ocorrencia: Objeto com texto extraído e processada=True.
+    """
+    o = Ocorrencia(
+        numero_ocorrencia="RAP 2026/000001",
+        abordagem_id=abordagem.id,
+        arquivo_pdf_url="https://r2.example.com/pdfs/test.pdf",
+        texto_extraido="Abordado: Carlos Eduardo Souza, CPF 123.456.789-00. Conduzido à delegacia.",
+        processada=True,
+        usuario_id=usuario.id,
+        guarnicao_id=guarnicao.id,
+    )
+    db_session.add(o)
+    await db_session.flush()
+    await db_session.refresh(o)
+    return o

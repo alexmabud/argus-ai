@@ -5,6 +5,7 @@ cosseno para ocorrências policiais, com filtros multi-tenant e threshold.
 """
 
 from collections.abc import Sequence
+from datetime import UTC, date, datetime, time
 from typing import cast
 
 from sqlalchemy import select
@@ -74,6 +75,53 @@ class OcorrenciaRepository(BaseRepository[Ocorrencia]):
 
         result = await self.db.execute(query)
         return cast(Sequence[tuple[Ocorrencia, float]], result.all())
+
+    async def buscar(
+        self,
+        guarnicao_id: int,
+        nome: str | None = None,
+        rap: str | None = None,
+        data: date | None = None,
+        limit: int = 20,
+    ) -> list[Ocorrencia]:
+        """Busca ocorrências por nome no texto extraído, número RAP ou data.
+
+        Aplica filtros opcionais combinados com AND. Usa ILIKE para buscas
+        parciais case-insensitive, beneficiando índice pg_trgm GIN se existir.
+        Busca por nome requer processada=True (texto disponível).
+
+        Args:
+            guarnicao_id: ID da guarnição para isolamento multi-tenant.
+            nome: Trecho do nome a buscar no texto extraído do PDF.
+            rap: Trecho do número RAP para busca parcial.
+            data: Data exata de criação da ocorrência.
+            limit: Número máximo de resultados (padrão: 20).
+
+        Returns:
+            Lista de ocorrências ordenadas por data de criação decrescente.
+        """
+        query = select(Ocorrencia).where(
+            Ocorrencia.guarnicao_id == guarnicao_id,
+            Ocorrencia.ativo == True,  # noqa: E712
+        )
+        if nome:
+            query = query.where(
+                Ocorrencia.processada == True,  # noqa: E712
+                Ocorrencia.texto_extraido.ilike(f"%{nome}%"),
+            )
+        if rap:
+            query = query.where(Ocorrencia.numero_ocorrencia.ilike(f"%{rap}%"))
+        if data:
+            data_inicio = datetime.combine(data, time.min).replace(tzinfo=UTC)
+            data_fim = datetime.combine(data, time.max).replace(tzinfo=UTC)
+            query = query.where(
+                Ocorrencia.criado_em >= data_inicio,
+                Ocorrencia.criado_em <= data_fim,
+            )
+
+        query = query.order_by(Ocorrencia.criado_em.desc()).limit(limit)
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
 
     async def get_by_numero(self, numero_ocorrencia: str) -> Ocorrencia | None:
         """Busca ocorrência por número único do BO.

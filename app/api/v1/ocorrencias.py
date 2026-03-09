@@ -6,6 +6,7 @@ texto + embedding) é feito em background via arq worker.
 """
 
 import logging
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -114,6 +115,44 @@ async def listar_ocorrencias(
     """
     service = OcorrenciaService(db)
     ocorrencias = await service.listar(guarnicao_id=user.guarnicao_id, skip=skip, limit=limit)
+    return [OcorrenciaRead.model_validate(o) for o in ocorrencias]
+
+
+@router.get("/buscar", response_model=list[OcorrenciaRead])
+async def buscar_ocorrencias(
+    request: Request,
+    nome: str | None = Query(None, description="Nome do abordado no texto do PDF"),
+    rap: str | None = Query(None, description="Número RAP (busca parcial)"),
+    data: date | None = Query(None, description="Data de criação (YYYY-MM-DD)"),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[OcorrenciaRead]:
+    """Busca ocorrências por nome no texto extraído, RAP ou data.
+
+    Todos os filtros são opcionais e combinados com AND. Sem filtros,
+    retorna lista vazia. Busca por nome opera apenas em ocorrências
+    já processadas pelo worker (processada=True).
+
+    Args:
+        request: Objeto Request do FastAPI.
+        nome: Trecho do nome a buscar no texto extraído do PDF.
+        rap: Trecho do número RAP para busca parcial.
+        data: Data exata de criação da ocorrência (formato YYYY-MM-DD).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista de OcorrenciaRead ordenada por data decrescente.
+    """
+    if not nome and not rap and not data:
+        return []
+    service = OcorrenciaService(db)
+    ocorrencias = await service.buscar(
+        guarnicao_id=user.guarnicao_id,
+        nome=nome,
+        rap=rap,
+        data=data,
+    )
     return [OcorrenciaRead.model_validate(o) for o in ocorrencias]
 
 
