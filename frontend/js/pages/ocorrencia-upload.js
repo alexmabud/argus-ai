@@ -106,9 +106,13 @@ function renderOcorrenciaUpload() {
                   <p class="text-sm font-medium text-slate-200" x-text="oc.numero_ocorrencia"></p>
                   <p class="text-xs text-slate-500" x-text="new Date(oc.criado_em).toLocaleDateString('pt-BR')"></p>
                 </div>
-                <span class="text-xs px-2 py-0.5 rounded-full"
-                      :class="oc.processada ? 'bg-green-900/50 text-green-400' : 'bg-yellow-900/50 text-yellow-400'"
-                      x-text="oc.processada ? 'Processada' : 'Pendente'"></span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs px-2 py-0.5 rounded-full"
+                        :class="oc.processada ? 'bg-green-900/50 text-green-400' : 'bg-yellow-900/50 text-yellow-400'"
+                        x-text="oc.processada ? 'Processada' : 'Pendente'"></span>
+                  <a :href="oc.arquivo_pdf_url" target="_blank" rel="noopener"
+                     class="btn btn-secondary text-xs px-3 py-1">Abrir PDF</a>
+                </div>
               </div>
             </div>
           </template>
