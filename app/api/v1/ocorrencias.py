@@ -8,14 +8,14 @@ PDF (extração de texto + embedding) é feito em background via arq worker.
 import logging
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
-from app.schemas.ocorrencia import OcorrenciaCreate, OcorrenciaRead
+from app.schemas.ocorrencia import OcorrenciaRead
 from app.services.ocorrencia_service import OcorrenciaService
 
 logger = logging.getLogger("argus")
@@ -31,7 +31,9 @@ router = APIRouter(prefix="/ocorrencias", tags=["Ocorrências"])
 async def criar_ocorrencia(
     request: Request,
     arquivo_pdf: UploadFile,
-    data: OcorrenciaCreate = Depends(),
+    numero_ocorrencia: str = Form(..., min_length=1, max_length=50),
+    abordagem_id: int | None = Form(None),
+    nomes_envolvidos: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> OcorrenciaRead:
@@ -42,8 +44,10 @@ async def criar_ocorrencia(
 
     Args:
         request: Objeto Request do FastAPI.
-        data: Dados básicos (numero_ocorrencia, abordagem_id).
         arquivo_pdf: Arquivo PDF do boletim de ocorrência.
+        numero_ocorrencia: Número único do BO (ex: "RAP 2026/000123").
+        abordagem_id: ID da abordagem vinculada (opcional).
+        nomes_envolvidos: Nomes dos envolvidos separados por pipe (opcional).
         db: Sessão do banco de dados.
         user: Usuário autenticado.
 
@@ -70,8 +74,9 @@ async def criar_ocorrencia(
 
     service = OcorrenciaService(db)
     ocorrencia = await service.criar(
-        numero_ocorrencia=data.numero_ocorrencia,
-        abordagem_id=data.abordagem_id,
+        numero_ocorrencia=numero_ocorrencia,
+        abordagem_id=abordagem_id,
+        nomes_envolvidos=nomes_envolvidos,
         arquivo_pdf=pdf_bytes,
         filename=arquivo_pdf.filename or "ocorrencia.pdf",
         usuario_id=user.id,
