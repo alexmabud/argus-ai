@@ -29,6 +29,28 @@ function renderOcorrenciaUpload() {
                  class="text-sm text-slate-400">
           <p x-show="file" class="text-xs text-slate-500 mt-1" x-text="file?.name + ' (' + formatSize(file?.size) + ')'"></p>
         </div>
+
+        <!-- Envolvidos -->
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Envolvidos</label>
+          <div class="flex gap-2">
+            <input type="text" x-model="novoEnvolvido"
+                   placeholder="Nome do envolvido"
+                   @keydown.enter.prevent="adicionarEnvolvido()"
+                   class="flex-1">
+            <button type="button" @click="adicionarEnvolvido()"
+                    class="btn btn-secondary px-3 shrink-0">+ Adicionar</button>
+          </div>
+          <div x-show="envolvidos.length > 0" class="flex flex-wrap gap-1 mt-2">
+            <template x-for="(nome, i) in envolvidos" :key="i">
+              <span class="flex items-center gap-1 text-xs bg-slate-700 text-slate-200 px-2 py-0.5 rounded-full">
+                <span x-text="nome"></span>
+                <button type="button" @click="removerEnvolvido(i)"
+                        class="text-slate-400 hover:text-red-400 leading-none ml-0.5">×</button>
+              </span>
+            </template>
+          </div>
+        </div>
       </div>
 
       <!-- Submit -->
@@ -80,6 +102,9 @@ function renderOcorrenciaUpload() {
                   <p class="text-sm font-medium text-slate-200" x-text="oc.numero_ocorrencia"></p>
                   <p class="text-xs text-slate-500"
                      x-text="new Date(oc.criado_em).toLocaleDateString('pt-BR')"></p>
+                  <p x-show="oc.nomes_envolvidos && oc.nomes_envolvidos.length > 0"
+                     class="text-xs text-slate-400 mt-0.5"
+                     x-text="oc.nomes_envolvidos.join(' · ')"></p>
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="text-xs px-2 py-0.5 rounded-full"
@@ -108,6 +133,9 @@ function renderOcorrenciaUpload() {
                 <div>
                   <p class="text-sm font-medium text-slate-200" x-text="oc.numero_ocorrencia"></p>
                   <p class="text-xs text-slate-500" x-text="new Date(oc.criado_em).toLocaleDateString('pt-BR')"></p>
+                  <p x-show="oc.nomes_envolvidos && oc.nomes_envolvidos.length > 0"
+                     class="text-xs text-slate-400 mt-0.5"
+                     x-text="oc.nomes_envolvidos.join(' · ')"></p>
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="text-xs px-2 py-0.5 rounded-full"
@@ -135,6 +163,8 @@ function ocorrenciaUploadPage() {
   return {
     numero: "",
     abordagemId: null,
+    novoEnvolvido: "",
+    envolvidos: [],
     file: null,
     submitting: false,
     sucesso: null,
@@ -162,6 +192,18 @@ function ocorrenciaUploadPage() {
       return (bytes / 1048576).toFixed(1) + " MB";
     },
 
+    adicionarEnvolvido() {
+      const nome = this.novoEnvolvido.trim();
+      if (nome && !this.envolvidos.includes(nome)) {
+        this.envolvidos.push(nome);
+      }
+      this.novoEnvolvido = "";
+    },
+
+    removerEnvolvido(index) {
+      this.envolvidos.splice(index, 1);
+    },
+
     async submit() {
       this.submitting = true;
       this.sucesso = null;
@@ -172,12 +214,17 @@ function ocorrenciaUploadPage() {
         form.append("arquivo_pdf", this.file);
         form.append("numero_ocorrencia", this.numero);
         if (this.abordagemId) form.append("abordagem_id", this.abordagemId);
+        if (this.envolvidos.length > 0) {
+          form.append("nomes_envolvidos", this.envolvidos.join("|"));
+        }
 
         await api.request("POST", "/ocorrencias/", form);
         this.sucesso = `Ocorrência ${this.numero} enviada! Processamento em andamento.`;
         this.numero = "";
         this.file = null;
         this.abordagemId = null;
+        this.envolvidos = [];
+        this.novoEnvolvido = "";
         await this.loadList();
       } catch (err) {
         this.erro = err.message || "Erro ao enviar ocorrência.";
