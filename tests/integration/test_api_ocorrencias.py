@@ -116,6 +116,49 @@ class TestBuscarOcorrencias:
         response = await client.get("/api/v1/ocorrencias/buscar?nome=Carlos")
         assert response.status_code == 401
 
+    async def test_busca_por_nome_em_nomes_envolvidos(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        db_session: AsyncSession,
+        guarnicao,
+        usuario,
+    ):
+        """Testa que busca por nome encontra ocorrência pelo campo nomes_envolvidos.
+
+        Cria ocorrência SEM texto extraído mas COM nomes_envolvidos,
+        e verifica que a busca por nome a encontra.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+            db_session: Sessão do banco de dados.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário.
+        """
+        from app.models.ocorrencia import Ocorrencia
+
+        oc = Ocorrencia(
+            numero_ocorrencia="RAP 2026/000002",
+            arquivo_pdf_url="https://r2.example.com/pdfs/test2.pdf",
+            nomes_envolvidos="Fulano de Tal|Ciclano Silva",
+            processada=False,
+            usuario_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        db_session.add(oc)
+        await db_session.flush()
+
+        response = await client.get(
+            "/api/v1/ocorrencias/buscar?nome=Fulano de Tal",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["numero_ocorrencia"] == "RAP 2026/000002"
+        assert "Fulano de Tal" in data[0]["nomes_envolvidos"]
+
     async def test_busca_nao_retorna_ocorrencia_de_outra_guarnicao(
         self,
         client: AsyncClient,
