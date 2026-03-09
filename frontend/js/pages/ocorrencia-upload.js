@@ -184,6 +184,8 @@ function ocorrenciaUploadPage() {
 
     async buscar() {
       if (!this.buscaNome && !this.buscaRap && !this.buscaData) return;
+      this.erro = null;
+      this.resultadosBusca = null;
       this.buscando = true;
       try {
         const params = new URLSearchParams();
@@ -191,8 +193,9 @@ function ocorrenciaUploadPage() {
         if (this.buscaRap) params.append("rap", this.buscaRap);
         if (this.buscaData) params.append("data", this.buscaData);
         this.resultadosBusca = await api.get(`/ocorrencias/buscar?${params}`);
-      } catch {
-        this.resultadosBusca = [];
+      } catch (err) {
+        this.resultadosBusca = null;
+        this.erro = err.message || "Erro ao buscar ocorrências.";
       } finally {
         this.buscando = false;
       }
