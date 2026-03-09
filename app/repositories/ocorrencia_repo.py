@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from datetime import UTC, date, datetime, time
 from typing import cast
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.ocorrencia import Ocorrencia
@@ -107,7 +107,7 @@ class OcorrenciaRepository(BaseRepository[Ocorrencia]):
 
         Args:
             guarnicao_id: ID da guarnição para isolamento multi-tenant.
-            nome: Trecho do nome a buscar no texto extraído do PDF.
+            nome: Trecho do nome a buscar no texto extraído do PDF ou nos nomes dos envolvidos.
             rap: Trecho do número RAP para busca parcial.
             data: Data exata de criação da ocorrência.
             limit: Número máximo de resultados (padrão: 20).
@@ -120,9 +120,12 @@ class OcorrenciaRepository(BaseRepository[Ocorrencia]):
             Ocorrencia.ativo == True,  # noqa: E712
         )
         if nome:
+            nome_escaped = _escape_like(nome)
             query = query.where(
-                Ocorrencia.processada == True,  # noqa: E712
-                Ocorrencia.texto_extraido.ilike(f"%{_escape_like(nome)}%"),
+                or_(
+                    Ocorrencia.texto_extraido.ilike(f"%{nome_escaped}%"),
+                    Ocorrencia.nomes_envolvidos.ilike(f"%{nome_escaped}%"),
+                )
             )
         if rap:
             query = query.where(Ocorrencia.numero_ocorrencia.ilike(f"%{_escape_like(rap)}%"))
