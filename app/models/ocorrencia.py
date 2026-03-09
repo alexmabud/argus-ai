@@ -21,11 +21,12 @@ class Ocorrencia(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     Attributes:
         id: Identificador único (chave primária).
         numero_ocorrencia: Número único do BO (ex: "2024.00001/GU01").
-        abordagem_id: ID da abordagem origem (FK).
+        abordagem_id: ID da abordagem origem (FK, opcional).
         arquivo_pdf_url: URL do PDF em R2/S3.
         texto_extraido: Texto extraído do PDF via EasyOCR (opcional).
         embedding: Vetor semântico 384-dimensional para busca.
         processada: Flag indicando se PDF foi processado (OCR + embedding).
+        nomes_envolvidos: Nomes dos envolvidos separados por pipe (opcional).
         usuario_id: ID do oficial que gerou (FK).
         guarnicao_id: ID da guarnição (isolamento multi-tenant).
         abordagem: Relacionamento com Abordagem.
@@ -40,9 +41,10 @@ class Ocorrencia(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     numero_ocorrencia: Mapped[str] = mapped_column(String(50), unique=True, index=True)
-    abordagem_id: Mapped[int] = mapped_column(ForeignKey("abordagens.id"))
+    abordagem_id: Mapped[int | None] = mapped_column(ForeignKey("abordagens.id"), nullable=True)
     arquivo_pdf_url: Mapped[str] = mapped_column(String(500))
     texto_extraido: Mapped[str | None] = mapped_column(Text, nullable=True)
+    nomes_envolvidos: Mapped[str | None] = mapped_column(Text, nullable=True)
     embedding = mapped_column(Vector(384), nullable=True)
     processada: Mapped[bool] = mapped_column(Boolean, default=False)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
