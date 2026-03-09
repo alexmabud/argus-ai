@@ -35,7 +35,8 @@ class OcorrenciaRepository(BaseRepository[Ocorrencia]):
 
     Estende BaseRepository com busca semântica via pgvector (cosine distance)
     e busca por número de ocorrência. Aplica filtros multi-tenant
-    (guarnicao_id), soft delete (ativo=True) e processada=True.
+    (guarnicao_id) e soft delete (ativo=True). Busca semântica adiciona
+    filtro processada=True.
 
     Attributes:
         model: Classe Ocorrencia.
