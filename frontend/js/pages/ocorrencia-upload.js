@@ -12,8 +12,8 @@ function renderOcorrenciaUpload() {
       <div class="card space-y-4">
         <!-- Número da ocorrência -->
         <div>
-          <label class="block text-sm text-slate-300 mb-1">Número da Ocorrência (BO)</label>
-          <input type="text" x-model="numero" placeholder="Ex: 2026/000123">
+          <label class="block text-sm text-slate-300 mb-1">Número RAP (Registro de Ocorrência PMDF)</label>
+          <input type="text" x-model="numero" placeholder="Ex: RAP 2026/000123">
         </div>
 
         <!-- Abordagem vinculada -->
@@ -41,6 +41,53 @@ function renderOcorrenciaUpload() {
 
       <p x-show="sucesso" class="text-sm text-green-400" x-text="sucesso"></p>
       <p x-show="erro" class="text-sm text-red-400" x-text="erro"></p>
+
+      <!-- Busca de ocorrências -->
+      <div class="mt-6 card space-y-3">
+        <h3 class="text-sm font-semibold text-slate-300">Buscar Ocorrência</h3>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Nome do abordado</label>
+          <input type="text" x-model="buscaNome" placeholder="Ex: Carlos Eduardo Souza"
+                 class="w-full">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Número RAP</label>
+            <input type="text" x-model="buscaRap" placeholder="Ex: 2026/000123">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Data</label>
+            <input type="date" x-model="buscaData">
+          </div>
+        </div>
+
+        <button @click="buscar()" class="btn btn-primary w-full" :disabled="buscando">
+          <span x-show="!buscando">Buscar</span>
+          <span x-show="buscando" class="flex items-center justify-center gap-2">
+            <span class="spinner"></span> Buscando...
+          </span>
+        </button>
+
+        <div x-show="resultadosBusca !== null">
+          <p x-show="resultadosBusca !== null && resultadosBusca.length === 0"
+             class="text-xs text-slate-500 text-center py-2">Nenhuma ocorrência encontrada.</p>
+          <div class="space-y-2">
+            <template x-for="oc in (resultadosBusca || [])" :key="oc.id">
+              <div class="card flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-slate-200" x-text="oc.numero_ocorrencia"></p>
+                  <p class="text-xs text-slate-500"
+                     x-text="new Date(oc.criado_em).toLocaleDateString('pt-BR')"></p>
+                </div>
+                <a :href="oc.arquivo_pdf_url" target="_blank" rel="noopener"
+                   class="btn btn-secondary text-xs px-3 py-1">Abrir PDF</a>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
 
       <!-- Lista de ocorrências recentes -->
       <div class="mt-6">
@@ -79,6 +126,11 @@ function ocorrenciaUploadPage() {
     erro: null,
     ocorrencias: [],
     loadingList: true,
+    buscaNome: "",
+    buscaRap: "",
+    buscaData: "",
+    buscando: false,
+    resultadosBusca: null,
 
     async init() {
       await this.loadList();
@@ -127,6 +179,22 @@ function ocorrenciaUploadPage() {
         this.ocorrencias = [];
       } finally {
         this.loadingList = false;
+      }
+    },
+
+    async buscar() {
+      if (!this.buscaNome && !this.buscaRap && !this.buscaData) return;
+      this.buscando = true;
+      try {
+        const params = new URLSearchParams();
+        if (this.buscaNome) params.append("nome", this.buscaNome);
+        if (this.buscaRap) params.append("rap", this.buscaRap);
+        if (this.buscaData) params.append("data", this.buscaData);
+        this.resultadosBusca = await api.get(`/ocorrencias/buscar?${params}`);
+      } catch {
+        this.resultadosBusca = [];
+      } finally {
+        this.buscando = false;
       }
     },
   };
