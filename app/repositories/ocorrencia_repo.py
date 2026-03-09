@@ -15,6 +15,21 @@ from app.models.ocorrencia import Ocorrencia
 from app.repositories.base import BaseRepository
 
 
+def _escape_like(valor: str) -> str:
+    """Escapa caracteres especiais LIKE para uso em buscas ILIKE.
+
+    Previne que caracteres como '%', '_' e '\\' sejam interpretados
+    como wildcards pelo PostgreSQL em queries ILIKE.
+
+    Args:
+        valor: String de busca fornecida pelo usuário.
+
+    Returns:
+        String com caracteres especiais escapados.
+    """
+    return valor.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class OcorrenciaRepository(BaseRepository[Ocorrencia]):
     """Repositório de acesso a dados de ocorrências policiais.
 
@@ -107,10 +122,10 @@ class OcorrenciaRepository(BaseRepository[Ocorrencia]):
         if nome:
             query = query.where(
                 Ocorrencia.processada == True,  # noqa: E712
-                Ocorrencia.texto_extraido.ilike(f"%{nome}%"),
+                Ocorrencia.texto_extraido.ilike(f"%{_escape_like(nome)}%"),
             )
         if rap:
-            query = query.where(Ocorrencia.numero_ocorrencia.ilike(f"%{rap}%"))
+            query = query.where(Ocorrencia.numero_ocorrencia.ilike(f"%{_escape_like(rap)}%"))
         if data:
             data_inicio = datetime.combine(data, time.min).replace(tzinfo=UTC)
             data_fim = datetime.combine(data, time.max).replace(tzinfo=UTC)
