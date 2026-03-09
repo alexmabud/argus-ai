@@ -47,7 +47,8 @@ class OcorrenciaService:
     async def criar(
         self,
         numero_ocorrencia: str,
-        abordagem_id: int,
+        abordagem_id: int | None,
+        nomes_envolvidos: str | None,
         arquivo_pdf: bytes,
         filename: str,
         usuario_id: int,
@@ -62,6 +63,7 @@ class OcorrenciaService:
         Args:
             numero_ocorrencia: Número único do BO.
             abordagem_id: ID da abordagem associada.
+            nomes_envolvidos: Nomes dos envolvidos separados por pipe (opcional).
             arquivo_pdf: Conteúdo do PDF em bytes.
             filename: Nome original do arquivo PDF.
             usuario_id: ID do usuário que cadastrou.
@@ -76,6 +78,7 @@ class OcorrenciaService:
         ocorrencia = Ocorrencia(
             numero_ocorrencia=numero_ocorrencia,
             abordagem_id=abordagem_id,
+            nomes_envolvidos=nomes_envolvidos,
             arquivo_pdf_url=url,
             processada=False,
             usuario_id=usuario_id,
