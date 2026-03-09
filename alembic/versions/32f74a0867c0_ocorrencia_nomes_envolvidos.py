@@ -1,4 +1,8 @@
-"""ocorrencia_nomes_envolvidos
+"""Adiciona coluna nomes_envolvidos à tabela ocorrencias.
+
+Coluna TEXT nullable para armazenar nomes dos envolvidos na ocorrência
+separados por pipe (ex: "João Silva|Maria Souza"). Parsing para list[str]
+é feito pelo schema OcorrenciaRead.
 
 Revision ID: 32f74a0867c0
 Revises: b7162740aeeb
