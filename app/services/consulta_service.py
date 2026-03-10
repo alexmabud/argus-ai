@@ -219,3 +219,39 @@ class ConsultaService:
         query = query.order_by(Abordagem.data_hora.desc()).offset(skip).limit(limit)
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    async def pessoas_por_veiculo(
+        self,
+        placa: str | None,
+        modelo: str | None,
+        cor: str | None,
+        skip: int,
+        limit: int,
+        user: Usuario | None,
+    ) -> list[dict]:
+        """Busca pessoas vinculadas a veículos por placa, modelo ou cor.
+
+        Delega para o repositório e retorna dicionários com pessoa e veiculo
+        para o router montar o schema de resposta.
+
+        Args:
+            placa: Placa parcial (opcional).
+            modelo: Modelo do veículo (opcional).
+            cor: Cor do veículo (opcional, usada junto com modelo).
+            skip: Registros a pular (paginação).
+            limit: Máximo de resultados.
+            user: Usuário autenticado para filtro multi-tenant.
+
+        Returns:
+            Lista de dicionários com "pessoa" (Pessoa) e "veiculo" (Veiculo).
+        """
+        guarnicao_id = user.guarnicao_id if user else None
+        rows = await self.veiculo_repo.get_pessoas_por_veiculo(
+            placa=placa,
+            modelo=modelo,
+            cor=cor,
+            guarnicao_id=guarnicao_id,
+            skip=skip,
+            limit=limit,
+        )
+        return [{"pessoa": row[0], "veiculo": row[1]} for row in rows]
