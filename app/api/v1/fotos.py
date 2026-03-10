@@ -21,6 +21,7 @@ from app.schemas.foto import (
     OCRPlacaResponse,
 )
 from app.services.foto_service import FotoService
+from app.services.pessoa_service import PessoaService
 
 #: Tamanho máximo de upload de imagem (10 MB).
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
@@ -205,6 +206,12 @@ async def buscar_por_rosto(
             arquivo_url=r["foto"].arquivo_url,
             pessoa_id=r["foto"].pessoa_id,
             similaridade=r["similaridade"],
+            nome=r["pessoa"].nome if r["pessoa"] else None,
+            cpf_masked=PessoaService.mask_cpf(r["pessoa"])
+            if r["pessoa"] and r["pessoa"].cpf_encrypted
+            else None,
+            apelido=r["pessoa"].apelido if r["pessoa"] else None,
+            foto_principal_url=r["pessoa"].foto_principal_url if r["pessoa"] else None,
         )
         for r in results
     ]

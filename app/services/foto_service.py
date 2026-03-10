@@ -11,9 +11,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.foto import Foto
+from app.models.pessoa import Pessoa
 from app.repositories.foto_repo import FotoRepository
 from app.services.audit_service import AuditService
 from app.services.storage_service import StorageService
@@ -167,6 +169,8 @@ class FotoService:
 
         Extrai embedding facial da imagem enviada e busca fotos com
         rostos similares no banco via distância cosseno (512-dim).
+        Enriquece cada resultado com dados básicos da pessoa vinculada
+        (nome, cpf_masked, apelido, foto_principal_url).
 
         Args:
             image_bytes: Imagem com rosto para busca em bytes.
@@ -174,7 +178,7 @@ class FotoService:
             top_k: Número máximo de resultados.
 
         Returns:
-            Lista de dicionários com foto, pessoa_id e similaridade.
+            Lista de dicionários com foto, pessoa e similaridade.
             Lista vazia se nenhum rosto detectado na imagem.
         """
         embedding = face_service.extrair_embedding(image_bytes)
@@ -183,10 +187,20 @@ class FotoService:
 
         results = await self.repo.buscar_por_similaridade_facial(embedding, top_k=top_k)
 
+        # Carregar pessoas vinculadas às fotos em um único SELECT
+        pessoa_ids = [row[0].pessoa_id for row in results if row[0].pessoa_id]
+        pessoas_map: dict[int, Pessoa] = {}
+        if pessoa_ids:
+            stmt = select(Pessoa).where(Pessoa.id.in_(pessoa_ids))
+            res = await self.db.execute(stmt)
+            for p in res.scalars().all():
+                pessoas_map[p.id] = p
+
         return [
             {
                 "foto": row[0],
                 "similaridade": round(float(row[1]), 4),
+                "pessoa": pessoas_map.get(row[0].pessoa_id) if row[0].pessoa_id else None,
             }
             for row in results
         ]
