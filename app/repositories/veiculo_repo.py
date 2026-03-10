@@ -141,7 +141,9 @@ class VeiculoRepository(BaseRepository[Veiculo]):
             limit: Número máximo de resultados.
 
         Returns:
-            Lista de tuplas (Pessoa, Veiculo) sem duplicatas.
+            Lista de tuplas (Pessoa, Veiculo) sem duplicatas por par — a mesma
+            pessoa pode aparecer múltiplas vezes se vinculada a veículos distintos
+            que atendam o filtro.
         """
         query = (
             select(Pessoa, Veiculo)
@@ -163,6 +165,7 @@ class VeiculoRepository(BaseRepository[Veiculo]):
             query = query.where(Veiculo.cor.ilike(f"%{cor}%"))
         if guarnicao_id is not None:
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
+            query = query.where(Veiculo.guarnicao_id == guarnicao_id)
 
         query = query.distinct().offset(skip).limit(limit)
         result = await self.db.execute(query)
