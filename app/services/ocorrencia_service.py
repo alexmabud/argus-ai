@@ -149,7 +149,7 @@ class OcorrenciaService:
         rap: str | None = None,
         data: date | None = None,
     ) -> list[Ocorrencia]:
-        """Busca ocorrências por nome, número RAP ou data de criação.
+        """Busca ocorrências por nome, número RAP ou data do fato ocorrido.
 
         Delega ao repositório combinando filtros opcionais com AND.
         Busca por nome opera apenas em ocorrências já processadas pelo worker.

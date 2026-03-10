@@ -132,7 +132,7 @@ async def buscar_ocorrencias(
     request: Request,
     nome: str | None = Query(None, description="Nome do abordado no texto do PDF"),
     rap: str | None = Query(None, description="Número RAP (busca parcial)"),
-    data: date | None = Query(None, description="Data de criação (YYYY-MM-DD)"),
+    data: date | None = Query(None, description="Data real do fato ocorrido (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> list[OcorrenciaRead]:
