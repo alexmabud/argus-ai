@@ -53,21 +53,21 @@ class TestBuscarOcorrencias:
     async def test_busca_por_data_retorna_ocorrencia(
         self, client: AsyncClient, auth_headers: dict, ocorrencia: Ocorrencia
     ):
-        """Testa que busca por data de criação retorna ocorrência correta.
+        """Testa que busca por data retorna ocorrência com data_ocorrencia correspondente.
 
-        Usa data UTC para coincidir com o timestamp armazenado pelo banco,
-        que opera em UTC independente do fuso local do cliente.
+        Usa date.today() para coincidir com o valor definido na fixture
+        (data_ocorrencia=date.today()).
 
         Args:
             client: Cliente HTTP assincrónico.
             auth_headers: Headers com Bearer token válido.
-            ocorrencia: Fixture de ocorrência criada hoje.
+            ocorrencia: Fixture de ocorrência criada com data_ocorrencia=hoje.
         """
-        from datetime import UTC, datetime
+        from datetime import date
 
-        hoje_utc = datetime.now(UTC).date().isoformat()
+        hoje = date.today().isoformat()
         response = await client.get(
-            f"/api/v1/ocorrencias/buscar?data={hoje_utc}",
+            f"/api/v1/ocorrencias/buscar?data={hoje}",
             headers=auth_headers,
         )
         assert response.status_code == 200
