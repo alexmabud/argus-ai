@@ -2,6 +2,7 @@
 
 Testa endpoint de busca cross-domain em pessoas, veículos
 e abordagens através de um único termo de busca.
+Também testa o endpoint de busca de pessoas por veículo.
 """
 
 from httpx import AsyncClient
@@ -125,3 +126,47 @@ class TestConsultaUnificada:
         assert len(data["pessoas"]) >= 1
         pessoa_data = next(p for p in data["pessoas"] if p["nome"] == "Teste Bairro")
         assert pessoa_data["endereco_criado_em"] is not None
+
+
+class TestPessoasPorVeiculo:
+    """Testes do endpoint GET /api/v1/consultas/pessoas-por-veiculo."""
+
+    async def test_pessoas_por_veiculo_sem_auth_retorna_401(self, client: AsyncClient):
+        """Testa que requisição sem autenticação retorna 401.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+        """
+        response = await client.get("/api/v1/consultas/pessoas-por-veiculo?placa=ABC")
+        assert response.status_code == 401
+
+    async def test_pessoas_por_veiculo_sem_parametros_retorna_400(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Testa que busca sem placa e sem modelo retorna 400.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+        """
+        response = await client.get(
+            "/api/v1/consultas/pessoas-por-veiculo",
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+
+    async def test_pessoas_por_veiculo_com_placa_retorna_200(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Testa que busca com placa retorna 200 (lista pode ser vazia).
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+        """
+        response = await client.get(
+            "/api/v1/consultas/pessoas-por-veiculo?placa=ABC",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
