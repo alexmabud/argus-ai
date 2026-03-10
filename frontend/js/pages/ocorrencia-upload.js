@@ -130,7 +130,7 @@ function renderOcorrenciaUpload() {
 
       <!-- Lista de ocorrências recentes -->
       <div class="mt-6">
-        <h3 class="text-sm font-semibold text-slate-300 mb-3">Ocorrências Recentes</h3>
+        <h3 class="text-sm font-semibold text-slate-300 mb-3">Ocorrências Registradas</h3>
         <div x-show="loadingList" class="flex justify-center py-4"><span class="spinner"></span></div>
         <div class="space-y-2">
           <template x-for="oc in ocorrencias" :key="oc.id">
@@ -253,7 +253,7 @@ function ocorrenciaUploadPage() {
     async loadList() {
       this.loadingList = true;
       try {
-        this.ocorrencias = await api.get("/ocorrencias/?limit=10");
+        this.ocorrencias = await api.get("/ocorrencias/?limit=100");
       } catch {
         this.ocorrencias = [];
       } finally {
