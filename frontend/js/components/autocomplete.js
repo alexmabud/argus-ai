@@ -87,7 +87,8 @@ function autocompleteComponent(tipo) {
         return item.apelido ? `${item.nome} (${item.apelido})` : item.nome;
       }
       if (tipo === "veiculo") {
-        return item.modelo ? `${item.placa} — ${item.modelo}` : item.placa;
+        const placa = formatarPlaca(item.placa || "");
+        return item.modelo ? `${placa} — ${item.modelo}` : placa;
       }
       return item.nome || item.id;
     },
