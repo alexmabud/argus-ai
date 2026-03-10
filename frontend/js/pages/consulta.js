@@ -13,35 +13,48 @@ function renderConsulta() {
       <!-- ── Pessoa ─────────────────────────────────────────── -->
       <div class="card space-y-3">
         <p class="text-sm font-semibold text-slate-300">Pessoa</p>
-        <p class="text-xs text-slate-500">Busque por nome, CPF ou envie uma foto para comparação facial.</p>
 
-        <!-- Campo texto + clipe -->
-        <div class="relative flex items-center gap-2">
-          <div class="relative flex-1">
-            <input type="text" x-model="query" @input="onInput()"
-                   placeholder="Nome completo ou CPF..."
-                   class="w-full pl-12 py-3 text-base">
-            <svg class="absolute left-3.5 top-3.5 w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-            </svg>
-          </div>
-          <!-- Botão de foto -->
-          <button @click="$refs.fotoInput.click()" title="Buscar por foto"
-                  class="p-3 rounded-lg border border-slate-600 hover:border-blue-500 transition-colors"
-                  :class="fotoFile ? 'border-blue-500 bg-blue-500/10' : ''">
-            <svg class="w-5 h-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"/>
-            </svg>
-          </button>
-          <input type="file" x-ref="fotoInput" accept="image/jpeg,image/png,image/webp"
-                 class="hidden" @change="onFotoSelect($event)">
+        <!-- Campo texto -->
+        <div class="relative">
+          <input type="text" :value="query"
+                 @input="query = formatarBuscaQuery($event.target.value); onInput()"
+                 placeholder="Nome completo ou CPF..."
+                 inputmode="text"
+                 class="w-full pl-12 py-3 text-base">
+          <svg class="absolute left-3.5 top-3.5 w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+          </svg>
         </div>
 
+        <!-- Separador ou -->
+        <div class="flex items-center gap-3">
+          <div class="flex-1 h-px bg-slate-700"></div>
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Ou</span>
+          <div class="flex-1 h-px bg-slate-700"></div>
+        </div>
+
+        <!-- Zona de busca por foto -->
+        <button x-show="!fotoFile" @click="$refs.fotoInput.click()"
+                class="w-full flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 border-dashed border-indigo-500/50 bg-indigo-500/5 hover:bg-indigo-500/10 hover:border-indigo-400 transition-all active:scale-95">
+          <div class="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-500/15 text-indigo-400">
+            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/>
+            </svg>
+          </div>
+          <div class="text-center">
+            <p class="text-sm font-semibold text-indigo-300">Reconhecimento Facial</p>
+            <p class="text-xs text-slate-500 mt-0.5">Toque para enviar uma foto e comparar com o banco</p>
+          </div>
+        </button>
+        <input type="file" x-ref="fotoInput" accept="image/jpeg,image/png,image/webp"
+               class="hidden" @change="onFotoSelect($event)">
+
         <!-- Preview da foto -->
-        <div x-show="fotoFile" class="flex items-center gap-3 p-2 bg-slate-800/50 rounded-lg border border-slate-700">
+        <div x-show="fotoFile" class="flex items-center gap-3 p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/30">
           <img :src="fotoPreviewUrl" class="w-12 h-12 rounded object-cover shrink-0">
           <div class="flex-1 min-w-0">
-            <p class="text-xs text-slate-300 truncate" x-text="fotoFile?.name"></p>
+            <p class="text-xs text-indigo-300 font-medium truncate" x-text="fotoFile?.name"></p>
             <p class="text-xs text-slate-500">Comparando rosto com o banco...</p>
           </div>
           <button @click="removeFoto()" class="p-1 text-slate-500 hover:text-red-400 transition-colors">
@@ -106,8 +119,18 @@ function renderConsulta() {
           </template>
         </div>
 
+        <!-- Sem resultados por foto -->
+        <p x-show="fotoSearchDone && !loadingPessoa && fotoServicoIndisponivel"
+           class="text-xs text-amber-500 pt-1">
+          Reconhecimento facial indisponível neste servidor.
+        </p>
+        <p x-show="fotoSearchDone && !loadingPessoa && !fotoServicoIndisponivel && pessoasFoto.length === 0"
+           class="text-xs text-slate-500 pt-1">
+          Nenhuma correspondência facial encontrada.
+        </p>
+
         <!-- Sem resultados pessoa -->
-        <p x-show="searched && !loadingPessoa && buscouPessoa && pessoasTexto.length === 0 && pessoasFoto.length === 0"
+        <p x-show="searched && !loadingPessoa && buscouPessoa && pessoasTexto.length === 0 && pessoasFoto.length === 0 && !fotoSearchDone"
            class="text-xs text-slate-500 pt-1">
           Nenhuma pessoa encontrada.
         </p>
@@ -280,6 +303,8 @@ function consultaPage() {
     fotoFile: null,
     fotoPreviewUrl: "",
     pessoasFoto: [],
+    fotoSearchDone: false,
+    fotoServicoIndisponivel: false,
 
     // Estado — endereço
     filtroBairro: "",
@@ -338,6 +363,8 @@ function consultaPage() {
       this.fotoFile = null;
       this.fotoPreviewUrl = "";
       this.pessoasFoto = [];
+      this.fotoSearchDone = false;
+      this.fotoServicoIndisponivel = false;
       this.$refs.fotoInput.value = "";
     },
 
@@ -383,14 +410,18 @@ function consultaPage() {
     async searchPorFoto() {
       if (!this.fotoFile) return;
       this.loadingPessoa = true;
+      this.fotoSearchDone = false;
+      this.fotoServicoIndisponivel = false;
       try {
         const form = new FormData();
         form.append("file", this.fotoFile);
         form.append("top_k", "5");
         const r = await api.postForm("/fotos/buscar-rosto", form);
         this.pessoasFoto = r.resultados || [];
-      } catch {
-        showToast("Erro na busca por foto", "error");
+        this.fotoServicoIndisponivel = r.disponivel === false;
+        this.fotoSearchDone = true;
+      } catch (err) {
+        showToast(err?.message || "Erro na busca por foto", "error");
       } finally {
         this.loadingPessoa = false;
       }
@@ -399,7 +430,7 @@ function consultaPage() {
     async searchPorEndereco() {
       this.loadingEndereco = true;
       try {
-        let url = `/consultas/?q=a&tipo=pessoa`;
+        let url = `/consultas/?q=&tipo=pessoa`;
         if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
         if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
         if (this.filtroEstado.length >= 1) url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;

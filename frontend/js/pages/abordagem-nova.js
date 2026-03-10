@@ -473,14 +473,14 @@ function abordagemForm() {
 
       // Escutar pedido de abrir cadastro (vindo do autocomplete)
       this.$el.addEventListener("abrir-cadastro-pessoa", (e) => {
-        this.showNovaPessoa = true;
-        // Preencher nome com o que foi buscado (se não for CPF)
         const q = e.detail?.query || "";
-        if (q && !/^\d/.test(q)) {
-          this.novaPessoa.nome = q;
-        } else if (q && /^\d/.test(q)) {
-          this.novaPessoa.cpf = q;
+        // Criar novo objeto para garantir reatividade no Alpine.js
+        if (q && /^\d/.test(q)) {
+          this.novaPessoa = { nome: "", cpf: q, data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
+        } else {
+          this.novaPessoa = { nome: q, cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
         }
+        this.showNovaPessoa = true;
       });
     },
 

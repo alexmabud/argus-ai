@@ -40,6 +40,20 @@ function formatarCPF(value) {
 }
 
 /**
+ * Formata automaticamente como CPF se o valor contiver apenas dígitos e separadores de CPF.
+ * Usado nos campos de busca por nome/CPF para aplicar máscara em tempo real.
+ *
+ * @param {string} value - Valor digitado.
+ * @returns {string} CPF formatado ou valor original sem alteração.
+ */
+function formatarBuscaQuery(value) {
+  if (/^[\d.\-]*$/.test(value) && value.replace(/\D/g, "").length > 0) {
+    return formatarCPF(value);
+  }
+  return value;
+}
+
+/**
  * Componente Alpine.js principal da aplicação.
  */
 function app() {
