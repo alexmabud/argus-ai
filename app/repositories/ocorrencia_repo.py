@@ -51,6 +51,34 @@ class OcorrenciaRepository(BaseRepository[Ocorrencia]):
         """
         super().__init__(Ocorrencia, db)
 
+    async def get_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        guarnicao_id: int | None = None,
+    ) -> Sequence[Ocorrencia]:
+        """Obtém todas as ocorrências ordenadas por data_ocorrencia DESC.
+
+        Sobrescreve o método base para garantir ordenação pela data do fato
+        ocorrido, do mais recente para o mais antigo.
+
+        Args:
+            skip: Número de registros a pular (padrão: 0).
+            limit: Número máximo de registros a retornar (padrão: 100).
+            guarnicao_id: Identificador da guarnição para filtro multi-tenant.
+
+        Returns:
+            Sequência de ocorrências ordenadas por data_ocorrencia DESC.
+        """
+        query = select(Ocorrencia).where(Ocorrencia.ativo == True)  # noqa: E712
+
+        if guarnicao_id is not None:
+            query = query.where(Ocorrencia.guarnicao_id == guarnicao_id)
+
+        query = query.order_by(Ocorrencia.data_ocorrencia.desc()).offset(skip).limit(limit)
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
     async def search_semantic(
         self,
         embedding: list[float],
