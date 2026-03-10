@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY . .
 
 RUN python -m pip install --no-cache-dir --upgrade pip && \
-    python -m pip install --no-cache-dir .
+    python -m pip install --no-cache-dir ".[vision]"
 
 EXPOSE 8000
 

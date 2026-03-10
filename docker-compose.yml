@@ -55,6 +55,7 @@ services:
     command: arq app.worker.WorkerSettings
     volumes:
       - .:/app
+      - insightface_models:/root/.insightface
     env_file:
       - .env
     environment:
@@ -100,3 +101,4 @@ services:
 
 volumes:
   pgdata:
+  insightface_models:
