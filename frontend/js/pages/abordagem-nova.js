@@ -15,7 +15,9 @@ function renderAbordagemNova() {
         <label class="text-sm font-medium text-slate-300 block">Pessoas abordadas</label>
 
         <div x-data="autocompleteComponent('pessoa')" class="relative">
-          <input type="text" x-model="query" @input="onInput()" @focus="showDropdown = results.length > 0 || noResults"
+          <input type="text" :value="query"
+                 @input="query = formatarBuscaQuery($event.target.value); onInput()"
+                 @focus="showDropdown = results.length > 0 || noResults"
                  placeholder="Buscar por nome ou CPF..." class="w-full">
 
           <!-- Dropdown resultados -->
@@ -242,22 +244,48 @@ function renderAbordagemNova() {
         </div>
 
         <!-- Vínculo veículo → abordado -->
-        <div x-show="veiculosSelecionados.length > 0 && pessoasSelecionadas.length > 0" class="pt-1 space-y-2">
-          <p class="text-xs text-slate-400">Vincular veículo ao abordado:</p>
+        <div x-show="veiculosSelecionados.length > 0 && pessoasSelecionadas.length > 0"
+             class="pt-1 space-y-2">
           <template x-for="v in veiculosSelecionados" :key="v.id">
-            <div class="space-y-1">
-              <span class="text-xs font-semibold text-green-400" x-text="v.placa + (v.modelo ? ' — ' + v.modelo : '')"></span>
-              <div class="flex flex-wrap gap-2 mt-1">
-                <template x-for="p in pessoasSelecionadas" :key="p.id">
-                  <button type="button"
-                          @click="veiculoPorPessoa = {...veiculoPorPessoa, [v.id]: veiculoPorPessoa[v.id] === p.id ? null : p.id}"
-                          class="text-xs px-2 py-1 rounded-full border transition-colors"
-                          :class="veiculoPorPessoa[v.id] === p.id
-                            ? 'bg-blue-600 border-blue-500 text-white'
-                            : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'">
-                    <span x-text="p.nome.split(' ')[0]"></span>
-                  </button>
-                </template>
+            <div class="rounded-lg border p-3 space-y-2 transition-colors"
+                 :class="veiculoPorPessoa[v.id]
+                   ? 'border-green-500/60 bg-green-900/10'
+                   : 'border-yellow-500/60 bg-yellow-900/10'"
+                 :id="'vinculo-' + v.id">
+
+              <!-- Cabeçalho: placa + status -->
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-slate-400 text-base">🚗</span>
+                  <div>
+                    <span class="font-mono font-bold text-base text-slate-100"
+                          x-text="formatarPlaca(v.placa || '')"></span>
+                    <span x-show="v.modelo || v.cor"
+                          class="block text-xs text-slate-400"
+                          x-text="[v.modelo, v.cor].filter(Boolean).join(' — ')"></span>
+                  </div>
+                </div>
+                <span x-show="veiculoPorPessoa[v.id]"
+                      class="text-green-400 text-sm font-medium">✓ vinculado</span>
+                <span x-show="!veiculoPorPessoa[v.id]"
+                      class="text-yellow-400 text-xs">⚠ sem vínculo</span>
+              </div>
+
+              <!-- Seleção do condutor -->
+              <div>
+                <p class="text-xs text-slate-400 mb-2">Quem estava no veículo?</p>
+                <div class="flex flex-wrap gap-2">
+                  <template x-for="p in pessoasSelecionadas" :key="p.id">
+                    <button type="button"
+                            @click="veiculoPorPessoa = {...veiculoPorPessoa, [v.id]: veiculoPorPessoa[v.id] === p.id ? null : p.id}"
+                            class="text-sm px-3 py-2 rounded-lg border transition-colors"
+                            :class="veiculoPorPessoa[v.id] === p.id
+                              ? 'bg-blue-600 border-blue-500 text-white font-medium'
+                              : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'">
+                      <span x-text="p.nome"></span>
+                    </button>
+                  </template>
+                </div>
               </div>
             </div>
           </template>
