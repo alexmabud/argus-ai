@@ -81,12 +81,20 @@ class BuscaRostoItem(BaseModel):
         arquivo_url: URL da imagem no storage (R2/S3).
         pessoa_id: ID da pessoa associada à foto.
         similaridade: Grau de similaridade (0 a 1, cosseno).
+        nome: Nome completo da pessoa (preenchido quando disponível).
+        cpf_masked: CPF mascarado da pessoa (preenchido quando disponível).
+        apelido: Apelido da pessoa (preenchido quando disponível).
+        foto_principal_url: URL da foto de perfil da pessoa.
     """
 
     foto_id: int
     arquivo_url: str
     pessoa_id: int | None = None
     similaridade: float
+    nome: str | None = None
+    cpf_masked: str | None = None
+    apelido: str | None = None
+    foto_principal_url: str | None = None
 
     model_config = {"from_attributes": True}
 
