@@ -146,7 +146,7 @@ async def buscar_ocorrencias(
         request: Objeto Request do FastAPI.
         nome: Trecho do nome a buscar no texto extraído do PDF.
         rap: Trecho do número RAP para busca parcial.
-        data: Data exata de criação da ocorrência (formato YYYY-MM-DD).
+        data: Data exata do fato ocorrido (formato YYYY-MM-DD).
         db: Sessão do banco de dados.
         user: Usuário autenticado.
 
