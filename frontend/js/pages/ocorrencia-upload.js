@@ -22,6 +22,12 @@ function renderOcorrenciaUpload() {
           <input type="number" x-model="abordagemId" placeholder="ID da abordagem vinculada">
         </div>
 
+        <!-- Data da ocorrência -->
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Data da Ocorrência</label>
+          <input type="date" x-model="dataOcorrencia" required>
+        </div>
+
         <!-- Arquivo PDF -->
         <div>
           <label class="block text-sm text-slate-300 mb-1">Arquivo PDF</label>
@@ -39,7 +45,7 @@ function renderOcorrenciaUpload() {
                    @keydown.enter.prevent="adicionarEnvolvido()"
                    class="flex-1">
             <button type="button" @click="adicionarEnvolvido()"
-                    class="btn btn-secondary px-3 shrink-0">+ Adicionar</button>
+                    class="btn btn-secondary px-3 shrink-0" style="width: auto">+ Adicionar</button>
           </div>
           <div x-show="envolvidos.length > 0" class="flex flex-wrap gap-1 mt-2">
             <template x-for="(nome, i) in envolvidos" :key="i">
@@ -101,7 +107,7 @@ function renderOcorrenciaUpload() {
                 <div>
                   <p class="text-sm font-medium text-slate-200" x-text="oc.numero_ocorrencia"></p>
                   <p class="text-xs text-slate-500"
-                     x-text="new Date(oc.criado_em).toLocaleDateString('pt-BR')"></p>
+                     x-text="'Ocorrido em ' + formatDate(oc.data_ocorrencia) + ' · Registrado em ' + formatDate(oc.criado_em)"></p>
                   <p x-show="oc.nomes_envolvidos && oc.nomes_envolvidos.length > 0"
                      class="text-xs text-slate-400 mt-0.5"
                      x-text="oc.nomes_envolvidos.join(' · ')"></p>
@@ -132,7 +138,8 @@ function renderOcorrenciaUpload() {
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-slate-200" x-text="oc.numero_ocorrencia"></p>
-                  <p class="text-xs text-slate-500" x-text="new Date(oc.criado_em).toLocaleDateString('pt-BR')"></p>
+                  <p class="text-xs text-slate-500"
+                     x-text="'Ocorrido em ' + formatDate(oc.data_ocorrencia) + ' · Registrado em ' + formatDate(oc.criado_em)"></p>
                   <p x-show="oc.nomes_envolvidos && oc.nomes_envolvidos.length > 0"
                      class="text-xs text-slate-400 mt-0.5"
                      x-text="oc.nomes_envolvidos.join(' · ')"></p>
@@ -163,6 +170,7 @@ function ocorrenciaUploadPage() {
   return {
     numero: "",
     abordagemId: null,
+    dataOcorrencia: new Date().toISOString().split("T")[0],
     novoEnvolvido: "",
     envolvidos: [],
     file: null,
@@ -183,6 +191,13 @@ function ocorrenciaUploadPage() {
 
     onFileSelected(event) {
       this.file = event.target.files[0] || null;
+    },
+
+    formatDate(isoString) {
+      if (!isoString) return "";
+      // Suporta tanto "2026-03-07" (DATE) quanto "2026-03-07T..." (DATETIME)
+      const d = new Date(isoString + (isoString.includes("T") ? "" : "T00:00:00"));
+      return d.toLocaleDateString("pt-BR");
     },
 
     formatSize(bytes) {
@@ -217,12 +232,14 @@ function ocorrenciaUploadPage() {
         if (this.envolvidos.length > 0) {
           form.append("nomes_envolvidos", this.envolvidos.join("|"));
         }
+        form.append("data_ocorrencia", this.dataOcorrencia);
 
         await api.request("POST", "/ocorrencias/", form);
         this.sucesso = `Ocorrência ${this.numero} enviada! Processamento em andamento.`;
         this.numero = "";
         this.file = null;
         this.abordagemId = null;
+        this.dataOcorrencia = new Date().toISOString().split("T")[0];
         this.envolvidos = [];
         this.novoEnvolvido = "";
         await this.loadList();
