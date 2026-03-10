@@ -5,9 +5,13 @@ além de acesso a serviços de IA (face recognition, embeddings) armazenados
 no application state.
 """
 
+import logging
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
+
+logger = logging.getLogger("argus")
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decodificar_token
@@ -69,11 +73,15 @@ async def get_current_user(
 def get_face_service(request: Request):
     """Obtém serviço de reconhecimento facial do application state.
 
+    Retorna None com log de warning se InsightFace não estiver disponível,
+    permitindo degradação graciosa no endpoint.
+
     Args:
         request: Objeto Request do FastAPI.
 
     Returns:
-        Instância de FaceService com InsightFace buffalo_l (512-dim).
+        Instância de FaceService com InsightFace buffalo_l (512-dim),
+        ou None se o serviço não estiver disponível.
     """
 
     face_service = request.app.state.face_service
@@ -84,10 +92,8 @@ def get_face_service(request: Request):
             face_service = FaceService()
             request.app.state.face_service = face_service
         except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Serviço de reconhecimento facial indisponível: {exc}",
-            ) from exc
+            logger.warning("Serviço de reconhecimento facial indisponível: %s", exc)
+            return None
     return face_service
 
 

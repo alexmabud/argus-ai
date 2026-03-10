@@ -5,8 +5,12 @@ por pessoa ou abordagem, busca por similaridade facial
 (pgvector 512-dim) e extração de placas via OCR (EasyOCR).
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger("argus")
 
 from app.core.rate_limit import limiter
 from app.database.session import get_db
@@ -116,6 +120,20 @@ async def upload_foto(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao fazer upload da foto. Verifique o storage e tente novamente.",
         ) from exc
+
+    # Enfileirar processamento facial em background (apenas para fotos de rosto)
+    if tipo == FotoTipo.rosto:
+        try:
+            from arq.connections import ArqRedis, create_pool
+
+            from app.worker import WorkerSettings
+
+            redis_pool: ArqRedis = await create_pool(WorkerSettings.redis_settings)
+            await redis_pool.enqueue_job("processar_face_task", foto.id)
+            await redis_pool.close()
+        except Exception:
+            logger.warning("Worker offline — face da foto %d será processada depois", foto.id)
+
     return FotoUploadResponse(id=foto.id, arquivo_url=foto.arquivo_url, tipo=foto.tipo)
 
 
@@ -169,13 +187,14 @@ async def buscar_por_rosto(
     top_k: int = Form(5),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
-    face_service: FaceService = Depends(get_face_service),
+    face_service=Depends(get_face_service),
 ) -> BuscaRostoResponse:
     """Busca pessoas por similaridade facial via pgvector.
 
     Recebe imagem com rosto, extrai embedding facial (512-dim via
     InsightFace) e busca fotos similares no banco usando distância
-    cosseno com pgvector.
+    cosseno com pgvector. Retorna lista vazia com disponivel=False
+    quando InsightFace não está disponível (degradação graciosa).
 
     Args:
         request: Objeto Request do FastAPI.
@@ -183,15 +202,19 @@ async def buscar_por_rosto(
         top_k: Número máximo de resultados (padrão 5).
         db: Sessão do banco de dados.
         user: Usuário autenticado.
-        face_service: Serviço InsightFace do application state.
+        face_service: Serviço InsightFace do application state (pode ser None).
 
     Returns:
         BuscaRostoResponse com lista de fotos similares e total.
+        Retorna disponivel=False se InsightFace não estiver disponível.
 
     Status Code:
         200: Busca realizada (pode retornar lista vazia).
         429: Rate limit (10/min).
     """
+    if face_service is None:
+        return BuscaRostoResponse(resultados=[], total=0, disponivel=False)
+
     file_bytes = await file.read()
     service = FotoService(db)
     results = await service.buscar_por_rosto(

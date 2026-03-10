@@ -51,7 +51,12 @@ async def listar_localidades(
 
 @router.get("/", response_model=ConsultaUnificadaResponse)
 async def consulta_unificada(
-    q: str = Query(..., min_length=2, max_length=500, description="Termo de busca"),
+    q: str = Query(
+        "",
+        min_length=0,
+        max_length=500,
+        description="Termo de busca (obrigatório sem filtros de endereço)",
+    ),
     tipo: str | None = Query(
         None,
         description="Tipo de entidade: pessoa, veiculo, abordagem (ou None para todas)",
@@ -91,6 +96,13 @@ async def consulta_unificada(
         ConsultaUnificadaResponse com listas de pessoas, veículos,
         abordagens e total de resultados.
     """
+    filtro_endereco = bairro or cidade or estado
+    if not filtro_endereco and len(q) < 2:
+        raise HTTPException(
+            status_code=422,
+            detail="Informe ao menos 2 caracteres no termo de busca ou utilize os filtros de endereço.",
+        )
+
     service = ConsultaService(db)
     resultados = await service.busca_unificada(
         q=q,
