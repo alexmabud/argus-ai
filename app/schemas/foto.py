@@ -105,10 +105,12 @@ class BuscaRostoResponse(BaseModel):
     Attributes:
         resultados: Lista de fotos similares ordenadas por similaridade.
         total: Quantidade de resultados retornados.
+        disponivel: False quando InsightFace não está disponível no servidor.
     """
 
     resultados: list[BuscaRostoItem]
     total: int
+    disponivel: bool = True
 
 
 class OCRPlacaResponse(BaseModel):

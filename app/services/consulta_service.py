@@ -44,7 +44,7 @@ class ConsultaService:
 
     async def busca_unificada(
         self,
-        q: str,
+        q: str = "",
         tipo: str | None = None,
         bairro: str | None = None,
         cidade: str | None = None,

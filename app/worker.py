@@ -45,8 +45,8 @@ async def startup(ctx: dict) -> None:
         from app.services.face_service import FaceService
 
         ctx["face_service"] = FaceService()
-    except Exception:
-        logger.warning("FaceService indisponível (insightface não instalado)")
+    except Exception as exc:
+        logger.warning("FaceService indisponível: %s", exc)
         ctx["face_service"] = None
 
     ctx["db_session_factory"] = AsyncSessionLocal

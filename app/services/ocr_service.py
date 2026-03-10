@@ -17,9 +17,9 @@ try:
 
     _reader = easyocr.Reader(["pt", "en"], gpu=False)
     logger.info("EasyOCR carregado com sucesso")
-except ImportError:
+except Exception as _ocr_exc:
     _reader = None
-    logger.warning("EasyOCR não instalado — OCR de placas indisponível")
+    logger.warning("EasyOCR indisponível: %s", _ocr_exc)
 
 
 class OCRService:
