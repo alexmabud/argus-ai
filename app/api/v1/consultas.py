@@ -6,7 +6,7 @@ resultados em uma resposta unificada. Também expõe endpoint
 de localidades para autocomplete de bairro, cidade e estado.
 """
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -14,7 +14,12 @@ from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.repositories.pessoa_repo import PessoaRepository
 from app.schemas.abordagem import AbordagemRead
-from app.schemas.consulta import ConsultaUnificadaResponse, PessoaComEnderecoRead
+from app.schemas.consulta import (
+    ConsultaUnificadaResponse,
+    PessoaComEnderecoRead,
+    PessoaComVeiculoRead,
+    VeiculoInfo,
+)
 from app.schemas.veiculo import VeiculoRead
 from app.services.consulta_service import ConsultaService
 from app.services.pessoa_service import PessoaService
@@ -132,3 +137,72 @@ async def consulta_unificada(
         abordagens=abordagens_read,
         total_resultados=resultados["total_resultados"],
     )
+
+
+@router.get("/pessoas-por-veiculo", response_model=list[PessoaComVeiculoRead])
+async def pessoas_por_veiculo(
+    placa: str | None = Query(None, max_length=20, description="Placa parcial (ILIKE)"),
+    modelo: str | None = Query(None, max_length=100, description="Modelo do veículo"),
+    cor: str | None = Query(None, max_length=50, description="Cor do veículo (opcional)"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[PessoaComVeiculoRead]:
+    """Retorna fichas de abordados vinculados a um veículo.
+
+    Resolve Veiculo → AbordagemVeiculo → AbordagemPessoa → Pessoa
+    para encontrar todos os abordados que tiveram relação com o veículo
+    buscado. Pelo menos um parâmetro (placa ou modelo) deve ser informado.
+
+    Args:
+        placa: Placa parcial para busca (opcional).
+        modelo: Modelo do veículo para busca (opcional).
+        cor: Cor do veículo — usada como filtro adicional ao modelo (opcional).
+        skip: Registros a pular (paginação).
+        limit: Máximo de resultados por página (1-100, padrão 20).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista de PessoaComVeiculoRead com dados do abordado e do veículo vinculado.
+
+    Raises:
+        HTTPException 400: Se nenhum parâmetro de busca for informado.
+    """
+    if not placa and not modelo:
+        raise HTTPException(status_code=400, detail="Informe placa ou modelo para buscar.")
+
+    service = ConsultaService(db)
+    rows = await service.pessoas_por_veiculo(
+        placa=placa,
+        modelo=modelo,
+        cor=cor,
+        skip=skip,
+        limit=limit,
+        user=user,
+    )
+
+    return [
+        PessoaComVeiculoRead(
+            id=row["pessoa"].id,
+            nome=row["pessoa"].nome,
+            cpf_masked=PessoaService.mask_cpf(row["pessoa"])
+            if row["pessoa"].cpf_encrypted
+            else None,
+            data_nascimento=row["pessoa"].data_nascimento,
+            apelido=row["pessoa"].apelido,
+            foto_principal_url=row["pessoa"].foto_principal_url,
+            observacoes=row["pessoa"].observacoes,
+            guarnicao_id=row["pessoa"].guarnicao_id,
+            criado_em=row["pessoa"].criado_em,
+            atualizado_em=row["pessoa"].atualizado_em,
+            veiculo_info=VeiculoInfo(
+                placa=row["veiculo"].placa,
+                modelo=row["veiculo"].modelo,
+                cor=row["veiculo"].cor,
+                ano=row["veiculo"].ano,
+            ),
+        )
+        for row in rows
+    ]
