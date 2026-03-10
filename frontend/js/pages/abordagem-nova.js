@@ -659,6 +659,18 @@ function abordagemForm() {
 
     async submit() {
       if (this.submitting) return;
+
+      // Validar que todo veículo está vinculado a um abordado
+      for (const v of this.veiculosSelecionados) {
+        if (!this.veiculoPorPessoa[v.id]) {
+          const placa = formatarPlaca(v.placa || "");
+          this.erro = `Vincule o veículo ${placa} a um dos abordados antes de registrar.`;
+          const cardEl = document.getElementById(`vinculo-${v.id}`);
+          if (cardEl) cardEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
+      }
+
       this.submitting = true;
       this.erro = null;
       this.sucesso = null;
