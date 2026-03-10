@@ -1,34 +1,60 @@
 /**
  * Página de consulta unificada — Argus AI.
  *
- * Todos os filtros em uma única página: nome/CPF, localização
- * e veículo. Busca paralela nas entidades relevantes conforme
- * os campos preenchidos. Resultados aparecem logo abaixo de
- * cada seção de busca correspondente.
+ * Seções independentes: busca de pessoa (nome/CPF ou foto),
+ * filtros por endereço e busca por veículo. Cada seção retorna
+ * a ficha do abordado como resultado.
  */
 function renderConsulta() {
   return `
     <div x-data="consultaPage()" x-init="init()" class="space-y-4">
       <h2 class="text-lg font-bold text-slate-100">Consulta</h2>
 
-      <!-- Pessoa -->
+      <!-- ── Pessoa ─────────────────────────────────────────── -->
       <div class="card space-y-3">
         <p class="text-sm font-semibold text-slate-300">Pessoa</p>
-        <div class="relative">
-          <input type="text" x-model="query" @input="onInput()"
-                 placeholder="Nome completo ou CPF..."
-                 class="w-full pl-12 py-3 text-base">
-          <svg class="absolute left-3.5 top-3.5 w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-          </svg>
+        <p class="text-xs text-slate-500">Busque por nome, CPF ou envie uma foto para comparação facial.</p>
+
+        <!-- Campo texto + clipe -->
+        <div class="relative flex items-center gap-2">
+          <div class="relative flex-1">
+            <input type="text" x-model="query" @input="onInput()"
+                   placeholder="Nome completo ou CPF..."
+                   class="w-full pl-12 py-3 text-base">
+            <svg class="absolute left-3.5 top-3.5 w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+            </svg>
+          </div>
+          <!-- Botão de foto -->
+          <button @click="$refs.fotoInput.click()" title="Buscar por foto"
+                  class="p-3 rounded-lg border border-slate-600 hover:border-blue-500 transition-colors"
+                  :class="fotoFile ? 'border-blue-500 bg-blue-500/10' : ''">
+            <svg class="w-5 h-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"/>
+            </svg>
+          </button>
+          <input type="file" x-ref="fotoInput" accept="image/jpeg,image/png,image/webp"
+                 class="hidden" @change="onFotoSelect($event)">
         </div>
 
-        <!-- Resultados: Pessoas (por nome/CPF) -->
-        <div x-show="searched && pessoasVisiveis.length > 0 && buscouPessoa" class="space-y-2 pt-1">
-          <p class="text-xs font-semibold text-slate-500">
-            Resultados (<span x-text="pessoasVisiveis.length"></span>)
-          </p>
-          <template x-for="p in pessoasVisiveis" :key="p.id">
+        <!-- Preview da foto -->
+        <div x-show="fotoFile" class="flex items-center gap-3 p-2 bg-slate-800/50 rounded-lg border border-slate-700">
+          <img :src="fotoPreviewUrl" class="w-12 h-12 rounded object-cover shrink-0">
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-slate-300 truncate" x-text="fotoFile?.name"></p>
+            <p class="text-xs text-slate-500">Comparando rosto com o banco...</p>
+          </div>
+          <button @click="removeFoto()" class="p-1 text-slate-500 hover:text-red-400 transition-colors">
+            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Resultados: Pessoas por texto -->
+        <div x-show="searched && pessoasTexto.length > 0" class="space-y-2 pt-1">
+          <p class="text-xs font-semibold text-slate-500">Resultados por nome/CPF (<span x-text="pessoasTexto.length"></span>)</p>
+          <template x-for="p in pessoasTexto" :key="'t-' + p.id">
             <div @click="viewPessoa(p.id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
               <div class="flex items-center justify-between">
                 <div>
@@ -44,40 +70,87 @@ function renderConsulta() {
           </template>
         </div>
 
+        <!-- Resultados: Pessoas por foto -->
+        <div x-show="pessoasFoto.length > 0" class="space-y-2 pt-1">
+          <p class="text-xs font-semibold text-slate-500">Resultados por foto (<span x-text="pessoasFoto.length"></span>)</p>
+          <template x-for="r in pessoasFoto" :key="'f-' + r.foto_id">
+            <div @click="r.pessoa_id && viewPessoa(r.pessoa_id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                  <img x-show="r.foto_principal_url || r.arquivo_url" :src="r.foto_principal_url || r.arquivo_url"
+                       class="w-10 h-10 rounded-full object-cover shrink-0">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-slate-200" x-text="r.nome || 'Pessoa sem nome'"></p>
+                    <p x-show="r.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + r.cpf_masked"></p>
+                    <p x-show="r.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + r.apelido"></p>
+                    <!-- Barra de confiança -->
+                    <div class="mt-1.5 flex items-center gap-2">
+                      <div class="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all"
+                             :style="'width: ' + Math.round(r.similaridade * 100) + '%'"
+                             :class="r.similaridade >= 0.8 ? 'bg-green-500' : r.similaridade >= 0.6 ? 'bg-yellow-500' : 'bg-orange-500'">
+                        </div>
+                      </div>
+                      <span class="text-xs font-mono shrink-0"
+                            :class="r.similaridade >= 0.8 ? 'text-green-400' : r.similaridade >= 0.6 ? 'text-yellow-400' : 'text-orange-400'"
+                            x-text="Math.round(r.similaridade * 100) + '%'">
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <svg class="w-4 h-4 text-slate-500 shrink-0 ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+              </div>
+            </div>
+          </template>
+        </div>
+
         <!-- Sem resultados pessoa -->
-        <p x-show="searched && !loading && buscouPessoa && pessoasVisiveis.length === 0 && !buscouEndereco"
+        <p x-show="searched && !loadingPessoa && buscouPessoa && pessoasTexto.length === 0 && pessoasFoto.length === 0"
            class="text-xs text-slate-500 pt-1">
           Nenhuma pessoa encontrada.
         </p>
+
+        <!-- Spinner pessoa -->
+        <div x-show="loadingPessoa" class="flex justify-center py-2">
+          <span class="spinner"></span>
+        </div>
       </div>
 
-      <!-- Separador Ou -->
+      <!-- ── Separador ───────────────────────────────────────── -->
       <div class="flex items-center gap-3">
         <div class="flex-1 h-px bg-slate-700"></div>
         <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Ou</span>
         <div class="flex-1 h-px bg-slate-700"></div>
       </div>
 
-      <!-- Endereço -->
+      <!-- ── Filtros por Endereço ───────────────────────────── -->
       <div class="card space-y-3">
-        <p class="text-sm font-semibold text-slate-300">Endereço</p>
-        <div class="grid grid-cols-3 gap-3">
+        <p class="text-sm font-semibold text-slate-300">Filtros por Endereço</p>
+        <p class="text-xs text-slate-500">Filtre abordados pelo local de residência cadastrado.</p>
+
+        <div class="space-y-3">
           <div>
-            <label class="block text-xs text-slate-500 mb-1">Bairro</label>
-            <input type="text" list="lista-bairros-c" x-model="filtroBairro" @input="onInput()"
+            <label class="block text-xs text-slate-400 mb-1">Bairro</label>
+            <input type="text" list="lista-bairros-c" x-model="filtroBairro" @input="onInputEndereco()"
                    placeholder="Bairro..." class="w-full py-3">
+            <p class="text-xs text-slate-600 mt-1">Lista todos os abordados deste bairro</p>
           </div>
           <div>
-            <label class="block text-xs text-slate-500 mb-1">Cidade</label>
-            <input type="text" list="lista-cidades-c" x-model="filtroCidade" @input="onInput()"
+            <label class="block text-xs text-slate-400 mb-1">Cidade</label>
+            <input type="text" list="lista-cidades-c" x-model="filtroCidade" @input="onInputEndereco()"
                    placeholder="Cidade..." class="w-full py-3">
+            <p class="text-xs text-slate-600 mt-1">Lista todos os abordados desta cidade</p>
           </div>
           <div>
-            <label class="block text-xs text-slate-500 mb-1">Estado (UF)</label>
-            <input type="text" list="lista-estados-c" x-model="filtroEstado" @input="onInput()"
+            <label class="block text-xs text-slate-400 mb-1">Estado (UF)</label>
+            <input type="text" list="lista-estados-c" x-model="filtroEstado" @input="onInputEndereco()"
                    placeholder="DF" maxlength="2" class="w-full py-3 uppercase">
+            <p class="text-xs text-slate-600 mt-1">Lista todos os abordados deste estado</p>
           </div>
         </div>
+
         <datalist id="lista-bairros-c">
           <template x-for="b in localidades.bairros" :key="b"><option :value="b"></option></template>
         </datalist>
@@ -88,12 +161,12 @@ function renderConsulta() {
           <template x-for="e in localidades.estados" :key="e"><option :value="e"></option></template>
         </datalist>
 
-        <!-- Resultados: Pessoas (por endereço) -->
-        <div x-show="searched && pessoasVisiveis.length > 0 && buscouEndereco" class="space-y-2 pt-1">
+        <!-- Resultados por endereço -->
+        <div x-show="searchedEndereco && pessoasEndereco.length > 0" class="space-y-2 pt-1">
           <p class="text-xs font-semibold text-slate-500">
-            Pessoas neste endereço (<span x-text="pessoasVisiveis.length"></span>)
+            Pessoas neste endereço (<span x-text="pessoasEndereco.length"></span>)
           </p>
-          <template x-for="p in pessoasVisiveis" :key="p.id">
+          <template x-for="p in pessoasEndereco" :key="'e-' + p.id">
             <div @click="viewPessoa(p.id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
               <div class="flex items-center justify-between">
                 <div>
@@ -112,76 +185,82 @@ function renderConsulta() {
         </div>
 
         <!-- Sem resultados endereço -->
-        <p x-show="searched && !loading && buscouEndereco && pessoasVisiveis.length === 0 && !buscouPessoa"
+        <p x-show="searchedEndereco && !loadingEndereco && pessoasEndereco.length === 0"
            class="text-xs text-slate-500 pt-1">
           Nenhuma pessoa encontrada neste endereço.
         </p>
+
+        <!-- Spinner endereço -->
+        <div x-show="loadingEndereco" class="flex justify-center py-2">
+          <span class="spinner"></span>
+        </div>
       </div>
 
-      <!-- Separador Ou -->
+      <!-- ── Separador ───────────────────────────────────────── -->
       <div class="flex items-center gap-3">
         <div class="flex-1 h-px bg-slate-700"></div>
         <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Ou</span>
         <div class="flex-1 h-px bg-slate-700"></div>
       </div>
 
-      <!-- Veículo -->
+      <!-- ── Buscar por Veículo ─────────────────────────────── -->
       <div class="card space-y-3">
-        <p class="text-sm font-semibold text-slate-300">Veículo</p>
-        <div class="grid gap-3" :class="filtroModelo.length > 0 ? 'grid-cols-3' : 'grid-cols-2'">
+        <p class="text-sm font-semibold text-slate-300">Buscar por Veículo</p>
+        <p class="text-xs text-slate-500">Encontre o abordado pelo veículo com que foi visto.</p>
+
+        <div class="space-y-3">
           <div>
-            <label class="block text-xs text-slate-500 mb-1">Placa</label>
-            <input type="text" x-model="filtroPlaca" @input="onInput()"
+            <label class="block text-xs text-slate-400 mb-1">Placa</label>
+            <input type="text" x-model="filtroPlaca" @input="onInputVeiculo()"
                    placeholder="ABC1234..." maxlength="10"
                    class="w-full py-3 uppercase" style="text-transform:uppercase">
           </div>
           <div>
-            <label class="block text-xs text-slate-500 mb-1">Modelo</label>
-            <input type="text" x-model="filtroModelo" @input="onInput()"
-                   placeholder="Modelo..." class="w-full py-3">
+            <label class="block text-xs text-slate-400 mb-1">Modelo</label>
+            <input type="text" x-model="filtroModelo" @input="onInputVeiculo()"
+                   placeholder="Modelo do veículo..." class="w-full py-3">
           </div>
           <div x-show="filtroModelo.length > 0">
-            <label class="block text-xs text-slate-500 mb-1">Cor</label>
-            <input type="text" x-model="filtroCor" @input="onInput()"
-                   placeholder="Cor..." class="w-full py-3">
+            <label class="block text-xs text-slate-400 mb-1">Cor <span class="text-slate-600">(opcional)</span></label>
+            <input type="text" x-model="filtroCor" @input="onInputVeiculo()"
+                   placeholder="Cor do veículo..." class="w-full py-3">
           </div>
         </div>
 
-        <!-- Resultados: Veículos -->
-        <div x-show="searched && veiculosFiltrados.length > 0" class="space-y-2 pt-1">
+        <!-- Resultados: fichas de abordados por veículo -->
+        <div x-show="searchedVeiculo && pessoasVeiculo.length > 0" class="space-y-2 pt-1">
           <p class="text-xs font-semibold text-slate-500">
-            Resultados (<span x-text="veiculosFiltrados.length"></span>)
+            Abordados vinculados (<span x-text="pessoasVeiculo.length"></span>)
           </p>
-          <template x-for="v in veiculosFiltrados" :key="v.id">
-            <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="v.placa"></span>
-                <span x-show="v.tipo" class="text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded" x-text="v.tipo"></span>
-              </div>
-              <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
-                 x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
-              <p x-show="v.criado_em" class="text-xs text-slate-500"
-                 x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></p>
-              <div x-show="vinculoPorVeiculo[v.placa]" class="flex items-center gap-1 pt-0.5">
-                <svg class="w-3 h-3 text-blue-400 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+          <template x-for="p in pessoasVeiculo" :key="'v-' + p.id + '-' + (p.veiculo_info?.placa || '')">
+            <div @click="viewPessoa(p.id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-slate-200" x-text="p.nome"></p>
+                  <p x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + p.cpf_masked"></p>
+                  <p x-show="p.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + p.apelido"></p>
+                  <p x-show="p.veiculo_info" class="text-xs text-slate-500 mt-0.5"
+                     x-text="'Vinculado via: ' + [p.veiculo_info?.placa, p.veiculo_info?.modelo, p.veiculo_info?.cor, p.veiculo_info?.ano].filter(Boolean).join(' · ')">
+                  </p>
+                </div>
+                <svg class="w-4 h-4 text-slate-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
                 </svg>
-                <span class="text-xs text-blue-400" x-text="vinculoPorVeiculo[v.placa]"></span>
               </div>
             </div>
           </template>
         </div>
 
         <!-- Sem resultados veículo -->
-        <p x-show="searched && !loading && buscouVeiculo && veiculosFiltrados.length === 0"
+        <p x-show="searchedVeiculo && !loadingVeiculo && pessoasVeiculo.length === 0"
            class="text-xs text-slate-500 pt-1">
-          Nenhum veículo encontrado.
+          Nenhum abordado vinculado a este veículo.
         </p>
-      </div>
 
-      <!-- Spinner -->
-      <div x-show="loading" class="flex justify-center py-2">
-        <span class="spinner"></span>
+        <!-- Spinner veículo -->
+        <div x-show="loadingVeiculo" class="flex justify-center py-2">
+          <span class="spinner"></span>
+        </div>
       </div>
     </div>
   `;
@@ -189,50 +268,39 @@ function renderConsulta() {
 
 function consultaPage() {
   return {
+    // Estado — busca pessoa por texto
     query: "",
+    pessoasTexto: [],
+    loadingPessoa: false,
+    searched: false,
+    buscouPessoa: false,
+    _timerPessoa: null,
+
+    // Estado — busca por foto
+    fotoFile: null,
+    fotoPreviewUrl: "",
+    pessoasFoto: [],
+
+    // Estado — endereço
     filtroBairro: "",
     filtroCidade: "",
     filtroEstado: "",
+    pessoasEndereco: [],
+    loadingEndereco: false,
+    searchedEndereco: false,
+    _timerEndereco: null,
+
+    // Estado — veículo
     filtroPlaca: "",
     filtroModelo: "",
     filtroCor: "",
+    pessoasVeiculo: [],
+    loadingVeiculo: false,
+    searchedVeiculo: false,
+    _timerVeiculo: null,
 
+    // Dados auxiliares
     localidades: { bairros: [], cidades: [], estados: [] },
-    pessoas: [],
-    veiculos: [],
-    vinculoPorVeiculo: {},
-    loading: false,
-    searched: false,
-    buscouPessoa: false,
-    buscouEndereco: false,
-    buscouVeiculo: false,
-    _timer: null,
-
-    // --- computed ---
-
-    get pessoasVisiveis() {
-      return this.pessoas;
-    },
-
-    get veiculosFiltrados() {
-      return this.veiculos.filter((v) => {
-        if (
-          this.filtroModelo.length > 0 &&
-          !(v.modelo || "").toLowerCase().includes(this.filtroModelo.toLowerCase())
-        )
-          return false;
-        if (
-          this.filtroCor.length > 0 &&
-          !(v.cor || "").toLowerCase().includes(this.filtroCor.toLowerCase())
-        )
-          return false;
-        return true;
-      });
-    },
-
-    get semResultados() {
-      return this.pessoasVisiveis.length === 0 && this.veiculosFiltrados.length === 0;
-    },
 
     // --- lifecycle ---
 
@@ -244,96 +312,122 @@ function consultaPage() {
       }
     },
 
-    // --- actions ---
+    // --- handlers de input ---
 
     onInput() {
-      clearTimeout(this._timer);
-      if (!this._algumCampoPreenchido()) {
-        this.pessoas = [];
-        this.veiculos = [];
-        this.vinculoPorVeiculo = {};
+      clearTimeout(this._timerPessoa);
+      if (this.query.length < 2) {
+        this.pessoasTexto = [];
         this.searched = false;
         this.buscouPessoa = false;
-        this.buscouEndereco = false;
-        this.buscouVeiculo = false;
         return;
       }
-      this._timer = setTimeout(() => this.search(), 400);
+      this._timerPessoa = setTimeout(() => this.searchPorTexto(), 400);
     },
 
-    _algumCampoPreenchido() {
-      return (
-        this.query.length >= 2 ||
-        this.filtroBairro.length >= 2 ||
-        this.filtroCidade.length >= 2 ||
-        this.filtroEstado.length >= 1 ||
-        this.filtroPlaca.length >= 2
-      );
+    onFotoSelect(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      this.fotoFile = file;
+      this.fotoPreviewUrl = URL.createObjectURL(file);
+      this.searchPorFoto();
     },
 
-    async search() {
-      this.loading = true;
-      this.buscouPessoa = this.query.length >= 2;
-      this.buscouEndereco = this.filtroBairro.length >= 2 || this.filtroCidade.length >= 2 || this.filtroEstado.length >= 1;
-      this.buscouVeiculo = this.filtroPlaca.length >= 2;
+    removeFoto() {
+      if (this.fotoPreviewUrl) URL.revokeObjectURL(this.fotoPreviewUrl);
+      this.fotoFile = null;
+      this.fotoPreviewUrl = "";
+      this.pessoasFoto = [];
+      this.$refs.fotoInput.value = "";
+    },
 
+    onInputEndereco() {
+      clearTimeout(this._timerEndereco);
+      const temFiltro = this.filtroBairro.length >= 2 || this.filtroCidade.length >= 2 || this.filtroEstado.length >= 1;
+      if (!temFiltro) {
+        this.pessoasEndereco = [];
+        this.searchedEndereco = false;
+        return;
+      }
+      this._timerEndereco = setTimeout(() => this.searchPorEndereco(), 400);
+    },
+
+    onInputVeiculo() {
+      clearTimeout(this._timerVeiculo);
+      const temFiltro = this.filtroPlaca.length >= 2 || this.filtroModelo.length >= 2;
+      if (!temFiltro) {
+        this.pessoasVeiculo = [];
+        this.searchedVeiculo = false;
+        return;
+      }
+      this._timerVeiculo = setTimeout(() => this.searchPorVeiculo(), 400);
+    },
+
+    // --- métodos de busca ---
+
+    async searchPorTexto() {
+      this.loadingPessoa = true;
+      this.buscouPessoa = true;
       try {
-        const tarefas = [];
-
-        // Busca pessoas: por nome/CPF e/ou endereço
-        const buscaPessoa = this.buscouPessoa || this.buscouEndereco;
-
-        if (buscaPessoa) {
-          const q = this.query.length >= 2 ? this.query : "a";
-          let url = `/consultas/?q=${encodeURIComponent(q)}&tipo=pessoa`;
-          if (this.filtroBairro.length >= 2)
-            url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
-          if (this.filtroCidade.length >= 2)
-            url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
-          if (this.filtroEstado.length >= 1)
-            url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
-          tarefas.push(api.get(url).then((r) => { this.pessoas = r.pessoas || []; }));
-        } else {
-          this.pessoas = [];
-        }
-
-        // Busca veículos: por placa
-        if (this.buscouVeiculo) {
-          const url = `/consultas/?q=${encodeURIComponent(this.filtroPlaca)}&tipo=veiculo`;
-          tarefas.push(
-            api.get(url).then((r) => {
-              this.veiculos = r.veiculos || [];
-              this._extrairVinculos(r.abordagens || []);
-            })
-          );
-        } else {
-          this.veiculos = [];
-          this.vinculoPorVeiculo = {};
-        }
-
-        await Promise.all(tarefas);
+        const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa`;
+        const r = await api.get(url);
+        this.pessoasTexto = r.pessoas || [];
         this.searched = true;
       } catch {
-        showToast("Erro na busca", "error");
+        showToast("Erro na busca por nome/CPF", "error");
       } finally {
-        this.loading = false;
+        this.loadingPessoa = false;
       }
     },
 
-    _extrairVinculos(abordagens) {
-      const vinculos = {};
-      for (const a of abordagens) {
-        if (!a.observacao) continue;
-        const match = a.observacao.match(/V[ií]nculos?:\s*(.+)/i);
-        if (!match) continue;
-        for (const par of match[1].split(",")) {
-          const partes = par.split("→").map((s) => s.trim());
-          if (partes.length === 2 && partes[0] && partes[1]) {
-            vinculos[partes[0].toUpperCase()] = partes[1];
-          }
-        }
+    async searchPorFoto() {
+      if (!this.fotoFile) return;
+      this.loadingPessoa = true;
+      try {
+        const form = new FormData();
+        form.append("file", this.fotoFile);
+        form.append("top_k", "5");
+        const r = await api.postForm("/fotos/buscar-rosto", form);
+        this.pessoasFoto = r.resultados || [];
+      } catch {
+        showToast("Erro na busca por foto", "error");
+      } finally {
+        this.loadingPessoa = false;
       }
-      this.vinculoPorVeiculo = vinculos;
+    },
+
+    async searchPorEndereco() {
+      this.loadingEndereco = true;
+      try {
+        let url = `/consultas/?q=a&tipo=pessoa`;
+        if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
+        if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
+        if (this.filtroEstado.length >= 1) url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
+        const r = await api.get(url);
+        this.pessoasEndereco = r.pessoas || [];
+        this.searchedEndereco = true;
+      } catch {
+        showToast("Erro no filtro por endereço", "error");
+      } finally {
+        this.loadingEndereco = false;
+      }
+    },
+
+    async searchPorVeiculo() {
+      this.loadingVeiculo = true;
+      try {
+        const params = new URLSearchParams();
+        if (this.filtroPlaca.length >= 2) params.append("placa", this.filtroPlaca.toUpperCase());
+        if (this.filtroModelo.length >= 2) params.append("modelo", this.filtroModelo);
+        if (this.filtroCor.length >= 1) params.append("cor", this.filtroCor);
+        const r = await api.get(`/consultas/pessoas-por-veiculo?${params}`);
+        this.pessoasVeiculo = Array.isArray(r) ? r : [];
+        this.searchedVeiculo = true;
+      } catch {
+        showToast("Erro na busca por veículo", "error");
+      } finally {
+        this.loadingVeiculo = false;
+      }
     },
 
     viewPessoa(id) {
