@@ -29,6 +29,37 @@ class PessoaComEnderecoRead(PessoaRead):
     endereco_criado_em: datetime | None = None
 
 
+class VeiculoInfo(BaseModel):
+    """Dados resumidos do veículo que originou o vínculo.
+
+    Attributes:
+        placa: Placa do veículo (uppercase normalizado).
+        modelo: Modelo do veículo (opcional).
+        cor: Cor do veículo (opcional).
+        ano: Ano do veículo (opcional).
+    """
+
+    placa: str
+    modelo: str | None = None
+    cor: str | None = None
+    ano: int | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class PessoaComVeiculoRead(PessoaRead):
+    """Pessoa retornada por busca de veículo com dados do vínculo.
+
+    Estende PessoaRead com o veículo que gerou o match na busca,
+    para exibir "Vinculado via: ABC·1234 · Gol Branco 2020" na ficha.
+
+    Attributes:
+        veiculo_info: Dados do veículo vinculado que originou o resultado.
+    """
+
+    veiculo_info: VeiculoInfo | None = None
+
+
 class ConsultaUnificadaResponse(BaseModel):
     """Resposta da consulta unificada cross-domain.
 
