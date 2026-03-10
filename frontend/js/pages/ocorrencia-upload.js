@@ -60,7 +60,7 @@ function renderOcorrenciaUpload() {
       </div>
 
       <!-- Submit -->
-      <button @click="submit()" class="btn btn-primary" :disabled="!file || !numero || submitting">
+      <button @click="submit()" class="btn btn-primary" :disabled="!file || !numero || !dataOcorrencia || submitting">
         <span x-show="!submitting">Enviar Ocorrência</span>
         <span x-show="submitting" class="flex items-center gap-2">
           <span class="spinner"></span> Enviando...
