@@ -9,6 +9,8 @@ from collections.abc import Sequence
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.abordagem import AbordagemPessoa, AbordagemVeiculo
+from app.models.pessoa import Pessoa
 from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
 
@@ -114,3 +116,54 @@ class VeiculoRepository(BaseRepository[Veiculo]):
             "modelos": [r[0] for r in res_modelos.all() if r[0]],
             "cores": [r[0] for r in res_cores.all() if r[0]],
         }
+
+    async def get_pessoas_por_veiculo(
+        self,
+        placa: str | None,
+        modelo: str | None,
+        cor: str | None,
+        guarnicao_id: int | None,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> list[tuple]:
+        """Busca pessoas vinculadas a veículos via abordagens.
+
+        Resolve a cadeia Veiculo → AbordagemVeiculo → AbordagemPessoa → Pessoa
+        para encontrar todos os abordados que tiveram relação com o veículo
+        buscado. Deduplicação é feita via DISTINCT na query.
+
+        Args:
+            placa: Placa parcial para busca ILIKE (opcional).
+            modelo: Modelo parcial para busca ILIKE (opcional).
+            cor: Cor parcial para busca ILIKE (opcional).
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            skip: Número de registros a pular.
+            limit: Número máximo de resultados.
+
+        Returns:
+            Lista de tuplas (Pessoa, Veiculo) sem duplicatas.
+        """
+        query = (
+            select(Pessoa, Veiculo)
+            .join(AbordagemPessoa, AbordagemPessoa.pessoa_id == Pessoa.id)
+            .join(AbordagemVeiculo, AbordagemVeiculo.abordagem_id == AbordagemPessoa.abordagem_id)
+            .join(Veiculo, Veiculo.id == AbordagemVeiculo.veiculo_id)
+            .where(
+                Pessoa.ativo == True,  # noqa: E712
+                Veiculo.ativo == True,  # noqa: E712
+            )
+        )
+
+        if placa:
+            normalized = placa.upper().replace("-", "").replace(" ", "")
+            query = query.where(Veiculo.placa.ilike(f"%{normalized}%"))
+        if modelo:
+            query = query.where(Veiculo.modelo.ilike(f"%{modelo}%"))
+        if cor:
+            query = query.where(Veiculo.cor.ilike(f"%{cor}%"))
+        if guarnicao_id is not None:
+            query = query.where(Pessoa.guarnicao_id == guarnicao_id)
+
+        query = query.distinct().offset(skip).limit(limit)
+        result = await self.db.execute(query)
+        return list(result.all())
