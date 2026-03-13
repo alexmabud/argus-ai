@@ -18,7 +18,7 @@ COPY pyproject.toml .
 RUN python -m venv /build/venv && \
     /build/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
     /build/venv/bin/pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
-    /build/venv/bin/pip install --no-cache-dir .
+    /build/venv/bin/pip install --no-cache-dir ".[vision]"
 
 # ── Stage 2: Runtime ───────────────────────────────────────────
 FROM python:3.11-slim-bookworm AS runtime

@@ -76,6 +76,8 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
+    volumes:
+      - insightface_models:/root/.insightface
     depends_on:
       db:
         condition: service_healthy
@@ -121,3 +123,4 @@ volumes:
   caddy_data:
   caddy_config:
   minio_data:
+  insightface_models:
