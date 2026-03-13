@@ -77,7 +77,7 @@ function autocompleteComponent(tipo) {
           }
         }
         this._allResults = data || [];
-        this.results = data || [];
+        this.results = this._filtrarLocalmente();
         this.noResults = this.results.length === 0 && this.query.length >= 2;
         this.showDropdown = this.results.length > 0 || this.noResults;
       } catch {
@@ -89,7 +89,7 @@ function autocompleteComponent(tipo) {
           data = await searchVeiculosLocal(this.query);
         }
         this._allResults = data || [];
-        this.results = data || [];
+        this.results = this._filtrarLocalmente();
         this.noResults = this.results.length === 0 && this.query.length >= 2;
         this.showDropdown = this.results.length > 0 || this.noResults;
       } finally {
