@@ -77,7 +77,7 @@ services:
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
     volumes:
-      - insightface_models:/root/.insightface
+      - insightface_models:/app/.insightface
     depends_on:
       db:
         condition: service_healthy
