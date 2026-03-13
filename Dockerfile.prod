@@ -17,7 +17,7 @@ COPY pyproject.toml .
 # Torch CPU-only primeiro (evita baixar versão CUDA de ~3GB)
 RUN python -m venv /build/venv && \
     /build/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    /build/venv/bin/pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    /build/venv/bin/pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
     /build/venv/bin/pip install --no-cache-dir ".[vision]"
 
 # ── Stage 2: Runtime ───────────────────────────────────────────
