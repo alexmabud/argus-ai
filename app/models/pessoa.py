@@ -68,6 +68,12 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         back_populates="pessoa_b",
         lazy="selectin",
     )
+    vinculos_manuais = relationship(
+        "VinculoManual",
+        foreign_keys="VinculoManual.pessoa_id",
+        back_populates="pessoa",
+        lazy="selectin",
+    )
 
     __table_args__ = (
         Index(

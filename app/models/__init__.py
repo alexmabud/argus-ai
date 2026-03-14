@@ -16,3 +16,4 @@ from app.models.pessoa import Pessoa  # noqa: F401
 from app.models.relacionamento import RelacionamentoPessoa  # noqa: F401
 from app.models.usuario import Usuario  # noqa: F401
 from app.models.veiculo import Veiculo  # noqa: F401
+from app.models.vinculo_manual import VinculoManual  # noqa: F401
