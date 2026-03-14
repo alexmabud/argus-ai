@@ -464,6 +464,23 @@ function renderPessoaDetalhe(appState) {
                       </div>
                     </div>
                   </template>
+
+                  <!-- Veículos desta abordagem -->
+                  <template x-if="ab.veiculos?.length > 0">
+                    <div class="pt-1">
+                      <p class="text-[10px] font-semibold text-slate-500 mb-1.5">Veículos:</p>
+                      <div class="flex flex-col gap-1">
+                        <template x-for="v in ab.veiculos" :key="v.id">
+                          <div class="flex items-center gap-2 text-xs">
+                            <span class="font-mono text-slate-100 tracking-wider" x-text="formatPlaca(v.placa)"></span>
+                            <template x-if="v.pessoa_id">
+                              <span class="text-slate-500" x-text="'— ' + (ab.pessoas?.find(p => p.id === v.pessoa_id)?.nome?.split(' ')[0] || 'N/A')"></span>
+                            </template>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
                 </div>
               </template>
             </div>
@@ -743,7 +760,7 @@ function pessoaDetalhePage(pessoaId) {
     async _executarBusca(q) {
       this.buscandoPessoa = true;
       try {
-        const results = await api.get(`/pessoas?nome=${encodeURIComponent(q)}&limit=5`);
+        const results = await api.get(`/pessoas/?nome=${encodeURIComponent(q)}&limit=5`);
         // Excluir a própria pessoa da lista
         // pessoaId é closure da função pessoaDetalhePage(pessoaId) — NÃO usar ${} aqui
         this.resultadosBusca = results.filter(p => p.id !== pessoaId);
@@ -796,7 +813,7 @@ function pessoaDetalhePage(pessoaId) {
     async removerVinculo(vinculoId) {
       if (!confirm('Remover este vínculo?')) return;
       try {
-        await api.delete(`/pessoas/${pessoaId}/vinculos-manuais/${vinculoId}`);
+        await api.del(`/pessoas/${pessoaId}/vinculos-manuais/${vinculoId}`);
         this.vinculosManuais = this.vinculosManuais.filter(v => v.id !== vinculoId);
       } catch (err) {
         alert(err.message || 'Erro ao remover vínculo.');
