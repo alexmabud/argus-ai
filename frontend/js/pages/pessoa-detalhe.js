@@ -160,7 +160,7 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Veículos Vinculados ao Abordado (container pai) -->
-          <div x-show="veiculos.length > 0 || fotosVeiculos.length > 0" class="card space-y-3 border-l-4 border-l-emerald-500">
+          <div x-show="veiculos.length > 0" class="card space-y-3 border-l-4 border-l-emerald-500">
             <h3 class="text-sm font-semibold text-slate-300">Veículos Vinculados ao Abordado</h3>
 
             <!-- Lista de veículos -->
@@ -172,6 +172,12 @@ function renderPessoaDetalhe(appState) {
                       <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="formatPlaca(v.placa)"></span>
                       <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
                          x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
+                      <template x-if="fotosVeiculos[v.id]">
+                        <img :src="fotosVeiculos[v.id].arquivo_url"
+                             class="w-16 h-16 object-cover rounded-lg cursor-pointer mt-1"
+                             @click="fotoAmpliada = fotosVeiculos[v.id].arquivo_url"
+                             loading="lazy">
+                      </template>
                     </div>
                     <span x-show="v.criado_em" class="text-xs text-slate-500 shrink-0"
                           x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></span>
@@ -180,27 +186,6 @@ function renderPessoaDetalhe(appState) {
               </template>
             </div>
 
-            <!-- Fotos de veículos -->
-            <div x-show="fotosVeiculos.length > 0" class="space-y-2">
-              <p class="text-xs font-semibold text-slate-500">
-                Fotos de Veículos Vinculados ao Abordado (<span x-text="fotosVeiculos.length"></span>)
-              </p>
-              <div class="grid grid-cols-3 gap-2">
-                <template x-for="foto in fotosVeiculos" :key="foto.id">
-                  <div>
-                    <div class="relative">
-                      <img :src="foto.arquivo_url" class="w-full h-28 object-cover rounded-lg" loading="lazy"
-                           @click="fotoAmpliada = foto.arquivo_url">
-                      <span class="absolute bottom-1 left-1 bg-black/60 text-[10px] text-slate-300 px-1 rounded"
-                            x-text="foto.tipo || 'foto'"></span>
-                    </div>
-                    <p class="text-xs text-slate-400 text-center mt-1"
-                       x-show="foto.data_hora"
-                       x-text="foto.data_hora ? new Date(foto.data_hora).toLocaleDateString('pt-BR') : ''"></p>
-                  </div>
-                </template>
-              </div>
-            </div>
           </div>
 
           <!-- Relacionamentos (vínculos) -->
@@ -326,7 +311,7 @@ function pessoaDetalhePage(pessoaId) {
   return {
     pessoa: null,
     fotos: [],
-    fotosVeiculos: [],
+    fotosVeiculos: {},
     abordagens: [],
     veiculos: [],
     fotoAmpliada: null,
@@ -380,9 +365,15 @@ function pessoaDetalhePage(pessoaId) {
         );
         const fotosResultados = await Promise.all(fotosPromises);
         const tiposVeiculo = ['veiculo', 'placa'];
-        this.fotosVeiculos = fotosResultados
-          .flat()
-          .filter(f => tiposVeiculo.includes(f.tipo));
+        const fotosPlanas = fotosResultados.flat().filter(f => tiposVeiculo.includes(f.tipo));
+        // Mapa veiculo_id → primeira foto do veículo
+        const mapaFotos = {};
+        for (const foto of fotosPlanas) {
+          if (foto.veiculo_id && !mapaFotos[foto.veiculo_id]) {
+            mapaFotos[foto.veiculo_id] = foto;
+          }
+        }
+        this.fotosVeiculos = mapaFotos;
 
         // Coletar veículos únicos de todas as abordagens
         const veiculosMap = {};
