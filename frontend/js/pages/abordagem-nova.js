@@ -692,6 +692,9 @@ function abordagemForm() {
         client_id: this.clientId,
         pessoa_ids: this.pessoaIds,
         veiculo_ids: this.veiculoIds,
+        veiculo_por_pessoa: Object.fromEntries(
+          Object.entries(this.veiculoPorPessoa).filter(([, v]) => v !== null)
+        ),
         passagens: [],
       };
 
