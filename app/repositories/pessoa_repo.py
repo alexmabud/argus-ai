@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.endereco import EnderecoPessoa
 from app.models.pessoa import Pessoa
+from app.models.relacionamento import RelacionamentoPessoa
 from app.repositories.base import BaseRepository
 
 
@@ -254,8 +255,12 @@ class PessoaRepository(BaseRepository[Pessoa]):
             .options(
                 selectinload(Pessoa.enderecos),
                 selectinload(Pessoa.fotos),
-                selectinload(Pessoa.relacionamentos_como_a),
-                selectinload(Pessoa.relacionamentos_como_b),
+                selectinload(Pessoa.relacionamentos_como_a).selectinload(
+                    RelacionamentoPessoa.pessoa_b
+                ),
+                selectinload(Pessoa.relacionamentos_como_b).selectinload(
+                    RelacionamentoPessoa.pessoa_a
+                ),
             )
             .where(
                 Pessoa.id == id,
