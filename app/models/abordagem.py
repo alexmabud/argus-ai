@@ -121,20 +121,25 @@ class AbordagemPessoa(Base):
 
 
 class AbordagemVeiculo(Base):
-    """Associação M:N entre abordagem e veículo.
+    """Associação M:N entre abordagem e veículo, com vínculo opcional por pessoa.
 
     Tabela de junção que materializa a relação entre uma abordagem
-    e os veículos envolvidos nela.
+    e os veículos envolvidos nela. O campo pessoa_id registra qual
+    abordado estava associado a este veículo (nullable para compatibilidade
+    com abordagens anteriores sem esse vínculo).
 
     Attributes:
         id: Identificador único (chave primária).
         abordagem_id: ID da abordagem (FK, CASCADE delete).
         veiculo_id: ID do veículo (FK, CASCADE delete).
+        pessoa_id: ID do abordado associado ao veículo (FK, SET NULL, nullable).
         abordagem: Relacionamento com Abordagem.
         veiculo: Relacionamento com Veiculo.
+        pessoa: Relacionamento com Pessoa (opcional).
 
     Nota:
         - Índice único (abordagem_id, veiculo_id) evita duplicatas.
+        - pessoa_id NULL indica veículo sem vínculo por pessoa (abordagens antigas).
     """
 
     __tablename__ = "abordagem_veiculos"
@@ -142,9 +147,13 @@ class AbordagemVeiculo(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     abordagem_id: Mapped[int] = mapped_column(ForeignKey("abordagens.id", ondelete="CASCADE"))
     veiculo_id: Mapped[int] = mapped_column(ForeignKey("veiculos.id", ondelete="CASCADE"))
+    pessoa_id: Mapped[int | None] = mapped_column(
+        ForeignKey("pessoas.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     abordagem = relationship("Abordagem", back_populates="veiculos")
     veiculo = relationship("Veiculo")
+    pessoa = relationship("Pessoa")
 
     __table_args__ = (Index("uq_abordagem_veiculo", "abordagem_id", "veiculo_id", unique=True),)
 
