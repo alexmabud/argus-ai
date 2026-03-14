@@ -327,6 +327,12 @@ function consultaPage() {
     // Dados auxiliares
     localidades: { bairros: [], cidades: [], estados: [] },
 
+    // Cadastro nova pessoa
+    showCadastroPessoa: false,
+    novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" },
+    salvandoPessoa: false,
+    erroCadastro: null,
+
     // --- lifecycle ---
 
     async init() {
@@ -472,6 +478,50 @@ function consultaPage() {
         appEl._x_dataStack[0].currentPage = "pessoa-detalhe";
         appEl._x_dataStack[0]._pessoaId = id;
         appEl._x_dataStack[0].renderPage("pessoa-detalhe");
+      }
+    },
+
+    async criarPessoa() {
+      const nome = this.novaPessoa.nome.trim();
+      if (!nome) {
+        this.erroCadastro = "Nome é obrigatório.";
+        return;
+      }
+
+      this.salvandoPessoa = true;
+      this.erroCadastro = null;
+
+      try {
+        const pessoaData = { nome };
+        if (this.novaPessoa.cpf.trim()) pessoaData.cpf = this.novaPessoa.cpf.trim();
+        if (this.novaPessoa.data_nascimento) pessoaData.data_nascimento = this.novaPessoa.data_nascimento;
+        if (this.novaPessoa.apelido.trim()) pessoaData.apelido = this.novaPessoa.apelido.trim();
+
+        const pessoa = await api.post("/pessoas/", pessoaData);
+
+        const temEndereco = this.novaPessoa.endereco.trim()
+          || this.novaPessoa.bairro.trim()
+          || this.novaPessoa.cidade.trim()
+          || this.novaPessoa.estado.trim();
+
+        if (temEndereco) {
+          await api.post(`/pessoas/${pessoa.id}/enderecos`, {
+            endereco: this.novaPessoa.endereco.trim() || "-",
+            bairro: this.novaPessoa.bairro.trim() || null,
+            cidade: this.novaPessoa.cidade.trim() || null,
+            estado: this.novaPessoa.estado.trim().toUpperCase() || null,
+          });
+        }
+
+        // Reset e navegar para ficha
+        this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
+        this.showCadastroPessoa = false;
+        showToast("Pessoa cadastrada com sucesso!", "success");
+        this.viewPessoa(pessoa.id);
+      } catch (err) {
+        this.erroCadastro = err.message || "Erro ao cadastrar pessoa.";
+      } finally {
+        this.salvandoPessoa = false;
       }
     },
   };
