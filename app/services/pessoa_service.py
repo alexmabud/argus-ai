@@ -444,6 +444,10 @@ class PessoaService:
             await self.db.rollback()
             raise ConflitoDadosError("Vínculo já cadastrado entre essas pessoas")
 
+        # Carregar pessoa_vinculada explicitamente após flush para evitar
+        # MissingGreenlet ao acessar o relacionamento no router em contexto async.
+        await self.db.refresh(vinculo, attribute_names=["pessoa_vinculada"])
+
         await self.audit.log(
             usuario_id=user.id,
             acao="CREATE",
