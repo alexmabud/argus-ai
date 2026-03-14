@@ -29,10 +29,13 @@ class Foto(Base, TimestampMixin, SoftDeleteMixin):
         longitude: Longitude GPS (opcional).
         pessoa_id: ID da pessoa (FK, opcional - null para fotos de abordagem).
         abordagem_id: ID da abordagem (FK, opcional).
+        veiculo_id: ID do veículo associado (FK, opcional — preencher para fotos
+            tipo "veiculo"/"placa").
         embedding_face: Vetor facial 512-dimensional (pgvector).
         face_processada: Flag indicando se embedding foi extraído.
         pessoa: Relacionamento com Pessoa.
         abordagem: Relacionamento com Abordagem.
+        veiculo: Relacionamento com Veiculo (opcional).
 
     Nota:
         - Embedding facial é processado via arq worker (async).
@@ -50,8 +53,12 @@ class Foto(Base, TimestampMixin, SoftDeleteMixin):
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     pessoa_id: Mapped[int | None] = mapped_column(ForeignKey("pessoas.id"), nullable=True)
     abordagem_id: Mapped[int | None] = mapped_column(ForeignKey("abordagens.id"), nullable=True)
+    veiculo_id: Mapped[int | None] = mapped_column(
+        ForeignKey("veiculos.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     embedding_face = mapped_column(Vector(512), nullable=True)
     face_processada: Mapped[bool] = mapped_column(Boolean, default=False)
 
     pessoa = relationship("Pessoa", back_populates="fotos")
     abordagem = relationship("Abordagem", back_populates="fotos")
+    veiculo = relationship("Veiculo")

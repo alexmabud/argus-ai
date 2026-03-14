@@ -43,6 +43,7 @@ class FotoRead(BaseModel):
         longitude: Longitude GPS da captura.
         pessoa_id: ID da pessoa associada (null se só abordagem).
         abordagem_id: ID da abordagem associada (null se só pessoa).
+        veiculo_id: ID do veículo associado (null se não for foto de veículo específico).
         face_processada: Flag se embedding facial foi extraído.
     """
 
@@ -54,6 +55,7 @@ class FotoRead(BaseModel):
     longitude: float | None = None
     pessoa_id: int | None = None
     abordagem_id: int | None = None
+    veiculo_id: int | None = None
     face_processada: bool
 
     model_config = {"from_attributes": True}
