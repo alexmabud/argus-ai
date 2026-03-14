@@ -94,6 +94,48 @@ function renderPessoaDetalhe(appState) {
             <img :src="fotoAmpliada" class="max-w-full max-h-full rounded-lg">
           </div>
 
+          <!-- Modal preview de pessoa coabordada -->
+          <div x-show="pessoaPreview" x-cloak
+               @click.self="pessoaPreview = null"
+               class="fixed inset-0 bg-black/60 z-50 flex items-end justify-center sm:items-center p-4">
+            <div @click="viewPessoa(pessoaPreview.id)"
+                 class="bg-slate-800 border border-slate-600 rounded-2xl p-5 w-full max-w-sm space-y-3 cursor-pointer hover:border-blue-500 transition-colors">
+              <!-- Foto ou ícone -->
+              <div class="flex justify-center">
+                <template x-if="pessoaPreview?.foto_principal_url">
+                  <img :src="pessoaPreview.foto_principal_url"
+                       class="w-20 h-20 rounded-full object-cover border-2 border-slate-500">
+                </template>
+                <template x-if="!pessoaPreview?.foto_principal_url">
+                  <div class="w-20 h-20 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center text-slate-400">
+                    <svg class="w-10 h-10" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                    </svg>
+                  </div>
+                </template>
+              </div>
+              <!-- Dados -->
+              <div class="text-center space-y-1">
+                <p class="text-base font-bold text-slate-100" x-text="pessoaPreview?.nome"></p>
+                <p x-show="pessoaPreview?.apelido"
+                   class="text-sm text-yellow-400 font-medium"
+                   x-text="'Vulgo: ' + pessoaPreview?.apelido"></p>
+                <p x-show="pessoaPreview?.cpf_masked"
+                   class="text-xs text-slate-400"
+                   x-text="'CPF: ' + pessoaPreview?.cpf_masked"></p>
+                <p x-show="pessoaPreview?.data_nascimento"
+                   class="text-xs text-slate-400"
+                   x-text="'Nascimento: ' + (pessoaPreview?.data_nascimento ? new Date(pessoaPreview.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '')"></p>
+              </div>
+              <!-- Botão -->
+              <div class="pt-1">
+                <div class="w-full text-center text-sm font-semibold text-blue-400 py-2 rounded-lg border border-blue-500/40 bg-blue-500/10">
+                  Ver ficha completa →
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Endereços -->
           <div x-show="pessoa.enderecos?.length > 0" class="card space-y-2 border-l-4 border-l-blue-600">
             <h3 class="text-sm font-semibold text-slate-300">
