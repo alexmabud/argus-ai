@@ -4,7 +4,7 @@ Define relacionamentos manuais entre pessoas, registrados pelo operador
 com tipo (ex: 'Irmão') e descrição opcional, independente de abordagens.
 """
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, MultiTenantMixin, SoftDeleteMixin, TimestampMixin
@@ -39,7 +39,7 @@ class VinculoManual(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         ForeignKey("pessoas.id", ondelete="CASCADE"), index=True
     )
     tipo: Mapped[str] = mapped_column(String(100))
-    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    descricao: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     pessoa = relationship(
         "Pessoa",

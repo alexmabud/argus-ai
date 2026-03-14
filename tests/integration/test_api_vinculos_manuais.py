@@ -8,8 +8,10 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import criar_access_token, hash_senha
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
+from app.models.usuario import Usuario
 
 
 @pytest.fixture
@@ -188,6 +190,71 @@ class TestVinculoManualNoDetalhe:
         assert len(data["vinculos_manuais"]) == 1
         assert data["vinculos_manuais"][0]["tipo"] == "Pai"
         assert data["vinculos_manuais"][0]["nome"] == outra_pessoa.nome
+
+
+class TestVinculoManualCrossTenant:
+    """Testes de isolamento cross-tenant para vínculos manuais."""
+
+    async def test_nao_pode_criar_vinculo_para_pessoa_de_outro_tenant(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        pessoa,
+        guarnicao: Guarnicao,
+    ):
+        """Testa que operador não pode criar vínculo com pessoa de outra guarnição.
+
+        Um operador autenticado na guarnição A não deve conseguir cadastrar
+        um vínculo apontando para pessoa_vinculada_id pertencente à guarnição B.
+        A API deve retornar 404 (pessoa vinculada não encontrada no tenant).
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            db_session: Sessão do banco de teste.
+            pessoa: Fixture de pessoa da guarnição principal.
+            guarnicao: Guarnição principal (tenant A).
+        """
+        # Criar segunda guarnição (tenant B)
+        outra_guarnicao = Guarnicao(
+            nome="5a Cia - GU 02",
+            unidade="5o BPM",
+            codigo="5BPM-5CIA-GU02",
+        )
+        db_session.add(outra_guarnicao)
+        await db_session.flush()
+
+        # Criar usuário e pessoa no tenant B
+        usuario_b = Usuario(
+            nome="Agente Outro Tenant",
+            matricula="OTHER001",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=outra_guarnicao.id,
+        )
+        db_session.add(usuario_b)
+        await db_session.flush()
+
+        pessoa_outro_tenant = Pessoa(
+            nome="Pessoa Outro Tenant",
+            guarnicao_id=outra_guarnicao.id,
+        )
+        db_session.add(pessoa_outro_tenant)
+        await db_session.flush()
+
+        # Gerar token do tenant A (operador da guarnição principal)
+        token_a = criar_access_token({"sub": str(1), "guarnicao_id": guarnicao.id})
+        headers_a = {"Authorization": f"Bearer {token_a}"}
+
+        # Tentar criar vínculo da pessoa do tenant A com pessoa do tenant B
+        response = await client.post(
+            f"/api/v1/pessoas/{pessoa.id}/vinculos-manuais",
+            json={
+                "pessoa_vinculada_id": pessoa_outro_tenant.id,
+                "tipo": "Amigo",
+            },
+            headers=headers_a,
+        )
+        # Pessoa vinculada pertence a outro tenant — deve ser rejeitado
+        assert response.status_code in (404, 403)
 
 
 class TestRemoverVinculoManual:

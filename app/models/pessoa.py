@@ -4,12 +4,18 @@ Define a pessoa abordada, com dados pessoais, endereços, fotos,
 histórico de abordagens e relacionamentos com outras pessoas.
 """
 
+from __future__ import annotations
+
 from datetime import date
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, MultiTenantMixin, SoftDeleteMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.vinculo_manual import VinculoManual
 
 
 class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
@@ -68,11 +74,10 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         back_populates="pessoa_b",
         lazy="selectin",
     )
-    vinculos_manuais = relationship(
+    vinculos_manuais: Mapped[list[VinculoManual]] = relationship(
         "VinculoManual",
         foreign_keys="VinculoManual.pessoa_id",
         back_populates="pessoa",
-        lazy="selectin",
     )
 
     __table_args__ = (
