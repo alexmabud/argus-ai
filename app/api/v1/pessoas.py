@@ -347,7 +347,11 @@ async def listar_abordagens_pessoa(
                     atualizado_em=p.atualizado_em,
                 )
             )
-        veiculos = [VeiculoRead.model_validate(av.veiculo) for av in ab.veiculos]
+        veiculos = [
+            VeiculoRead.model_validate(av.veiculo)
+            for av in ab.veiculos
+            if av.pessoa_id is None or av.pessoa_id == pessoa_id
+        ]
         result.append(
             AbordagemDetail(
                 id=ab.id,
