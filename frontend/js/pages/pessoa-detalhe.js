@@ -216,6 +216,36 @@ function renderPessoaDetalhe(appState) {
                       </div>
                     </template>
                   </div>
+
+                  <!-- Coabordados nesta abordagem -->
+                  <template x-if="ab.pessoas?.filter(p => p.id !== ${pessoaId}).length > 0">
+                    <div class="pt-1">
+                      <p class="text-[10px] font-semibold text-slate-500 mb-1.5">Abordados juntos:</p>
+                      <div class="flex flex-wrap gap-3">
+                        <template x-for="p in ab.pessoas.filter(pp => pp.id !== ${pessoaId})" :key="p.id">
+                          <div @click.stop="pessoaPreview = p"
+                               class="flex flex-col items-center gap-1 cursor-pointer w-10">
+                            <!-- Com foto -->
+                            <template x-if="p.foto_principal_url">
+                              <img :src="p.foto_principal_url"
+                                   class="w-10 h-10 rounded-full object-cover border-2 border-slate-600 hover:border-blue-400 transition-colors"
+                                   loading="lazy">
+                            </template>
+                            <!-- Sem foto: ícone silhueta -->
+                            <template x-if="!p.foto_principal_url">
+                              <div class="w-10 h-10 rounded-full bg-slate-700 border-2 border-slate-600 hover:border-blue-400 transition-colors flex items-center justify-center text-slate-400">
+                                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                                </svg>
+                              </div>
+                            </template>
+                            <span class="text-[9px] text-slate-400 text-center leading-tight w-10 truncate"
+                                  x-text="p.nome.split(' ')[0]"></span>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
                 </div>
               </template>
             </div>
