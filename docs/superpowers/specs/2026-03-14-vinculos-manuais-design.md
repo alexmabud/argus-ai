@@ -15,11 +15,16 @@ O objetivo desta feature é permitir que o operador cadastre **vínculos manuais
 
 ## O que será construído
 
-### 1. Banco de dados — nova tabela `vinculo_manuais`
+### 1. Banco de dados — nova tabela `vinculos_manuais`
 
 Nova tabela independente da `relacionamento_pessoas` existente. A tabela atual tem constraints incompatíveis com vínculos manuais (`frequencia`, `primeira_abordagem_id NOT NULL`, `CHECK pessoa_id_a < pessoa_id_b`).
 
-**Campos:**
+**Model `VinculoManual`** herda `Base`, `TimestampMixin`, `SoftDeleteMixin`, `MultiTenantMixin`.
+
+> `MultiTenantMixin` já declara `guarnicao_id` como FK → `guarnicoes.id`. Não redeclarar no modelo.
+> `SoftDeleteMixin` declara `ativo: bool = True`, `desativado_em: datetime|None`, `desativado_por_id: int|None`.
+
+**Campos adicionais:**
 
 | Campo | Tipo | Notas |
 |---|---|---|
@@ -28,16 +33,14 @@ Nova tabela independente da `relacionamento_pessoas` existente. A tabela atual t
 | `pessoa_vinculada_id` | FK → pessoas (CASCADE) | Pessoa vinculada |
 | `tipo` | String(100) | Obrigatório — ex: "Irmão", "Sócio" |
 | `descricao` | String(500) | Opcional — ex: "Traficando junto na casa ao lado" |
-| `guarnicao_id` | FK → guarnicoes | Multi-tenancy |
-| `criado_em` | DateTime | TimestampMixin |
-| `atualizado_em` | DateTime | TimestampMixin |
-| `deletado_em` | DateTime | SoftDeleteMixin |
 
 **Constraints:**
 - `UNIQUE(pessoa_id, pessoa_vinculada_id)` — evita duplicatas
 - `CHECK(pessoa_id != pessoa_vinculada_id)` — pessoa não pode se vincular a si mesma
 
-**Índices:** `pessoa_id`, `pessoa_vinculada_id`, `guarnicao_id`
+> **Nota:** Vínculos não são bidirecionais — `(A→B)` e `(B→A)` são registros distintos e ambos são permitidos. Isso é intencional e diferente de `RelacionamentoPessoa` que força `pessoa_id_a < pessoa_id_b`.
+
+**Índices:** `pessoa_id`, `pessoa_vinculada_id` (além dos herdados de `MultiTenantMixin`)
 
 ---
 
@@ -65,37 +68,53 @@ Nova tabela independente da `relacionamento_pessoas` existente. A tabela atual t
 ### 3. Endpoints novos em `/pessoas`
 
 ```
-POST   /pessoas/{pessoa_id}/vinculos-manuais
+POST   /pessoas/{pessoa_id}/vinculos-manuais   @limiter.limit("30/minute")
 DELETE /pessoas/{pessoa_id}/vinculos-manuais/{vinculo_id}
 ```
 
-**POST** — cria vínculo manual
-- Body: `VinculoManualCreate`
-- Valida que `pessoa_id` e `pessoa_vinculada_id` pertencem à mesma guarnição
-- Retorna `VinculoManualRead` com status 201
-- Lança `ConflitoDadosError` se vínculo já existe
+Ambos delegam inteiramente ao `PessoaService` — **nenhuma lógica no router**.
 
-**DELETE** — soft delete do vínculo
-- Retorna 204
-- Lança `NaoEncontradoError` se não encontrado ou de outra guarnição
+**POST** → `VinculoManualRead` com status 201
+**DELETE** → 204
 
-**GET /pessoas/{pessoa_id}** — retorna `PessoaDetail` já existente, agora inclui `vinculos_manuais`
+**GET /pessoas/{pessoa_id}** — `detalhe_pessoa` atualizado:
+- Chama `service.buscar_detalhe()` que retorna `PessoaDetail` completo
+- O router apenas serializa o retorno — toda a montagem (incluindo vínculos manuais) fica no service
+- O helper `_to_pessoa_read()` permanece no router apenas para os endpoints de listagem
 
 ---
 
 ### 4. Service — métodos em `PessoaService`
 
-- `criar_vinculo_manual(pessoa_id, data, user) → VinculoManual`
-- `listar_vinculos_manuais(pessoa_id, guarnicao_id) → list[VinculoManual]`
-- `remover_vinculo_manual(vinculo_id, pessoa_id, user) → None`
+> `app.core.exceptions` é importável em services — padrão já estabelecido em `abordagem_service.py`.
 
-`buscar_detalhe()` é atualizado para carregar `vinculos_manuais` junto com a pessoa.
+**`criar_vinculo_manual(pessoa_id, data, user, ip_address, user_agent)`:**
+1. Verifica que `pessoa_id` pertence à guarnição do user (TenantFilter)
+2. Verifica que `pessoa_vinculada_id` pertence à **mesma** guarnição → `AcessoNegadoError` se não (proteção cross-tenant)
+3. Tenta criar `VinculoManual` com `guarnicao_id = user.guarnicao_id`
+4. Captura `IntegrityError` do banco (race condition na constraint UNIQUE) → relança como `ConflitoDadosError`
+5. Registra `AuditLog`: ação `CREATE`, entidade `vinculo_manual`
+6. Retorna `VinculoManual`
+
+**`listar_vinculos_manuais(pessoa_id, user)` *(somente leitura — sem ip_address/user_agent)*:**
+- Filtra por `pessoa_id` + `guarnicao_id = user.guarnicao_id` + `ativo == True`
+- Retorna `list[VinculoManual]`
+
+**`remover_vinculo_manual(vinculo_id, pessoa_id, user, ip_address, user_agent)`:**
+1. Busca vínculo por `vinculo_id` + `pessoa_id`, valida guarnição → `NaoEncontradoError` se não encontrado
+2. Soft delete: `ativo = False`, `desativado_em = now()`, `desativado_por_id = user.id`
+3. Registra `AuditLog`: ação `DELETE`, entidade `vinculo_manual`
+
+**`buscar_detalhe()` atualizado:**
+- Carrega `vinculos_manuais` da pessoa (query: `pessoa_id`, `guarnicao_id`, `ativo == True`)
+- Monta lista de `VinculoManualRead` com nome e `foto_principal_url` da pessoa vinculada
+- Retorna `PessoaDetail` completo — toda a montagem acontece no service, não no router
 
 ---
 
 ### 5. Migration Alembic
 
-Nova migration criando a tabela `vinculo_manuais` com todos os campos, constraints e índices.
+Nova migration criando a tabela `vinculos_manuais` com todos os campos, constraints e índices.
 
 ---
 
@@ -104,49 +123,53 @@ Nova migration criando a tabela `vinculo_manuais` com todos os campos, constrain
 #### Estado Alpine.js adicionado
 
 ```js
-vinculosManuais: [],        // lista de vínculos manuais
-modalVinculo: false,        // controla abertura do modal
-buscaVinculo: '',           // texto de busca de pessoa
-resultadosBusca: [],        // resultados do GET /pessoas?nome=...
-buscandoPessoa: false,      // loading da busca
-pessoaSelecionada: null,    // pessoa escolhida para vincular
+vinculosManuais: [],
+modalVinculo: false,
+buscaVinculo: '',
+resultadosBusca: [],
+buscandoPessoa: false,
+pessoaSelecionada: null,
 novoVinculo: { tipo: '', descricao: '' },
-subFormNovaPessoa: false,   // true quando pessoa não encontrada → form de cadastro
+subFormNovaPessoa: false,       // inicia false; true quando pessoa não encontrada
+novaPessoaForm: { nome: '', cpf: '', apelido: '', data_nascimento: '' },
 ```
 
 #### Container de vínculos — reestruturado
 
-O card atual "Vínculos" é dividido em duas seções dentro de um único card:
+Um único card, sempre visível. Duas seções independentes com `x-show`:
 
 ```
 ┌─────────────────────────────────────────────────┐
 │ Vínculos                          [+ Adicionar] │
 ├─────────────────────────────────────────────────┤
-│ VÍNCULOS EM ABORDAGEM (N)                       │
+│ VÍNCULOS EM ABORDAGEM (N)    [x-show se N > 0]  │
 │  [foto] João Silva          3x juntos           │
 │  [foto] Maria Costa         1x juntos           │
-├── separador ────────────────────────────────────┤
-│ VÍNCULOS MANUAIS (N)                            │
+├── separador (x-show se ambas as seções têm itens)┤
+│ VÍNCULOS MANUAIS (N)         [x-show se N > 0]  │
 │  [foto] Carlos Souza                            │
-│         Irmão                                   │
-│         "Traficando junto na casa ao lado"      │
+│         Irmão                    [roxo bold]    │
+│         "Traficando junto..."    [itálico]      │
 └─────────────────────────────────────────────────┘
 ```
 
-- Card sempre visível (para o botão "+ Adicionar" estar acessível)
-- Seção "Abordagem" só aparece se `pessoa.relacionamentos?.length > 0`
-- Seção "Manuais" só aparece se `vinculosManuais.length > 0`
-- Vínculos manuais: borda roxa (`border-l-purple-500`), tipo em `text-purple-400`, descrição em itálico abaixo
-- Clicar em qualquer vínculo (abordagem ou manual) abre a ficha da pessoa
+- Vínculos manuais: borda esquerda `border-l-purple-500`
+- Tipo: `text-purple-400 font-semibold`
+- Descrição: `text-slate-400 text-xs italic` — só exibida se preenchida
+- Clicar em qualquer vínculo abre a ficha da pessoa (`viewPessoa(id)`)
+- `vinculosManuais` é carregado de `pessoa.vinculos_manuais` no `load()` (vem no `GET /pessoas/{id}`)
 
 #### Modal de cadastro de vínculo manual
 
 **Fluxo:**
 1. Usuário digita nome → debounce 400ms → `GET /pessoas?nome=...&limit=5`
-2. Seleciona pessoa da lista → `pessoaSelecionada` preenchida
-3. Se não encontrar → botão "Cadastrar [nome digitado]" → `subFormNovaPessoa = true` → exibe campos nome/CPF/apelido/nascimento inline → `POST /pessoas/` → pessoa retornada vira `pessoaSelecionada`
+2. Seleciona pessoa da lista → `pessoaSelecionada` preenchida, dropdown fecha
+3. **Se não encontrar:** exibe opção "Cadastrar [nome digitado]" → clique → `subFormNovaPessoa = true`
+   - Campos: `nome` (pré-preenchido com o texto digitado, obrigatório), `cpf` (opcional), `apelido` (opcional), `data_nascimento` (opcional)
+   - Clique em "Cadastrar" → `POST /pessoas/` → pessoa retornada vira `pessoaSelecionada` → `subFormNovaPessoa = false`
 4. Preenche `tipo` (obrigatório) + `descricao` (opcional)
-5. Salvar → `POST /pessoas/{id}/vinculos-manuais` → adiciona à lista `vinculosManuais` → fecha modal
+5. Clique em "Salvar Vínculo" → `POST /pessoas/{id}/vinculos-manuais`
+6. Resposta adicionada ao início de `vinculosManuais` → modal fecha → estado do modal resetado
 
 ---
 
@@ -161,5 +184,5 @@ O card atual "Vínculos" é dividido em duas seções dentro de um único card:
 ## Fora de escopo (pode vir depois)
 
 - Editar um vínculo manual existente
-- Exibir vínculo manual na ficha da *outra* pessoa também (bidirecionalidade)
+- Exibir vínculo manual na ficha da *outra* pessoa também (bidirecionalidade automática)
 - Filtrar/buscar pessoas por vínculo manual
