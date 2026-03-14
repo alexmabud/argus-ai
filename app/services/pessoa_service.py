@@ -5,17 +5,22 @@ com criptografia CPF (Fernet), busca fuzzy (pg_trgm) e auditoria.
 """
 
 import logging
+from datetime import UTC, datetime
 
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import decrypt, encrypt, hash_for_search
-from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
+from app.core.exceptions import AcessoNegadoError, ConflitoDadosError, NaoEncontradoError
 from app.core.permissions import TenantFilter
 from app.models.endereco import EnderecoPessoa
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
+from app.models.vinculo_manual import VinculoManual
 from app.repositories.pessoa_repo import PessoaRepository
 from app.schemas.pessoa import EnderecoCreate, PessoaCreate, PessoaUpdate
+from app.schemas.vinculo_manual import VinculoManualCreate
 from app.services.audit_service import AuditService
 
 logger = logging.getLogger("argus")
@@ -383,3 +388,147 @@ class PessoaService:
         except Exception:
             logger.warning("Falha ao descriptografar CPF da pessoa %s", pessoa.id)
             return None
+
+    async def criar_vinculo_manual(
+        self,
+        pessoa_id: int,
+        data: VinculoManualCreate,
+        user: Usuario,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> VinculoManual:
+        """Cria vínculo manual entre duas pessoas com validação de tenant.
+
+        Verifica que ambas as pessoas pertencem à mesma guarnição antes
+        de criar. Captura IntegrityError do banco para duplicatas.
+        Registra auditoria na criação.
+
+        Args:
+            pessoa_id: ID da pessoa dona do vínculo.
+            data: Dados do vínculo (pessoa_vinculada_id, tipo, descricao).
+            user: Usuário autenticado.
+            ip_address: IP da requisição para auditoria.
+            user_agent: User-Agent para auditoria.
+
+        Returns:
+            VinculoManual criado.
+
+        Raises:
+            NaoEncontradoError: Se pessoa ou pessoa vinculada não existem.
+            AcessoNegadoError: Se pessoa não pertence à guarnição do user,
+                ou se pessoa vinculada pertence a outra guarnição.
+            ConflitoDadosError: Se vínculo já existe (UNIQUE constraint).
+        """
+        pessoa = await self.repo.get(pessoa_id)
+        if not pessoa:
+            raise NaoEncontradoError("Pessoa")
+        TenantFilter.check_ownership(pessoa, user)
+
+        vinculada = await self.repo.get(data.pessoa_vinculada_id)
+        if not vinculada:
+            raise NaoEncontradoError("Pessoa vinculada")
+        if vinculada.guarnicao_id != user.guarnicao_id:
+            raise AcessoNegadoError("Pessoa vinculada pertence a outra guarnição")
+
+        vinculo = VinculoManual(
+            pessoa_id=pessoa_id,
+            pessoa_vinculada_id=data.pessoa_vinculada_id,
+            tipo=data.tipo,
+            descricao=data.descricao,
+            guarnicao_id=user.guarnicao_id,
+        )
+        self.db.add(vinculo)
+        try:
+            await self.db.flush()
+        except IntegrityError:
+            await self.db.rollback()
+            raise ConflitoDadosError("Vínculo já cadastrado entre essas pessoas")
+
+        await self.audit.log(
+            usuario_id=user.id,
+            acao="CREATE",
+            recurso="vinculo_manual",
+            recurso_id=vinculo.id,
+            detalhes={
+                "pessoa_id": pessoa_id,
+                "pessoa_vinculada_id": data.pessoa_vinculada_id,
+                "tipo": data.tipo,
+            },
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        return vinculo
+
+    async def listar_vinculos_manuais(
+        self,
+        pessoa_id: int,
+        user: Usuario,
+    ) -> list[VinculoManual]:
+        """Lista vínculos manuais ativos de uma pessoa.
+
+        Filtra por pessoa_id e guarnicao_id do user, excluindo
+        registros com soft delete (ativo=False).
+
+        Args:
+            pessoa_id: ID da pessoa.
+            user: Usuário autenticado (para filtro de guarnição).
+
+        Returns:
+            Lista de VinculoManual ativos da pessoa.
+        """
+        query = select(VinculoManual).where(
+            VinculoManual.pessoa_id == pessoa_id,
+            VinculoManual.guarnicao_id == user.guarnicao_id,
+            VinculoManual.ativo == True,  # noqa: E712
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    async def remover_vinculo_manual(
+        self,
+        vinculo_id: int,
+        pessoa_id: int,
+        user: Usuario,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> None:
+        """Remove vínculo manual com soft delete.
+
+        Marca o vínculo como inativo sem remoção física. Verifica
+        que o vínculo pertence à guarnição do usuário.
+
+        Args:
+            vinculo_id: ID do vínculo a remover.
+            pessoa_id: ID da pessoa dona do vínculo (validação extra).
+            user: Usuário autenticado.
+            ip_address: IP da requisição para auditoria.
+            user_agent: User-Agent para auditoria.
+
+        Raises:
+            NaoEncontradoError: Se vínculo não existe ou não pertence
+                à guarnição do user.
+        """
+        query = select(VinculoManual).where(
+            VinculoManual.id == vinculo_id,
+            VinculoManual.pessoa_id == pessoa_id,
+            VinculoManual.guarnicao_id == user.guarnicao_id,
+            VinculoManual.ativo == True,  # noqa: E712
+        )
+        result = await self.db.execute(query)
+        vinculo = result.scalar_one_or_none()
+        if not vinculo:
+            raise NaoEncontradoError("Vínculo manual")
+
+        vinculo.ativo = False
+        vinculo.desativado_em = datetime.now(UTC)
+        vinculo.desativado_por_id = user.id
+        await self.db.flush()
+
+        await self.audit.log(
+            usuario_id=user.id,
+            acao="DELETE",
+            recurso="vinculo_manual",
+            recurso_id=vinculo_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
