@@ -269,3 +269,68 @@ class TestPorMes:
         result = await service.por_mes(guarnicao_id=1, meses=12)
 
         assert result == []
+
+
+class TestDiasComAbordagem:
+    """Testes para AnalyticsService.dias_com_abordagem()."""
+
+    async def test_retorna_lista_de_inteiros(self):
+        """Deve retornar lista de dias do mês com abordagem."""
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = [(14,), (15,), (20,)]
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.dias_com_abordagem(guarnicao_id=1, mes="2026-03")
+
+        assert result == [14, 15, 20]
+
+    async def test_sem_abordagens_retorna_lista_vazia(self):
+        """Deve retornar lista vazia quando não há abordagens no mês."""
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.dias_com_abordagem(guarnicao_id=1, mes="2026-03")
+
+        assert result == []
+
+
+class TestPessoasDoDia:
+    """Testes para AnalyticsService.pessoas_do_dia()."""
+
+    async def test_retorna_lista_com_campos_corretos(self):
+        """Deve retornar id, nome, cpf e foto_url das pessoas do dia."""
+        from unittest.mock import patch
+
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = [
+            (1, "João Silva", b"cpf_enc", "https://r2.example.com/foto.jpg"),
+        ]
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        with patch("app.services.analytics_service.decrypt", return_value="123.456.789-00"):
+            result = await service.pessoas_do_dia(guarnicao_id=1, data="2026-03-14")
+
+        assert len(result) == 1
+        assert result[0]["id"] == 1
+        assert result[0]["nome"] == "João Silva"
+        assert result[0]["cpf"] == "123.456.789-00"
+        assert result[0]["foto_url"] == "https://r2.example.com/foto.jpg"
+
+    async def test_sem_pessoas_retorna_lista_vazia(self):
+        """Deve retornar lista vazia quando não há abordagens no dia."""
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.pessoas_do_dia(guarnicao_id=1, data="2026-03-14")
+
+        assert result == []
