@@ -137,12 +137,13 @@ class AbordagemService:
                 )
             )
 
-        # 6. Vincular veículos (AbordagemVeiculo)
+        # 6. Vincular veículos (AbordagemVeiculo) com vínculo por pessoa se informado
         for veiculo_id in data.veiculo_ids:
             self.db.add(
                 AbordagemVeiculo(
                     abordagem_id=abordagem.id,
                     veiculo_id=veiculo_id,
+                    pessoa_id=data.veiculo_por_pessoa.get(veiculo_id),
                 )
             )
 
