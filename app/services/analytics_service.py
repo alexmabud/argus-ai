@@ -175,11 +175,14 @@ class AnalyticsService:
             Dicionário com abordagens e pessoas do dia atual.
         """
         hoje = datetime.now(UTC).date()
+        inicio = datetime(hoje.year, hoje.month, hoje.day, tzinfo=UTC)
+        fim = inicio + timedelta(days=1)
 
         total_q = select(func.count(Abordagem.id)).where(
             Abordagem.guarnicao_id == guarnicao_id,
             Abordagem.ativo,
-            func.date(Abordagem.data_hora) == hoje,
+            Abordagem.data_hora >= inicio,
+            Abordagem.data_hora < fim,
         )
         total = (await self.db.execute(total_q)).scalar() or 0
 
@@ -189,7 +192,8 @@ class AnalyticsService:
             .where(
                 Abordagem.guarnicao_id == guarnicao_id,
                 Abordagem.ativo,
-                func.date(Abordagem.data_hora) == hoje,
+                Abordagem.data_hora >= inicio,
+                Abordagem.data_hora < fim,
             )
         )
         pessoas = (await self.db.execute(pessoas_q)).scalar() or 0
@@ -206,14 +210,17 @@ class AnalyticsService:
             Dicionário com abordagens e pessoas do mês corrente.
         """
         agora = datetime.now(UTC)
-        ano = agora.year
-        mes = agora.month
+        inicio = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if agora.month == 12:
+            fim = inicio.replace(year=agora.year + 1, month=1)
+        else:
+            fim = inicio.replace(month=agora.month + 1)
 
         total_q = select(func.count(Abordagem.id)).where(
             Abordagem.guarnicao_id == guarnicao_id,
             Abordagem.ativo,
-            extract("year", Abordagem.data_hora) == ano,
-            extract("month", Abordagem.data_hora) == mes,
+            Abordagem.data_hora >= inicio,
+            Abordagem.data_hora < fim,
         )
         total = (await self.db.execute(total_q)).scalar() or 0
 
@@ -223,8 +230,8 @@ class AnalyticsService:
             .where(
                 Abordagem.guarnicao_id == guarnicao_id,
                 Abordagem.ativo,
-                extract("year", Abordagem.data_hora) == ano,
-                extract("month", Abordagem.data_hora) == mes,
+                Abordagem.data_hora >= inicio,
+                Abordagem.data_hora < fim,
             )
         )
         pessoas = (await self.db.execute(pessoas_q)).scalar() or 0

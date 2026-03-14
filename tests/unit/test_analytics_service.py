@@ -138,7 +138,7 @@ class TestResumoHoje:
         """Deve retornar abordagens e pessoas do dia atual."""
         db = AsyncMock()
         mock_result = MagicMock()
-        mock_result.scalar.return_value = 5
+        mock_result.scalar.side_effect = [5, 3]
         db.execute = AsyncMock(return_value=mock_result)
         service = AnalyticsService(db)
 
@@ -147,6 +147,7 @@ class TestResumoHoje:
         assert "abordagens" in result
         assert "pessoas" in result
         assert result["abordagens"] == 5
+        assert result["pessoas"] == 3
 
     async def test_resumo_hoje_sem_dados_retorna_zeros(self):
         """Deve retornar zeros quando não há abordagens hoje."""
@@ -169,7 +170,7 @@ class TestResumoMes:
         """Deve retornar abordagens e pessoas do mês atual."""
         db = AsyncMock()
         mock_result = MagicMock()
-        mock_result.scalar.return_value = 20
+        mock_result.scalar.side_effect = [20, 12]
         db.execute = AsyncMock(return_value=mock_result)
         service = AnalyticsService(db)
 
@@ -178,6 +179,7 @@ class TestResumoMes:
         assert "abordagens" in result
         assert "pessoas" in result
         assert result["abordagens"] == 20
+        assert result["pessoas"] == 12
 
 
 class TestResumoTotal:
@@ -187,7 +189,7 @@ class TestResumoTotal:
         """Deve retornar totais sem filtro de data."""
         db = AsyncMock()
         mock_result = MagicMock()
-        mock_result.scalar.return_value = 100
+        mock_result.scalar.side_effect = [100, 60]
         db.execute = AsyncMock(return_value=mock_result)
         service = AnalyticsService(db)
 
@@ -196,3 +198,4 @@ class TestResumoTotal:
         assert "abordagens" in result
         assert "pessoas" in result
         assert result["abordagens"] == 100
+        assert result["pessoas"] == 60
