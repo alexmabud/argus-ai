@@ -14,7 +14,7 @@ function renderConsulta() {
       <div class="card space-y-3">
         <div class="flex items-center justify-between">
           <p class="text-sm font-semibold text-slate-300">Pessoa</p>
-          <button @click="showCadastroPessoa = !showCadastroPessoa; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '', bairro: '', cidade: '', estado: '' }; erroCadastro = null"
+          <button @click="showCadastroPessoa = !showCadastroPessoa; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '', bairro: '', cidade: '', estado: '' }; fotoPessoa = null; erroCadastro = null"
                   class="text-xs text-blue-400 hover:text-blue-300">
             + Nova Pessoa
           </button>
@@ -149,7 +149,7 @@ function renderConsulta() {
         <div x-show="showCadastroPessoa" x-cloak class="bg-slate-800/50 border border-slate-600 rounded-lg p-4 space-y-3 mt-2">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-slate-200">Cadastrar nova pessoa</h3>
-            <button @click="showCadastroPessoa = false; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '', bairro: '', cidade: '', estado: '' }; erroCadastro = null"
+            <button @click="showCadastroPessoa = false; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '', bairro: '', cidade: '', estado: '' }; fotoPessoa = null; erroCadastro = null"
                     class="text-slate-400 hover:text-white text-xs">Cancelar</button>
           </div>
 
@@ -194,6 +194,14 @@ function renderConsulta() {
               <label class="block text-xs text-slate-400 mb-1">Estado (UF)</label>
               <input type="text" list="lista-estados-c" x-model="novaPessoa.estado" placeholder="DF" maxlength="2" class="w-full uppercase">
             </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Foto</label>
+            <input type="file" accept="image/*" capture="environment"
+                   @change="fotoPessoa = $event.target.files[0] || null"
+                   class="text-sm text-slate-400 w-full">
+            <p x-show="fotoPessoa" class="text-xs text-slate-500 mt-1" x-text="fotoPessoa?.name"></p>
           </div>
 
           <button @click="criarPessoa()" class="btn btn-primary text-sm w-full"
@@ -401,6 +409,7 @@ function consultaPage() {
     // Cadastro nova pessoa
     showCadastroPessoa: false,
     novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" },
+    fotoPessoa: null,
     salvandoPessoa: false,
     erroCadastro: null,
 
@@ -584,8 +593,17 @@ function consultaPage() {
           });
         }
 
+        // Upload foto se fornecida
+        if (this.fotoPessoa) {
+          await api.uploadFile("/fotos/upload", this.fotoPessoa, {
+            tipo: "rosto",
+            pessoa_id: pessoa.id,
+          });
+        }
+
         // Reset e navegar para ficha
         this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
+        this.fotoPessoa = null;
         this.showCadastroPessoa = false;
         showToast("Pessoa cadastrada com sucesso!", "success");
         this.viewPessoa(pessoa.id);
