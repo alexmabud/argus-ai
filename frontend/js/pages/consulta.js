@@ -398,7 +398,12 @@ function consultaPage() {
       try {
         const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa`;
         const r = await api.get(url);
-        this.pessoasTexto = r.pessoas || [];
+        const q = this.query.toLowerCase();
+        this.pessoasTexto = (r.pessoas || []).filter(p =>
+          (p.nome || "").toLowerCase().includes(q) ||
+          (p.apelido || "").toLowerCase().includes(q) ||
+          (p.cpf_masked || "").includes(q)
+        );
         this.searched = true;
       } catch {
         showToast("Erro na busca por nome/CPF", "error");
