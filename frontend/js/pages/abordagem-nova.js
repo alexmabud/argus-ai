@@ -287,6 +287,18 @@ function renderAbordagemNova() {
                   </template>
                 </div>
               </div>
+
+              <!-- Foto do veículo -->
+              <div class="flex items-center gap-2 mt-2">
+                <label :for="'foto-v-' + v.id"
+                       class="cursor-pointer text-xs px-2 py-1 rounded flex items-center gap-1"
+                       :class="fotosVeiculos[v.id] ? 'bg-green-900/50 text-green-400' : 'bg-slate-700 text-blue-400 hover:bg-slate-600'">
+                  <span x-text="fotosVeiculos[v.id] ? '✓ Foto veículo' : '📷 Foto veículo'"></span>
+                </label>
+                <input type="file" accept="image/*" capture="environment"
+                       :id="'foto-v-' + v.id" class="hidden"
+                       @change="fotosVeiculos = {...fotosVeiculos, [v.id]: $event.target.files[0]}">
+              </div>
             </div>
           </template>
         </div>
@@ -401,7 +413,8 @@ function abordagemForm() {
     veiculoIds: [],
     veiculosSelecionados: [],
     veiculoPorPessoa: {},
-    fotoVeiculoFile: null,
+    fotosVeiculos: {},   // { [veiculo_id]: File } — uma foto por veículo
+    fotoVeiculoFile: null,   // arquivo temporário do form inline (limpo após salvar veículo)
     submitting: false,
     clientId: null,
     erro: null,
@@ -612,7 +625,12 @@ function abordagemForm() {
           veiculoAutoEl._x_dataStack[0].selected.push(veiculo);
         }
 
-        // Reset (fotoVeiculoFile mantida — será enviada no submit() com o abordagem_id)
+        // Guardar foto do veículo novo indexada pelo ID
+        if (this.fotoVeiculoFile) {
+          this.fotosVeiculos = { ...this.fotosVeiculos, [veiculo.id]: this.fotoVeiculoFile };
+          this.fotoVeiculoFile = null;
+        }
+
         this.novoVeiculo = { placa: "", modelo: "", cor: "", ano: "" };
         this.showNovoVeiculo = false;
       } catch (err) {
@@ -713,12 +731,15 @@ function abordagemForm() {
             }
           }
 
-          // Upload foto do veículo se houver
-          if (this.fotoVeiculoFile && result.id) {
-            await api.uploadFile("/fotos/upload", this.fotoVeiculoFile, {
-              tipo: "veiculo",
-              abordagem_id: result.id,
-            });
+          // Upload foto de cada veículo com seu veiculo_id
+          for (const [veiculoIdStr, file] of Object.entries(this.fotosVeiculos)) {
+            if (file) {
+              await api.uploadFile("/fotos/upload", file, {
+                tipo: "veiculo",
+                abordagem_id: result.id,
+                veiculo_id: parseInt(veiculoIdStr),
+              });
+            }
           }
 
           this.sucesso = `Abordagem #${result.id} registrada com sucesso!`;
@@ -743,6 +764,7 @@ function abordagemForm() {
         this.veiculoIds = [];
         this.veiculosSelecionados = [];
         this.veiculoPorPessoa = {};
+        this.fotosVeiculos = {};
         this.fotoVeiculoFile = null;
       } catch (err) {
         this.erro = err.message || "Erro ao registrar abordagem.";
