@@ -131,8 +131,8 @@ class AnalyticsService:
             limit: Número máximo de resultados (padrão 20, máximo 100).
 
         Returns:
-            Lista de dicionários com id, nome, apelido,
-            total_abordagens e ultima_abordagem.
+            Lista de dicionários com id, nome, apelido, total_abordagens,
+            ultima_abordagem, cpf e foto_url.
         """
         limit = min(limit, 100)
 
@@ -143,6 +143,8 @@ class AnalyticsService:
                 Pessoa.apelido,
                 func.count(AbordagemPessoa.abordagem_id).label("total"),
                 func.max(Abordagem.data_hora).label("ultima"),
+                Pessoa.cpf_encrypted,
+                Pessoa.foto_principal_url,
             )
             .join(AbordagemPessoa, Pessoa.id == AbordagemPessoa.pessoa_id)
             .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
@@ -151,7 +153,13 @@ class AnalyticsService:
                 Abordagem.ativo,
                 Pessoa.ativo,
             )
-            .group_by(Pessoa.id, Pessoa.nome, Pessoa.apelido)
+            .group_by(
+                Pessoa.id,
+                Pessoa.nome,
+                Pessoa.apelido,
+                Pessoa.cpf_encrypted,
+                Pessoa.foto_principal_url,
+            )
             .order_by(func.count(AbordagemPessoa.abordagem_id).desc())
             .limit(limit)
         )
@@ -163,6 +171,8 @@ class AnalyticsService:
                 "apelido": row[2],
                 "total_abordagens": int(row[3]),
                 "ultima_abordagem": row[4].isoformat() if row[4] else None,
+                "cpf": decrypt(row[5]) if row[5] else None,
+                "foto_url": row[6],
             }
             for row in result.all()
         ]
