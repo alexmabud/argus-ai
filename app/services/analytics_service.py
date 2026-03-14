@@ -267,6 +267,84 @@ class AnalyticsService:
 
         return {"abordagens": total, "pessoas": pessoas}
 
+    async def por_dia(self, guarnicao_id: int, dias: int = 30) -> list[dict]:
+        """Retorna série temporal diária de abordagens e pessoas.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            dias: Número de dias retroativos (padrão 30).
+
+        Returns:
+            Lista de dicionários com data (YYYY-MM-DD), abordagens e pessoas.
+        """
+        desde = datetime.now(UTC) - timedelta(days=dias)
+        data_label = func.date(Abordagem.data_hora).label("data")
+
+        query = (
+            select(
+                data_label,
+                func.count(func.distinct(Abordagem.id)).label("abordagens"),
+                func.count(func.distinct(AbordagemPessoa.pessoa_id)).label("pessoas"),
+            )
+            .outerjoin(AbordagemPessoa, AbordagemPessoa.abordagem_id == Abordagem.id)
+            .where(
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo,
+                Abordagem.data_hora >= desde,
+            )
+            .group_by(data_label)
+            .order_by(data_label)
+        )
+        result = await self.db.execute(query)
+        return [
+            {
+                "data": row[0].strftime("%Y-%m-%d") if hasattr(row[0], "strftime") else str(row[0]),
+                "abordagens": int(row[1]),
+                "pessoas": int(row[2]),
+            }
+            for row in result.all()
+        ]
+
+    async def por_mes(self, guarnicao_id: int, meses: int = 12) -> list[dict]:
+        """Retorna série temporal mensal de abordagens e pessoas.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            meses: Número de meses retroativos (padrão 12).
+
+        Returns:
+            Lista de dicionários com mes (YYYY-MM), abordagens e pessoas.
+        """
+        desde = datetime.now(UTC) - timedelta(days=meses * 30)
+        ano_label = extract("year", Abordagem.data_hora).label("ano")
+        mes_label = extract("month", Abordagem.data_hora).label("mes")
+
+        query = (
+            select(
+                ano_label,
+                mes_label,
+                func.count(func.distinct(Abordagem.id)).label("abordagens"),
+                func.count(func.distinct(AbordagemPessoa.pessoa_id)).label("pessoas"),
+            )
+            .outerjoin(AbordagemPessoa, AbordagemPessoa.abordagem_id == Abordagem.id)
+            .where(
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo,
+                Abordagem.data_hora >= desde,
+            )
+            .group_by(ano_label, mes_label)
+            .order_by(ano_label, mes_label)
+        )
+        result = await self.db.execute(query)
+        return [
+            {
+                "mes": f"{int(row[0])}-{int(row[1]):02d}",
+                "abordagens": int(row[2]),
+                "pessoas": int(row[3]),
+            }
+            for row in result.all()
+        ]
+
     async def metricas_rag(self, guarnicao_id: int) -> dict:
         """Retorna métricas de ocorrências para o módulo RAG.
 
