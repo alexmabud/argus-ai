@@ -45,6 +45,7 @@ class AbordagemCreate(BaseModel):
         client_id: ID único do cliente (para deduplicação offline).
         pessoa_ids: IDs das pessoas abordadas.
         veiculo_ids: IDs dos veículos envolvidos.
+        veiculo_por_pessoa: Mapeamento veiculo_id → pessoa_id (opcional).
         passagens: Vinculações de passagens a pessoas.
     """
 
@@ -57,6 +58,7 @@ class AbordagemCreate(BaseModel):
     client_id: str | None = Field(None, max_length=100)
     pessoa_ids: list[int] = []
     veiculo_ids: list[int] = []
+    veiculo_por_pessoa: dict[int, int] = {}
     passagens: list[PassagemVinculoCreate] = []
 
 
