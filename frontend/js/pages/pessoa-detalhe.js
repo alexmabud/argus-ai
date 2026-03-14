@@ -249,16 +249,6 @@ function renderPessoaDetalhe(appState) {
                     <span class="text-slate-300 ml-1" x-text="ab.observacao"></span>
                   </div>
 
-                  <!-- Veículos nesta abordagem -->
-                  <div x-show="ab.veiculos?.length > 0" class="space-y-1">
-                    <template x-for="av in ab.veiculos" :key="av.id">
-                      <div class="text-xs text-slate-400">
-                        <span class="text-slate-500 font-medium">Veículo Vinculado à Abordagem:</span>
-                        <span class="ml-1" x-text="[formatPlaca(av.placa), av.modelo, av.cor, av.ano].filter(Boolean).join(' · ')"></span>
-                      </div>
-                    </template>
-                  </div>
-
                   <!-- Coabordados nesta abordagem -->
                   <template x-if="ab.pessoas?.filter(p => p.id !== ${pessoaId}).length > 0">
                     <div class="pt-1">
