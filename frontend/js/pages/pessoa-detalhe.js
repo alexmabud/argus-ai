@@ -268,6 +268,7 @@ function pessoaDetalhePage(pessoaId) {
     abordagens: [],
     veiculos: [],
     fotoAmpliada: null,
+    pessoaPreview: null,
     loading: true,
     erro: null,
     mapaInst: null,
