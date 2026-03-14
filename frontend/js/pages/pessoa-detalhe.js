@@ -136,6 +136,125 @@ function renderPessoaDetalhe(appState) {
             </div>
           </div>
 
+          <!-- Modal de cadastro de vínculo manual -->
+          <div x-show="modalVinculo" x-cloak
+               @click.self="fecharModalVinculo()"
+               class="fixed inset-0 bg-black/60 z-50 flex items-end justify-center sm:items-center p-4">
+            <div class="bg-slate-800 border border-slate-600 rounded-2xl p-5 w-full max-w-sm space-y-4"
+                 @click.stop>
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold text-slate-100">Cadastrar Vínculo Manual</h3>
+                <button @click="fecharModalVinculo()" class="text-slate-400 hover:text-slate-200 text-lg leading-none">&times;</button>
+              </div>
+
+              <!-- Busca de pessoa -->
+              <div x-show="!pessoaSelecionada && !subFormNovaPessoa">
+                <label class="text-xs text-slate-400 font-medium block mb-1">Buscar pessoa</label>
+                <input type="text"
+                       x-model="buscaVinculo"
+                       @input="onBuscaVinculo()"
+                       placeholder="Nome, apelido ou CPF..."
+                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+
+                <!-- Loading -->
+                <div x-show="buscandoPessoa" class="flex justify-center py-2">
+                  <span class="spinner"></span>
+                </div>
+
+                <!-- Resultados -->
+                <div x-show="resultadosBusca.length > 0 || (buscaVinculo.trim().length >= 2 && !buscandoPessoa)"
+                     class="mt-1 bg-slate-700 border border-slate-600 rounded-lg overflow-hidden">
+                  <template x-for="p in resultadosBusca" :key="p.id">
+                    <div @click="selecionarPessoa(p)"
+                         class="flex items-center gap-2 px-3 py-2 border-b border-slate-600 last:border-0 cursor-pointer hover:bg-slate-600 transition-colors">
+                      <template x-if="p.foto_principal_url">
+                        <img :src="p.foto_principal_url" class="w-7 h-7 rounded-full object-cover">
+                      </template>
+                      <template x-if="!p.foto_principal_url">
+                        <div class="w-7 h-7 rounded-full bg-slate-500 flex items-center justify-center text-slate-300 text-xs" x-text="p.nome[0]"></div>
+                      </template>
+                      <div>
+                        <div class="text-sm text-slate-100" x-text="p.nome"></div>
+                        <div x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="p.cpf_masked"></div>
+                      </div>
+                    </div>
+                  </template>
+                  <!-- Cadastrar novo -->
+                  <div x-show="buscaVinculo.trim().length >= 2 && !buscandoPessoa"
+                       @click="iniciarCadastroNovo()"
+                       class="flex items-center gap-2 px-3 py-2 bg-blue-900/30 cursor-pointer hover:bg-blue-900/50 transition-colors">
+                    <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">+</div>
+                    <div>
+                      <div class="text-sm text-blue-400 font-medium">Cadastrar novo</div>
+                      <div class="text-xs text-slate-400">Pessoa não encontrada — clique para cadastrar</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pessoa selecionada -->
+              <div x-show="pessoaSelecionada" class="flex items-center gap-2 bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2">
+                <div class="w-7 h-7 rounded-full bg-slate-500 flex items-center justify-center text-slate-300 text-xs"
+                     x-text="pessoaSelecionada?.nome?.[0] || ''"></div>
+                <div class="flex-1">
+                  <div class="text-sm text-slate-100" x-text="pessoaSelecionada?.nome"></div>
+                </div>
+                <button @click="pessoaSelecionada = null; buscaVinculo = ''"
+                        class="text-slate-400 hover:text-slate-200 text-xs">trocar</button>
+              </div>
+
+              <!-- Sub-formulário: cadastrar nova pessoa -->
+              <div x-show="subFormNovaPessoa" class="space-y-2">
+                <p class="text-xs text-blue-400 font-medium">Nova pessoa</p>
+                <input type="text" x-model="novaPessoaForm.nome" placeholder="Nome *"
+                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                <input type="text" x-model="novaPessoaForm.apelido" placeholder="Apelido (opcional)"
+                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                <input type="text" x-model="novaPessoaForm.cpf" placeholder="CPF (opcional)"
+                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                <input type="date" x-model="novaPessoaForm.data_nascimento"
+                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                <div class="flex gap-2">
+                  <button @click="subFormNovaPessoa = false"
+                          class="flex-1 bg-slate-600 text-slate-300 rounded-lg py-2 text-sm">Cancelar</button>
+                  <button @click="cadastrarNovaPessoa()"
+                          :disabled="!novaPessoaForm.nome.trim()"
+                          class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg py-2 text-sm font-medium transition-colors">Cadastrar</button>
+                </div>
+              </div>
+
+              <!-- Tipo e descrição (só aparece quando pessoa selecionada) -->
+              <div x-show="pessoaSelecionada" class="space-y-3">
+                <div>
+                  <label class="text-xs text-slate-400 font-medium block mb-1">
+                    Tipo do vínculo <span class="text-red-400">*</span>
+                  </label>
+                  <input type="text"
+                         x-model="novoVinculo.tipo"
+                         placeholder="Ex: Irmão, Pai, Amigo, Sócio..."
+                         class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                  <p class="text-xs text-slate-500 mt-1">Palavra curta que define a relação</p>
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400 font-medium block mb-1">
+                    Descrição <span class="text-slate-500">(opcional)</span>
+                  </label>
+                  <textarea x-model="novoVinculo.descricao"
+                            placeholder="Ex: Traficando junto na casa ao lado..."
+                            rows="2"
+                            class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                </div>
+                <div class="flex gap-2">
+                  <button @click="fecharModalVinculo()"
+                          class="flex-1 bg-slate-600 text-slate-300 rounded-lg py-2.5 text-sm">Cancelar</button>
+                  <button @click="salvarVinculo()"
+                          :disabled="!novoVinculo.tipo.trim()"
+                          class="flex-2 flex-grow bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg py-2.5 text-sm font-medium transition-colors">Salvar Vínculo</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Endereços -->
           <div x-show="pessoa.enderecos?.length > 0" class="card space-y-2 border-l-4 border-l-blue-600">
             <h3 class="text-sm font-semibold text-slate-300">
@@ -188,22 +307,95 @@ function renderPessoaDetalhe(appState) {
 
           </div>
 
-          <!-- Relacionamentos (vínculos) -->
-          <div x-show="pessoa.relacionamentos?.length > 0" class="card space-y-2">
-            <h3 class="text-sm font-semibold text-slate-300">
-              Vínculos (<span x-text="pessoa.relacionamentos.length"></span>)
-            </h3>
-            <div class="space-y-2">
-              <template x-for="rel in pessoa.relacionamentos" :key="rel.pessoa_id">
-                <div @click="viewPessoa(rel.pessoa_id)" class="flex items-center justify-between border border-slate-700/40 border-l-4 border-l-orange-500 rounded-lg p-3 cursor-pointer hover:bg-slate-800/50">
-                  <span class="text-sm text-slate-300" x-text="rel.nome"></span>
-                  <div class="text-right">
-                    <span class="text-xs text-blue-400 font-medium" x-text="rel.frequencia + 'x juntos'"></span>
-                    <p x-show="rel.ultima_vez" class="text-[10px] text-slate-500"
-                       x-text="'Última: ' + new Date(rel.ultima_vez).toLocaleDateString('pt-BR')"></p>
+          <!-- Vínculos (automáticos + manuais) -->
+          <div class="card space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-slate-300">Vínculos</h3>
+              <button @click="abrirModalVinculo()"
+                      class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors">
+                + Adicionar
+              </button>
+            </div>
+
+            <!-- Seção 1: Vínculos em Abordagem -->
+            <div x-show="pessoa.relacionamentos?.length > 0" class="space-y-1">
+              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                Vínculos em Abordagem (<span x-text="pessoa.relacionamentos.length"></span>)
+              </p>
+              <div class="space-y-2">
+                <template x-for="rel in pessoa.relacionamentos" :key="rel.pessoa_id">
+                  <div @click="viewPessoa(rel.pessoa_id)"
+                       class="flex items-center justify-between border border-slate-700/40 border-l-4 border-l-orange-500 rounded-lg p-3 cursor-pointer hover:bg-slate-800/50">
+                    <div class="flex items-center gap-2">
+                      <template x-if="rel.foto_principal_url">
+                        <img :src="rel.foto_principal_url"
+                             class="w-8 h-8 rounded-full object-cover border-2 border-slate-600 shrink-0"
+                             loading="lazy">
+                      </template>
+                      <template x-if="!rel.foto_principal_url">
+                        <div class="w-8 h-8 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center text-slate-400 shrink-0">
+                          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                          </svg>
+                        </div>
+                      </template>
+                      <span class="text-sm text-slate-300" x-text="rel.nome"></span>
+                    </div>
+                    <div class="text-right">
+                      <span class="text-xs text-blue-400 font-medium" x-text="rel.frequencia + 'x juntos'"></span>
+                      <p x-show="rel.ultima_vez" class="text-[10px] text-slate-500"
+                         x-text="'Última: ' + new Date(rel.ultima_vez).toLocaleDateString('pt-BR')"></p>
+                    </div>
                   </div>
-                </div>
-              </template>
+                </template>
+              </div>
+            </div>
+
+            <!-- Separador (só quando ambas as seções têm itens) -->
+            <div x-show="pessoa.relacionamentos?.length > 0 && vinculosManuais.length > 0"
+                 class="border-t border-slate-700/50"></div>
+
+            <!-- Seção 2: Vínculos Manuais -->
+            <div x-show="vinculosManuais.length > 0" class="space-y-1">
+              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                Vínculos Manuais (<span x-text="vinculosManuais.length"></span>)
+              </p>
+              <div class="space-y-2">
+                <template x-for="vm in vinculosManuais" :key="vm.id">
+                  <div @click="viewPessoa(vm.pessoa_vinculada_id)"
+                       class="flex items-start justify-between border border-slate-700/40 border-l-4 border-l-purple-500 rounded-lg p-3 cursor-pointer hover:bg-slate-800/50">
+                    <div class="flex items-start gap-2">
+                      <template x-if="vm.foto_principal_url">
+                        <img :src="vm.foto_principal_url"
+                             class="w-8 h-8 rounded-full object-cover border-2 border-slate-600 shrink-0 mt-0.5"
+                             loading="lazy">
+                      </template>
+                      <template x-if="!vm.foto_principal_url">
+                        <div class="w-8 h-8 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
+                          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                          </svg>
+                        </div>
+                      </template>
+                      <div>
+                        <span class="text-sm text-slate-300" x-text="vm.nome"></span>
+                        <p class="text-xs text-purple-400 font-semibold mt-0.5" x-text="vm.tipo"></p>
+                        <p x-show="vm.descricao"
+                           class="text-xs text-slate-400 italic mt-0.5"
+                           x-text="'&quot;' + vm.descricao + '&quot;'"></p>
+                      </div>
+                    </div>
+                    <span x-show="vm.criado_em" class="text-[10px] text-slate-500 shrink-0 ml-2"
+                          x-text="new Date(vm.criado_em).toLocaleDateString('pt-BR')"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Mensagem quando não há vínculos -->
+            <div x-show="!pessoa.relacionamentos?.length && !vinculosManuais.length"
+                 class="text-xs text-slate-500 text-center py-2">
+              Nenhum vínculo cadastrado
             </div>
           </div>
 
@@ -325,10 +517,23 @@ function pessoaDetalhePage(pessoaId) {
     pontosComLocalizacao: [],
     _mapaObserver: null,
 
+    // Vínculos manuais
+    vinculosManuais: [],
+    modalVinculo: false,
+    buscaVinculo: '',
+    resultadosBusca: [],
+    buscandoPessoa: false,
+    pessoaSelecionada: null,
+    novoVinculo: { tipo: '', descricao: '' },
+    subFormNovaPessoa: false,
+    novaPessoaForm: { nome: '', cpf: '', apelido: '', data_nascimento: '' },
+    _buscaTimer: null,
+
     async load() {
       try {
         // Buscar pessoa com detalhes
         this.pessoa = await api.get(`/pessoas/${pessoaId}`);
+        this.vinculosManuais = this.pessoa.vinculos_manuais || [];
 
         // Buscar fotos da pessoa
         try {
@@ -501,6 +706,82 @@ function pessoaDetalhePage(pessoaId) {
     goBack() {
       const appEl = document.querySelector("[x-data]");
       if (appEl?._x_dataStack) appEl._x_dataStack[0].navigate("consulta");
+    },
+
+    // ------- Vínculos Manuais -------
+
+    abrirModalVinculo() {
+      this.modalVinculo = true;
+      this.buscaVinculo = '';
+      this.resultadosBusca = [];
+      this.pessoaSelecionada = null;
+      this.novoVinculo = { tipo: '', descricao: '' };
+      this.subFormNovaPessoa = false;
+      this.novaPessoaForm = { nome: '', cpf: '', apelido: '', data_nascimento: '' };
+    },
+
+    fecharModalVinculo() {
+      this.modalVinculo = false;
+    },
+
+    onBuscaVinculo() {
+      clearTimeout(this._buscaTimer);
+      const q = this.buscaVinculo.trim();
+      if (q.length < 2) { this.resultadosBusca = []; return; }
+      this._buscaTimer = setTimeout(() => this._executarBusca(q), 400);
+    },
+
+    async _executarBusca(q) {
+      this.buscandoPessoa = true;
+      try {
+        const results = await api.get(`/pessoas?nome=${encodeURIComponent(q)}&limit=5`);
+        // Excluir a própria pessoa da lista
+        // pessoaId é closure da função pessoaDetalhePage(pessoaId) — NÃO usar ${} aqui
+        this.resultadosBusca = results.filter(p => p.id !== pessoaId);
+      } catch { this.resultadosBusca = []; }
+      finally { this.buscandoPessoa = false; }
+    },
+
+    selecionarPessoa(p) {
+      this.pessoaSelecionada = p;
+      this.resultadosBusca = [];
+      this.subFormNovaPessoa = false;
+    },
+
+    iniciarCadastroNovo() {
+      this.pessoaSelecionada = null;
+      this.subFormNovaPessoa = true;
+      this.novaPessoaForm.nome = this.buscaVinculo.trim();
+    },
+
+    async cadastrarNovaPessoa() {
+      if (!this.novaPessoaForm.nome.trim()) return;
+      try {
+        const nova = await api.post('/pessoas/', {
+          nome: this.novaPessoaForm.nome,
+          cpf: this.novaPessoaForm.cpf || undefined,
+          apelido: this.novaPessoaForm.apelido || undefined,
+          data_nascimento: this.novaPessoaForm.data_nascimento || undefined,
+        });
+        this.selecionarPessoa(nova);
+      } catch (err) {
+        alert(err.message || 'Erro ao cadastrar pessoa.');
+      }
+    },
+
+    async salvarVinculo() {
+      if (!this.pessoaSelecionada || !this.novoVinculo.tipo.trim()) return;
+      try {
+        const vinculo = await api.post(`/pessoas/${pessoaId}/vinculos-manuais`, {
+          pessoa_vinculada_id: this.pessoaSelecionada.id,
+          tipo: this.novoVinculo.tipo.trim(),
+          descricao: this.novoVinculo.descricao.trim() || undefined,
+        });
+        this.vinculosManuais.unshift(vinculo);
+        this.fecharModalVinculo();
+      } catch (err) {
+        alert(err.message || 'Erro ao salvar vínculo.');
+      }
     },
   };
 }
