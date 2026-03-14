@@ -56,6 +56,7 @@ async def upload_foto(
     tipo: FotoTipo = Form(FotoTipo.rosto),
     pessoa_id: int | None = Form(None),
     abordagem_id: int | None = Form(None),
+    veiculo_id: int | None = Form(None),
     latitude: float | None = Form(None),
     longitude: float | None = Form(None),
     db: AsyncSession = Depends(get_db),
@@ -72,6 +73,7 @@ async def upload_foto(
         tipo: Tipo de foto (rosto, corpo, placa, documento).
         pessoa_id: ID da pessoa associada (opcional).
         abordagem_id: ID da abordagem associada (opcional).
+        veiculo_id: ID do veículo associado (opcional — para fotos de veículos específicos).
         latitude: Latitude GPS da captura (opcional).
         longitude: Longitude GPS da captura (opcional).
         db: Sessão do banco de dados.
@@ -109,6 +111,7 @@ async def upload_foto(
             content_type=file.content_type or "image/jpeg",
             pessoa_id=pessoa_id,
             abordagem_id=abordagem_id,
+            veiculo_id=veiculo_id,
             tipo=tipo,
             latitude=latitude,
             longitude=longitude,
