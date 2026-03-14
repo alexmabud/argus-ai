@@ -385,8 +385,17 @@ function renderPessoaDetalhe(appState) {
                            x-text="'&quot;' + vm.descricao + '&quot;'"></p>
                       </div>
                     </div>
-                    <span x-show="vm.criado_em" class="text-[10px] text-slate-500 shrink-0 ml-2"
-                          x-text="new Date(vm.criado_em).toLocaleDateString('pt-BR')"></span>
+                    <div class="flex flex-col items-end gap-1 shrink-0 ml-2">
+                      <span x-show="vm.criado_em" class="text-[10px] text-slate-500"
+                            x-text="new Date(vm.criado_em).toLocaleDateString('pt-BR')"></span>
+                      <button @click.stop="removerVinculo(vm.id)"
+                              class="text-slate-500 hover:text-red-400 transition-colors"
+                              title="Remover vínculo">
+                        <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </template>
               </div>
@@ -781,6 +790,16 @@ function pessoaDetalhePage(pessoaId) {
         this.fecharModalVinculo();
       } catch (err) {
         alert(err.message || 'Erro ao salvar vínculo.');
+      }
+    },
+
+    async removerVinculo(vinculoId) {
+      if (!confirm('Remover este vínculo?')) return;
+      try {
+        await api.delete(`/pessoas/${pessoaId}/vinculos-manuais/${vinculoId}`);
+        this.vinculosManuais = this.vinculosManuais.filter(v => v.id !== vinculoId);
+      } catch (err) {
+        alert(err.message || 'Erro ao remover vínculo.');
       }
     },
   };

@@ -108,6 +108,19 @@ class AbordagemRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class VeiculoAbordagemRead(VeiculoRead):
+    """Veículo em uma abordagem com referência à pessoa associada.
+
+    Estende VeiculoRead com o ID da pessoa que estava associada ao veículo
+    na abordagem específica.
+
+    Attributes:
+        pessoa_id: ID da pessoa associada ao veículo nesta abordagem.
+    """
+
+    pessoa_id: int | None = None
+
+
 class AbordagemDetail(AbordagemRead):
     """Dados detalhados de uma abordagem com todos os relacionamentos.
 
@@ -115,12 +128,12 @@ class AbordagemDetail(AbordagemRead):
 
     Attributes:
         pessoas: Lista de pessoas abordadas.
-        veiculos: Lista de veículos envolvidos.
+        veiculos: Lista de veículos envolvidos com pessoa associada.
         fotos: Lista de fotos registradas.
         passagens: Lista de passagens vinculadas.
     """
 
     pessoas: list[PessoaRead] = []
-    veiculos: list[VeiculoRead] = []
+    veiculos: list[VeiculoAbordagemRead] = []
     fotos: list[FotoRead] = []
     passagens: list[PassagemVinculoRead] = []
