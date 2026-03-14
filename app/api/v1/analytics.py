@@ -4,6 +4,8 @@ Fornece endpoints para o dashboard analítico: resumo,
 mapa de calor, horários de pico e pessoas recorrentes.
 """
 
+from datetime import date
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -93,3 +95,139 @@ async def pessoas_recorrentes(
     """
     service = AnalyticsService(db)
     return await service.pessoas_recorrentes(user.guarnicao_id, limit)
+
+
+@router.get("/resumo-hoje")
+async def resumo_hoje(
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> dict:
+    """Retorna total de abordagens e pessoas abordadas hoje.
+
+    Args:
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Dicionário com abordagens e pessoas do dia atual.
+    """
+    service = AnalyticsService(db)
+    return await service.resumo_hoje(user.guarnicao_id)
+
+
+@router.get("/resumo-mes")
+async def resumo_mes(
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> dict:
+    """Retorna total de abordagens e pessoas abordadas no mês atual.
+
+    Args:
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Dicionário com abordagens e pessoas do mês corrente.
+    """
+    service = AnalyticsService(db)
+    return await service.resumo_mes(user.guarnicao_id)
+
+
+@router.get("/resumo-total")
+async def resumo_total(
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> dict:
+    """Retorna totais históricos de abordagens e pessoas.
+
+    Args:
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Dicionário com abordagens e pessoas totais.
+    """
+    service = AnalyticsService(db)
+    return await service.resumo_total(user.guarnicao_id)
+
+
+@router.get("/por-dia")
+async def por_dia(
+    dias: int = Query(30, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[dict]:
+    """Retorna série temporal diária de abordagens e pessoas.
+
+    Args:
+        dias: Número de dias retroativos (1-365, padrão 30).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista com data, abordagens e pessoas por dia.
+    """
+    service = AnalyticsService(db)
+    return await service.por_dia(user.guarnicao_id, dias)
+
+
+@router.get("/por-mes")
+async def por_mes(
+    meses: int = Query(12, ge=1, le=36),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[dict]:
+    """Retorna série temporal mensal de abordagens e pessoas.
+
+    Args:
+        meses: Número de meses retroativos (1-36, padrão 12).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista com mes, abordagens e pessoas por mês.
+    """
+    service = AnalyticsService(db)
+    return await service.por_mes(user.guarnicao_id, meses)
+
+
+@router.get("/dias-com-abordagem")
+async def dias_com_abordagem(
+    mes: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[int]:
+    """Retorna dias do mês que tiveram abordagem registrada.
+
+    Usado pelo calendário mini para exibir indicadores nos dias com atividade.
+
+    Args:
+        mes: Mês no formato YYYY-MM (ex: "2026-03").
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista de inteiros representando os dias com abordagem.
+    """
+    service = AnalyticsService(db)
+    return await service.dias_com_abordagem(user.guarnicao_id, mes)
+
+
+@router.get("/pessoas-do-dia")
+async def pessoas_do_dia(
+    data: date = Query(...),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[dict]:
+    """Retorna pessoas abordadas em um dia específico.
+
+    Args:
+        data: Data no formato YYYY-MM-DD.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista com id, nome, cpf e foto_url das pessoas abordadas.
+    """
+    service = AnalyticsService(db)
+    return await service.pessoas_do_dia(user.guarnicao_id, str(data))
