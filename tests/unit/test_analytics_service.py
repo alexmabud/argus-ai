@@ -257,3 +257,15 @@ class TestPorMes:
         assert result[0]["mes"] == "2026-02"
         assert result[0]["abordagens"] == 40
         assert result[0]["pessoas"] == 65
+
+    async def test_por_mes_sem_dados_retorna_lista_vazia(self):
+        """Deve retornar lista vazia quando não há abordagens."""
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.por_mes(guarnicao_id=1, meses=12)
+
+        assert result == []
