@@ -10,11 +10,10 @@ import logging
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger("argus")
-
 from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user, get_face_service
+from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.schemas.foto import (
     BuscaRostoItem,
@@ -26,6 +25,8 @@ from app.schemas.foto import (
 )
 from app.services.foto_service import FotoService
 from app.services.pessoa_service import PessoaService
+
+logger = logging.getLogger("argus")
 
 #: Tamanho máximo de upload de imagem (10 MB).
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
@@ -120,6 +121,13 @@ async def upload_foto(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao fazer upload da foto. Verifique o storage e tente novamente.",
         ) from exc
+
+    # Atualizar foto principal da pessoa quando for rosto
+    if tipo == FotoTipo.rosto and pessoa_id:
+        pessoa = await db.get(Pessoa, pessoa_id)
+        if pessoa:
+            pessoa.foto_principal_url = foto.arquivo_url
+            await db.commit()
 
     # Enfileirar processamento facial em background (apenas para fotos de rosto)
     if tipo == FotoTipo.rosto:
