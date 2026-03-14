@@ -94,22 +94,27 @@ class TestPessoasRecorrentes:
         db.execute.assert_called_once()
 
     async def test_pessoas_retorna_formato_correto(self):
-        """Deve retornar lista com id, nome, apelido, total e última."""
+        """Deve retornar lista com id, nome, apelido, total, ultima, cpf e foto."""
+        from unittest.mock import patch
+
         db = AsyncMock()
         now = datetime.now(UTC)
         mock_result = MagicMock()
         mock_result.all.return_value = [
-            (1, "João", "Joãozinho", 5, now),
+            (1, "João", "Joãozinho", 5, now, "cpf_enc", "https://r2.example.com/foto.jpg"),
         ]
         db.execute = AsyncMock(return_value=mock_result)
         service = AnalyticsService(db)
 
-        result = await service.pessoas_recorrentes(guarnicao_id=1)
+        with patch("app.services.analytics_service.decrypt", return_value="123.456.789-00"):
+            result = await service.pessoas_recorrentes(guarnicao_id=1)
 
         assert len(result) == 1
         assert result[0]["id"] == 1
         assert result[0]["nome"] == "João"
         assert result[0]["total_abordagens"] == 5
+        assert result[0]["cpf"] == "123.456.789-00"
+        assert result[0]["foto_url"] == "https://r2.example.com/foto.jpg"
 
 
 class TestMetricasRAG:
