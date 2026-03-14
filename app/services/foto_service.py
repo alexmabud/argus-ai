@@ -129,6 +129,7 @@ class FotoService:
                 "tipo": tipo,
                 "pessoa_id": pessoa_id,
                 "abordagem_id": abordagem_id,
+                "veiculo_id": veiculo_id,
             },
             ip_address=ip_address,
             user_agent=user_agent,
