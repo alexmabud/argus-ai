@@ -129,3 +129,70 @@ class TestMetricasRAG:
 
         assert result["total_ocorrencias"] == 10
         assert result["ocorrencias_indexadas"] == 7
+
+
+class TestResumoHoje:
+    """Testes para AnalyticsService.resumo_hoje()."""
+
+    async def test_resumo_hoje_retorna_campos_corretos(self):
+        """Deve retornar abordagens e pessoas do dia atual."""
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 5
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.resumo_hoje(guarnicao_id=1)
+
+        assert "abordagens" in result
+        assert "pessoas" in result
+        assert result["abordagens"] == 5
+
+    async def test_resumo_hoje_sem_dados_retorna_zeros(self):
+        """Deve retornar zeros quando não há abordagens hoje."""
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 0
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.resumo_hoje(guarnicao_id=1)
+
+        assert result["abordagens"] == 0
+        assert result["pessoas"] == 0
+
+
+class TestResumoMes:
+    """Testes para AnalyticsService.resumo_mes()."""
+
+    async def test_resumo_mes_retorna_campos_corretos(self):
+        """Deve retornar abordagens e pessoas do mês atual."""
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 20
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.resumo_mes(guarnicao_id=1)
+
+        assert "abordagens" in result
+        assert "pessoas" in result
+        assert result["abordagens"] == 20
+
+
+class TestResumoTotal:
+    """Testes para AnalyticsService.resumo_total()."""
+
+    async def test_resumo_total_retorna_campos_corretos(self):
+        """Deve retornar totais sem filtro de data."""
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 100
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.resumo_total(guarnicao_id=1)
+
+        assert "abordagens" in result
+        assert "pessoas" in result
+        assert result["abordagens"] == 100
