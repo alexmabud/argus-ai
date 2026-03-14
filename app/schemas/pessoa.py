@@ -10,6 +10,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.vinculo_manual import VinculoManualRead
+
 
 class PessoaCreate(BaseModel):
     """Requisição de criação de pessoa.
@@ -143,12 +145,14 @@ class PessoaDetail(PessoaRead):
         enderecos: Lista de endereços conhecidos.
         abordagens_count: Número total de abordagens.
         relacionamentos: Lista simplificada de vínculos (pessoa, frequência).
+        vinculos_manuais: Lista de vínculos manuais cadastrados pelo operador.
     """
 
     cpf: str | None = None
     enderecos: list[EnderecoRead] = []
     abordagens_count: int = 0
     relacionamentos: list[VinculoRead] = []
+    vinculos_manuais: list[VinculoManualRead] = []
 
 
 class VinculoRead(BaseModel):
@@ -159,9 +163,11 @@ class VinculoRead(BaseModel):
         nome: Nome da pessoa vinculada.
         frequencia: Número de vezes abordadas juntas.
         ultima_vez: Timestamp da última abordagem conjunta.
+        foto_principal_url: URL da foto principal da pessoa vinculada, para identificação visual.
     """
 
     pessoa_id: int
     nome: str
     frequencia: int
     ultima_vez: datetime
+    foto_principal_url: str | None = None
