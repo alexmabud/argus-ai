@@ -309,7 +309,7 @@ class TestPessoasDoDia:
         db = AsyncMock()
         mock_result = MagicMock()
         mock_result.all.return_value = [
-            (1, "João Silva", b"cpf_enc", "https://r2.example.com/foto.jpg"),
+            (1, "João Silva", "cpf_enc", "https://r2.example.com/foto.jpg"),
         ]
         db.execute = AsyncMock(return_value=mock_result)
         service = AnalyticsService(db)

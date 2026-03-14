@@ -1,11 +1,12 @@
 """Serviço de analytics operacional.
 
-Fornece métricas agregadas para o dashboard: resumo de abordagens,
-mapa de calor, distribuição horária e pessoas recorrentes.
+Fornece métricas agregadas para o dashboard: resumo por período (hoje, mês, total),
+séries temporais diária e mensal, suporte ao calendário (dias com abordagem e
+pessoas do dia), mapa de calor, distribuição horária e pessoas recorrentes.
 Respeita multi-tenancy (guarnicao_id) e soft delete em todas as queries.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -391,9 +392,7 @@ class AnalyticsService:
         Returns:
             Lista de dicionários com id, nome, cpf e foto_url.
         """
-        from datetime import date as date_type
-
-        data_obj = date_type.fromisoformat(data)
+        data_obj = date.fromisoformat(data)
 
         query = (
             select(
@@ -410,6 +409,7 @@ class AnalyticsService:
                 Pessoa.ativo,
                 func.date(Abordagem.data_hora) == data_obj,
             )
+            .order_by(Pessoa.nome)
             .distinct()
         )
         result = await self.db.execute(query)
