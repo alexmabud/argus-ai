@@ -315,7 +315,13 @@ class AnalyticsService:
         Returns:
             Lista de dicionários com mes (YYYY-MM), abordagens e pessoas.
         """
-        desde = datetime.now(UTC) - timedelta(days=meses * 30)
+        agora = datetime.now(UTC)
+        primeiro_mes_atual = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Recuar (meses - 1) meses para o início da janela
+        total_meses = primeiro_mes_atual.month - (meses - 1)
+        ano_inicio = primeiro_mes_atual.year + (total_meses - 1) // 12
+        mes_inicio = ((total_meses - 1) % 12) + 1
+        desde = primeiro_mes_atual.replace(year=ano_inicio, month=mes_inicio)
         ano_label = extract("year", Abordagem.data_hora).label("ano")
         mes_label = extract("month", Abordagem.data_hora).label("mes")
 
