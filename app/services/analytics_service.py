@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.crypto import decrypt
 from app.models.abordagem import Abordagem, AbordagemPessoa
 from app.models.pessoa import Pessoa
 
@@ -350,6 +351,82 @@ class AnalyticsService:
             }
             for row in result.all()
         ]
+
+    async def dias_com_abordagem(self, guarnicao_id: int, mes: str) -> list[int]:
+        """Retorna lista de dias do mês que tiveram abordagem.
+
+        Usado pelo calendário mini para exibir pontos indicativos.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            mes: Mês no formato "YYYY-MM" (ex: "2026-03").
+
+        Returns:
+            Lista de inteiros representando os dias com abordagem.
+        """
+        ano, mes_num = int(mes.split("-")[0]), int(mes.split("-")[1])
+        dia_label = extract("day", Abordagem.data_hora).label("dia")
+
+        query = (
+            select(dia_label)
+            .where(
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo,
+                extract("year", Abordagem.data_hora) == ano,
+                extract("month", Abordagem.data_hora) == mes_num,
+            )
+            .distinct()
+            .order_by(dia_label)
+        )
+        result = await self.db.execute(query)
+        return [int(row[0]) for row in result.all()]
+
+    async def pessoas_do_dia(self, guarnicao_id: int, data: str) -> list[dict]:
+        """Retorna pessoas abordadas em um dia específico.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            data: Data no formato "YYYY-MM-DD" (ex: "2026-03-14").
+
+        Returns:
+            Lista de dicionários com id, nome, cpf e foto_url.
+        """
+        from datetime import date as date_type
+
+        data_obj = date_type.fromisoformat(data)
+
+        query = (
+            select(
+                Pessoa.id,
+                Pessoa.nome,
+                Pessoa.cpf_encrypted,
+                Pessoa.foto_principal_url,
+            )
+            .join(AbordagemPessoa, AbordagemPessoa.pessoa_id == Pessoa.id)
+            .join(Abordagem, Abordagem.id == AbordagemPessoa.abordagem_id)
+            .where(
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo,
+                Pessoa.ativo,
+                func.date(Abordagem.data_hora) == data_obj,
+            )
+            .distinct()
+        )
+        result = await self.db.execute(query)
+        rows = result.all()
+
+        pessoas = []
+        for row in rows:
+            cpf = decrypt(row[2]) if row[2] else None
+            pessoas.append(
+                {
+                    "id": row[0],
+                    "nome": row[1],
+                    "cpf": cpf,
+                    "foto_url": row[3],
+                }
+            )
+        return pessoas
 
     async def metricas_rag(self, guarnicao_id: int) -> dict:
         """Retorna métricas de ocorrências para o módulo RAG.
