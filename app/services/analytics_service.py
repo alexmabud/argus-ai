@@ -165,6 +165,101 @@ class AnalyticsService:
             for row in result.all()
         ]
 
+    async def resumo_hoje(self, guarnicao_id: int) -> dict:
+        """Retorna total de abordagens e pessoas abordadas hoje.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+
+        Returns:
+            Dicionário com abordagens e pessoas do dia atual.
+        """
+        hoje = datetime.now(UTC).date()
+
+        total_q = select(func.count(Abordagem.id)).where(
+            Abordagem.guarnicao_id == guarnicao_id,
+            Abordagem.ativo,
+            func.date(Abordagem.data_hora) == hoje,
+        )
+        total = (await self.db.execute(total_q)).scalar() or 0
+
+        pessoas_q = (
+            select(func.count(func.distinct(AbordagemPessoa.pessoa_id)))
+            .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
+            .where(
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo,
+                func.date(Abordagem.data_hora) == hoje,
+            )
+        )
+        pessoas = (await self.db.execute(pessoas_q)).scalar() or 0
+
+        return {"abordagens": total, "pessoas": pessoas}
+
+    async def resumo_mes(self, guarnicao_id: int) -> dict:
+        """Retorna total de abordagens e pessoas abordadas no mês atual.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+
+        Returns:
+            Dicionário com abordagens e pessoas do mês corrente.
+        """
+        agora = datetime.now(UTC)
+        ano = agora.year
+        mes = agora.month
+
+        total_q = select(func.count(Abordagem.id)).where(
+            Abordagem.guarnicao_id == guarnicao_id,
+            Abordagem.ativo,
+            extract("year", Abordagem.data_hora) == ano,
+            extract("month", Abordagem.data_hora) == mes,
+        )
+        total = (await self.db.execute(total_q)).scalar() or 0
+
+        pessoas_q = (
+            select(func.count(func.distinct(AbordagemPessoa.pessoa_id)))
+            .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
+            .where(
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo,
+                extract("year", Abordagem.data_hora) == ano,
+                extract("month", Abordagem.data_hora) == mes,
+            )
+        )
+        pessoas = (await self.db.execute(pessoas_q)).scalar() or 0
+
+        return {"abordagens": total, "pessoas": pessoas}
+
+    async def resumo_total(self, guarnicao_id: int) -> dict:
+        """Retorna totais históricos de abordagens e pessoas.
+
+        Sem filtro de data — agrega todos os registros ativos da guarnição.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+
+        Returns:
+            Dicionário com abordagens e pessoas totais.
+        """
+        total_q = select(func.count(Abordagem.id)).where(
+            Abordagem.guarnicao_id == guarnicao_id,
+            Abordagem.ativo,
+        )
+        total = (await self.db.execute(total_q)).scalar() or 0
+
+        pessoas_q = (
+            select(func.count(func.distinct(AbordagemPessoa.pessoa_id)))
+            .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
+            .where(
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo,
+            )
+        )
+        pessoas = (await self.db.execute(pessoas_q)).scalar() or 0
+
+        return {"abordagens": total, "pessoas": pessoas}
+
     async def metricas_rag(self, guarnicao_id: int) -> dict:
         """Retorna métricas de ocorrências para o módulo RAG.
 
