@@ -199,3 +199,61 @@ class TestResumoTotal:
         assert "pessoas" in result
         assert result["abordagens"] == 100
         assert result["pessoas"] == 60
+
+
+class TestPorDia:
+    """Testes para AnalyticsService.por_dia()."""
+
+    async def test_por_dia_retorna_lista_de_dicts(self):
+        """Deve retornar lista com data, abordagens e pessoas por dia."""
+        from datetime import date as date_type
+
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = [
+            (date_type(2026, 3, 14), 3, 5),
+            (date_type(2026, 3, 15), 1, 2),
+        ]
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.por_dia(guarnicao_id=1, dias=30)
+
+        assert len(result) == 2
+        assert result[0]["data"] == "2026-03-14"
+        assert result[0]["abordagens"] == 3
+        assert result[0]["pessoas"] == 5
+
+    async def test_por_dia_sem_dados_retorna_lista_vazia(self):
+        """Deve retornar lista vazia quando não há abordagens."""
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.por_dia(guarnicao_id=1, dias=30)
+
+        assert result == []
+
+
+class TestPorMes:
+    """Testes para AnalyticsService.por_mes()."""
+
+    async def test_por_mes_retorna_lista_de_dicts(self):
+        """Deve retornar lista com mes, abordagens e pessoas por mês."""
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = [
+            (2026, 2, 40, 65),
+            (2026, 3, 15, 22),
+        ]
+        db.execute = AsyncMock(return_value=mock_result)
+        service = AnalyticsService(db)
+
+        result = await service.por_mes(guarnicao_id=1, meses=12)
+
+        assert len(result) == 2
+        assert result[0]["mes"] == "2026-02"
+        assert result[0]["abordagens"] == 40
+        assert result[0]["pessoas"] == 65
