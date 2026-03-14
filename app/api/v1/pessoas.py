@@ -374,6 +374,7 @@ async def listar_abordagens_pessoa(
                 pessoa_id=av.pessoa_id,
             )
             for av in ab.veiculos
+            if av.pessoa_id is None or av.pessoa_id == pessoa_id
         ]
         result.append(
             AbordagemDetail(
