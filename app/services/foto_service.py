@@ -62,6 +62,7 @@ class FotoService:
         content_type: str,
         pessoa_id: int | None,
         abordagem_id: int | None,
+        veiculo_id: int | None,
         tipo: str,
         latitude: float | None,
         longitude: float | None,
@@ -86,6 +87,7 @@ class FotoService:
             content_type: MIME type do arquivo (ex: "image/jpeg").
             pessoa_id: ID da pessoa associada (opcional, null para fotos de cena).
             abordagem_id: ID da abordagem associada (opcional).
+            veiculo_id: ID do veículo associado (opcional — para fotos tipo "veiculo"/"placa").
             tipo: Tipo de foto ("rosto", "corpo", "placa", "cena").
             latitude: Latitude GPS da captura (opcional).
             longitude: Longitude GPS da captura (opcional).
@@ -112,6 +114,7 @@ class FotoService:
             longitude=longitude,
             pessoa_id=pessoa_id,
             abordagem_id=abordagem_id,
+            veiculo_id=veiculo_id,
             face_processada=False,
         )
         await self.repo.create(foto)
