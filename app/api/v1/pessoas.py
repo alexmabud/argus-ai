@@ -12,7 +12,7 @@ from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
-from app.schemas.abordagem import AbordagemDetail
+from app.schemas.abordagem import AbordagemDetail, VeiculoAbordagemRead
 from app.schemas.pessoa import (
     EnderecoCreate,
     EnderecoRead,
@@ -23,6 +23,7 @@ from app.schemas.pessoa import (
     VinculoRead,
 )
 from app.schemas.veiculo import VeiculoRead
+from app.schemas.vinculo_manual import VinculoManualCreate, VinculoManualRead
 from app.services.abordagem_service import AbordagemService
 from app.services.pessoa_service import PessoaService
 
@@ -165,6 +166,7 @@ async def detalhe_pessoa(
                 nome=rel.pessoa_b.nome if rel.pessoa_b else "",
                 frequencia=rel.frequencia,
                 ultima_vez=rel.ultima_vez,
+                foto_principal_url=rel.pessoa_b.foto_principal_url if rel.pessoa_b else None,
             )
         )
     for rel in pessoa.relacionamentos_como_b:
@@ -174,8 +176,26 @@ async def detalhe_pessoa(
                 nome=rel.pessoa_a.nome if rel.pessoa_a else "",
                 frequencia=rel.frequencia,
                 ultima_vez=rel.ultima_vez,
+                foto_principal_url=rel.pessoa_a.foto_principal_url if rel.pessoa_a else None,
             )
         )
+
+    # Carregar vínculos manuais
+    vinculos_manuais_db = await service.listar_vinculos_manuais(pessoa_id, user)
+    vinculos_manuais = [
+        VinculoManualRead(
+            id=vm.id,
+            pessoa_vinculada_id=vm.pessoa_vinculada_id,
+            nome=vm.pessoa_vinculada.nome if vm.pessoa_vinculada else "",
+            foto_principal_url=vm.pessoa_vinculada.foto_principal_url
+            if vm.pessoa_vinculada
+            else None,
+            tipo=vm.tipo,
+            descricao=vm.descricao,
+            criado_em=vm.criado_em,
+        )
+        for vm in vinculos_manuais_db
+    ]
 
     return PessoaDetail(
         id=pessoa.id,
@@ -192,6 +212,7 @@ async def detalhe_pessoa(
         enderecos=[EnderecoRead.model_validate(e) for e in pessoa.enderecos],
         abordagens_count=len(pessoa.abordagens),
         relacionamentos=vinculos,
+        vinculos_manuais=vinculos_manuais,
     )
 
 
@@ -348,9 +369,11 @@ async def listar_abordagens_pessoa(
                 )
             )
         veiculos = [
-            VeiculoRead.model_validate(av.veiculo)
+            VeiculoAbordagemRead(
+                **VeiculoRead.model_validate(av.veiculo).model_dump(),
+                pessoa_id=av.pessoa_id,
+            )
             for av in ab.veiculos
-            if av.pessoa_id is None or av.pessoa_id == pessoa_id
         ]
         result.append(
             AbordagemDetail(
@@ -372,3 +395,103 @@ async def listar_abordagens_pessoa(
             )
         )
     return result
+
+
+@router.post(
+    "/{pessoa_id}/vinculos-manuais",
+    response_model=VinculoManualRead,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("30/minute")
+async def criar_vinculo_manual(
+    request: Request,
+    pessoa_id: int,
+    data: VinculoManualCreate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> VinculoManualRead:
+    """Cria vínculo manual entre duas pessoas.
+
+    Permite registrar relacionamentos conhecidos operacionalmente
+    que não constam em abordagens (ex: 'Irmão', 'Sócio').
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa dona do vínculo.
+        data: Dados do vínculo (pessoa_vinculada_id, tipo, descricao).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        VinculoManualRead com dados do vínculo criado.
+
+    Raises:
+        NaoEncontradoError: Se pessoa não existe.
+        AcessoNegadoError: Se pessoa vinculada é de outra guarnição.
+        ConflitoDadosError: Se vínculo já cadastrado.
+
+    Status Code:
+        201: Vínculo criado.
+        403: Acesso negado.
+        404: Pessoa não encontrada.
+        409: Vínculo duplicado.
+        422: Dados inválidos (tipo ausente, etc).
+        429: Rate limit.
+    """
+    service = PessoaService(db)
+    vinculo = await service.criar_vinculo_manual(
+        pessoa_id,
+        data,
+        user,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    vinculada = vinculo.pessoa_vinculada
+    return VinculoManualRead(
+        id=vinculo.id,
+        pessoa_vinculada_id=vinculo.pessoa_vinculada_id,
+        nome=vinculada.nome if vinculada else "",
+        foto_principal_url=vinculada.foto_principal_url if vinculada else None,
+        tipo=vinculo.tipo,
+        descricao=vinculo.descricao,
+        criado_em=vinculo.criado_em,
+    )
+
+
+@router.delete(
+    "/{pessoa_id}/vinculos-manuais/{vinculo_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remover_vinculo_manual(
+    request: Request,
+    pessoa_id: int,
+    vinculo_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> None:
+    """Remove vínculo manual (soft delete).
+
+    Marca o vínculo como inativo sem remoção física. Registra auditoria.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa dona do vínculo.
+        vinculo_id: ID do vínculo a remover.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Raises:
+        NaoEncontradoError: Se vínculo não existe ou não pertence à guarnição.
+
+    Status Code:
+        204: Vínculo removido.
+        404: Vínculo não encontrado.
+    """
+    service = PessoaService(db)
+    await service.remover_vinculo_manual(
+        vinculo_id,
+        pessoa_id,
+        user,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
