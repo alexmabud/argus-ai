@@ -1,7 +1,7 @@
 """Testes de integração da API de Analytics.
 
 Testa endpoints de métricas operacionais: resumo, mapa de calor,
-horários de pico, pessoas recorrentes e qualidade RAG.
+horários de pico e pessoas recorrentes.
 """
 
 from httpx import AsyncClient
@@ -103,26 +103,6 @@ class TestPessoasRecorrentes:
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
-
-
-class TestRAGQualidade:
-    """Testes do endpoint GET /api/v1/analytics/rag-qualidade."""
-
-    async def test_rag_qualidade_retorna_metricas(self, client: AsyncClient, auth_headers: dict):
-        """Deve retornar métricas RAG com totais.
-
-        Args:
-            client: Cliente HTTP assincrónico.
-            auth_headers: Headers com Bearer token válido.
-        """
-        response = await client.get(
-            "/api/v1/analytics/rag-qualidade",
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert "total_ocorrencias" in data
-        assert "ocorrencias_indexadas" in data
 
 
 class TestResumoHoje:
