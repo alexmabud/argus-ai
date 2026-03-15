@@ -435,6 +435,26 @@ function renderPessoaDetalhe(appState) {
                     <span class="text-slate-300 ml-1" x-text="ab.observacao"></span>
                   </div>
 
+                  <!-- Veículos desta abordagem -->
+                  <template x-if="ab.veiculos?.length > 0">
+                    <div class="pt-1">
+                      <p class="text-[10px] font-semibold text-slate-500 mb-1.5">Veículos Vinculados:</p>
+                      <div class="flex flex-col gap-1.5">
+                        <template x-for="v in ab.veiculos" :key="v.id">
+                          <div class="text-xs text-slate-300">
+                            <span class="font-mono font-semibold text-slate-100 tracking-wider" x-text="formatPlaca(v.placa)"></span>
+                            <template x-if="v.modelo || v.cor">
+                              <span class="text-slate-400" x-text="' ' + [v.modelo, v.cor].filter(Boolean).join(' · ')"></span>
+                            </template>
+                            <template x-if="v.pessoa_id">
+                              <span class="text-slate-500" x-text="' — ' + (ab.pessoas?.find(p => p.id === v.pessoa_id)?.nome || 'N/A')"></span>
+                            </template>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+
                   <!-- Coabordados nesta abordagem -->
                   <template x-if="ab.pessoas?.filter(p => p.id !== ${pessoaId}).length > 0">
                     <div class="pt-1">
@@ -459,23 +479,6 @@ function renderPessoaDetalhe(appState) {
                             </template>
                             <span class="text-[9px] text-slate-400 text-center leading-tight w-10 truncate"
                                   x-text="p.nome.split(' ')[0]"></span>
-                          </div>
-                        </template>
-                      </div>
-                    </div>
-                  </template>
-
-                  <!-- Veículos desta abordagem -->
-                  <template x-if="ab.veiculos?.length > 0">
-                    <div class="pt-1">
-                      <p class="text-[10px] font-semibold text-slate-500 mb-1.5">Veículos:</p>
-                      <div class="flex flex-col gap-1">
-                        <template x-for="v in ab.veiculos" :key="v.id">
-                          <div class="flex items-center gap-2 text-xs">
-                            <span class="font-mono text-slate-100 tracking-wider" x-text="formatPlaca(v.placa)"></span>
-                            <template x-if="v.pessoa_id">
-                              <span class="text-slate-500" x-text="'— ' + (ab.pessoas?.find(p => p.id === v.pessoa_id)?.nome?.split(' ')[0] || 'N/A')"></span>
-                            </template>
                           </div>
                         </template>
                       </div>
