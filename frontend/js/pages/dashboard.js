@@ -132,7 +132,7 @@ function renderDashboard() {
                 <template x-for="p in pessoasDoDia" :key="p.id">
                   <div
                     class="flex items-center gap-3 cursor-pointer hover:bg-slate-700 rounded p-1 -mx-1"
-                    @click="navigate('pessoa-detalhe', { id: p.id })">
+                    @click="viewPessoa(p.id)">
                     <img
                       :src="p.foto_url || '/icons/icon-192.png'"
                       class="w-8 h-8 rounded-full object-cover flex-shrink-0 bg-slate-700"
@@ -157,7 +157,7 @@ function renderDashboard() {
               <template x-for="(p, i) in recorrentes" :key="p.id">
                 <div
                   class="flex items-center gap-3 cursor-pointer hover:bg-slate-700 rounded p-1 -mx-1"
-                  @click="navigate('pessoa-detalhe', { id: p.id })">
+                  @click="viewPessoa(p.id)">
                   <span class="text-xs text-slate-500 w-5 flex-shrink-0" x-text="(i+1) + '.'"></span>
                   <img
                     :src="p.foto_url || '/icons/icon-192.png'"
@@ -360,6 +360,14 @@ function dashboardPage() {
         await this.$nextTick();
         this.renderizarGraficoPorDia();
         this.renderizarGraficoPorMes();
+      }
+    },
+
+    viewPessoa(id) {
+      const appEl = document.querySelector("[x-data]");
+      if (appEl?._x_dataStack) {
+        appEl._x_dataStack[0]._pessoaId = id;
+        appEl._x_dataStack[0].navigate("pessoa-detalhe");
       }
     },
   };
