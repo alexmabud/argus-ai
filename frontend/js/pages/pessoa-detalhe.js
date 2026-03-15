@@ -67,11 +67,50 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Fotos -->
-          <div x-show="fotos.length > 0" class="card space-y-2 border-l-4 border-l-amber-500">
-            <h3 class="text-sm font-semibold text-slate-300">
-              Fotos (<span x-text="fotos.length"></span>)
-            </h3>
-            <div class="grid grid-cols-3 gap-2">
+          <div class="card space-y-2 border-l-4 border-l-amber-500">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-slate-300">
+                Fotos (<span x-text="fotos.length"></span>)
+              </h3>
+              <!-- Botões câmera + galeria -->
+              <div class="flex gap-1.5">
+                <label class="cursor-pointer text-xs px-2 py-1 rounded bg-slate-700 text-blue-400 hover:bg-slate-600 transition-colors">
+                  📷
+                  <input type="file" accept="image/*" capture="environment" class="hidden"
+                         @change="onNovaFotoSelected($event)">
+                </label>
+                <label class="cursor-pointer text-xs px-2 py-1 rounded bg-slate-700 text-blue-400 hover:bg-slate-600 transition-colors">
+                  📁
+                  <input type="file" accept="image/*" class="hidden"
+                         @change="onNovaFotoSelected($event)">
+                </label>
+              </div>
+            </div>
+
+            <!-- Preview + botão enviar (aparece após selecionar) -->
+            <template x-if="novaFotoFile">
+              <div class="flex items-center gap-3 p-2 bg-slate-700/50 rounded-lg">
+                <img :src="novaFotoPreviewUrl" class="w-12 h-12 rounded object-cover shrink-0">
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-slate-400 truncate" x-text="novaFotoFile?.name"></p>
+                </div>
+                <div class="flex gap-1.5 shrink-0">
+                  <button @click="uploadNovaFoto()"
+                          :disabled="uploadandoFoto"
+                          class="text-xs px-2 py-1 rounded bg-green-700 text-green-200 hover:bg-green-600 transition-colors disabled:opacity-50">
+                    <span x-show="!uploadandoFoto">Enviar</span>
+                    <span x-show="uploadandoFoto" class="spinner"></span>
+                  </button>
+                  <button @click="if (novaFotoPreviewUrl) URL.revokeObjectURL(novaFotoPreviewUrl); novaFotoFile = null; novaFotoPreviewUrl = ''"
+                          class="text-xs px-2 py-1 rounded bg-slate-600 text-slate-400 hover:bg-slate-500 transition-colors">
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- Grid de fotos existentes -->
+            <div x-show="fotos.length > 0" class="grid grid-cols-3 gap-2">
               <template x-for="foto in fotos" :key="foto.id">
                 <div>
                   <div class="relative">
@@ -86,6 +125,11 @@ function renderPessoaDetalhe(appState) {
                 </div>
               </template>
             </div>
+
+            <!-- Estado vazio -->
+            <p x-show="fotos.length === 0 && !novaFotoFile" class="text-xs text-slate-500">
+              Nenhuma foto cadastrada.
+            </p>
           </div>
 
           <!-- Foto ampliada (modal) -->
@@ -532,6 +576,9 @@ function pessoaDetalhePage(pessoaId) {
   return {
     pessoa: null,
     fotos: [],
+    novaFotoFile: null,
+    novaFotoPreviewUrl: "",
+    uploadandoFoto: false,
     fotosVeiculos: {},
     abordagens: [],
     veiculos: [],
@@ -822,6 +869,36 @@ function pessoaDetalhePage(pessoaId) {
         this.vinculosManuais = this.vinculosManuais.filter(v => v.id !== vinculoId);
       } catch (err) {
         alert(err.message || 'Erro ao remover vínculo.');
+      }
+    },
+
+    onNovaFotoSelected(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (this.novaFotoPreviewUrl) URL.revokeObjectURL(this.novaFotoPreviewUrl);
+      this.novaFotoFile = file;
+      this.novaFotoPreviewUrl = URL.createObjectURL(file);
+    },
+
+    async uploadNovaFoto() {
+      if (!this.novaFotoFile) return;
+      this.uploadandoFoto = true;
+      try {
+        await api.uploadFile("/fotos/upload", this.novaFotoFile, {
+          tipo: "rosto",
+          pessoa_id: this.pessoaId,
+        });
+        // Recarregar lista de fotos
+        this.fotos = await api.get(`/fotos/pessoa/${this.pessoaId}`);
+        // Limpar estado
+        if (this.novaFotoPreviewUrl) URL.revokeObjectURL(this.novaFotoPreviewUrl);
+        this.novaFotoFile = null;
+        this.novaFotoPreviewUrl = "";
+        showToast("Foto adicionada com sucesso!", "success");
+      } catch (err) {
+        showToast(err?.message || "Erro ao enviar foto", "error");
+      } finally {
+        this.uploadandoFoto = false;
       }
     },
   };
