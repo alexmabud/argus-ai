@@ -361,8 +361,20 @@ function renderConsulta() {
           </p>
           <template x-for="p in pessoasVeiculo" :key="'v-' + p.id + '-' + (p.veiculo_info?.placa || '')">
             <div @click="viewPessoa(p.id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
-              <div class="flex items-center justify-between">
-                <div>
+              <div class="flex items-center gap-3">
+                <!-- Avatar da pessoa -->
+                <template x-if="p.foto_principal_url">
+                  <img :src="p.foto_principal_url" :alt="'Foto de ' + p.nome" class="w-8 h-8 rounded-full object-cover shrink-0">
+                </template>
+                <template x-if="!p.foto_principal_url">
+                  <div class="w-8 h-8 rounded-full bg-slate-700 shrink-0 flex items-center justify-center text-slate-500">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                    </svg>
+                  </div>
+                </template>
+                <!-- Texto -->
+                <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-slate-200" x-text="p.nome"></p>
                   <p x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + p.cpf_masked"></p>
                   <p x-show="p.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + p.apelido"></p>
@@ -370,6 +382,18 @@ function renderConsulta() {
                      x-text="'Vinculado via: ' + [p.veiculo_info?.placa, p.veiculo_info?.modelo, p.veiculo_info?.cor, p.veiculo_info?.ano].filter(Boolean).join(' · ')">
                   </p>
                 </div>
+                <!-- Thumbnail do veículo -->
+                <template x-if="p.veiculo_info?.foto_veiculo_url">
+                  <img :src="p.veiculo_info.foto_veiculo_url" :alt="'Foto do veículo ' + (p.veiculo_info?.placa || '')"
+                       class="w-8 h-8 rounded object-cover shrink-0 border border-slate-600">
+                </template>
+                <template x-if="!p.veiculo_info?.foto_veiculo_url">
+                  <div class="w-8 h-8 rounded bg-slate-700 shrink-0 flex items-center justify-center text-slate-500">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/>
+                    </svg>
+                  </div>
+                </template>
                 <svg class="w-4 h-4 text-slate-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
                 </svg>
