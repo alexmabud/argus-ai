@@ -824,6 +824,9 @@ function abordagemForm() {
       this.erroEndereco = {};
       this.erroPessoa = null;
       this.erroVeiculo = null;
+      this.erro = null;
+      this.abordagemId = null;
+      this.successMessage = null;
     },
   };
 }
