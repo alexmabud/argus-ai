@@ -49,16 +49,25 @@ def extrair_texto_pdf(pdf_bytes: bytes) -> str:
 def _extrair_key_da_url(url: str) -> str:
     """Extrai chave S3 a partir da URL do arquivo.
 
-    Remove endpoint e bucket do caminho para obter apenas a key.
+    A URL é gerada como ``{s3_public_url}/{bucket}/{key}``. Para obter
+    a key, remove exatamente esse prefixo. Funciona tanto com URLs locais
+    (ex: ``http://localhost:9000``) quanto com URLs de produção que incluem
+    path extra no endpoint (ex: ``https://dominio.com/storage``).
 
     Args:
         url: URL completa do arquivo no S3/R2.
 
     Returns:
-        Chave (path) do arquivo no bucket.
+        Chave (path) do arquivo no bucket, sem o nome do bucket.
     """
+    from app.config import settings
+
+    prefix = f"{settings.s3_public_url}/{settings.S3_BUCKET}/"
+    if url.startswith(prefix):
+        return url[len(prefix) :]
+
+    # Fallback para URLs com formato desconhecido: remove primeiro segmento
     parsed = urlparse(url)
-    # URL: endpoint/bucket/key → path: /bucket/key
     parts = parsed.path.lstrip("/").split("/", 1)
     return parts[1] if len(parts) > 1 else parts[0]
 
