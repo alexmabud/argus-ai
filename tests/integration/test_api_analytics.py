@@ -41,14 +41,14 @@ class TestResumo:
         assert response.status_code == 200
         assert response.json()["periodo_dias"] == 7
 
-    async def test_resumo_sem_auth_retorna_403(self, client: AsyncClient):
+    async def test_resumo_sem_auth_retorna_401(self, client: AsyncClient):
         """Deve retornar 403 sem autenticação.
 
         Args:
             client: Cliente HTTP assincrónico.
         """
         response = await client.get("/api/v1/analytics/resumo")
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestMapaCalor:
@@ -121,14 +121,14 @@ class TestResumoHoje:
         assert "abordagens" in data
         assert "pessoas" in data
 
-    async def test_resumo_hoje_sem_auth_retorna_403(self, client: AsyncClient):
+    async def test_resumo_hoje_sem_auth_retorna_401(self, client: AsyncClient):
         """Deve retornar 403 sem autenticação.
 
         Args:
             client: Cliente HTTP assincrónico.
         """
         response = await client.get("/api/v1/analytics/resumo-hoje")
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestResumoMesEndpoint:

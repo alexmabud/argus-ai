@@ -51,7 +51,7 @@ class TestSyncBatch:
         assert response.status_code == 200
         assert response.json()["results"] == []
 
-    async def test_sync_batch_sem_auth_retorna_403(self, client: AsyncClient):
+    async def test_sync_batch_sem_auth_retorna_401(self, client: AsyncClient):
         """Deve retornar 403 sem autenticação.
 
         Args:
@@ -61,4 +61,4 @@ class TestSyncBatch:
             "/api/v1/sync/batch",
             json={"items": []},
         )
-        assert response.status_code == 403
+        assert response.status_code == 401

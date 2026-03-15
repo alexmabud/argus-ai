@@ -58,6 +58,8 @@ def db():
     session.add = MagicMock()
     session.flush = AsyncMock()
     session.execute = AsyncMock()
+    # begin_nested deve retornar um async context manager (não uma coroutine)
+    session.begin_nested = MagicMock(return_value=AsyncMock())
     return session
 
 

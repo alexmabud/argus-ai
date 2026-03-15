@@ -34,17 +34,17 @@ class TestUploadFoto:
         response = await client.post(
             "/api/v1/fotos/upload",
             files={"file": ("test.jpg", b"fake_image_data", "image/jpeg")},
-            data={"tipo": "cena"},
+            data={"tipo": "rosto"},
             headers=auth_headers,
         )
         assert response.status_code == 201
         data = response.json()
         assert "id" in data
         assert "arquivo_url" in data
-        assert data["tipo"] == "cena"
+        assert data["tipo"] == "rosto"
 
-    async def test_upload_foto_sem_auth_retorna_403(self, client: AsyncClient):
-        """Deve retornar 403 sem autenticação.
+    async def test_upload_foto_sem_auth_retorna_401(self, client: AsyncClient):
+        """Deve retornar 401 sem autenticação.
 
         Args:
             client: Cliente HTTP assincrónico.
@@ -52,15 +52,15 @@ class TestUploadFoto:
         response = await client.post(
             "/api/v1/fotos/upload",
             files={"file": ("test.jpg", b"fake", "image/jpeg")},
-            data={"tipo": "cena"},
+            data={"tipo": "rosto"},
         )
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestBuscarRosto:
     """Testes do endpoint POST /api/v1/fotos/buscar-rosto."""
 
-    async def test_buscar_rosto_sem_auth_retorna_403(self, client: AsyncClient):
+    async def test_buscar_rosto_sem_auth_retorna_401(self, client: AsyncClient):
         """Deve retornar 403 sem autenticação.
 
         Args:
@@ -70,13 +70,13 @@ class TestBuscarRosto:
             "/api/v1/fotos/buscar-rosto",
             files={"file": ("face.jpg", b"fake", "image/jpeg")},
         )
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestOCRPlaca:
     """Testes do endpoint POST /api/v1/fotos/ocr-placa."""
 
-    async def test_ocr_placa_sem_auth_retorna_403(self, client: AsyncClient):
+    async def test_ocr_placa_sem_auth_retorna_401(self, client: AsyncClient):
         """Deve retornar 403 sem autenticação.
 
         Args:
@@ -86,4 +86,4 @@ class TestOCRPlaca:
             "/api/v1/fotos/ocr-placa",
             files={"file": ("placa.jpg", b"fake", "image/jpeg")},
         )
-        assert response.status_code == 403
+        assert response.status_code == 401
