@@ -75,8 +75,20 @@ function renderConsulta() {
           <p class="text-xs font-semibold text-slate-500">Resultados por nome/CPF (<span x-text="pessoasTexto.length"></span>)</p>
           <template x-for="p in pessoasTexto" :key="'t-' + p.id">
             <div @click="viewPessoa(p.id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
-              <div class="flex items-center justify-between">
-                <div>
+              <div class="flex items-center gap-3">
+                <!-- Avatar -->
+                <template x-if="p.foto_principal_url">
+                  <img :src="p.foto_principal_url" class="w-8 h-8 rounded-full object-cover shrink-0">
+                </template>
+                <template x-if="!p.foto_principal_url">
+                  <div class="w-8 h-8 rounded-full bg-slate-700 shrink-0 flex items-center justify-center text-slate-500">
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                    </svg>
+                  </div>
+                </template>
+                <!-- Texto -->
+                <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-slate-200" x-text="p.nome"></p>
                   <p x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + p.cpf_masked"></p>
                   <p x-show="p.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + p.apelido"></p>
