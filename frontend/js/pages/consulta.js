@@ -78,7 +78,7 @@ function renderConsulta() {
               <div class="flex items-center gap-3">
                 <!-- Avatar -->
                 <template x-if="p.foto_principal_url">
-                  <img :src="p.foto_principal_url" class="w-8 h-8 rounded-full object-cover shrink-0">
+                  <img :src="p.foto_principal_url" :alt="'Foto de ' + p.nome" class="w-8 h-8 rounded-full object-cover shrink-0">
                 </template>
                 <template x-if="!p.foto_principal_url">
                   <div class="w-8 h-8 rounded-full bg-slate-700 shrink-0 flex items-center justify-center text-slate-500">
