@@ -392,6 +392,41 @@ function renderAbordagemNova() {
 
         <p x-show="erro" class="text-sm text-red-400" x-text="erro"></p>
       </div>
+
+      <!-- Modal de sucesso -->
+      <div x-show="showSuccessModal" x-cloak
+           class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4">
+        <div class="bg-slate-800 border border-slate-600 rounded-xl p-6 max-w-sm w-full space-y-5 shadow-2xl">
+
+          <!-- Ícone de check -->
+          <div class="flex justify-center">
+            <div class="w-14 h-14 rounded-full bg-green-900/50 border border-green-500/50 flex items-center justify-center">
+              <svg class="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Título e mensagem -->
+          <div class="text-center space-y-1">
+            <h3 class="text-lg font-bold text-slate-100">Abordagem registrada!</h3>
+            <p class="text-sm text-slate-400" x-text="successMessage"></p>
+          </div>
+
+          <!-- Ações -->
+          <div class="space-y-2 pt-1">
+            <button @click="showSuccessModal = false; captureGPS()"
+                    class="btn btn-primary w-full">
+              Registrar nova abordagem
+            </button>
+            <button @click="document.querySelector('[x-data]')._x_dataStack[0].navigate('home')"
+                    class="w-full px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700 transition-colors">
+              Ir para página inicial
+            </button>
+          </div>
+
+        </div>
+      </div>
     </div>
   `;
 }
