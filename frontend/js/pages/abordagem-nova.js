@@ -420,6 +420,11 @@ function abordagemForm() {
     erro: null,
     sucesso: null,
 
+    // Modal de sucesso
+    showSuccessModal: false,
+    abordagemId: null,
+    successMessage: null,
+
     // Voz
     recording: false,
     voiceSupported: typeof webkitSpeechRecognition !== "undefined" || typeof SpeechRecognition !== "undefined",
@@ -742,35 +747,46 @@ function abordagemForm() {
             }
           }
 
-          this.sucesso = `Abordagem #${result.id} registrada com sucesso!`;
+          this.abordagemId = result.id;
+          this.successMessage = `Abordagem #${result.id} registrada com sucesso.`;
+          this.resetForm();
+          this.showSuccessModal = true;
         } else {
           // Salvar offline
           await enqueueSync("abordagem", payload);
-          this.sucesso = "Abordagem salva na fila offline. Será sincronizada automaticamente.";
           // Atualizar contador de pendentes
           const appEl = document.querySelector("[x-data]");
           if (appEl?._x_dataStack) appEl._x_dataStack[0]._updateSyncCount();
+          this.abordagemId = null;
+          this.successMessage = "Abordagem salva na fila offline. Será sincronizada automaticamente.";
+          this.resetForm();
+          this.showSuccessModal = true;
         }
-
-        // Reset form
-        this.clientId = null;
-        this.observacao = "";
-        this.pessoaIds = [];
-        this.pessoasSelecionadas = [];
-        this.fotosPessoas = {};
-        this.pessoaEnderecos = {};
-        this.novoEnderecoAberto = {};
-        this.novoEnderecoData = {};
-        this.veiculoIds = [];
-        this.veiculosSelecionados = [];
-        this.veiculoPorPessoa = {};
-        this.fotosVeiculos = {};
-        this.fotoVeiculoFile = null;
       } catch (err) {
         this.erro = err.message || "Erro ao registrar abordagem.";
       } finally {
         this.submitting = false;
       }
+    },
+
+    resetForm() {
+      this.clientId = null;
+      this.observacao = "";
+      this.pessoaIds = [];
+      this.pessoasSelecionadas = [];
+      this.fotosPessoas = {};
+      this.pessoaEnderecos = {};
+      this.novoEnderecoAberto = {};
+      this.novoEnderecoData = {};
+      this.veiculoIds = [];
+      this.veiculosSelecionados = [];
+      this.veiculoPorPessoa = {};
+      this.fotosVeiculos = {};
+      this.fotoVeiculoFile = null;
+      this.showNovaPessoa = false;
+      this.showNovoVeiculo = false;
+      this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
+      this.novoVeiculo = { placa: "", modelo: "", cor: "", ano: "" };
     },
   };
 }
