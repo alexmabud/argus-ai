@@ -213,13 +213,15 @@ function renderConsulta() {
             <label class="cursor-pointer inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded bg-slate-700 text-blue-400 hover:bg-slate-600 transition-colors">
               📁 Selecionar foto
               <input type="file" accept="image/*"
-                     @change="fotoPessoa = $event.target.files[0] || null; fotoPessoaPreviewUrl = fotoPessoa ? URL.createObjectURL(fotoPessoa) : ''"
+                     @change="if (fotoPessoaPreviewUrl) URL.revokeObjectURL(fotoPessoaPreviewUrl); fotoPessoa = $event.target.files[0] || null; fotoPessoaPreviewUrl = fotoPessoa ? URL.createObjectURL(fotoPessoa) : ''"
                      class="hidden">
             </label>
-            <div x-show="fotoPessoa" class="flex items-center gap-2 mt-2">
-              <img :src="fotoPessoaPreviewUrl" class="w-12 h-12 rounded object-cover shrink-0">
-              <span class="text-xs text-slate-500 truncate" x-text="fotoPessoa?.name"></span>
-            </div>
+            <template x-if="fotoPessoa">
+              <div class="flex items-center gap-2 mt-2">
+                <img :src="fotoPessoaPreviewUrl" class="w-12 h-12 rounded object-cover shrink-0">
+                <span class="text-xs text-slate-500 truncate" x-text="fotoPessoa?.name"></span>
+              </div>
+            </template>
           </div>
 
           <button @click="criarPessoa()" class="btn btn-primary text-sm w-full"
