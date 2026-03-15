@@ -444,6 +444,22 @@ class PessoaService:
             await self.db.rollback()
             raise ConflitoDadosError("Vínculo já cadastrado entre essas pessoas")
 
+        # Criar registro inverso (bidirecional): Pedro→João além de João→Pedro
+        try:
+            async with self.db.begin_nested():
+                vinculo_inverso = VinculoManual(
+                    pessoa_id=data.pessoa_vinculada_id,
+                    pessoa_vinculada_id=pessoa_id,
+                    tipo=data.tipo,
+                    descricao=data.descricao,
+                    guarnicao_id=user.guarnicao_id,
+                )
+                self.db.add(vinculo_inverso)
+                await self.db.flush()
+        except IntegrityError:
+            # Inverso já existia (dados anteriores ao fix) — ignorar silenciosamente
+            pass
+
         # Carregar pessoa_vinculada explicitamente após flush para evitar
         # MissingGreenlet ao acessar o relacionamento no router em contexto async.
         await self.db.refresh(vinculo, attribute_names=["pessoa_vinculada"])
@@ -526,6 +542,21 @@ class PessoaService:
         vinculo.ativo = False
         vinculo.desativado_em = datetime.now(UTC)
         vinculo.desativado_por_id = user.id
+
+        # Remover registro inverso (bidirecional)
+        query_inverso = select(VinculoManual).where(
+            VinculoManual.pessoa_id == vinculo.pessoa_vinculada_id,
+            VinculoManual.pessoa_vinculada_id == pessoa_id,
+            VinculoManual.guarnicao_id == user.guarnicao_id,
+            VinculoManual.ativo == True,  # noqa: E712
+        )
+        result_inverso = await self.db.execute(query_inverso)
+        vinculo_inverso = result_inverso.scalar_one_or_none()
+        if vinculo_inverso:
+            vinculo_inverso.ativo = False
+            vinculo_inverso.desativado_em = datetime.now(UTC)
+            vinculo_inverso.desativado_por_id = user.id
+
         await self.db.flush()
 
         await self.audit.log(
