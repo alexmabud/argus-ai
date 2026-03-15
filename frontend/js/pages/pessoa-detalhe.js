@@ -308,7 +308,7 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Vínculos (automáticos + manuais) -->
-          <div class="card space-y-2">
+          <div class="card space-y-2 border-l-4 border-l-orange-500">
             <div class="flex items-center justify-between">
               <h3 class="text-sm font-semibold text-slate-300">Vínculos</h3>
               <button @click="abrirModalVinculo()"
@@ -438,7 +438,7 @@ function renderPessoaDetalhe(appState) {
                   <!-- Veículos desta abordagem -->
                   <template x-if="ab.veiculos?.length > 0">
                     <div class="pt-1">
-                      <p class="text-[10px] font-semibold text-slate-500 mb-1.5">Veículos Vinculados:</p>
+                      <p class="text-[10px] font-semibold text-slate-500 mb-1.5">Veículos na Abordagem:</p>
                       <div class="flex flex-col gap-1.5">
                         <template x-for="v in ab.veiculos" :key="v.id">
                           <div class="text-xs text-slate-300">
@@ -609,11 +609,13 @@ function pessoaDetalhePage(pessoaId) {
         }
         this.fotosVeiculos = mapaFotos;
 
-        // Coletar veículos únicos de todas as abordagens
+        // Coletar veículos únicos da pessoa (veículos vinculados ao abordado)
         const veiculosMap = {};
         for (const ab of abordagens) {
           for (const v of ab.veiculos || []) {
-            veiculosMap[v.id] = v;
+            if (v.pessoa_id === pessoaId || v.pessoa_id === null) {
+              veiculosMap[v.id] = v;
+            }
           }
         }
         this.veiculos = Object.values(veiculosMap);

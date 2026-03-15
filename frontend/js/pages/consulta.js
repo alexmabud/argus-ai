@@ -313,8 +313,9 @@ function renderConsulta() {
         <div class="space-y-3">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Placa</label>
-            <input type="text" x-model="filtroPlaca" @input="onInputVeiculo()"
-                   placeholder="ABC1234..." maxlength="10"
+            <input type="text" :value="filtroPlaca"
+                   @input="filtroPlaca = formatarPlaca($event.target.value); onInputVeiculo()"
+                   placeholder="ABC-1234..." maxlength="8"
                    class="w-full py-3 uppercase" style="text-transform:uppercase">
           </div>
           <div>
@@ -467,7 +468,8 @@ function consultaPage() {
 
     onInputVeiculo() {
       clearTimeout(this._timerVeiculo);
-      const temFiltro = this.filtroPlaca.length >= 2 || this.filtroModelo.length >= 2;
+      const placaRaw = this.filtroPlaca.replace("-", "");
+      const temFiltro = placaRaw.length >= 2 || this.filtroModelo.length >= 2;
       if (!temFiltro) {
         this.pessoasVeiculo = [];
         this.searchedVeiculo = false;

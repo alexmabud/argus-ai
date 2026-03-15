@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.abordagem import AbordagemPessoa, AbordagemVeiculo
+from app.models.abordagem import AbordagemVeiculo
 from app.models.pessoa import Pessoa
 from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
@@ -128,9 +128,10 @@ class VeiculoRepository(BaseRepository[Veiculo]):
     ) -> list[tuple]:
         """Busca pessoas vinculadas a veículos via abordagens.
 
-        Resolve a cadeia Veiculo → AbordagemVeiculo → AbordagemPessoa → Pessoa
-        para encontrar todos os abordados que tiveram relação com o veículo
-        buscado. Deduplicação é feita via DISTINCT na query.
+        Resolve Veiculo → AbordagemVeiculo (pessoa_id) → Pessoa para retornar
+        apenas o abordado diretamente vinculado ao veículo naquela abordagem,
+        excluindo demais pessoas que apenas participaram da mesma ocorrência.
+        Registros sem pessoa_id (legado) são ignorados. Deduplicação via DISTINCT.
 
         Args:
             placa: Placa parcial para busca ILIKE (opcional).
@@ -147,12 +148,12 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         """
         query = (
             select(Pessoa, Veiculo)
-            .join(AbordagemPessoa, AbordagemPessoa.pessoa_id == Pessoa.id)
-            .join(AbordagemVeiculo, AbordagemVeiculo.abordagem_id == AbordagemPessoa.abordagem_id)
+            .join(AbordagemVeiculo, AbordagemVeiculo.pessoa_id == Pessoa.id)
             .join(Veiculo, Veiculo.id == AbordagemVeiculo.veiculo_id)
             .where(
                 Pessoa.ativo == True,  # noqa: E712
                 Veiculo.ativo == True,  # noqa: E712
+                AbordagemVeiculo.pessoa_id.isnot(None),
             )
         )
 
