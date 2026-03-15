@@ -267,7 +267,7 @@ class ConsultaService:
                     Foto.veiculo_id.in_(veiculo_ids),
                     Foto.ativo == True,  # noqa: E712
                 )
-                .order_by(Foto.criado_em.desc())
+                .order_by(Foto.criado_em.desc(), Foto.id.desc())
             )
             result = await self.db.execute(stmt)
             for veiculo_id, arquivo_url in result.all():
