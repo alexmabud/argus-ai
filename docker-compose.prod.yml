@@ -48,6 +48,7 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
     expose:
       - "8000"
     healthcheck:
@@ -76,6 +77,7 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
     volumes:
       - insightface_models:/app/.insightface
     depends_on:
