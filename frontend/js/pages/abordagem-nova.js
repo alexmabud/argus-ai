@@ -395,6 +395,7 @@ function renderAbordagemNova() {
 
       <!-- Modal de sucesso -->
       <div x-show="showSuccessModal" x-cloak
+           role="dialog" aria-modal="true" aria-labelledby="modal-sucesso-titulo"
            class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4">
         <div class="bg-slate-800 border border-slate-600 rounded-xl p-6 max-w-sm w-full space-y-5 shadow-2xl">
 
@@ -409,7 +410,7 @@ function renderAbordagemNova() {
 
           <!-- Título e mensagem -->
           <div class="text-center space-y-1">
-            <h3 class="text-lg font-bold text-slate-100">Abordagem registrada!</h3>
+            <h3 id="modal-sucesso-titulo" class="text-lg font-bold text-slate-100">Abordagem registrada!</h3>
             <p class="text-sm text-slate-400" x-text="successMessage"></p>
           </div>
 
