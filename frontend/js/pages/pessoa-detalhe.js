@@ -886,10 +886,10 @@ function pessoaDetalhePage(pessoaId) {
       try {
         await api.uploadFile("/fotos/upload", this.novaFotoFile, {
           tipo: "rosto",
-          pessoa_id: this.pessoaId,
+          pessoa_id: pessoaId,
         });
         // Recarregar lista de fotos
-        this.fotos = await api.get(`/fotos/pessoa/${this.pessoaId}`);
+        this.fotos = await api.get(`/fotos/pessoa/${pessoaId}`);
         // Limpar estado
         if (this.novaFotoPreviewUrl) URL.revokeObjectURL(this.novaFotoPreviewUrl);
         this.novaFotoFile = null;
