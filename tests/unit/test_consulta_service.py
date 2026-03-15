@@ -25,6 +25,7 @@ class TestPessoasPorVeiculo:
         3. Converte tuplas em dicts com chaves "pessoa" e "veiculo"
         """
         db = AsyncMock()
+        db.execute.return_value.all = MagicMock(return_value=[])
         service = ConsultaService(db)
 
         mock_pessoa = MagicMock()
@@ -64,6 +65,7 @@ class TestPessoasPorVeiculo:
         Verifica que todos os parâmetros são passados ao repositório.
         """
         db = AsyncMock()
+        db.execute.return_value.all = MagicMock(return_value=[])
         service = ConsultaService(db)
 
         mock_pessoa = MagicMock()
@@ -121,6 +123,7 @@ class TestPessoasPorVeiculo:
     async def test_pessoas_por_veiculo_multiplos_resultados(self):
         """Testa que converte múltiplas tuplas em dicts corretamente."""
         db = AsyncMock()
+        db.execute.return_value.all = MagicMock(return_value=[])
         service = ConsultaService(db)
 
         pessoa1, veiculo1 = MagicMock(), MagicMock()
@@ -155,6 +158,7 @@ class TestPessoasPorVeiculo:
     async def test_pessoas_por_veiculo_user_none(self):
         """Testa que extrai guarnicao_id como None quando user é None."""
         db = AsyncMock()
+        db.execute.return_value.all = MagicMock(return_value=[])
         service = ConsultaService(db)
 
         mock_pessoa = MagicMock()
