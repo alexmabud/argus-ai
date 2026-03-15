@@ -101,7 +101,7 @@ function renderPessoaDetalhe(appState) {
                     <span x-show="!uploadandoFoto">Enviar</span>
                     <span x-show="uploadandoFoto" class="spinner"></span>
                   </button>
-                  <button @click="if (novaFotoPreviewUrl) URL.revokeObjectURL(novaFotoPreviewUrl); novaFotoFile = null; novaFotoPreviewUrl = ''"
+                  <button @click="cancelarNovaFoto()"
                           class="text-xs px-2 py-1 rounded bg-slate-600 text-slate-400 hover:bg-slate-500 transition-colors">
                     ✕
                   </button>
@@ -878,6 +878,13 @@ function pessoaDetalhePage(pessoaId) {
       if (this.novaFotoPreviewUrl) URL.revokeObjectURL(this.novaFotoPreviewUrl);
       this.novaFotoFile = file;
       this.novaFotoPreviewUrl = URL.createObjectURL(file);
+      event.target.value = "";
+    },
+
+    cancelarNovaFoto() {
+      if (this.novaFotoPreviewUrl) URL.revokeObjectURL(this.novaFotoPreviewUrl);
+      this.novaFotoFile = null;
+      this.novaFotoPreviewUrl = "";
     },
 
     async uploadNovaFoto() {
@@ -886,14 +893,12 @@ function pessoaDetalhePage(pessoaId) {
       try {
         await api.uploadFile("/fotos/upload", this.novaFotoFile, {
           tipo: "rosto",
-          pessoa_id: pessoaId,
+          pessoa_id: parseInt(pessoaId, 10),
         });
         // Recarregar lista de fotos
         this.fotos = await api.get(`/fotos/pessoa/${pessoaId}`);
         // Limpar estado
-        if (this.novaFotoPreviewUrl) URL.revokeObjectURL(this.novaFotoPreviewUrl);
-        this.novaFotoFile = null;
-        this.novaFotoPreviewUrl = "";
+        this.cancelarNovaFoto();
         showToast("Foto adicionada com sucesso!", "success");
       } catch (err) {
         showToast(err?.message || "Erro ao enviar foto", "error");
