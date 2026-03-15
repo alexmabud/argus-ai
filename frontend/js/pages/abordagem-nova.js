@@ -391,7 +391,6 @@ function renderAbordagemNova() {
         </button>
 
         <p x-show="erro" class="text-sm text-red-400" x-text="erro"></p>
-        <p x-show="sucesso" class="text-sm text-green-400" x-text="sucesso"></p>
       </div>
     </div>
   `;
@@ -418,8 +417,6 @@ function abordagemForm() {
     submitting: false,
     clientId: null,
     erro: null,
-    sucesso: null,
-
     // Modal de sucesso
     showSuccessModal: false,
     abordagemId: null,
@@ -696,7 +693,6 @@ function abordagemForm() {
 
       this.submitting = true;
       this.erro = null;
-      this.sucesso = null;
 
       // Gerar client_id único para deduplicação (idempotência)
       if (!this.clientId) {
@@ -749,6 +745,7 @@ function abordagemForm() {
 
           this.abordagemId = result.id;
           this.successMessage = `Abordagem #${result.id} registrada com sucesso.`;
+          // Capturar dados antes do reset para o modal
           this.resetForm();
           this.showSuccessModal = true;
         } else {
@@ -787,6 +784,10 @@ function abordagemForm() {
       this.showNovoVeiculo = false;
       this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
       this.novoVeiculo = { placa: "", modelo: "", cor: "", ano: "" };
+      this.salvandoEndereco = {};
+      this.erroEndereco = {};
+      this.erroPessoa = null;
+      this.erroVeiculo = null;
     },
   };
 }
