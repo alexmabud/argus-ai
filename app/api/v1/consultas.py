@@ -100,7 +100,9 @@ async def consulta_unificada(
     if not filtro_endereco and len(q) < 2:
         raise HTTPException(
             status_code=422,
-            detail="Informe ao menos 2 caracteres no termo de busca ou utilize os filtros de endereço.",
+            detail=(
+                "Informe ao menos 2 caracteres no termo de busca ou utilize os filtros de endereço."
+            ),
         )
 
     service = ConsultaService(db)
@@ -214,6 +216,7 @@ async def pessoas_por_veiculo(
                 modelo=row["veiculo"].modelo,
                 cor=row["veiculo"].cor,
                 ano=row["veiculo"].ano,
+                foto_veiculo_url=row.get("foto_veiculo_url"),
             ),
         )
         for row in rows

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import hash_for_search
 from app.models.abordagem import Abordagem
+from app.models.foto import Foto
 from app.models.usuario import Usuario
 from app.repositories.abordagem_repo import AbordagemRepository
 from app.repositories.pessoa_repo import PessoaRepository
@@ -243,7 +244,8 @@ class ConsultaService:
             user: Usuário autenticado para filtro multi-tenant.
 
         Returns:
-            Lista de dicionários com "pessoa" (Pessoa) e "veiculo" (Veiculo).
+            Lista de dicionários com "pessoa" (Pessoa), "veiculo" (Veiculo)
+            e "foto_veiculo_url" (str | None) com a URL da foto mais recente do veículo.
         """
         guarnicao_id = user.guarnicao_id if user else None
         rows = await self.veiculo_repo.get_pessoas_por_veiculo(
@@ -254,4 +256,25 @@ class ConsultaService:
             skip=skip,
             limit=limit,
         )
-        return [{"pessoa": row[0], "veiculo": row[1]} for row in rows]
+
+        # Buscar foto principal de cada veículo único
+        veiculo_ids = list({row[1].id for row in rows})
+        fotos_veiculos: dict[int, str | None] = {}
+        if veiculo_ids:
+            stmt = (
+                select(Foto.veiculo_id, Foto.arquivo_url)
+                .where(
+                    Foto.veiculo_id.in_(veiculo_ids),
+                    Foto.ativo == True,  # noqa: E712
+                )
+                .order_by(Foto.criado_em.desc())
+            )
+            result = await self.db.execute(stmt)
+            for veiculo_id, arquivo_url in result.all():
+                if veiculo_id not in fotos_veiculos:
+                    fotos_veiculos[veiculo_id] = arquivo_url
+
+        return [
+            {"pessoa": row[0], "veiculo": row[1], "foto_veiculo_url": fotos_veiculos.get(row[1].id)}
+            for row in rows
+        ]

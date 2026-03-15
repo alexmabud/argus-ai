@@ -37,12 +37,14 @@ class VeiculoInfo(BaseModel):
         modelo: Modelo do veículo (opcional).
         cor: Cor do veículo (opcional).
         ano: Ano do veículo (opcional).
+        foto_veiculo_url: URL da foto do veículo (R2/S3), para thumbnail na busca.
     """
 
     placa: str
     modelo: str | None = None
     cor: str | None = None
     ano: int | None = None
+    foto_veiculo_url: str | None = None
 
     model_config = {"from_attributes": True}
 
