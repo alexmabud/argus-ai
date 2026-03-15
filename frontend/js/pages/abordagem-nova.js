@@ -416,7 +416,7 @@ function renderAbordagemNova() {
 
           <!-- Ações -->
           <div class="space-y-2 pt-1">
-            <button @click="showSuccessModal = false; captureGPS()"
+            <button @click="document.querySelector('[x-data]')._x_dataStack[0].navigate('abordagem-nova')"
                     class="btn btn-primary w-full">
               Registrar nova abordagem
             </button>
