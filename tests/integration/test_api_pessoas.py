@@ -51,8 +51,8 @@ class TestCriarPessoa:
         assert data["cpf_masked"] is not None
         assert "123" not in data["cpf_masked"]
 
-    async def test_criar_pessoa_sem_auth_retorna_403(self, client: AsyncClient):
-        """Testa que requisição sem token retorna 403.
+    async def test_criar_pessoa_sem_auth_retorna_401(self, client: AsyncClient):
+        """Testa que requisição sem token retorna 401.
 
         Args:
             client: Cliente HTTP assincrónico.
@@ -61,7 +61,7 @@ class TestCriarPessoa:
             "/api/v1/pessoas/",
             json={"nome": "Sem Auth"},
         )
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestListarPessoas:

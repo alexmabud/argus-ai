@@ -57,8 +57,8 @@ class TestCriarAbordagem:
         )
         assert response.status_code == 201
 
-    async def test_criar_abordagem_sem_auth_retorna_403(self, client: AsyncClient):
-        """Testa que requisição sem token retorna 403.
+    async def test_criar_abordagem_sem_auth_retorna_401(self, client: AsyncClient):
+        """Testa que requisição sem token retorna 401.
 
         Args:
             client: Cliente HTTP assincrónico.
@@ -70,7 +70,7 @@ class TestCriarAbordagem:
                 "endereco_texto": "Sem Auth",
             },
         )
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestListarAbordagens:
