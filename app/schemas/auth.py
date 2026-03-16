@@ -6,7 +6,9 @@ e leitura de dados de usuários e guarnições.
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.models.usuario import POSTOS_GRADUACAO
 
 
 class LoginRequest(BaseModel):
@@ -74,6 +76,9 @@ class UsuarioRead(BaseModel):
         email: Email do agente (opcional).
         is_admin: Indica se o agente é administrador.
         guarnicao_id: Identificador da guarnição do agente.
+        posto_graduacao: Posto ou graduação PM (ex: "Sargento").
+        nome_guerra: Nome de guerra do agente (ex: "Silva").
+        foto_url: URL pública da foto de perfil no R2.
         criado_em: Data e hora de criação do usuário.
     """
 
@@ -83,6 +88,9 @@ class UsuarioRead(BaseModel):
     email: str | None = None
     is_admin: bool
     guarnicao_id: int | None = None
+    posto_graduacao: str | None = None
+    nome_guerra: str | None = None
+    foto_url: str | None = None
     criado_em: datetime
 
     model_config = {"from_attributes": True}
@@ -105,5 +113,98 @@ class GuarnicaoRead(BaseModel):
     nome: str
     unidade: str
     codigo: str
+
+    model_config = {"from_attributes": True}
+
+
+class PerfilUpdate(BaseModel):
+    """Dados para atualização do perfil do usuário.
+
+    Permite atualizar nome, nome de guerra, posto/graduação e URL da foto.
+    O posto_graduacao deve ser um valor da lista POSTOS_GRADUACAO.
+
+    Attributes:
+        nome: Nome completo do agente (2 a 200 caracteres).
+        nome_guerra: Nome de guerra do agente (ex: "Silva"). Máx 50 chars.
+        posto_graduacao: Posto ou graduação PM (lista fixa). None para remover.
+        foto_url: URL pública da foto de perfil no R2 (opcional).
+    """
+
+    nome: str = Field(..., min_length=2, max_length=200)
+    nome_guerra: str | None = Field(None, max_length=50)
+    posto_graduacao: str | None = Field(None, max_length=50)
+    foto_url: str | None = Field(None, max_length=500)
+
+    @field_validator("posto_graduacao")
+    @classmethod
+    def validar_posto(cls, v: str | None) -> str | None:
+        """Valida que o posto é da lista oficial PM.
+
+        Args:
+            v: Valor do posto a validar.
+
+        Returns:
+            O valor do posto se válido, None se não fornecido.
+
+        Raises:
+            ValueError: Se posto não estiver na lista POSTOS_GRADUACAO.
+        """
+        if v is not None and v not in POSTOS_GRADUACAO:
+            raise ValueError(f"Posto inválido. Valores aceitos: {POSTOS_GRADUACAO}")
+        return v
+
+
+class UsuarioAdminCreate(BaseModel):
+    """Dados para criação de usuário pelo admin.
+
+    O admin informa apenas a matrícula. O sistema gera a senha automaticamente.
+
+    Attributes:
+        matricula: Matrícula do agente (1 a 50 caracteres, único no sistema).
+    """
+
+    matricula: str = Field(..., min_length=1, max_length=50)
+
+
+class SenhaGeradaResponse(BaseModel):
+    """Resposta com senha gerada pelo sistema (exibida apenas uma vez).
+
+    Attributes:
+        usuario_id: ID do usuário criado ou atualizado.
+        matricula: Matrícula do usuário.
+        senha: Senha gerada em texto plano — exibir UMA vez e descartar.
+    """
+
+    usuario_id: int
+    matricula: str
+    senha: str
+
+
+class UsuarioAdminRead(BaseModel):
+    """Dados de usuário para listagem no painel admin.
+
+    Attributes:
+        id: Identificador único do usuário.
+        nome: Nome completo do agente.
+        matricula: Matrícula do agente.
+        posto_graduacao: Posto ou graduação PM.
+        nome_guerra: Nome de guerra do agente.
+        foto_url: URL da foto de perfil.
+        is_admin: Indica se é administrador.
+        ativo: Indica se o acesso está ativo.
+        tem_sessao: Indica se há sessão ativa (session_id != None).
+        guarnicao_id: ID da guarnição.
+    """
+
+    id: int
+    nome: str
+    matricula: str
+    posto_graduacao: str | None = None
+    nome_guerra: str | None = None
+    foto_url: str | None = None
+    is_admin: bool
+    ativo: bool
+    tem_sessao: bool
+    guarnicao_id: int | None = None
 
     model_config = {"from_attributes": True}
