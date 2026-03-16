@@ -3,7 +3,7 @@
 Fornece fixtures para:
 - Configuração do banco de dados de testes
 - Cliente HTTP assincrónico para testes de API
-- Dados de teste (guarnição, usuário, pessoa, veículo, abordagem, passagem, ocorrência)
+- Dados de teste (guarnição, usuário, pessoa, veículo, abordagem, ocorrência)
 - Headers com autenticação JWT
 """
 
@@ -23,7 +23,6 @@ from app.models.abordagem import Abordagem
 from app.models.base import Base
 from app.models.guarnicao import Guarnicao
 from app.models.ocorrencia import Ocorrencia
-from app.models.passagem import Passagem
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.models.veiculo import Veiculo
@@ -251,29 +250,6 @@ async def abordagem(db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usu
     db_session.add(a)
     await db_session.flush()
     return a
-
-
-@pytest.fixture
-async def passagem(db_session: AsyncSession) -> Passagem:
-    """Fixture que cria uma passagem criminal de teste.
-
-    Insere uma passagem do Código Penal para uso em testes
-    de catálogo e vinculação com abordagens.
-
-    Args:
-        db_session: Sessão do banco de testes.
-
-    Returns:
-        Passagem: Objeto de passagem — Art. 121 CP (Homicídio Simples).
-    """
-    p = Passagem(
-        lei="CP",
-        artigo="121",
-        nome_crime="Homicídio Simples",
-    )
-    db_session.add(p)
-    await db_session.flush()
-    return p
 
 
 @pytest.fixture
