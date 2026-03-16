@@ -70,3 +70,30 @@ async def test_usuario_sem_session_retorna_401(client: AsyncClient, usuario, db_
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_token_sem_sid_retorna_401(client: AsyncClient, usuario, db_session):
+    """Token sem claim 'sid' deve ser rejeitado mesmo se usuário tem sessão ativa.
+
+    Protege contra tokens antigos (emitidos antes da implementação de session_id)
+    que não possuem o claim 'sid'.
+
+    Args:
+        client: Cliente HTTP assincrónico para testes.
+        usuario: Fixture de usuário com session_id ativo.
+        db_session: Sessão do banco para manipular dados do usuário.
+    """
+    from app.core.security import criar_access_token
+
+    # Usuário tem sessão ativa no banco
+    usuario.session_id = "sessao-ativa"
+    await db_session.flush()
+
+    # Token SEM claim sid
+    token = criar_access_token({"sub": str(usuario.id)})
+    response = await client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 401
