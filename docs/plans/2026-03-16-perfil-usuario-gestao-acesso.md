@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Adicionar perfil de usuário (foto, posto, nome) com avatar no header e painel admin para criar/pausar/excluir usuários com modelo de senha única e sessão exclusiva.
+**Goal:** Adicionar perfil de usuário (foto, posto, nome, nome de guerra) com avatar no header e painel admin para criar/pausar/excluir usuários com modelo de senha única e sessão exclusiva.
 
-**Architecture:** Três novos campos no model `Usuario` (`posto_graduacao`, `foto_url`, `session_id`). O `session_id` é gerado no login e embutido no JWT — cada requisição verifica correspondência, garantindo sessão exclusiva. Senhas são geradas pelo admin e invalidadas após o primeiro uso. Frontend ganha avatar clicável no header (abre tela de perfil com botão Sair) e página de admin restrita a `is_admin`.
+**Architecture:** Quatro novos campos no model `Usuario` (`posto_graduacao`, `nome_guerra`, `foto_url`, `session_id`). O `session_id` é gerado no login e embutido no JWT — cada requisição verifica correspondência, garantindo sessão exclusiva. Senhas são geradas pelo admin e invalidadas após o primeiro uso. Frontend ganha avatar clicável no header (abre tela de perfil com botão Sair) e página de admin restrita a `is_admin`.
 
 **Tech Stack:** FastAPI + SQLAlchemy async + Alembic + bcrypt + secrets (stdlib) + StorageService (R2) + Alpine.js + Tailwind
 
@@ -26,6 +26,7 @@ make migrate msg="add_perfil_sessao_to_usuarios"
 ```python
 def upgrade() -> None:
     op.add_column("usuarios", sa.Column("posto_graduacao", sa.String(50), nullable=True))
+    op.add_column("usuarios", sa.Column("nome_guerra", sa.String(50), nullable=True))
     op.add_column("usuarios", sa.Column("foto_url", sa.String(500), nullable=True))
     op.add_column("usuarios", sa.Column("session_id", sa.String(36), nullable=True))
 
@@ -33,6 +34,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("usuarios", "session_id")
     op.drop_column("usuarios", "foto_url")
+    op.drop_column("usuarios", "nome_guerra")
     op.drop_column("usuarios", "posto_graduacao")
 ```
 
@@ -79,9 +81,11 @@ def test_usuario_possui_campos_de_perfil():
     """Verifica que o model Usuario possui os novos atributos de perfil."""
     u = Usuario(nome="Teste", matricula="T001", senha_hash="hash")
     assert hasattr(u, "posto_graduacao")
+    assert hasattr(u, "nome_guerra")
     assert hasattr(u, "foto_url")
     assert hasattr(u, "session_id")
     assert u.posto_graduacao is None
+    assert u.nome_guerra is None
     assert u.foto_url is None
     assert u.session_id is None
 ```
@@ -144,6 +148,7 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
         email: Email do oficial (único, opcional).
         senha_hash: Hash bcrypt da senha (gerada pelo admin, uso único).
         posto_graduacao: Posto ou graduação PM (ex: "Sargento"). Ver POSTOS_GRADUACAO.
+        nome_guerra: Nome de guerra do agente (ex: "Silva"). Máx 50 chars.
         foto_url: URL pública da foto de perfil no R2 (opcional).
         session_id: UUID da sessão ativa. None = sem sessão. Novo login gera novo UUID.
         guarnicao_id: ID da guarnição (chave estrangeira).
@@ -159,6 +164,7 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     email: Mapped[str | None] = mapped_column(String(200), unique=True, nullable=True)
     senha_hash: Mapped[str] = mapped_column(String(200))
     posto_graduacao: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    nome_guerra: Mapped[str | None] = mapped_column(String(50), nullable=True)
     foto_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     session_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     guarnicao_id: Mapped[int | None] = mapped_column(ForeignKey("guarnicoes.id"), nullable=True)
@@ -760,16 +766,18 @@ from app.models.usuario import POSTOS_GRADUACAO
 class PerfilUpdate(BaseModel):
     """Dados para atualização do perfil do usuário.
 
-    Permite atualizar nome, posto/graduação e URL da foto.
+    Permite atualizar nome, nome de guerra, posto/graduação e URL da foto.
     O posto_graduacao deve ser um valor da lista POSTOS_GRADUACAO.
 
     Attributes:
         nome: Nome completo do agente (2 a 200 caracteres).
+        nome_guerra: Nome de guerra do agente (ex: "Silva"). Máx 50 chars.
         posto_graduacao: Posto ou graduação PM (lista fixa). None para remover.
         foto_url: URL pública da foto de perfil no R2 (opcional).
     """
 
     nome: str = Field(..., min_length=2, max_length=200)
+    nome_guerra: str | None = Field(None, max_length=50)
     posto_graduacao: str | None = Field(None, max_length=50)
     foto_url: str | None = Field(None, max_length=500)
 
@@ -850,6 +858,7 @@ class UsuarioRead(BaseModel):
         is_admin: Indica se o agente é administrador.
         guarnicao_id: Identificador da guarnição do agente.
         posto_graduacao: Posto ou graduação PM (ex: "Sargento").
+        nome_guerra: Nome de guerra do agente (ex: "Silva").
         foto_url: URL pública da foto de perfil no R2.
         criado_em: Data e hora de criação do usuário.
     """
@@ -861,6 +870,7 @@ class UsuarioRead(BaseModel):
     is_admin: bool
     guarnicao_id: int | None = None
     posto_graduacao: str | None = None
+    nome_guerra: str | None = None
     foto_url: str | None = None
     criado_em: datetime
 
@@ -1004,6 +1014,8 @@ async def atualizar_perfil(
         422: Dados inválidos (posto fora da lista).
     """
     user.nome = data.nome
+    if data.nome_guerra is not None:
+        user.nome_guerra = data.nome_guerra
     if data.posto_graduacao is not None:
         user.posto_graduacao = data.posto_graduacao
     if data.foto_url is not None:
@@ -1836,6 +1848,13 @@ function renderPerfil(appState) {
         </div>
 
         <div>
+          <label class="block text-sm text-slate-400 mb-1">Nome de guerra</label>
+          <input type="text" x-model="nomeGuerra"
+                 class="w-full bg-slate-700 rounded-lg px-3 py-2 text-white border border-slate-600 focus:border-blue-500 focus:outline-none"
+                 placeholder="Ex: Silva" maxlength="50" />
+        </div>
+
+        <div>
           <label class="block text-sm text-slate-400 mb-1">Posto / Graduação</label>
           <select x-model="posto"
                   class="w-full bg-slate-700 rounded-lg px-3 py-2 text-white border border-slate-600 focus:border-blue-500 focus:outline-none">
@@ -1893,6 +1912,7 @@ function perfilPage() {
   const user = auth.getUser() || {};
   return {
     nome: user.nome || "",
+    nomeGuerra: user.nome_guerra || "",
     posto: user.posto_graduacao || "",
     fotoUrl: user.foto_url || null,
     salvando: false,
@@ -1904,6 +1924,7 @@ function perfilPage() {
       try {
         const updated = await api.put("/auth/perfil", {
           nome: this.nome,
+          nome_guerra: this.nomeGuerra || null,
           posto_graduacao: this.posto || null,
         });
         auth.user = updated;
