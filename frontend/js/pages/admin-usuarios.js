@@ -30,7 +30,7 @@ function renderAdminUsuarios() {
                   <img :src="u.foto_url" class="w-full h-full object-cover" />
                 </template>
                 <template x-if="!u.foto_url">
-                  <span x-text="u.nome.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase()"></span>
+                  <span x-text="(u.nome || '?').split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase()"></span>
                 </template>
               </div>
               <!-- Info -->
@@ -118,6 +118,7 @@ function adminUsuariosPage() {
     mostrarFormCriacao: false,
     novaMatricula: "",
     criando: false,
+    excluindo: false,
     senhaGerada: null,
 
     async init() {
@@ -172,13 +173,17 @@ function adminUsuariosPage() {
     },
 
     async excluirUsuario(u) {
+      if (this.excluindo) return;
       if (!confirm(`Excluir o usuário ${u.matricula}? Esta ação não pode ser desfeita.`)) return;
+      this.excluindo = true;
       try {
         await api.delete(`/admin/usuarios/${u.id}`);
         showToast("Usuário excluído", "success");
         await this.carregar();
       } catch {
         showToast("Erro ao excluir usuário", "error");
+      } finally {
+        this.excluindo = false;
       }
     },
   };
