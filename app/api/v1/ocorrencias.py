@@ -163,27 +163,3 @@ async def buscar_ocorrencias(
         data=data,
     )
     return [OcorrenciaRead.model_validate(o) for o in ocorrencias]
-
-
-@router.get("/{ocorrencia_id}", response_model=OcorrenciaRead)
-async def detalhe_ocorrencia(
-    ocorrencia_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
-) -> OcorrenciaRead:
-    """Obtém detalhes de uma ocorrência.
-
-    Args:
-        ocorrencia_id: ID da ocorrência.
-        db: Sessão do banco de dados.
-        user: Usuário autenticado.
-
-    Returns:
-        OcorrenciaRead com dados da ocorrência.
-
-    Raises:
-        NaoEncontradoError: Se ocorrência não existe ou de outra guarnição.
-    """
-    service = OcorrenciaService(db)
-    ocorrencia = await service.buscar_por_id(ocorrencia_id, user.guarnicao_id)
-    return OcorrenciaRead.model_validate(ocorrencia)
