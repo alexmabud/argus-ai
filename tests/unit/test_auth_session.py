@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.core.exceptions import CredenciaisInvalidasError
+from app.core.security import decodificar_token
 from app.services.auth_service import AuthService
 
 
@@ -37,8 +38,6 @@ async def test_login_gera_session_id(mock_db):
     assert len(usuario.session_id) == 36  # UUID4 format
 
     # Token deve conter sid
-    from app.core.security import decodificar_token
-
     payload = decodificar_token(result.access_token)
     assert payload["sid"] == usuario.session_id
 
