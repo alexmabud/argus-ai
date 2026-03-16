@@ -1,8 +1,8 @@
 """Worker arq para processamento assíncrono de tarefas pesadas.
 
 Configura e executa o worker arq com Redis como broker de mensagens.
-Registra tasks de processamento de PDF (OCR + extração de texto),
-geração de embeddings em batch e processamento facial (InsightFace).
+Registra tasks de processamento de PDF (OCR + extração de texto)
+e processamento facial (InsightFace).
 
 Uso:
     make worker  # ou: arq app.worker.WorkerSettings
@@ -13,7 +13,6 @@ import logging
 from arq.connections import RedisSettings
 
 from app.config import settings
-from app.tasks.embedding_generator import gerar_embeddings_batch_task
 from app.tasks.face_processor import processar_face_task
 from app.tasks.pdf_processor import processar_pdf_task
 
@@ -93,7 +92,7 @@ class WorkerSettings:
         job_timeout: Timeout máximo por job em segundos (10 min).
     """
 
-    functions = [processar_pdf_task, gerar_embeddings_batch_task, processar_face_task]
+    functions = [processar_pdf_task, processar_face_task]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = _parse_redis_settings()

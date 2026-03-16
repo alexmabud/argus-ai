@@ -48,7 +48,6 @@ migrate-create:
 	$(ALEMBIC) revision --autogenerate -m "$(msg)"
 
 seed:
-	$(PYTHON) scripts/seed_legislacao.py
 	@if [ -f scripts/seed_passagens.py ]; then $(PYTHON) scripts/seed_passagens.py; else echo "scripts/seed_passagens.py nao existe; pulando seed de passagens."; fi
 
 docker-up:
