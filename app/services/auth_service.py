@@ -129,6 +129,7 @@ class AuthService:
         # Sessão exclusiva — novo session_id invalida tokens anteriores
         novo_session_id = str(uuid.uuid4())
         usuario.session_id = novo_session_id
+        await self.db.flush()
 
         token_data: dict = {
             "sub": str(usuario.id),
