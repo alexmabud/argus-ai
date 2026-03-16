@@ -4,6 +4,9 @@ Implementa lógica pura de autenticação (sem dependências FastAPI), incluindo
 registro, login, refresh de tokens e validação de credenciais.
 """
 
+import secrets
+import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflitoDadosError, CredenciaisInvalidasError
@@ -98,19 +101,20 @@ class AuthService:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> TokenResponse:
-        """Autentica um agente e gera tokens de acesso.
+        """Autentica um agente com senha de uso único e gera sessão exclusiva.
 
-        Valida as credenciais (matrícula e senha), cria tokens JWT de acesso
-        e refresh, e registra o evento de login na auditoria.
+        Valida as credenciais (matrícula e senha), invalida a senha após uso
+        (substituindo por hash aleatório inutilizável), gera novo session_id
+        (UUID4) que é embutido no JWT — garantindo sessão exclusiva por usuário.
 
         Args:
             matricula: Matrícula do agente.
-            senha: Senha em texto plano (será verificada contra o hash).
-            ip_address: Endereço IP da requisição de login (opcional).
-            user_agent: User-Agent do cliente (opcional).
+            senha: Senha de uso único gerada pelo admin.
+            ip_address: Endereço IP da requisição (opcional, para auditoria).
+            user_agent: User-Agent do cliente (opcional, para auditoria).
 
         Returns:
-            TokenResponse: Tokens de acesso e refresh, e tipo de token.
+            TokenResponse: Tokens JWT de acesso e refresh com session_id embutido.
 
         Raises:
             CredenciaisInvalidasError: Se matrícula não existe ou senha é inválida.
@@ -119,7 +123,17 @@ class AuthService:
         if not usuario or not verificar_senha(senha, usuario.senha_hash):
             raise CredenciaisInvalidasError()
 
-        token_data: dict = {"sub": str(usuario.id)}
+        # Senha de uso único — substituir por hash inutilizável após login
+        usuario.senha_hash = hash_senha(secrets.token_hex(32))
+
+        # Sessão exclusiva — novo session_id invalida tokens anteriores
+        novo_session_id = str(uuid.uuid4())
+        usuario.session_id = novo_session_id
+
+        token_data: dict = {
+            "sub": str(usuario.id),
+            "sid": novo_session_id,
+        }
         if usuario.guarnicao_id is not None:
             token_data["guarnicao_id"] = usuario.guarnicao_id
         access_token = criar_access_token(token_data)
@@ -139,37 +153,39 @@ class AuthService:
         )
 
     async def refresh(self, refresh_token: str) -> TokenResponse:
-        """Renova os tokens de acesso usando um refresh token válido.
+        """Renova os tokens de acesso mantendo o session_id existente.
 
-        Decodifica o refresh token, valida o usuário e gera novos tokens
-        de acesso e refresh.
+        Decodifica o refresh token, valida o usuário e session_id, e gera
+        novos tokens mantendo o mesmo session_id (sem rotação de sessão).
 
         Args:
-            refresh_token: Refresh token JWT válido.
+            refresh_token: Refresh token JWT válido com claim 'sid'.
 
         Returns:
             TokenResponse: Novos tokens de acesso e refresh.
 
         Raises:
-            CredenciaisInvalidasError: Se o refresh token é inválido ou o
-                usuário não existe ou está inativo.
-
-        Note:
-            O refresh token deve conter um payload com 'sub' (user_id) válido
-            e ser do tipo 'refresh'.
+            CredenciaisInvalidasError: Se refresh token inválido, usuário não existe
+                ou session_id não confere.
         """
         payload = decodificar_token(refresh_token, expected_type="refresh")
         if payload is None:
             raise CredenciaisInvalidasError()
 
         user_id = payload.get("sub")
+        sid = payload.get("sid")
         if not user_id:
             raise CredenciaisInvalidasError()
+
         usuario = await self.repo.get(int(user_id))
         if not usuario or not usuario.ativo:
             raise CredenciaisInvalidasError()
 
-        token_data = {"sub": str(usuario.id)}
+        # Verificar session_id — rejeitar se sessão foi revogada
+        if usuario.session_id is None or usuario.session_id != sid:
+            raise CredenciaisInvalidasError()
+
+        token_data: dict = {"sub": str(usuario.id), "sid": sid}
         if usuario.guarnicao_id is not None:
             token_data["guarnicao_id"] = usuario.guarnicao_id
 
