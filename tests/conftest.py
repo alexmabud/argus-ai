@@ -128,23 +128,25 @@ async def guarnicao(db_session: AsyncSession) -> Guarnicao:
 
 @pytest.fixture
 async def usuario(db_session: AsyncSession, guarnicao: Guarnicao) -> Usuario:
-    """Fixture que cria um usuário de teste autenticado.
+    """Fixture que cria um usuário de teste autenticado com sessão ativa.
 
     Insere um usuário no banco de dados associado a uma guarnição,
     com credenciais padrão para testes de autenticação e autorização.
+    O session_id é definido para que a verificação de sessão exclusiva passe.
 
     Args:
         db_session: Sessão do banco de testes.
         guarnicao: Fixture de guarnição para associar ao usuário.
 
     Returns:
-        Usuario: Objeto de usuário com matrícula TEST001 e senha123.
+        Usuario: Objeto de usuário com matrícula TEST001, senha123 e session_id ativo.
     """
     u = Usuario(
         nome="Agente Teste",
         matricula="TEST001",
         senha_hash=hash_senha("senha123"),
         guarnicao_id=guarnicao.id,
+        session_id="test-session-id",
     )
     db_session.add(u)
     await db_session.flush()
@@ -153,21 +155,23 @@ async def usuario(db_session: AsyncSession, guarnicao: Guarnicao) -> Usuario:
 
 @pytest.fixture
 async def auth_headers(usuario: Usuario) -> dict:
-    """Fixture que gera headers com token de autenticação válido.
+    """Fixture que gera headers com token de autenticação válido e session_id.
 
-    Cria um token JWT de acesso válido para o usuário de teste e
-    o formata como header Authorization para requisições autenticadas.
+    Cria um token JWT de acesso válido para o usuário de teste, incluindo
+    o claim 'sid' com o session_id do usuário para que a verificação de
+    sessão exclusiva passe em todos os testes autenticados.
 
     Args:
-        usuario: Fixture de usuário para gerar token.
+        usuario: Fixture de usuário com session_id definido.
 
     Returns:
-        dict: Dicionário com header Authorization contendo Bearer token válido.
+        dict: Headers com Authorization Bearer token incluindo sid.
     """
     token = criar_access_token(
         {
             "sub": str(usuario.id),
             "guarnicao_id": usuario.guarnicao_id,
+            "sid": usuario.session_id,
         }
     )
     return {"Authorization": f"Bearer {token}"}

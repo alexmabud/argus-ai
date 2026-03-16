@@ -10,13 +10,13 @@ import logging
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
-
-logger = logging.getLogger("argus")
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decodificar_token
 from app.database.session import get_db
 from app.models.usuario import Usuario
+
+logger = logging.getLogger("argus")
 
 #: Esquema de segurança HTTP Bearer para extrair token do header Authorization.
 security = HTTPBearer()
@@ -28,21 +28,22 @@ async def get_current_user(
 ) -> Usuario:
     """Extrai e valida usuário autenticado do token JWT Bearer.
 
-    Decodifica token JWT, valida assinatura e expiration, busca usuário
-    no banco de dados, e verifica se está ativo. Levanta exceção 401 se
-    token inválido, expirado ou usuário não existe/inativo.
+    Além de validar assinatura e expiração do JWT, verifica o session_id:
+    o claim 'sid' do token deve corresponder ao session_id no banco.
+    Isso garante sessão exclusiva — novo login invalida tokens anteriores.
+    Usuários com session_id=None (pausados ou sem login) são sempre rejeitados.
 
     Args:
         credentials: Credencial Bearer extraída do header Authorization.
         db: Sessão do banco de dados para buscar usuário.
 
     Returns:
-        Objeto Usuario autenticado e ativo.
+        Objeto Usuario autenticado, ativo e com sessão válida.
 
     Raises:
-        HTTPException: 401 se token inválido, expirado ou usuário não existe.
+        HTTPException: 401 se token inválido, expirado, usuário inativo
+            ou session_id não confere.
     """
-
     payload = decodificar_token(credentials.credentials)
     if payload is None:
         raise HTTPException(
@@ -56,6 +57,7 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido (sem sub)",
         )
+
     result = await db.execute(
         select(Usuario).where(Usuario.id == int(user_id), Usuario.ativo == True)  # noqa: E712
     )
@@ -65,6 +67,14 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário não encontrado ou inativo",
+        )
+
+    # Verificar session_id — sessão exclusiva por usuário
+    token_sid = payload.get("sid")
+    if user.session_id is None or user.session_id != token_sid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sessão encerrada — solicite nova senha ao administrador",
         )
 
     return user
