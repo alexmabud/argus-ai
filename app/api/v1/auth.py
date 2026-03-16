@@ -5,7 +5,7 @@ de dados do usuário autenticado. Implementa rate limiting para proteção
 contra abuso.
 """
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
@@ -14,11 +14,13 @@ from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.schemas.auth import (
     LoginRequest,
+    PerfilUpdate,
     RefreshRequest,
     TokenResponse,
     UsuarioRead,
 )
 from app.services.auth_service import AuthService
+from app.services.storage_service import StorageService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -124,3 +126,77 @@ async def me(user: Usuario = Depends(get_current_user)) -> UsuarioRead:
         Requer autenticação via Bearer token no header Authorization.
     """
     return UsuarioRead.model_validate(user)
+
+
+@router.put("/perfil", response_model=UsuarioRead)
+async def atualizar_perfil(
+    data: PerfilUpdate,
+    user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UsuarioRead:
+    """Atualiza nome, nome de guerra, posto/graduação e foto_url do perfil.
+
+    Endpoint PUT — atualização completa do perfil. O campo nome é obrigatório.
+    Os demais campos são opcionais (None = manter sem valor).
+
+    Args:
+        data: Dados de perfil a atualizar (nome obrigatório, demais opcionais).
+        user: Usuário autenticado (injetado automaticamente).
+        db: Sessão do banco de dados.
+
+    Returns:
+        UsuarioRead: Dados atualizados do usuário.
+
+    Raises:
+        AuthenticationError: Se token inválido ou sessão encerrada.
+        ValidationError: Se posto_graduacao fora da lista oficial.
+
+    Status Code:
+        200: Perfil atualizado com sucesso.
+        401: Não autenticado ou sessão inválida.
+        422: Dados inválidos (posto fora da lista).
+    """
+    user.nome = data.nome
+    if data.nome_guerra is not None:
+        user.nome_guerra = data.nome_guerra
+    if data.posto_graduacao is not None:
+        user.posto_graduacao = data.posto_graduacao
+    if data.foto_url is not None:
+        user.foto_url = data.foto_url
+    await db.commit()
+    await db.refresh(user)
+    return UsuarioRead.model_validate(user)
+
+
+@router.post("/perfil/foto", response_model=dict)
+async def upload_foto_perfil(
+    foto: UploadFile = File(...),
+    user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Faz upload da foto de perfil para R2 e atualiza foto_url do usuário.
+
+    Args:
+        foto: Arquivo de imagem enviado via multipart/form-data.
+        user: Usuário autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        dict: Objeto com campo foto_url contendo a URL pública da foto no R2.
+
+    Raises:
+        AuthenticationError: Se token inválido.
+
+    Status Code:
+        200: Upload realizado com sucesso.
+        401: Não autenticado.
+    """
+    file_bytes = await foto.read()
+    storage = StorageService()
+    key = storage._generate_key("avatares", foto.filename or "foto.jpg")
+    url = await storage.upload(file_bytes, key, content_type=foto.content_type or "image/jpeg")
+
+    user.foto_url = url
+    await db.commit()
+
+    return {"foto_url": url}
