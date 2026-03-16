@@ -1,11 +1,11 @@
 """Router de autenticação e gerenciamento de usuários.
 
-Fornece endpoints para registro, login, refresh de tokens e obtenção
+Fornece endpoints para login, refresh de tokens e obtenção
 de dados do usuário autenticado. Implementa rate limiting para proteção
 contra abuso.
 """
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
@@ -15,51 +15,12 @@ from app.models.usuario import Usuario
 from app.schemas.auth import (
     LoginRequest,
     RefreshRequest,
-    RegisterRequest,
     TokenResponse,
     UsuarioRead,
 )
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
-
-
-@router.post("/register", response_model=UsuarioRead, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
-async def register(
-    request: Request,
-    data: RegisterRequest,
-    db: AsyncSession = Depends(get_db),
-) -> UsuarioRead:
-    """Registra um novo agente na guarnição.
-
-    Cria novo usuário com senha hasheada e realiza validações de duplicação
-    de matrícula e email. Registra evento de auditoria.
-
-    Args:
-        request: Objeto Request do FastAPI (para capturar IP e User-Agent).
-        data: Dados de registro (nome, matrícula, senha, email, guarnicao_id).
-        db: Sessão do banco de dados (injetada automaticamente).
-
-    Returns:
-        UsuarioRead: Dados do usuário criado (sem senha).
-
-    Raises:
-        ConflitoDadosError: Se matrícula ou email já estão cadastrados.
-        ValidationError: Se dados de entrada são inválidos.
-
-    Status Code:
-        201: Usuário criado com sucesso.
-        400: Dados inválidos ou matrícula/email duplicados.
-        429: Muitas requisições no período (rate limit: 5/minuto).
-    """
-    service = AuthService(db)
-    usuario = await service.register(
-        data,
-        ip_address=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
-    )
-    return UsuarioRead.model_validate(usuario)
 
 
 @router.post("/login", response_model=TokenResponse)
