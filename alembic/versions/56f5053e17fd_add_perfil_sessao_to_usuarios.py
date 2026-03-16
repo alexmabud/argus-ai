@@ -27,10 +27,12 @@ def upgrade() -> None:
     op.add_column("usuarios", sa.Column("nome_guerra", sa.String(50), nullable=True))
     op.add_column("usuarios", sa.Column("foto_url", sa.String(500), nullable=True))
     op.add_column("usuarios", sa.Column("session_id", sa.String(36), nullable=True))
+    op.create_index("ix_usuarios_session_id", "usuarios", ["session_id"])
 
 
 def downgrade() -> None:
     """Remove colunas de perfil e sessão da tabela usuarios."""
+    op.drop_index("ix_usuarios_session_id", table_name="usuarios")
     op.drop_column("usuarios", "session_id")
     op.drop_column("usuarios", "foto_url")
     op.drop_column("usuarios", "nome_guerra")
