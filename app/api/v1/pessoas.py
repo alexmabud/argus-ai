@@ -19,7 +19,6 @@ from app.schemas.pessoa import (
     PessoaCreate,
     PessoaDetail,
     PessoaRead,
-    PessoaUpdate,
     VinculoRead,
 )
 from app.schemas.veiculo import VeiculoRead
@@ -213,78 +212,6 @@ async def detalhe_pessoa(
         abordagens_count=len(pessoa.abordagens),
         relacionamentos=vinculos,
         vinculos_manuais=vinculos_manuais,
-    )
-
-
-@router.put("/{pessoa_id}", response_model=PessoaRead)
-async def atualizar_pessoa(
-    request: Request,
-    pessoa_id: int,
-    data: PessoaUpdate,
-    db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
-) -> PessoaRead:
-    """Atualiza parcialmente uma pessoa.
-
-    Apenas campos enviados são atualizados. Se CPF for alterado,
-    re-criptografa e re-gera hash.
-
-    Args:
-        request: Objeto Request do FastAPI.
-        pessoa_id: ID da pessoa a atualizar.
-        data: Campos a atualizar.
-        db: Sessão do banco de dados.
-        user: Usuário autenticado.
-
-    Returns:
-        PessoaRead atualizada.
-
-    Raises:
-        NaoEncontradoError: Se pessoa não existe.
-        AcessoNegadoError: Se pessoa de outra guarnição.
-        ConflitoDadosError: Se novo CPF já cadastrado.
-    """
-    service = PessoaService(db)
-    pessoa = await service.atualizar(
-        pessoa_id,
-        data,
-        user,
-        ip_address=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
-    )
-    return _to_pessoa_read(pessoa, service)
-
-
-@router.delete("/{pessoa_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def desativar_pessoa(
-    request: Request,
-    pessoa_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
-) -> None:
-    """Desativa uma pessoa (soft delete).
-
-    Marca pessoa como inativa sem remoção física. Registra auditoria.
-
-    Args:
-        request: Objeto Request do FastAPI.
-        pessoa_id: ID da pessoa a desativar.
-        db: Sessão do banco de dados.
-        user: Usuário autenticado.
-
-    Raises:
-        NaoEncontradoError: Se pessoa não existe.
-        AcessoNegadoError: Se pessoa de outra guarnição.
-
-    Status Code:
-        204: Pessoa desativada.
-    """
-    service = PessoaService(db)
-    await service.desativar(
-        pessoa_id,
-        user,
-        ip_address=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
     )
 
 
