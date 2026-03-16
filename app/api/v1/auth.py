@@ -198,5 +198,6 @@ async def upload_foto_perfil(
 
     user.foto_url = url
     await db.commit()
+    await db.refresh(user)
 
     return {"foto_url": url}
