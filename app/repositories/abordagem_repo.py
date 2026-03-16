@@ -12,7 +12,6 @@ from sqlalchemy.orm import selectinload
 
 from app.models.abordagem import (
     Abordagem,
-    AbordagemPassagem,
     AbordagemPessoa,
     AbordagemVeiculo,
 )
@@ -23,7 +22,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
     """Repositório para operações de Abordagem.
 
     Estende BaseRepository com busca geoespacial por raio (PostGIS),
-    carregamento eager de pessoas/veículos/fotos/passagens/ocorrências,
+    carregamento eager de pessoas/veículos/fotos/ocorrências,
     e suporte a deduplicação offline via client_id.
 
     Attributes:
@@ -42,7 +41,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
     async def get_detail(self, id: int, guarnicao_id: int) -> Abordagem | None:
         """Obtém abordagem com todos os relacionamentos carregados.
 
-        Carrega pessoas, veículos, fotos, passagens e ocorrências
+        Carrega pessoas, veículos, fotos e ocorrências
         em uma única query (eager load).
 
         Args:
@@ -58,7 +57,6 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
                 selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
                 selectinload(Abordagem.fotos),
-                selectinload(Abordagem.passagens).selectinload(AbordagemPassagem.passagem),
                 selectinload(Abordagem.ocorrencias),
             )
             .where(

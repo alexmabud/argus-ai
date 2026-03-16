@@ -1,7 +1,7 @@
 """Serviço de lógica de negócio para Abordagem.
 
 Gerencia criação completa de abordagens com vinculação de pessoas,
-veículos, passagens, geocoding reverso, PostGIS e materialização
+veículos, geocoding reverso, PostGIS e materialização
 de relacionamentos entre pessoas abordadas juntas. Centraliza toda
 a orquestração do fluxo de abordagem em campo, garantindo que o
 cadastro completo ocorra em < 40 segundos.
@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NaoEncontradoError
 from app.models.abordagem import (
     Abordagem,
-    AbordagemPassagem,
     AbordagemPessoa,
     AbordagemVeiculo,
 )
@@ -32,7 +31,7 @@ class AbordagemService:
     """Serviço central de Abordagem com PostGIS e materialização de relacionamentos.
 
     Orquestra o ciclo de vida completo de uma abordagem: criação com deduplicação
-    offline, geocoding reverso best-effort, vinculação de pessoas/veículos/passagens,
+    offline, geocoding reverso best-effort, vinculação de pessoas/veículos,
     materialização de relacionamentos entre pessoas abordadas juntas, busca
     geoespacial por raio (PostGIS ST_DWithin) e atualização parcial.
 
@@ -79,12 +78,11 @@ class AbordagemService:
         4. Criar registro Abordagem
         5. Vincular pessoas (AbordagemPessoa)
         6. Vincular veículos (AbordagemVeiculo)
-        7. Vincular passagens (AbordagemPassagem com pessoa_id)
-        8. Materializar relacionamentos se 2+ pessoas
-        9. Audit log
+        7. Materializar relacionamentos se 2+ pessoas
+        8. Audit log
 
         Args:
-            data: Dados da abordagem (pessoas, veículos, passagens, coordenadas).
+            data: Dados da abordagem (pessoas, veículos, coordenadas).
             user_id: ID do oficial que realizou a abordagem.
             guarnicao_id: ID da guarnição (multi-tenancy).
             ip_address: Endereço IP da requisição (opcional, para auditoria).
@@ -147,25 +145,15 @@ class AbordagemService:
                 )
             )
 
-        # 7. Vincular passagens (AbordagemPassagem com pessoa_id)
-        for passagem_vinculo in data.passagens:
-            self.db.add(
-                AbordagemPassagem(
-                    abordagem_id=abordagem.id,
-                    pessoa_id=passagem_vinculo.pessoa_id,
-                    passagem_id=passagem_vinculo.passagem_id,
-                )
-            )
-
         await self.db.flush()
 
-        # 8. Materializar relacionamentos se 2+ pessoas
+        # 7. Materializar relacionamentos se 2+ pessoas
         if len(data.pessoa_ids) > 1:
             await self.relacionamento.registrar_vinculo(
                 data.pessoa_ids, abordagem.id, data.data_hora
             )
 
-        # 9. Audit log
+        # 8. Audit log
         await self.audit.log(
             usuario_id=user_id,
             acao="CREATE",
@@ -215,7 +203,7 @@ class AbordagemService:
     ) -> Abordagem:
         """Busca abordagem com todos os relacionamentos carregados (eager load).
 
-        Carrega pessoas, veículos, fotos, passagens e ocorrências em uma
+        Carrega pessoas, veículos, fotos e ocorrências em uma
         única query usando selectinload. Ideal para tela de detalhe.
 
         Args:

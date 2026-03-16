@@ -2,7 +2,7 @@
 
 Define estruturas de requisição e resposta para criação, atualização,
 leitura e busca de abordagens em campo, incluindo vinculação com
-pessoas, veículos e passagens.
+pessoas e veículos.
 """
 
 from __future__ import annotations
@@ -12,28 +12,15 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.schemas.foto import FotoRead
-from app.schemas.passagem import PassagemVinculoRead
 from app.schemas.pessoa import PessoaRead
 from app.schemas.veiculo import VeiculoRead
-
-
-class PassagemVinculoCreate(BaseModel):
-    """Vinculação de passagem a pessoa durante criação de abordagem.
-
-    Attributes:
-        pessoa_id: ID da pessoa envolvida.
-        passagem_id: ID da passagem/crime.
-    """
-
-    pessoa_id: int
-    passagem_id: int
 
 
 class AbordagemCreate(BaseModel):
     """Requisição de criação de abordagem.
 
     Payload único para registro rápido em campo (< 40 segundos).
-    Permite vincular pessoas, veículos e passagens em uma única requisição.
+    Permite vincular pessoas e veículos em uma única requisição.
 
     Attributes:
         data_hora: Data/hora da abordagem (timezone-aware).
@@ -46,7 +33,6 @@ class AbordagemCreate(BaseModel):
         pessoa_ids: IDs das pessoas abordadas.
         veiculo_ids: IDs dos veículos envolvidos.
         veiculo_por_pessoa: Mapeamento veiculo_id → pessoa_id (opcional).
-        passagens: Vinculações de passagens a pessoas.
     """
 
     data_hora: datetime
@@ -59,7 +45,6 @@ class AbordagemCreate(BaseModel):
     pessoa_ids: list[int] = []
     veiculo_ids: list[int] = []
     veiculo_por_pessoa: dict[int, int] = {}
-    passagens: list[PassagemVinculoCreate] = []
 
 
 class AbordagemUpdate(BaseModel):
@@ -124,16 +109,14 @@ class VeiculoAbordagemRead(VeiculoRead):
 class AbordagemDetail(AbordagemRead):
     """Dados detalhados de uma abordagem com todos os relacionamentos.
 
-    Estende AbordagemRead com pessoas, veículos, fotos e passagens vinculadas.
+    Estende AbordagemRead com pessoas, veículos e fotos vinculadas.
 
     Attributes:
         pessoas: Lista de pessoas abordadas.
         veiculos: Lista de veículos envolvidos com pessoa associada.
         fotos: Lista de fotos registradas.
-        passagens: Lista de passagens vinculadas.
     """
 
     pessoas: list[PessoaRead] = []
     veiculos: list[VeiculoAbordagemRead] = []
     fotos: list[FotoRead] = []
-    passagens: list[PassagemVinculoRead] = []
