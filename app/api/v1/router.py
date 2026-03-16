@@ -3,12 +3,13 @@
 Centraliza todos os routers de domínio da versão 1 da API. Inclui
 subrouters de autenticação, CRUD operacional (pessoas, veículos,
 abordagens), upload de fotos, relacionamentos,
-consulta unificada, ocorrências, analytics e sync.
+consulta unificada, ocorrências, analytics, sync e administração.
 """
 
 from fastapi import APIRouter
 
 from app.api.v1.abordagens import router as abordagens_router
+from app.api.v1.admin import router as admin_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.consultas import router as consultas_router
@@ -29,3 +30,4 @@ api_router.include_router(consultas_router)
 api_router.include_router(ocorrencias_router)
 api_router.include_router(analytics_router)
 api_router.include_router(sync_router)
+api_router.include_router(admin_router)
