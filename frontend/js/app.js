@@ -77,6 +77,9 @@ function app() {
         this.currentPage = "login";
       });
 
+      // Escutar navegação por evento customizado
+      window.addEventListener("navigate", (e) => this.navigate(e.detail));
+
       // Verificar autenticação existente
       if (auth.isAuthenticated()) {
         this.authenticated = true;
@@ -142,6 +145,7 @@ function app() {
         "ocorrencia-upload": renderOcorrenciaUpload,
 
         dashboard: renderDashboard,
+        perfil: renderPerfil,
       };
 
       const render = renderers[page];

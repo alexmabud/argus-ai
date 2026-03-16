@@ -117,6 +117,9 @@ class ApiClient {
   postForm(path, formData) { return this.request("POST", path, formData); }
   put(path, body) { return this.request("PUT", path, body); }
   del(path) { return this.request("DELETE", path); }
+  patch(path, body) { return this.request("PATCH", path, body); }
+  delete(path) { return this.request("DELETE", path); }
+  uploadForm(path, formData) { return this.request("POST", path, formData); }
 
   async uploadFile(path, file, extraData = {}) {
     const form = new FormData();
