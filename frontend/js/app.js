@@ -149,6 +149,7 @@ function app() {
 
         dashboard: renderDashboard,
         perfil: renderPerfil,
+        "admin-usuarios": renderAdminUsuarios,
       };
 
       const render = renderers[page];
