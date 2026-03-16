@@ -1,7 +1,7 @@
 """Modelo de Abordagem — registro principal de campo.
 
 Define a abordagem em campo e suas tabelas de associação (pessoas,
-veículos, fotos, passagens). Abordagem é o "documento" raiz do sistema.
+veículos, fotos). Abordagem é o "documento" raiz do sistema.
 """
 
 from datetime import datetime
@@ -35,7 +35,6 @@ class Abordagem(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         pessoas: Relacionamento M:N com Pessoa via AbordagemPessoa.
         veiculos: Relacionamento M:N com Veiculo via AbordagemVeiculo.
         fotos: Relacionamento com Foto.
-        passagens: Relacionamento M:N com Passagem via AbordagemPassagem.
         ocorrencias: Relacionamento com Ocorrencia.
 
     Nota:
@@ -71,12 +70,6 @@ class Abordagem(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         cascade="all, delete-orphan",
     )
     fotos = relationship("Foto", back_populates="abordagem", lazy="selectin")
-    passagens = relationship(
-        "AbordagemPassagem",
-        back_populates="abordagem",
-        lazy="selectin",
-        cascade="all, delete-orphan",
-    )
     ocorrencias = relationship("Ocorrencia", back_populates="abordagem", lazy="selectin")
 
     __table_args__ = (
@@ -156,44 +149,3 @@ class AbordagemVeiculo(Base):
     pessoa = relationship("Pessoa")
 
     __table_args__ = (Index("uq_abordagem_veiculo", "abordagem_id", "veiculo_id", unique=True),)
-
-
-class AbordagemPassagem(Base):
-    """Associação entre abordagem, pessoa e passagem criminal.
-
-    Tabela de junção que registra qual passagem (crime/infração)
-    foi encontrada com qual pessoa em qual abordagem.
-
-    Attributes:
-        id: Identificador único (chave primária).
-        abordagem_id: ID da abordagem (FK, CASCADE delete).
-        pessoa_id: ID da pessoa envolvida (FK, CASCADE delete).
-        passagem_id: ID da passagem/crime (FK, sem cascade).
-        abordagem: Relacionamento com Abordagem.
-        pessoa: Relacionamento com Pessoa.
-        passagem: Relacionamento com Passagem.
-
-    Nota:
-        - Índice único triplo (abordagem_id, passagem_id, pessoa_id).
-    """
-
-    __tablename__ = "abordagem_passagens"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    abordagem_id: Mapped[int] = mapped_column(ForeignKey("abordagens.id", ondelete="CASCADE"))
-    pessoa_id: Mapped[int] = mapped_column(ForeignKey("pessoas.id", ondelete="CASCADE"))
-    passagem_id: Mapped[int] = mapped_column(ForeignKey("passagens.id"))
-
-    abordagem = relationship("Abordagem", back_populates="passagens")
-    pessoa = relationship("Pessoa")
-    passagem = relationship("Passagem")
-
-    __table_args__ = (
-        Index(
-            "uq_abordagem_passagem",
-            "abordagem_id",
-            "passagem_id",
-            "pessoa_id",
-            unique=True,
-        ),
-    )

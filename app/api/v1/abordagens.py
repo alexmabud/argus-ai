@@ -17,7 +17,6 @@ from app.schemas.abordagem import (
     AbordagemRead,
     AbordagemUpdate,
 )
-from app.schemas.passagem import PassagemRead, PassagemVinculoRead
 from app.schemas.pessoa import PessoaRead
 from app.schemas.veiculo import VeiculoRead
 from app.services.abordagem_service import AbordagemService
@@ -37,7 +36,7 @@ async def criar_abordagem(
     """Cria nova abordagem com vinculações em payload único.
 
     Endpoint central para registro rápido em campo (< 40 segundos).
-    Aceita pessoas, veículos e passagens em uma única requisição.
+    Aceita pessoas e veículos em uma única requisição.
     Realiza geocoding reverso, cria ponto PostGIS e materializa
     relacionamentos entre pessoas automaticamente.
 
@@ -128,7 +127,7 @@ async def detalhe_abordagem(
 ) -> AbordagemDetail:
     """Obtém detalhes completos de uma abordagem.
 
-    Retorna abordagem com pessoas, veículos, fotos e passagens
+    Retorna abordagem com pessoas, veículos e fotos
     vinculadas (eager loaded).
 
     Args:
@@ -169,15 +168,6 @@ async def detalhe_abordagem(
     # Montar veículos a partir da associação M:N
     veiculos = [VeiculoRead.model_validate(av.veiculo) for av in abordagem.veiculos]
 
-    # Montar passagens vinculadas
-    passagens = [
-        PassagemVinculoRead(
-            passagem=PassagemRead.model_validate(ap.passagem),
-            pessoa_id=ap.pessoa_id,
-        )
-        for ap in abordagem.passagens
-    ]
-
     return AbordagemDetail(
         id=abordagem.id,
         data_hora=abordagem.data_hora,
@@ -193,7 +183,6 @@ async def detalhe_abordagem(
         pessoas=pessoas,
         veiculos=veiculos,
         fotos=[],
-        passagens=passagens,
     )
 
 
