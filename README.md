@@ -27,7 +27,7 @@
 
 ## Sobre
 
-**Argus AI** e uma ferramenta de apoio operacional que funciona como **memoria inteligente de equipe**, permitindo registro rapido de abordagens em campo, consulta instantanea de historico, relacionamento automatico entre pessoas, busca por reconhecimento facial, OCR de placas veiculares e geracao de relatorios assistida por IA (RAG).
+**Argus AI** e uma ferramenta de apoio operacional que funciona como **memoria inteligente de equipe**, permitindo registro rapido de abordagens em campo, consulta instantanea de historico, relacionamento automatico entre pessoas e busca por reconhecimento facial.
 
 > O nome faz referencia a **Argus Panoptes**, o gigante de cem olhos da mitologia grega — aquele que tudo ve e nada esquece.
 
@@ -39,17 +39,15 @@
 |---------|-----------|
 | Cadastro rapido | Registro de abordagem em < 40 segundos |
 | Entrada por voz | Ditado de observacoes via Web Speech API |
-| Captura de foto | Camera direta no navegador |
-| Reconhecimento facial | Busca por similaridade com InsightFace (512-dim) |
-| OCR de placas | Extracao automatica de placa com EasyOCR |
+| Captura de foto | Camera direta no navegador com upload para Cloudflare R2 |
+| Reconhecimento facial | Busca por similaridade com InsightFace (embedding 512-dim, IVFFlat) |
 | Geolocalizacao | GPS automatico + geocoding reverso |
-| Analise geoespacial | Busca por raio e mapa de calor (PostGIS) |
-| Relacionamentos | Vinculo automatico entre pessoas abordadas juntas |
-| RAG para relatorios | Geracao assistida por IA com busca semantica |
-| Legislacao | Busca semantica no Codigo Penal e leis extravagantes |
-| Dashboard | Metricas, horarios de pico, pessoas recorrentes |
-| Offline-first | Funciona sem internet, sincroniza automaticamente |
-| LGPD compliant | Criptografia, audit trail, soft delete, retencao controlada |
+| Analise geoespacial | Busca por raio e mapa de calor (PostGIS + GiST) |
+| Relacionamentos | Vinculo automatico entre pessoas abordadas juntas, com frequencia calculada |
+| Consulta unificada | Busca simultanea em pessoas, veiculos e abordagens via unico termo |
+| Dashboard analitico | Resumo operacional, mapa de calor, horarios de pico, pessoas recorrentes, producao por periodo |
+| Sync offline | Fila IndexedDB sincroniza automaticamente ao reconectar |
+| LGPD compliant | CPF criptografado (Fernet), audit trail, soft delete, retencao controlada |
 
 ---
 
@@ -92,13 +90,13 @@
 
 | Camada | Tecnologias |
 |--------|-------------|
-| **Backend** | Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic v2 |
-| **Banco** | PostgreSQL 16, pgvector, PostGIS, pg_trgm |
-| **IA / RAG** | SentenceTransformers (multilingual), PyMuPDF, Claude API / Ollama |
-| **Visao** | InsightFace (buffalo_l), EasyOCR, Pillow |
-| **Frontend** | PWA, Alpine.js, Tailwind CSS, Dexie.js (IndexedDB) |
-| **Infra** | Docker, Redis, Cloudflare R2 (MinIO local), GitHub Actions |
-| **Seguranca** | JWT, Fernet (AES-256), bcrypt, audit logging, rate limiting |
+| **Backend** | Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic v2, arq, Uvicorn |
+| **Banco** | PostgreSQL 16, pgvector, PostGIS, pg_trgm, unaccent |
+| **IA / RAG** | SentenceTransformers (`paraphrase-multilingual-MiniLM-L12-v2`), PyMuPDF, Claude API (Anthropic) / Ollama |
+| **Visao** | InsightFace (buffalo_l, 512-dim), EasyOCR, Pillow |
+| **Frontend** | PWA, Alpine.js, Tailwind CSS (CDN), Dexie.js (IndexedDB), Web Speech API, Service Worker |
+| **Infra** | Docker Compose, Redis, Cloudflare R2 (MinIO local), GitHub Actions |
+| **Seguranca** | JWT (python-jose), Fernet AES-256 (cryptography), bcrypt, audit logging, slowapi rate limiting |
 
 ---
 
@@ -166,15 +164,20 @@ make worker
 
 | Comando | Descricao |
 |---------|-----------|
-| `make dev` | Sobe API com hot-reload |
-| `make worker` | Sobe arq worker |
+| `make dev` | Sobe infra (db, redis, minio) + API com hot-reload |
+| `make worker` | Sobe arq worker em background |
 | `make test` | Roda testes com cobertura |
-| `make lint` | Ruff lint + format |
-| `make migrate` | Aplica migrations (ou inicializa schema se ainda não houver migration) |
-| `make migrate-create msg="desc"` | Nova migration Alembic |
-| `make seed` | Popular legislação |
-| `make anonimizar` | Anonimizacao LGPD |
-| `make anonimizar-dry` | Simulacao da anonimizacao |
+| `make lint` | Ruff lint + mypy type check |
+| `make format` | Ruff format (auto-formatacao) |
+| `make migrate` | Aplica migrations pendentes (ou executa init-db se nao houver versoes) |
+| `make migrate-create msg="desc"` | Cria nova migration Alembic com autogenerate |
+| `make seed` | Popular legislacao e passagens |
+| `make anonimizar` | Anonimizacao LGPD de dados expirados |
+| `make anonimizar-dry` | Simulacao da anonimizacao (sem alterar dados) |
+| `make docker-up` | Sobe todos os servicos via Docker Compose |
+| `make docker-down` | Para e remove containers |
+| `make docker-logs` | Acompanha logs da API e worker |
+| `make encrypt-key` | Gera nova ENCRYPTION_KEY (Fernet) |
 
 ---
 
@@ -184,6 +187,16 @@ make worker
 argus-ai/
 +-- app/
 |   +-- api/v1/            # Routers (endpoints HTTP)
+|   |   +-- auth.py        # Login, registro, refresh token
+|   |   +-- pessoas.py     # CRUD pessoas
+|   |   +-- veiculos.py    # CRUD veiculos
+|   |   +-- abordagens.py  # CRUD abordagens
+|   |   +-- fotos.py       # Upload + busca facial
+|   |   +-- relacionamentos.py  # Vinculos entre pessoas
+|   |   +-- consultas.py   # Busca unificada por termo
+|   |   +-- ocorrencias.py # Upload PDF + vinculacao
+|   |   +-- analytics.py   # Dashboard e metricas
+|   |   +-- sync.py        # Sincronizacao offline
 |   +-- models/            # SQLAlchemy models (mixins: Timestamp, SoftDelete, MultiTenant)
 |   +-- schemas/           # Pydantic schemas (request/response)
 |   +-- services/          # Logica de negocio (NUNCA importa FastAPI)
@@ -219,11 +232,14 @@ Copie `.env.example` e configure:
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://argus:pass@localhost/argus_db` |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
 | `SECRET_KEY` | Chave JWT | `openssl rand -hex 32` |
-| `ENCRYPTION_KEY` | Chave Fernet para CPF (LGPD) | `scripts/generate_encryption_key.py` |
-| `S3_ENDPOINT` | Storage endpoint | `http://localhost:9000` |
+| `ENCRYPTION_KEY` | Chave Fernet para CPF (LGPD) | `make encrypt-key` |
+| `S3_ENDPOINT` | Storage endpoint (MinIO local / R2 prod) | `http://localhost:9000` |
 | `LLM_PROVIDER` | Provider LLM (`ollama` ou `anthropic`) | `ollama` |
-| `EMBEDDING_MODEL` | Modelo de embeddings | `paraphrase-multilingual-MiniLM-L12-v2` |
-| `DATA_RETENTION_DAYS` | Retencao LGPD (dias) | `1825` |
+| `ANTHROPIC_API_KEY` | API key da Anthropic (se `LLM_PROVIDER=anthropic`) | — |
+| `OLLAMA_MODEL` | Modelo Ollama para geracao de texto | `deepseek-r1:8b` |
+| `EMBEDDING_MODEL` | Modelo de embeddings (SentenceTransformers) | `paraphrase-multilingual-MiniLM-L12-v2` |
+| `FACE_SIMILARITY_THRESHOLD` | Limiar de similaridade facial (0.0–1.0) | `0.6` |
+| `DATA_RETENTION_DAYS` | Retencao LGPD antes da anonimizacao (dias) | `1825` |
 
 Ver `.env.example` para lista completa.
 
@@ -247,17 +263,6 @@ Ver `.env.example` para lista completa.
 | [docs/API.md](docs/API.md) | Referencia de todos os endpoints |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Guia de deploy (Render + Neon + Upstash + R2) |
 | [docs/LGPD.md](docs/LGPD.md) | Compliance LGPD e protecao de dados |
-
----
-
-## Roadmap
-
-- [x] **Fase 1** — Fundacao (models, auth, migrations, Docker, CI)
-- [x] **Fase 2** — Core operacional (CRUD, relacionamentos, geoespacial)
-- [x] **Fase 3** — RAG (embeddings, busca semantica, LLM, worker)
-- [x] **Fase 4** — Visao computacional (InsightFace, EasyOCR)
-- [x] **Fase 5** — Frontend PWA (offline-first, voz, camera, dashboard)
-- [x] **Fase 6** — Testes, CI/CD, documentacao, LGPD, polimento
 
 ---
 

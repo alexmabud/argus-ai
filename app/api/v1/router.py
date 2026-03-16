@@ -16,7 +16,6 @@ from app.api.v1.fotos import router as fotos_router
 from app.api.v1.ocorrencias import router as ocorrencias_router
 from app.api.v1.passagens import router as passagens_router
 from app.api.v1.pessoas import router as pessoas_router
-from app.api.v1.relacionamentos import router as relacionamentos_router
 from app.api.v1.sync import router as sync_router
 from app.api.v1.veiculos import router as veiculos_router
 
@@ -28,7 +27,6 @@ api_router.include_router(veiculos_router)
 api_router.include_router(abordagens_router)
 api_router.include_router(fotos_router)
 api_router.include_router(passagens_router)
-api_router.include_router(relacionamentos_router)
 api_router.include_router(consultas_router)
 api_router.include_router(ocorrencias_router)
 api_router.include_router(analytics_router)
