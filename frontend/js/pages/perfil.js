@@ -148,6 +148,7 @@ function perfilPage() {
         });
         auth.user = updated;
         localStorage.setItem("argus_user", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("user:updated", { detail: updated }));
         showToast("Perfil atualizado com sucesso", "success");
       } catch (e) {
         showToast("Erro ao salvar perfil", "error");
@@ -167,11 +168,13 @@ function perfilPage() {
         this.fotoUrl = result.foto_url;
         auth.user = { ...auth.getUser(), foto_url: result.foto_url };
         localStorage.setItem("argus_user", JSON.stringify(auth.user));
+        window.dispatchEvent(new CustomEvent("user:updated", { detail: auth.user }));
         showToast("Foto atualizada", "success");
       } catch (e) {
         showToast("Erro ao enviar foto", "error");
       } finally {
         this.uploadando = false;
+        event.target.value = "";
       }
     },
 

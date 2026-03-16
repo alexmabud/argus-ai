@@ -80,6 +80,9 @@ function app() {
       // Escutar navegação por evento customizado
       window.addEventListener("navigate", (e) => this.navigate(e.detail));
 
+      // Escutar atualização de dados do usuário (perfil/foto)
+      window.addEventListener("user:updated", (e) => { this.user = e.detail; });
+
       // Verificar autenticação existente
       if (auth.isAuthenticated()) {
         this.authenticated = true;
