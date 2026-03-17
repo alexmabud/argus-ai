@@ -196,14 +196,33 @@ function app() {
   };
 }
 
+// Mapa de abreviações de posto/graduação PM
+const POSTO_ABREV = {
+  "Soldado": "SD",
+  "Cabo": "CB",
+  "3º Sargento": "3º SGT",
+  "2º Sargento": "2º SGT",
+  "1º Sargento": "1º SGT",
+  "Subtenente": "ST",
+  "Aspirante": "ASP",
+  "2º Tenente": "2º TEN",
+  "1º Tenente": "1º TEN",
+  "Capitão": "CAP",
+  "Major": "MAJ",
+  "Tenente-Coronel": "TC",
+  "Coronel": "CEL",
+};
+
 // Home page — botões na parte inferior
 function renderHomePage(appState) {
   const user = appState.user;
-  const nome = user?.nome || "Agente";
+  const abrev = user?.posto_graduacao ? (POSTO_ABREV[user.posto_graduacao] ?? user.posto_graduacao) : null;
+  const guerra = user?.nome_guerra || user?.nome || "Agente";
+  const saudacao = abrev ? `${abrev} ${guerra}` : guerra;
   return `
     <div class="home-layout">
       <div>
-        <h2 class="text-xl font-bold text-slate-100">Olá, ${nome}</h2>
+        <h2 class="text-xl font-bold text-slate-100">Olá, ${saudacao}</h2>
         <p class="text-slate-400 text-sm mt-1">Argus AI — Memória Operacional</p>
       </div>
 
