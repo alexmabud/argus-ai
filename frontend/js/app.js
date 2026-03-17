@@ -40,6 +40,33 @@ function formatarCPF(value) {
 }
 
 /**
+ * Formata string de data inserindo barras automaticamente (DD/MM/AAAA).
+ * Remove caracteres não numéricos e aplica a máscara à medida que o usuário digita.
+ *
+ * @param {string} value - Valor bruto do input.
+ * @returns {string} Data formatada (ex: 25/12/1990).
+ */
+function formatarData(value) {
+  const d = value.replace(/\D/g, "").slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+/**
+ * Converte data no formato DD/MM/AAAA para YYYY-MM-DD (formato ISO para API).
+ * Retorna string vazia se o valor estiver incompleto ou inválido.
+ *
+ * @param {string} value - Data no formato DD/MM/AAAA.
+ * @returns {string} Data no formato YYYY-MM-DD ou string vazia.
+ */
+function parseDateBR(value) {
+  const parts = (value || "").split("/");
+  if (parts.length !== 3 || parts[2].length !== 4) return "";
+  return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+}
+
+/**
  * Formata automaticamente como CPF se o valor contiver apenas dígitos e separadores de CPF.
  * Usado nos campos de busca por nome/CPF para aplicar máscara em tempo real.
  *

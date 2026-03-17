@@ -82,7 +82,9 @@ function renderAbordagemNova() {
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block text-xs text-slate-400 mb-1">Data de nascimento</label>
-              <input type="date" x-model="novaPessoa.data_nascimento" class="w-full">
+              <input type="text" x-model="novaPessoa.data_nascimento"
+                     @input="novaPessoa.data_nascimento = formatarData($event.target.value)"
+                     placeholder="DD/MM/AAAA" maxlength="10" class="w-full">
             </div>
             <div>
               <label class="block text-xs text-slate-400 mb-1">Vulgo</label>
@@ -551,8 +553,9 @@ function abordagemForm() {
         if (this.novaPessoa.cpf.trim()) {
           pessoaData.cpf = this.novaPessoa.cpf.trim();
         }
-        if (this.novaPessoa.data_nascimento) {
-          pessoaData.data_nascimento = this.novaPessoa.data_nascimento;
+        const dataNasc = parseDateBR(this.novaPessoa.data_nascimento);
+        if (dataNasc) {
+          pessoaData.data_nascimento = dataNasc;
         }
         if (this.novaPessoa.apelido.trim()) {
           pessoaData.apelido = this.novaPessoa.apelido.trim();
