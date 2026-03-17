@@ -12,7 +12,7 @@ function renderLoginPage(appState) {
         <!-- Logo -->
         <div class="text-center">
           <h1 class="text-3xl font-bold text-blue-400">Argus AI</h1>
-          <p class="text-slate-400 text-sm mt-2">Sistema de apoio operacional</p>
+          <p class="text-slate-400 text-sm mt-2">Memória Operacional</p>
         </div>
 
         <!-- Formulário -->
@@ -55,7 +55,7 @@ function renderLoginPage(appState) {
         </form>
 
         <p class="text-center text-slate-500 text-xs">
-          v2.0 — Memória operacional da guarnição
+          Argus AI - v1.0
         </p>
       </div>
     </div>
