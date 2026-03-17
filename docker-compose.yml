@@ -44,7 +44,6 @@ services:
       DATABASE_URL: postgresql://argus:argus_dev@db:5432/argus_db
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_URL: http://localhost:9000
     depends_on:
       db:
         condition: service_healthy
@@ -65,7 +64,6 @@ services:
       DATABASE_URL: postgresql://argus:argus_dev@db:5432/argus_db
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_URL: http://localhost:9000
     depends_on:
       db:
         condition: service_healthy
