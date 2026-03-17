@@ -25,7 +25,9 @@ function renderOcorrenciaUpload() {
         <!-- Data da ocorrência -->
         <div>
           <label class="block text-sm text-slate-300 mb-1">Data da Ocorrência</label>
-          <input type="date" x-model="dataOcorrencia" required>
+          <input type="text" x-model="dataOcorrencia"
+                 @input="dataOcorrencia = formatarData($event.target.value)"
+                 placeholder="DD/MM/AAAA" maxlength="10" required>
         </div>
 
         <!-- Arquivo PDF -->
@@ -87,7 +89,9 @@ function renderOcorrenciaUpload() {
           </div>
           <div>
             <label class="block text-xs text-slate-400 mb-1">Data</label>
-            <input type="date" x-model="buscaData">
+            <input type="text" x-model="buscaData"
+                   @input="buscaData = formatarData($event.target.value)"
+                   placeholder="DD/MM/AAAA" maxlength="10">
           </div>
         </div>
 
@@ -170,7 +174,7 @@ function ocorrenciaUploadPage() {
   return {
     numero: "",
     abordagemId: null,
-    dataOcorrencia: new Date().toISOString().split("T")[0],
+    dataOcorrencia: new Date().toLocaleDateString("pt-BR"),
     novoEnvolvido: "",
     envolvidos: [],
     file: null,
@@ -232,14 +236,14 @@ function ocorrenciaUploadPage() {
         if (this.envolvidos.length > 0) {
           form.append("nomes_envolvidos", this.envolvidos.join("|"));
         }
-        form.append("data_ocorrencia", this.dataOcorrencia);
+        form.append("data_ocorrencia", parseDateBR(this.dataOcorrencia));
 
         await api.request("POST", "/ocorrencias/", form);
         this.sucesso = `Ocorrência ${this.numero} enviada! Processamento em andamento.`;
         this.numero = "";
         this.file = null;
         this.abordagemId = null;
-        this.dataOcorrencia = new Date().toISOString().split("T")[0];
+        this.dataOcorrencia = new Date().toLocaleDateString("pt-BR");
         this.envolvidos = [];
         this.novoEnvolvido = "";
         await this.loadList();
@@ -270,7 +274,8 @@ function ocorrenciaUploadPage() {
         const params = new URLSearchParams();
         if (this.buscaNome) params.append("nome", this.buscaNome);
         if (this.buscaRap) params.append("rap", this.buscaRap);
-        if (this.buscaData) params.append("data", this.buscaData);
+        const buscaDataISO = parseDateBR(this.buscaData);
+        if (buscaDataISO) params.append("data", buscaDataISO);
         this.resultadosBusca = await api.get(`/ocorrencias/buscar?${params}`);
       } catch (err) {
         this.resultadosBusca = null;

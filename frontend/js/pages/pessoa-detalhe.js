@@ -256,8 +256,10 @@ function renderPessoaDetalhe(appState) {
                        class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
                 <input type="text" x-model="novaPessoaForm.cpf" placeholder="CPF (opcional)"
                        class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
-                <input type="date" x-model="novaPessoaForm.data_nascimento"
-                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                <input type="text" x-model="novaPessoaForm.data_nascimento"
+                       @input="novaPessoaForm.data_nascimento = formatarData($event.target.value)"
+                       placeholder="DD/MM/AAAA" maxlength="10"
+                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
                 <div class="flex gap-2">
                   <button @click="subFormNovaPessoa = false"
                           class="flex-1 bg-slate-600 text-slate-300 rounded-lg py-2 text-sm">Cancelar</button>
@@ -839,7 +841,7 @@ function pessoaDetalhePage(pessoaId) {
           nome: this.novaPessoaForm.nome,
           cpf: this.novaPessoaForm.cpf || undefined,
           apelido: this.novaPessoaForm.apelido || undefined,
-          data_nascimento: this.novaPessoaForm.data_nascimento || undefined,
+          data_nascimento: parseDateBR(this.novaPessoaForm.data_nascimento) || undefined,
         });
         this.selecionarPessoa(nova);
       } catch (err) {
