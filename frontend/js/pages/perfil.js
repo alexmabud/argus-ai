@@ -184,8 +184,7 @@ function perfilPage() {
     },
 
     executarSaida() {
-      auth.logout();
-      window.location.reload();
+      window.dispatchEvent(new CustomEvent("auth:logout"));
     },
   };
 }

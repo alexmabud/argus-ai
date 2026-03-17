@@ -30,15 +30,21 @@ def hash_senha(senha: str) -> str:
 def verificar_senha(senha: str, hash: str) -> bool:
     """Verifica uma senha em texto plano contra um hash bcrypt.
 
+    Retorna False (em vez de lançar exceção) se o hash armazenado estiver
+    corrompido ou em formato não reconhecido, evitando erros 500.
+
     Args:
         senha: Senha em texto plano a verificar.
         hash: Hash bcrypt armazenado no banco de dados.
 
     Returns:
-        True se a senha bate com o hash, False caso contrário.
+        True se a senha bate com o hash, False caso contrário ou se hash inválido.
     """
 
-    return pwd_context.verify(senha, hash)
+    try:
+        return pwd_context.verify(senha, hash)
+    except Exception:
+        return False
 
 
 def criar_access_token(data: dict) -> str:
