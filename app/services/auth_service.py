@@ -101,15 +101,18 @@ class AuthService:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> TokenResponse:
-        """Autentica um agente com senha de uso único e gera sessão exclusiva.
+        """Autentica um agente e gera sessão JWT.
 
-        Valida as credenciais (matrícula e senha), invalida a senha após uso
-        (substituindo por hash aleatório inutilizável), gera novo session_id
-        (UUID4) que é embutido no JWT — garantindo sessão exclusiva por usuário.
+        Comportamento varia conforme o perfil do usuário:
+        - **Usuário comum**: senha de uso único (substituída por hash inutilizável
+          após o primeiro login) e sessão exclusiva (novo session_id invalida
+          tokens anteriores em outros dispositivos).
+        - **Admin**: senha permanente reutilizável e session_id estável, permitindo
+          sessões simultâneas em múltiplos dispositivos (celular + desktop).
 
         Args:
             matricula: Matrícula do agente.
-            senha: Senha de uso único gerada pelo admin.
+            senha: Senha fornecida pelo usuário.
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
 
@@ -123,12 +126,20 @@ class AuthService:
         if not usuario or not verificar_senha(senha, usuario.senha_hash):
             raise CredenciaisInvalidasError()
 
-        # Senha de uso único — substituir por hash inutilizável após login
-        usuario.senha_hash = hash_senha(secrets.token_hex(32))
+        if usuario.is_admin:
+            # Admin: senha permanente e sessão compartilhável entre dispositivos.
+            # session_id é gerado apenas se ainda não existe; mantido nos demais
+            # logins para que tokens de celular e desktop coexistam.
+            if usuario.session_id is None:
+                usuario.session_id = str(uuid.uuid4())
+            novo_session_id = usuario.session_id
+        else:
+            # Usuário comum: senha de uso único — substituir por hash inutilizável
+            usuario.senha_hash = hash_senha(secrets.token_hex(32))
+            # Sessão exclusiva — novo session_id invalida tokens anteriores
+            novo_session_id = str(uuid.uuid4())
+            usuario.session_id = novo_session_id
 
-        # Sessão exclusiva — novo session_id invalida tokens anteriores
-        novo_session_id = str(uuid.uuid4())
-        usuario.session_id = novo_session_id
         await self.db.flush()
 
         token_data: dict = {
