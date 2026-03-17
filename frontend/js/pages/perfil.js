@@ -11,7 +11,7 @@ const POSTOS_GRADUACAO = [
   "Capitão", "Major", "Tenente-Coronel", "Coronel",
 ];
 
-function renderPerfil(appState) {
+function renderPerfil(_appState) {
   const user = auth.getUser() || {};
   const iniciais = (user.nome || "?")
     .split(" ")
@@ -107,8 +107,9 @@ function renderPerfil(appState) {
            class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
         <div class="bg-slate-800 rounded-xl p-6 max-w-sm w-full border border-slate-700">
           <h3 class="text-white font-semibold mb-2">Sair do aplicativo?</h3>
-          <p class="text-slate-400 text-sm mb-6">
-            Se você sair, precisará que o administrador gere uma nova senha para acessar novamente.
+          <p class="text-slate-400 text-sm mb-6" x-text="isAdmin
+            ? 'Você será desconectado. Poderá entrar novamente com sua senha de administrador.'
+            : 'Se você sair, precisará que o administrador gere uma nova senha para acessar novamente.'">
           </p>
           <div class="flex gap-3">
             <button @click="confirmarSaida = false"

@@ -43,6 +43,7 @@ class AuthManager {
   logout() {
     api.clearTokens();
     this.user = null;
+    localStorage.removeItem("argus_user");
   }
 
   async fetchMe() {
