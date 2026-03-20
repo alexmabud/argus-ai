@@ -55,10 +55,10 @@
 </head>
 <body class="dark" x-data="app()" x-init="init()" :class="{ 'login-active': !authenticated }">
 
-  <!-- Argus Eye — Background -->
+  <!-- Argus Eye — Background (login only) -->
   <img id="argus-eye-bg"
        src="/images/argus-eye.webp"
-       :style="{ opacity: !authenticated ? '0.45' : '0.18' }"
+       x-show="!authenticated"
        alt=""
        aria-hidden="true">
 
