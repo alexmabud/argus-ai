@@ -12,7 +12,7 @@ function sidebarComponent() {
 
     /** Itens de navegacao da sidebar. */
     items: [
-      { id: 'home',              icon: 'layout-dashboard', label: 'Inicio',         page: 'home' },
+      { id: 'home',              icon: 'home',             label: 'Inicio',         page: 'home' },
       { id: 'abordagem-nova',    icon: 'plus-circle',      label: 'Nova Abordagem', page: 'abordagem-nova' },
       { id: 'consulta',          icon: 'search',           label: 'Consulta IA',    page: 'consulta' },
       { id: 'ocorrencia-upload', icon: 'file-up',          label: 'Ocorrencia',     page: 'ocorrencia-upload' },
@@ -61,6 +61,7 @@ function sidebarComponent() {
      */
     getIcon(name) {
       const icons = {
+        'home': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
         'layout-dashboard': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
         'plus-circle': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>',
         'search': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
