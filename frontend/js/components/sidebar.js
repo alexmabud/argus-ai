@@ -12,12 +12,11 @@ function sidebarComponent() {
 
     /** Itens de navegacao da sidebar. */
     items: [
-      { id: 'home',              icon: 'layout-dashboard', label: 'Dashboard',      page: 'home' },
+      { id: 'home',              icon: 'layout-dashboard', label: 'Inicio',         page: 'home' },
       { id: 'abordagem-nova',    icon: 'plus-circle',      label: 'Nova Abordagem', page: 'abordagem-nova' },
       { id: 'consulta',          icon: 'search',           label: 'Consulta IA',    page: 'consulta' },
       { id: 'ocorrencia-upload', icon: 'file-up',          label: 'Ocorrencia',     page: 'ocorrencia-upload' },
       { id: 'dashboard',         icon: 'bar-chart-3',      label: 'Analitico',      page: 'dashboard' },
-      { id: 'perfil',            icon: 'user-cog',         label: 'Perfil',         page: 'perfil' },
     ],
 
     /**
