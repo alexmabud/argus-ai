@@ -10,7 +10,7 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/app.css?v=5">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -53,7 +53,14 @@
     }
   </script>
 </head>
-<body class="dark" x-data="app()" x-init="init()">
+<body class="dark" x-data="app()" x-init="init()" :class="{ 'login-active': !authenticated }">
+
+  <!-- Argus Eye — Background -->
+  <img id="argus-eye-bg"
+       src="/images/argus-eye.webp"
+       :style="{ opacity: !authenticated ? '0.45' : '0.18' }"
+       alt=""
+       aria-hidden="true">
 
   <!-- Offline indicator -->
   <div x-show="!online" class="offline-badge" x-cloak>
