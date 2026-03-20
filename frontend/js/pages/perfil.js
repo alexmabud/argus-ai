@@ -101,9 +101,12 @@ function renderPerfil(_appState) {
         </button>
       </div>
 
-      <!-- Modal de confirmação de saída -->
+    </div>
+
+      <!-- Modal de confirmação de saída (fora do container limitado) -->
       <div x-show="confirmarSaida" x-cloak
-           style="position: fixed; inset: 0; background: rgba(5,10,15,0.8); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem;">
+           @click.self="confirmarSaida = false"
+           style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,10,15,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 1rem;">
         <div class="glass-card" style="padding: 1.5rem; max-width: 24rem; width: 100%; border: 1px solid var(--color-border);">
           <h3 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 0.5rem;">Sair do aplicativo?</h3>
           <p style="color: var(--color-text-muted); font-size: 0.875rem; margin-bottom: 1.5rem; font-family: var(--font-body);" x-text="isAdmin
@@ -123,7 +126,6 @@ function renderPerfil(_appState) {
           </div>
         </div>
       </div>
-    </div>
   `;
 }
 
