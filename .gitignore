@@ -119,6 +119,9 @@ tmp/
 *.gif
 *.bmp
 !frontend/icons/*.png
+!frontend/images/*.png
+!frontend/images/*.jpg
+!frontend/images/*.webp
 
 # ══════════════════════════════════
 # ALEMBIC
