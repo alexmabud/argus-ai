@@ -101,9 +101,7 @@ function renderPerfil(_appState) {
         </button>
       </div>
 
-    </div>
-
-      <!-- Modal de confirmação de saída (fora do container limitado) -->
+      <!-- Modal de confirmação de saída -->
       <div x-show="confirmarSaida" x-cloak
            @click.self="confirmarSaida = false"
            style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,10,15,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 1rem;">
@@ -126,6 +124,7 @@ function renderPerfil(_appState) {
           </div>
         </div>
       </div>
+    </div>
   `;
 }
 
