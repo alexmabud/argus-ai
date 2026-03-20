@@ -92,6 +92,7 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
   object-position: center;
   z-index: -1;
   pointer-events: none;
+  opacity: 0.45;
   mix-blend-mode: luminosity;
   transition: opacity 0.6s ease;
 }
