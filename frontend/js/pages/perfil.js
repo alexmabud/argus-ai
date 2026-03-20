@@ -93,36 +93,12 @@ function renderPerfil(_appState) {
 
       <!-- Botão Sair -->
       <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--color-border);">
-        <button @click="confirmarSaida = true"
+        <button @click="mostrarModalSaida()"
                 style="width: 100%; padding: 0.5rem 1rem; font-family: var(--font-data); font-size: 0.875rem; font-weight: 500; color: var(--color-danger); background: transparent; border: 1px solid var(--color-danger); border-radius: 4px; cursor: pointer; transition: opacity 0.2s;"
                 onmouseover="this.style.opacity='0.8'"
                 onmouseout="this.style.opacity='1'">
           Sair do aplicativo
         </button>
-      </div>
-
-      <!-- Modal de confirmação de saída -->
-      <div x-show="confirmarSaida" x-cloak
-           @click.self="confirmarSaida = false"
-           style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,10,15,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 1rem;">
-        <div class="glass-card" style="padding: 1.5rem; max-width: 24rem; width: 100%; border: 1px solid var(--color-border);">
-          <h3 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 0.5rem;">Sair do aplicativo?</h3>
-          <p style="color: var(--color-text-muted); font-size: 0.875rem; margin-bottom: 1.5rem; font-family: var(--font-body);" x-text="isAdmin
-            ? 'Você será desconectado. Poderá entrar novamente com sua senha de administrador.'
-            : 'Se você sair, precisará que o administrador gere uma nova senha para acessar novamente.'">
-          </p>
-          <div style="display: flex; gap: 0.75rem;">
-            <button @click="confirmarSaida = false" class="btn btn-secondary" style="flex: 1;">
-              Cancelar
-            </button>
-            <button @click="executarSaida()"
-                    style="flex: 1; padding: 0.5rem 1rem; border-radius: 4px; background: var(--color-danger); color: var(--color-text); font-family: var(--font-body); font-weight: 500; border: none; cursor: pointer; transition: opacity 0.2s;"
-                    onmouseover="this.style.opacity='0.85'"
-                    onmouseout="this.style.opacity='1'">
-              Confirmar saída
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   `;
@@ -137,7 +113,6 @@ function perfilPage() {
     fotoUrl: user.foto_url || null,
     salvando: false,
     uploadando: false,
-    confirmarSaida: false,
     isAdmin: user.is_admin || false,
 
     async salvar() {
@@ -184,8 +159,32 @@ function perfilPage() {
       window.dispatchEvent(new CustomEvent("navigate", { detail: "admin-usuarios" }));
     },
 
-    executarSaida() {
-      window.dispatchEvent(new CustomEvent("auth:logout"));
+    mostrarModalSaida() {
+      const isAdmin = this.isAdmin;
+      const msg = isAdmin
+        ? 'Você será desconectado. Poderá entrar novamente com sua senha de administrador.'
+        : 'Se você sair, precisará que o administrador gere uma nova senha para acessar novamente.';
+
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(5,10,15,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem;';
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+      overlay.innerHTML = `
+        <div class="glass-card" style="padding:1.5rem;max-width:24rem;width:100%;border:1px solid var(--color-border);">
+          <h3 style="color:var(--color-text);font-family:var(--font-display);font-weight:600;margin-bottom:0.5rem;">Sair do aplicativo?</h3>
+          <p style="color:var(--color-text-muted);font-size:0.875rem;margin-bottom:1.5rem;font-family:var(--font-body);">${msg}</p>
+          <div style="display:flex;gap:0.75rem;">
+            <button id="modal-cancelar" class="btn btn-secondary" style="flex:1;">Cancelar</button>
+            <button id="modal-confirmar" style="flex:1;padding:0.5rem 1rem;border-radius:4px;background:var(--color-danger);color:var(--color-text);font-family:var(--font-body);font-weight:500;border:none;cursor:pointer;">Confirmar saída</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.querySelector('#modal-cancelar').addEventListener('click', () => overlay.remove());
+      overlay.querySelector('#modal-confirmar').addEventListener('click', () => {
+        overlay.remove();
+        window.dispatchEvent(new CustomEvent("auth:logout"));
+      });
     },
   };
 }
