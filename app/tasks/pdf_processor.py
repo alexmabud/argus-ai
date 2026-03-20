@@ -5,6 +5,7 @@ texto via PyMuPDF (fitz), chunking semântico e geração de embedding
 vetorial para busca semântica via pgvector.
 """
 
+import asyncio
 import logging
 from urllib.parse import urlparse
 
@@ -122,19 +123,19 @@ async def processar_pdf_task(ctx: dict, ocorrencia_id: int) -> dict:
             key = _extrair_key_da_url(ocorrencia.arquivo_pdf_url)
             pdf_bytes = await storage.download(key)
 
-            # 3. Extrair texto
-            texto = extrair_texto_pdf(pdf_bytes)
+            # 3. Extrair texto (CPU-bound → thread pool)
+            texto = await asyncio.to_thread(extrair_texto_pdf, pdf_bytes)
             if not texto.strip():
                 logger.warning("PDF da ocorrência %d sem texto extraível", ocorrencia_id)
                 ocorrencia.processada = True
                 await db.commit()
                 return {"status": "sem_texto"}
 
-            # 4. Chunking semântico
-            chunks = chunk_text_semantico(texto)
+            # 4. Chunking semântico (CPU-bound → thread pool)
+            chunks = await asyncio.to_thread(chunk_text_semantico, texto)
 
-            # 5. Gerar embedding do texto completo
-            embedding = embedding_service.gerar_embedding(texto[:5000])
+            # 5. Gerar embedding do texto completo (CPU-bound → thread pool)
+            embedding = await asyncio.to_thread(embedding_service.gerar_embedding, texto[:5000])
 
             # 6. Atualizar ocorrência
             ocorrencia.texto_extraido = texto

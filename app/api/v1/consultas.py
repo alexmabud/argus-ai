@@ -12,15 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
-from app.repositories.pessoa_repo import PessoaRepository
-from app.schemas.abordagem import AbordagemRead
 from app.schemas.consulta import (
     ConsultaUnificadaResponse,
-    PessoaComEnderecoRead,
     PessoaComVeiculoRead,
     VeiculoInfo,
 )
-from app.schemas.veiculo import VeiculoRead
 from app.services.consulta_service import ConsultaService
 from app.services.pessoa_service import PessoaService
 
@@ -45,8 +41,8 @@ async def listar_localidades(
         Dicionário com "bairros", "cidades" e "estados" — listas de strings
         distintas ordenadas alfabeticamente.
     """
-    repo = PessoaRepository(db)
-    return await repo.get_localidades(guarnicao_id=user.guarnicao_id)
+    service = ConsultaService(db)
+    return await service.listar_localidades(guarnicao_id=user.guarnicao_id)
 
 
 @router.get("/", response_model=ConsultaUnificadaResponse)
@@ -117,40 +113,7 @@ async def consulta_unificada(
         user=user,
     )
 
-    pessoas_read = []
-    pessoas_com_endereco = resultados.get("pessoas_com_endereco", False)
-
-    for item in resultados["pessoas"]:
-        if pessoas_com_endereco:
-            p, endereco_criado_em = item
-        else:
-            p, endereco_criado_em = item, None
-
-        pessoas_read.append(
-            PessoaComEnderecoRead(
-                id=p.id,
-                nome=p.nome,
-                cpf_masked=PessoaService.mask_cpf(p) if p.cpf_encrypted else None,
-                data_nascimento=p.data_nascimento,
-                apelido=p.apelido,
-                foto_principal_url=p.foto_principal_url,
-                observacoes=p.observacoes,
-                guarnicao_id=p.guarnicao_id,
-                criado_em=p.criado_em,
-                atualizado_em=p.atualizado_em,
-                endereco_criado_em=endereco_criado_em,
-            )
-        )
-
-    veiculos_read = [VeiculoRead.model_validate(v) for v in resultados["veiculos"]]
-    abordagens_read = [AbordagemRead.model_validate(a) for a in resultados["abordagens"]]
-
-    return ConsultaUnificadaResponse(
-        pessoas=pessoas_read,
-        veiculos=veiculos_read,
-        abordagens=abordagens_read,
-        total_resultados=resultados["total_resultados"],
-    )
+    return service.formatar_resultado_busca(resultados)
 
 
 @router.get("/pessoas-por-veiculo", response_model=list[PessoaComVeiculoRead])

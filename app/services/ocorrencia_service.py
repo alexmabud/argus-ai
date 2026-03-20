@@ -74,7 +74,7 @@ class OcorrenciaService:
         Returns:
             Ocorrência criada com processada=False.
         """
-        key = self.storage._generate_key("pdfs", filename)
+        key = self.storage.generate_key("pdfs", filename)
         url = await self.storage.upload(arquivo_pdf, key, content_type="application/pdf")
 
         ocorrencia = Ocorrencia(

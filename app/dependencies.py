@@ -2,9 +2,11 @@
 
 Fornece functions para extrair usuário autenticado via JWT bearer token,
 além de acesso a serviços de IA (face recognition, embeddings) armazenados
-no application state.
+no application state. Lazy loading de serviços pesados usa asyncio.Lock
+para evitar race conditions em requisições concorrentes.
 """
 
+import asyncio
 import logging
 
 from fastapi import Depends, HTTPException, Request, status
@@ -20,6 +22,10 @@ logger = logging.getLogger("argus")
 
 #: Esquema de segurança HTTP Bearer para extrair token do header Authorization.
 security = HTTPBearer()
+
+#: Locks para evitar race condition no lazy load de serviços pesados.
+_face_service_lock = asyncio.Lock()
+_embedding_service_lock = asyncio.Lock()
 
 
 async def get_current_user(
@@ -80,11 +86,12 @@ async def get_current_user(
     return user
 
 
-def get_face_service(request: Request):
+async def get_face_service(request: Request):
     """Obtém serviço de reconhecimento facial do application state.
 
-    Retorna None com log de warning se InsightFace não estiver disponível,
-    permitindo degradação graciosa no endpoint.
+    Usa double-checked locking com asyncio.Lock para evitar race condition
+    em requisições concorrentes que tentam inicializar o serviço ao mesmo
+    tempo. Retorna None se InsightFace não estiver disponível.
 
     Args:
         request: Objeto Request do FastAPI.
@@ -93,9 +100,15 @@ def get_face_service(request: Request):
         Instância de FaceService com InsightFace buffalo_l (512-dim),
         ou None se o serviço não estiver disponível.
     """
-
     face_service = request.app.state.face_service
-    if face_service is None:
+    if face_service is not None:
+        return face_service
+
+    async with _face_service_lock:
+        # Double-check: outra request pode ter inicializado enquanto esperávamos
+        face_service = request.app.state.face_service
+        if face_service is not None:
+            return face_service
         try:
             from app.services.face_service import FaceService
 
@@ -107,8 +120,11 @@ def get_face_service(request: Request):
     return face_service
 
 
-def get_embedding_service(request: Request):
+async def get_embedding_service(request: Request):
     """Obtém serviço de embeddings do application state.
+
+    Usa double-checked locking com asyncio.Lock para evitar inicialização
+    duplicada em requisições concorrentes.
 
     Args:
         request: Objeto Request do FastAPI.
@@ -116,17 +132,23 @@ def get_embedding_service(request: Request):
     Returns:
         Instância de EmbeddingService com SentenceTransformers (384-dim).
     """
-
     embedding_service = request.app.state.embedding_service
-    if embedding_service is None:
+    if embedding_service is not None:
+        return embedding_service
+
+    async with _embedding_service_lock:
+        embedding_service = request.app.state.embedding_service
+        if embedding_service is not None:
+            return embedding_service
         try:
             from app.services.embedding_service import EmbeddingService
 
             embedding_service = EmbeddingService()
             request.app.state.embedding_service = embedding_service
-        except Exception as exc:
+        except Exception:
+            logger.exception("Falha ao inicializar serviço de embeddings")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Serviço de embeddings indisponível: {exc}",
-            ) from exc
+                detail="Serviço de embeddings indisponível",
+            )
     return embedding_service

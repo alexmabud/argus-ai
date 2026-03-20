@@ -5,6 +5,7 @@ de 512 dimensões via InsightFace e atualização no banco para busca
 por similaridade via pgvector.
 """
 
+import asyncio
 import logging
 from urllib.parse import urlparse
 
@@ -93,8 +94,8 @@ async def processar_face_task(ctx: dict, foto_id: int) -> dict:
             key = _extrair_key_da_url(foto.arquivo_url)
             image_bytes = await storage.download(key)
 
-            # 3. Extrair embedding facial
-            embedding = face_service.extrair_embedding(image_bytes)
+            # 3. Extrair embedding facial (CPU-bound → thread pool)
+            embedding = await asyncio.to_thread(face_service.extrair_embedding, image_bytes)
 
             if embedding is None:
                 logger.info("Nenhum rosto detectado na foto %d", foto_id)

@@ -15,6 +15,7 @@ from app.models.endereco import EnderecoPessoa
 from app.models.pessoa import Pessoa
 from app.models.relacionamento import RelacionamentoPessoa
 from app.repositories.base import BaseRepository
+from app.services.text_utils import escape_like
 
 
 class PessoaRepository(BaseRepository[Pessoa]):
@@ -128,11 +129,11 @@ class PessoaRepository(BaseRepository[Pessoa]):
             )
         )
         if bairro:
-            query = query.where(EnderecoPessoa.bairro.ilike(f"%{bairro}%"))
+            query = query.where(EnderecoPessoa.bairro.ilike(f"%{escape_like(bairro)}%"))
         if cidade:
-            query = query.where(EnderecoPessoa.cidade.ilike(f"%{cidade}%"))
+            query = query.where(EnderecoPessoa.cidade.ilike(f"%{escape_like(cidade)}%"))
         if estado:
-            query = query.where(EnderecoPessoa.estado.ilike(f"%{estado}%"))
+            query = query.where(EnderecoPessoa.estado.ilike(f"%{escape_like(estado)}%"))
         if guarnicao_id is not None:
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
 
@@ -176,11 +177,11 @@ class PessoaRepository(BaseRepository[Pessoa]):
             )
         )
         if bairro:
-            query = query.where(EnderecoPessoa.bairro.ilike(f"%{bairro}%"))
+            query = query.where(EnderecoPessoa.bairro.ilike(f"%{escape_like(bairro)}%"))
         if cidade:
-            query = query.where(EnderecoPessoa.cidade.ilike(f"%{cidade}%"))
+            query = query.where(EnderecoPessoa.cidade.ilike(f"%{escape_like(cidade)}%"))
         if estado:
-            query = query.where(EnderecoPessoa.estado.ilike(f"%{estado}%"))
+            query = query.where(EnderecoPessoa.estado.ilike(f"%{escape_like(estado)}%"))
         if guarnicao_id is not None:
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
 

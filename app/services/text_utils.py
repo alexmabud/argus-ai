@@ -1,12 +1,29 @@
-"""Utilitários de chunking de texto para processamento de documentos.
+"""Utilitários de texto para processamento de documentos e queries.
 
 Fornece funções para dividir textos de Boletins de Ocorrência (BO)
 em chunks semânticos por seção, com fallback para divisão por
-parágrafos com overlap. Usado no pipeline RAG para preparar contexto
-e no processamento de PDFs.
+parágrafos com overlap. Também inclui escape de caracteres especiais
+para queries ILIKE no PostgreSQL. Usado no pipeline RAG, processamento
+de PDFs e repositórios de busca.
 """
 
 import re
+
+
+def escape_like(valor: str) -> str:
+    """Escapa caracteres especiais LIKE para uso em buscas ILIKE.
+
+    Previne que caracteres como '%', '_' e '\\\\' sejam interpretados
+    como wildcards pelo PostgreSQL em queries ILIKE, evitando que
+    input do usuário manipule padrões de busca.
+
+    Args:
+        valor: String de busca fornecida pelo usuário.
+
+    Returns:
+        String com caracteres especiais escapados.
+    """
+    return valor.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def chunk_text_semantico(texto: str) -> list[dict]:

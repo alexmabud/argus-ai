@@ -44,6 +44,11 @@ services:
       DATABASE_URL: postgresql://argus:argus_dev@db:5432/argus_db
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     depends_on:
       db:
         condition: service_healthy
@@ -73,7 +78,7 @@ services:
         condition: service_completed_successfully
 
   minio:
-    image: minio/minio
+    image: minio/minio:latest
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
@@ -88,7 +93,7 @@ services:
       retries: 10
 
   minio-init:
-    image: minio/mc
+    image: minio/mc:latest
     depends_on:
       minio:
         condition: service_healthy

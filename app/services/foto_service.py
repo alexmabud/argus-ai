@@ -8,6 +8,7 @@ de embedding facial (512 dimensões via InsightFace).
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -22,6 +23,10 @@ from app.services.storage_service import StorageService
 
 if TYPE_CHECKING:
     from app.services.face_service import FaceService
+
+
+#: Tamanho máximo de upload de imagem (10 MB) — defesa em profundidade na camada service.
+MAX_FOTO_SIZE = 10 * 1024 * 1024
 
 
 class FotoService:
@@ -101,8 +106,11 @@ class FotoService:
         Raises:
             Exception: Se falha no upload ao S3/R2.
         """
+        if len(file_bytes) > MAX_FOTO_SIZE:
+            raise ValueError(f"Arquivo excede {MAX_FOTO_SIZE // (1024 * 1024)} MB")
+
         # 1. Upload para S3/R2
-        key = self.storage._generate_key("fotos", filename)
+        key = self.storage.generate_key("fotos", filename)
         url = await self.storage.upload(file_bytes, key, content_type)
 
         # 2. Criar registro Foto no banco
@@ -185,7 +193,7 @@ class FotoService:
             Lista de dicionários com foto, pessoa e similaridade.
             Lista vazia se nenhum rosto detectado na imagem.
         """
-        embedding = face_service.extrair_embedding(image_bytes)
+        embedding = await asyncio.to_thread(face_service.extrair_embedding, image_bytes)
         if embedding is None:
             return []
 

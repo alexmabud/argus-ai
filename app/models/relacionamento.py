@@ -17,10 +17,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 
-class RelacionamentoPessoa(Base, TimestampMixin):
+class RelacionamentoPessoa(Base, TimestampMixin, SoftDeleteMixin):
     """Vínculo materializado entre pessoas abordadas juntas.
 
     Registra quando duas pessoas foram abordadas juntas, com frequência
@@ -55,8 +55,8 @@ class RelacionamentoPessoa(Base, TimestampMixin):
         ForeignKey("pessoas.id", ondelete="CASCADE"), index=True
     )
     frequencia: Mapped[int] = mapped_column(Integer, default=1)
-    primeira_abordagem_id: Mapped[int] = mapped_column(ForeignKey("abordagens.id"))
-    ultima_abordagem_id: Mapped[int] = mapped_column(ForeignKey("abordagens.id"))
+    primeira_abordagem_id: Mapped[int] = mapped_column(ForeignKey("abordagens.id"), index=True)
+    ultima_abordagem_id: Mapped[int] = mapped_column(ForeignKey("abordagens.id"), index=True)
     primeira_vez: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     ultima_vez: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

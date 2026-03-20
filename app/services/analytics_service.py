@@ -6,6 +6,7 @@ pessoas do dia), mapa de calor, distribuição horária e pessoas recorrentes.
 Respeita multi-tenancy (guarnicao_id) e soft delete em todas as queries.
 """
 
+import asyncio
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import extract, func, select
@@ -164,18 +165,23 @@ class AnalyticsService:
             .limit(limit)
         )
         result = await self.db.execute(query)
-        return [
-            {
-                "id": row[0],
-                "nome": row[1],
-                "apelido": row[2],
-                "total_abordagens": int(row[3]),
-                "ultima_abordagem": row[4].isoformat() if row[4] else None,
-                "cpf": decrypt(row[5]) if row[5] else None,
-                "foto_url": row[6],
-            }
-            for row in result.all()
-        ]
+        rows = result.all()
+
+        def _build_results() -> list[dict]:
+            return [
+                {
+                    "id": row[0],
+                    "nome": row[1],
+                    "apelido": row[2],
+                    "total_abordagens": int(row[3]),
+                    "ultima_abordagem": row[4].isoformat() if row[4] else None,
+                    "cpf": decrypt(row[5]) if row[5] else None,
+                    "foto_url": row[6],
+                }
+                for row in rows
+            ]
+
+        return await asyncio.to_thread(_build_results)
 
     async def resumo_hoje(self, guarnicao_id: int) -> dict:
         """Retorna total de abordagens e pessoas abordadas hoje.

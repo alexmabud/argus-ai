@@ -36,16 +36,24 @@ class BaseRepository(Generic[T]):
         self.model = model
         self.db = db
 
-    async def get(self, id: int) -> T | None:
+    async def get(self, id: int, include_inactive: bool = False) -> T | None:
         """Obtém um recurso por identificador.
+
+        Aplica automaticamente filtro de soft delete (ativo=True) quando o
+        modelo possui o atributo 'ativo', a menos que include_inactive=True.
 
         Args:
             id: Identificador único do recurso.
+            include_inactive: Se True, retorna mesmo registros desativados
+                (soft-deleted). Padrão False.
 
         Returns:
             Objeto do modelo se encontrado, None caso contrário.
         """
-        result = await self.db.execute(select(self.model).where(getattr(self.model, "id") == id))
+        query = select(self.model).where(getattr(self.model, "id") == id)
+        if not include_inactive and hasattr(self.model, "ativo"):
+            query = query.where(getattr(self.model, "ativo") == True)  # noqa: E712
+        result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
     async def get_all(

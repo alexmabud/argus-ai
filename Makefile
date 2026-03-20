@@ -45,7 +45,8 @@ init-db:
 	$(PYTHON) scripts/init_db.py
 
 migrate-create:
-	$(ALEMBIC) revision --autogenerate -m "$(msg)"
+	@test -n "$(msg)" || { echo "Uso: make migrate-create msg='descricao'"; exit 1; }
+	$(ALEMBIC) revision --autogenerate -m '$(msg)'
 
 seed:
 	@if [ -f scripts/seed_passagens.py ]; then $(PYTHON) scripts/seed_passagens.py; else echo "scripts/seed_passagens.py nao existe; pulando seed de passagens."; fi

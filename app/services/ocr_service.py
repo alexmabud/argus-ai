@@ -4,6 +4,7 @@ Usa EasyOCR para reconhecer texto em imagens e extrair placas
 brasileiras nos padrões antigo (ABC-1234) e Mercosul (ABC1D23).
 """
 
+import asyncio
 import io
 import logging
 import re
@@ -12,14 +13,30 @@ from PIL import Image
 
 logger = logging.getLogger("argus")
 
-try:
-    import easyocr
+#: Reader EasyOCR carregado sob demanda (lazy) para evitar startup lento.
+_reader = None
+_reader_loaded = False
 
-    _reader = easyocr.Reader(["pt", "en"], gpu=False)
-    logger.info("EasyOCR carregado com sucesso")
-except Exception as _ocr_exc:
-    _reader = None
-    logger.warning("EasyOCR indisponível: %s", _ocr_exc)
+
+def _get_reader():
+    """Retorna reader EasyOCR, carregando na primeira chamada (lazy init).
+
+    Returns:
+        Reader EasyOCR ou None se indisponível.
+    """
+    global _reader, _reader_loaded
+    if _reader_loaded:
+        return _reader
+    try:
+        import easyocr
+
+        _reader = easyocr.Reader(["pt", "en"], gpu=False)
+        logger.info("EasyOCR carregado com sucesso")
+    except Exception as exc:
+        _reader = None
+        logger.warning("EasyOCR indisponível: %s", exc)
+    _reader_loaded = True
+    return _reader
 
 
 class OCRService:
@@ -50,12 +67,13 @@ class OCRService:
         Returns:
             Placa normalizada (ex: "ABC1D23") ou None se não encontrada.
         """
-        if _reader is None:
+        reader = _get_reader()
+        if reader is None:
             logger.warning("EasyOCR não disponível")
             return None
 
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        results = _reader.readtext(
+        results = reader.readtext(
             img,
             detail=0,
             allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789- ",
@@ -75,6 +93,20 @@ class OCRService:
                 return self._normalizar(match.group())
 
         return None
+
+    async def extrair_placa_async(self, image_bytes: bytes) -> str | None:
+        """Wrapper async para extrair_placa via thread pool.
+
+        Executa a inferência OCR (CPU-bound) em thread separada para
+        não bloquear o event loop do asyncio.
+
+        Args:
+            image_bytes: Conteúdo da imagem em bytes.
+
+        Returns:
+            Placa normalizada ou None se não encontrada.
+        """
+        return await asyncio.to_thread(self.extrair_placa, image_bytes)
 
     def _normalizar(self, placa: str) -> str:
         """Normaliza placa removendo espaços e hifens.

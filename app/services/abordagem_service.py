@@ -429,7 +429,7 @@ class AbordagemService:
         if not vinculo:
             raise NaoEncontradoError("Vínculo pessoa-abordagem")
 
-        await self.db.delete(vinculo)
+        vinculo.ativo = False
         await self.db.flush()
 
         await self.audit.log(
@@ -530,7 +530,7 @@ class AbordagemService:
         if not vinculo:
             raise NaoEncontradoError("Vínculo veículo-abordagem")
 
-        await self.db.delete(vinculo)
+        vinculo.ativo = False
         await self.db.flush()
 
         await self.audit.log(

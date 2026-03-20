@@ -51,10 +51,17 @@ class Foto(Base, TimestampMixin, SoftDeleteMixin):
     data_hora: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
-    pessoa_id: Mapped[int | None] = mapped_column(ForeignKey("pessoas.id"), nullable=True)
-    abordagem_id: Mapped[int | None] = mapped_column(ForeignKey("abordagens.id"), nullable=True)
+    pessoa_id: Mapped[int | None] = mapped_column(
+        ForeignKey("pessoas.id"), nullable=True, index=True
+    )
+    abordagem_id: Mapped[int | None] = mapped_column(
+        ForeignKey("abordagens.id"), nullable=True, index=True
+    )
     veiculo_id: Mapped[int | None] = mapped_column(
         ForeignKey("veiculos.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    guarnicao_id: Mapped[int | None] = mapped_column(
+        ForeignKey("guarnicoes.id"), nullable=True, index=True
     )
     embedding_face = mapped_column(Vector(512), nullable=True)
     face_processada: Mapped[bool] = mapped_column(Boolean, default=False)

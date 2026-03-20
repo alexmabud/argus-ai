@@ -26,7 +26,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: always
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-changeme}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -46,7 +46,7 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
     expose:
@@ -75,7 +75,7 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
     volumes:
@@ -96,8 +96,8 @@ services:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?S3_ACCESS_KEY obrigatório em produção}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?S3_SECRET_KEY obrigatório em produção}
     volumes:
       - minio_data:/data
 

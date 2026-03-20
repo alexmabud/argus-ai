@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Upl
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
+from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_pdf
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
@@ -32,8 +33,8 @@ async def criar_ocorrencia(
     request: Request,
     arquivo_pdf: UploadFile,
     numero_ocorrencia: str = Form(..., min_length=1, max_length=50),
-    abordagem_id: int | None = Form(None),
-    nomes_envolvidos: str | None = Form(None),
+    abordagem_id: int | None = Form(None, gt=0),
+    nomes_envolvidos: str | None = Form(None, max_length=2000),
     data_ocorrencia: date = Form(..., description="Data real do fato (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -66,13 +67,9 @@ async def criar_ocorrencia(
             detail="Formato inválido. Apenas arquivos PDF são aceitos",
         )
 
-    pdf_bytes = await arquivo_pdf.read()
-
-    if len(pdf_bytes) > MAX_PDF_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="PDF excede o tamanho máximo de 50 MB",
-        )
+    # Leitura em chunks (previne OOM) + validação de magic bytes (anti-spoofing)
+    pdf_bytes = await ler_upload_com_limite(arquivo_pdf, MAX_PDF_SIZE)
+    validar_magic_bytes_pdf(pdf_bytes)
 
     service = OcorrenciaService(db)
     ocorrencia = await service.criar(

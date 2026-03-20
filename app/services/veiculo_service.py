@@ -5,6 +5,7 @@ com normalização de placa, verificação de unicidade e auditoria
 de todas as mutações.
 """
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
@@ -94,7 +95,11 @@ class VeiculoService:
             guarnicao_id=guarnicao_id,
         )
 
-        await self.repo.create(veiculo)
+        try:
+            await self.repo.create(veiculo)
+        except IntegrityError:
+            await self.db.rollback()
+            raise ConflitoDadosError("Veículo com esta placa já cadastrado")
 
         await self.audit.log(
             usuario_id=user_id,
@@ -209,6 +214,17 @@ class VeiculoService:
             )
 
         return list(await self.repo.get_all(skip=skip, limit=limit, guarnicao_id=guarnicao_id))
+
+    async def listar_localidades(self, guarnicao_id: int | None) -> dict:
+        """Retorna valores distintos de modelo e cor para autocomplete.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+
+        Returns:
+            Dicionário com "modelos" e "cores" — listas de strings distintas.
+        """
+        return await self.repo.get_localidades(guarnicao_id=guarnicao_id)
 
     async def desativar(
         self,

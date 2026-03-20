@@ -40,7 +40,7 @@ class GeocodingService:
                 return await self._google_reverse(lat, lon)
             return await self._nominatim_reverse(lat, lon)
         except Exception:
-            logger.warning("Falha no geocoding reverso: lat=%s, lon=%s", lat, lon)
+            logger.warning("Falha no geocoding reverso")
             return None
 
     async def _nominatim_reverse(self, lat: float, lon: float) -> str | None:

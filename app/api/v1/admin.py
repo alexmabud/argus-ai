@@ -109,7 +109,7 @@ async def criar_usuario(
             guarnicao_id=admin.guarnicao_id,
         )
     except ConflitoDadosError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
     await db.commit()
     return SenhaGeradaResponse(usuario_id=usuario.id, matricula=usuario.matricula, senha=senha)
 
@@ -145,7 +145,7 @@ async def pausar_usuario(
     try:
         await service.pausar_usuario(usuario_id=usuario_id, admin_id=admin.id)
     except NaoEncontradoError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
     await db.commit()
     return {"ok": True, "mensagem": "Usuário pausado com sucesso"}
 
@@ -174,16 +174,11 @@ async def gerar_nova_senha(
         403: Não é administrador.
         404: Usuário não encontrado.
     """
-    from sqlalchemy import select as sa_select
-
     service = UsuarioAdminService(db)
     try:
-        result = await db.execute(sa_select(Usuario).where(Usuario.id == usuario_id))
-        u = result.scalar_one_or_none()
-        matricula = u.matricula if u else str(usuario_id)
-        senha = await service.gerar_nova_senha(usuario_id=usuario_id, admin_id=admin.id)
+        senha, matricula = await service.gerar_nova_senha(usuario_id=usuario_id, admin_id=admin.id)
     except NaoEncontradoError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
     await db.commit()
     return SenhaGeradaResponse(usuario_id=usuario_id, matricula=matricula, senha=senha)
 
@@ -213,5 +208,5 @@ async def excluir_usuario(
     try:
         await service.excluir_usuario(usuario_id=usuario_id, admin_id=admin.id)
     except NaoEncontradoError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
     await db.commit()

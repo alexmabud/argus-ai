@@ -61,7 +61,6 @@ jobs:
         uses: trufflesecurity/trufflehog@v3.82.13
         with:
           extra_args: --only-verified
-        continue-on-error: true
 
   # ── Dependency Audit ───────────────────────────────────────
   dependency-audit:
@@ -104,8 +103,7 @@ jobs:
             -r requirements-audit.txt \
             --desc \
             --format=json \
-            --output=pip-audit-report.json \
-            || true
+            --output=pip-audit-report.json
 
       - name: Print audit summary
         if: always()
@@ -161,7 +159,7 @@ jobs:
             -ll \
             -f json \
             -o bandit-report.json \
-            --exit-zero
+            -ll
 
       - name: Print Bandit summary
         if: always()

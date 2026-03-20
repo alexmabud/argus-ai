@@ -44,13 +44,15 @@ class Ocorrencia(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     numero_ocorrencia: Mapped[str] = mapped_column(String(50), unique=True, index=True)
-    abordagem_id: Mapped[int | None] = mapped_column(ForeignKey("abordagens.id"), nullable=True)
+    abordagem_id: Mapped[int | None] = mapped_column(
+        ForeignKey("abordagens.id"), nullable=True, index=True
+    )
     arquivo_pdf_url: Mapped[str] = mapped_column(String(500))
     texto_extraido: Mapped[str | None] = mapped_column(Text, nullable=True)
     nomes_envolvidos: Mapped[str | None] = mapped_column(Text, nullable=True)
     data_ocorrencia: Mapped[date] = mapped_column(Date, nullable=False)
     embedding = mapped_column(Vector(384), nullable=True)
     processada: Mapped[bool] = mapped_column(Boolean, default=False)
-    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), index=True)
 
     abordagem = relationship("Abordagem", back_populates="ocorrencias")
