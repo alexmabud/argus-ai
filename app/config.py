@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 horas (turno completo)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
-    ALGORITHM: str = "HS256"
+    ALGORITHM: str = "HS256"  # Constante — não sobrescrever via env
 
     # Encryption (LGPD)
     ENCRYPTION_KEY: str  # Fernet key para campos sensíveis

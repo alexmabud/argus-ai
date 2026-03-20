@@ -11,7 +11,6 @@ from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
-from app.repositories.veiculo_repo import VeiculoRepository
 from app.schemas.veiculo import VeiculoCreate, VeiculoRead
 from app.services.veiculo_service import VeiculoService
 
@@ -76,5 +75,5 @@ async def listar_localidades_veiculos(
         Dicionário com "modelos" e "cores" — listas de strings distintas
         ordenadas alfabeticamente.
     """
-    repo = VeiculoRepository(db)
-    return await repo.get_localidades(guarnicao_id=user.guarnicao_id)
+    service = VeiculoService(db)
+    return await service.listar_localidades(guarnicao_id=user.guarnicao_id)

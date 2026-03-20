@@ -15,6 +15,11 @@ from app.models.usuario import Usuario
 from app.repositories.abordagem_repo import AbordagemRepository
 from app.repositories.pessoa_repo import PessoaRepository
 from app.repositories.veiculo_repo import VeiculoRepository
+from app.schemas.abordagem import AbordagemRead
+from app.schemas.consulta import ConsultaUnificadaResponse, PessoaComEnderecoRead
+from app.schemas.veiculo import VeiculoRead
+from app.services.pessoa_service import PessoaService
+from app.services.text_utils import escape_like
 
 
 class ConsultaService:
@@ -42,6 +47,17 @@ class ConsultaService:
         self.pessoa_repo = PessoaRepository(db)
         self.veiculo_repo = VeiculoRepository(db)
         self.abordagem_repo = AbordagemRepository(db)
+
+    async def listar_localidades(self, guarnicao_id: int | None) -> dict:
+        """Retorna valores distintos de bairro, cidade e estado para autocomplete.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+
+        Returns:
+            Dicionário com "bairros", "cidades" e "estados" — listas de strings distintas.
+        """
+        return await self.pessoa_repo.get_localidades(guarnicao_id=guarnicao_id)
 
     async def busca_unificada(
         self,
@@ -119,6 +135,56 @@ class ConsultaService:
             "total_resultados": len(pessoas) + len(veiculos) + len(abordagens),
             "pessoas_com_endereco": bool(filtro_local),
         }
+
+    @staticmethod
+    def formatar_resultado_busca(resultados: dict) -> ConsultaUnificadaResponse:
+        """Formata resultado bruto da busca unificada em schema de resposta.
+
+        Converte models ORM em schemas Pydantic, aplicando mascaramento
+        de CPF e tratamento de tuplas (pessoa, endereco_criado_em).
+
+        Args:
+            resultados: Dicionário retornado por busca_unificada com
+                chaves "pessoas", "veiculos", "abordagens", "total_resultados"
+                e "pessoas_com_endereco".
+
+        Returns:
+            ConsultaUnificadaResponse pronto para retornar ao cliente.
+        """
+        pessoas_read = []
+        pessoas_com_endereco = resultados.get("pessoas_com_endereco", False)
+
+        for item in resultados["pessoas"]:
+            if pessoas_com_endereco:
+                p, endereco_criado_em = item
+            else:
+                p, endereco_criado_em = item, None
+
+            pessoas_read.append(
+                PessoaComEnderecoRead(
+                    id=p.id,
+                    nome=p.nome,
+                    cpf_masked=PessoaService.mask_cpf(p) if p.cpf_encrypted else None,
+                    data_nascimento=p.data_nascimento,
+                    apelido=p.apelido,
+                    foto_principal_url=p.foto_principal_url,
+                    observacoes=p.observacoes,
+                    guarnicao_id=p.guarnicao_id,
+                    criado_em=p.criado_em,
+                    atualizado_em=p.atualizado_em,
+                    endereco_criado_em=endereco_criado_em,
+                )
+            )
+
+        veiculos_read = [VeiculoRead.model_validate(v) for v in resultados["veiculos"]]
+        abordagens_read = [AbordagemRead.model_validate(a) for a in resultados["abordagens"]]
+
+        return ConsultaUnificadaResponse(
+            pessoas=pessoas_read,
+            veiculos=veiculos_read,
+            abordagens=abordagens_read,
+            total_resultados=resultados["total_resultados"],
+        )
 
     async def _buscar_pessoas(
         self,
@@ -210,9 +276,10 @@ class ConsultaService:
         Returns:
             Lista de abordagens encontradas.
         """
+        q_escaped = escape_like(q)
         query = select(Abordagem).where(
             Abordagem.ativo == True,  # noqa: E712
-            Abordagem.endereco_texto.ilike(f"%{q}%"),
+            Abordagem.endereco_texto.ilike(f"%{q_escaped}%"),
         )
         if guarnicao_id is not None:
             query = query.where(Abordagem.guarnicao_id == guarnicao_id)

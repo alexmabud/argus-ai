@@ -17,7 +17,7 @@ from app.api.health import router as health_router
 from app.api.v1.router import api_router
 from app.config import settings
 from app.core.logging_config import setup_logging
-from app.core.middleware import AuditMiddleware, LoggingMiddleware
+from app.core.middleware import AuditMiddleware, LoggingMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.database.session import engine
 
@@ -65,6 +65,9 @@ def create_app() -> FastAPI:
         description="Sistema de apoio operacional com IA",
         version="2.0.0",
         lifespan=lifespan,
+        docs_url="/docs" if settings.DEBUG else None,
+        redoc_url="/redoc" if settings.DEBUG else None,
+        openapi_url="/openapi.json" if settings.DEBUG else None,
     )
 
     # Rate limiting
@@ -73,6 +76,7 @@ def create_app() -> FastAPI:
     # Middlewares (ordem importa — último adicionado executa primeiro)
     app.add_middleware(AuditMiddleware)
     app.add_middleware(LoggingMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
@@ -85,7 +89,7 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Retorna JSON para qualquer exceção não-tratada, evitando plain text 500."""
-        logger.exception("Erro interno não tratado: %s", exc)
+        logger.error("Erro interno não tratado: %s", type(exc).__name__)
         return JSONResponse(
             status_code=500,
             content={"detail": "Erro interno do servidor. Tente novamente."},

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, File, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
+from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_imagem
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
@@ -191,9 +192,10 @@ async def upload_foto_perfil(
         200: Upload realizado com sucesso.
         401: Não autenticado.
     """
-    file_bytes = await foto.read()
+    file_bytes = await ler_upload_com_limite(foto, max_size=5 * 1024 * 1024)
+    validar_magic_bytes_imagem(file_bytes)
     storage = StorageService()
-    key = storage._generate_key("avatares", foto.filename or "foto.jpg")
+    key = storage.generate_key("avatares", foto.filename or "foto.jpg")
     url = await storage.upload(file_bytes, key, content_type=foto.content_type or "image/jpeg")
 
     user.foto_url = url

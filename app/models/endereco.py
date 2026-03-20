@@ -41,11 +41,14 @@ class EnderecoPessoa(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "enderecos_pessoa"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    pessoa_id: Mapped[int] = mapped_column(ForeignKey("pessoas.id", ondelete="CASCADE"))
+    pessoa_id: Mapped[int] = mapped_column(ForeignKey("pessoas.id", ondelete="CASCADE"), index=True)
     endereco: Mapped[str] = mapped_column(String(500))
     bairro: Mapped[str | None] = mapped_column(String(200), nullable=True)
     cidade: Mapped[str | None] = mapped_column(String(200), nullable=True)
     estado: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    guarnicao_id: Mapped[int | None] = mapped_column(
+        ForeignKey("guarnicoes.id"), nullable=True, index=True
+    )
     localizacao = mapped_column(Geography("POINT", srid=4326), nullable=True)
     data_inicio: Mapped[date | None] = mapped_column(Date, nullable=True)
     data_fim: Mapped[date | None] = mapped_column(Date, nullable=True)

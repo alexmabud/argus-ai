@@ -4,7 +4,7 @@ Define relacionamentos manuais entre pessoas, registrados pelo operador
 com tipo (ex: 'Irmão') e descrição opcional, independente de abordagens.
 """
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, MultiTenantMixin, SoftDeleteMixin, TimestampMixin
@@ -55,16 +55,6 @@ class VinculoManual(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     )
 
     __table_args__ = (
-        # Constraint padrão sem filtro ativo — consistente com RelacionamentoPessoa.
-        # Registro soft-deleted mantém o slot único (comportamento intencional:
-        # vínculo excluído não deve ser recriado silenciosamente).
-        # pessoa_id e pessoa_vinculada_id são PKs globais (não por tenant),
-        # portanto UNIQUE(pessoa_id, pessoa_vinculada_id) é naturalmente
-        # tenant-scoped sem incluir guarnicao_id.
         UniqueConstraint("pessoa_id", "pessoa_vinculada_id", name="uq_vinculo_manual"),
         CheckConstraint("pessoa_id != pessoa_vinculada_id", name="ck_vinculo_manual_diferente"),
-        # Índices explícitos além dos gerados por index=True nos campos.
-        # guarnicao_id já é indexado pelo MultiTenantMixin via index=True.
-        Index("idx_vinculo_manual_pessoa", "pessoa_id"),
-        Index("idx_vinculo_manual_vinculada", "pessoa_vinculada_id"),
     )

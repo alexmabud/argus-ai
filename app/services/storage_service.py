@@ -28,7 +28,7 @@ class StorageService:
         """Inicializa serviço de armazenamento."""
         self._session = aioboto3.Session()
 
-    def _generate_key(self, prefix: str, filename: str) -> str:
+    def generate_key(self, prefix: str, filename: str) -> str:
         """Gera chave única para armazenamento no S3.
 
         Args:

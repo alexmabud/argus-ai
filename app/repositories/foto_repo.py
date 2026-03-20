@@ -42,7 +42,11 @@ class FotoRepository(BaseRepository[Foto]):
         Returns:
             Sequência de Fotos da pessoa, ordenadas por data/hora decrescente.
         """
-        query = select(Foto).where(Foto.pessoa_id == pessoa_id).order_by(Foto.data_hora.desc())
+        query = (
+            select(Foto)
+            .where(Foto.pessoa_id == pessoa_id, Foto.ativo == True)  # noqa: E712
+            .order_by(Foto.data_hora.desc())
+        )
         result = await self.db.execute(query)
         return result.scalars().all()
 
@@ -56,7 +60,9 @@ class FotoRepository(BaseRepository[Foto]):
             Sequência de Fotos da abordagem, ordenadas por data/hora decrescente.
         """
         query = (
-            select(Foto).where(Foto.abordagem_id == abordagem_id).order_by(Foto.data_hora.desc())
+            select(Foto)
+            .where(Foto.abordagem_id == abordagem_id, Foto.ativo == True)  # noqa: E712
+            .order_by(Foto.data_hora.desc())
         )
         result = await self.db.execute(query)
         return result.scalars().all()
@@ -86,6 +92,7 @@ class FotoRepository(BaseRepository[Foto]):
         query = (
             select(Foto, similarity.label("similaridade"))
             .where(
+                Foto.ativo == True,  # noqa: E712
                 Foto.face_processada == True,  # noqa: E712
                 Foto.embedding_face.isnot(None),
                 similarity >= threshold,

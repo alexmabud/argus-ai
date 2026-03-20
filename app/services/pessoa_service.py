@@ -103,7 +103,7 @@ class PessoaService:
             acao="CREATE",
             recurso="pessoa",
             recurso_id=pessoa.id,
-            detalhes={"nome": data.nome},
+            detalhes={"acao": "cadastro_pessoa"},
             ip_address=ip_address,
             user_agent=user_agent,
         )

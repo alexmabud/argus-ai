@@ -13,21 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.ocorrencia import Ocorrencia
 from app.repositories.base import BaseRepository
-
-
-def _escape_like(valor: str) -> str:
-    """Escapa caracteres especiais LIKE para uso em buscas ILIKE.
-
-    Previne que caracteres como '%', '_' e '\\' sejam interpretados
-    como wildcards pelo PostgreSQL em queries ILIKE.
-
-    Args:
-        valor: String de busca fornecida pelo usuário.
-
-    Returns:
-        String com caracteres especiais escapados.
-    """
-    return valor.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+from app.services.text_utils import escape_like as _escape_like
 
 
 class OcorrenciaRepository(BaseRepository[Ocorrencia]):

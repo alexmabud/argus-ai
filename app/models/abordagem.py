@@ -53,7 +53,7 @@ class Abordagem(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     localizacao = mapped_column(Geography("POINT", srid=4326), nullable=True)
     endereco_texto: Mapped[str | None] = mapped_column(String(500), nullable=True)
     observacao: Mapped[str | None] = mapped_column(Text, nullable=True)
-    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), index=True)
     origem: Mapped[str] = mapped_column(String(20), default="online")
     client_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
@@ -84,16 +84,18 @@ class Abordagem(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     )
 
 
-class AbordagemPessoa(Base):
+class AbordagemPessoa(Base, SoftDeleteMixin):
     """Associação M:N entre abordagem e pessoa.
 
     Tabela de junção que materializa a relação entre uma abordagem
     e as pessoas abordadas nela. Garante unicidade por índice.
+    Utiliza SoftDeleteMixin para nunca remover dados (LGPD).
 
     Attributes:
         id: Identificador único (chave primária).
         abordagem_id: ID da abordagem (FK, CASCADE delete).
         pessoa_id: ID da pessoa (FK, CASCADE delete).
+        ativo: Flag booleano de soft delete (SoftDeleteMixin).
         abordagem: Relacionamento com Abordagem.
         pessoa: Relacionamento com Pessoa.
 
@@ -113,19 +115,21 @@ class AbordagemPessoa(Base):
     __table_args__ = (Index("uq_abordagem_pessoa", "abordagem_id", "pessoa_id", unique=True),)
 
 
-class AbordagemVeiculo(Base):
+class AbordagemVeiculo(Base, SoftDeleteMixin):
     """Associação M:N entre abordagem e veículo, com vínculo opcional por pessoa.
 
     Tabela de junção que materializa a relação entre uma abordagem
     e os veículos envolvidos nela. O campo pessoa_id registra qual
     abordado estava associado a este veículo (nullable para compatibilidade
     com abordagens anteriores sem esse vínculo).
+    Utiliza SoftDeleteMixin para nunca remover dados (LGPD).
 
     Attributes:
         id: Identificador único (chave primária).
         abordagem_id: ID da abordagem (FK, CASCADE delete).
         veiculo_id: ID do veículo (FK, CASCADE delete).
         pessoa_id: ID do abordado associado ao veículo (FK, SET NULL, nullable).
+        ativo: Flag booleano de soft delete (SoftDeleteMixin).
         abordagem: Relacionamento com Abordagem.
         veiculo: Relacionamento com Veiculo.
         pessoa: Relacionamento com Pessoa (opcional).

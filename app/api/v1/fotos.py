@@ -7,10 +7,14 @@ por pessoa ou abordagem, busca por similaridade facial
 
 import logging
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
+from app.core.upload_validation import (
+    ler_upload_com_limite,
+    validar_magic_bytes_imagem,
+)
 from app.database.session import get_db
 from app.dependencies import get_current_user, get_face_service
 from app.models.pessoa import Pessoa
@@ -23,6 +27,7 @@ from app.schemas.foto import (
     FotoUploadResponse,
     OCRPlacaResponse,
 )
+from app.services.audit_service import AuditService
 from app.services.foto_service import FotoService
 from app.services.pessoa_service import PessoaService
 
@@ -54,11 +59,11 @@ async def upload_foto(
     request: Request,
     file: UploadFile,
     tipo: FotoTipo = Form(FotoTipo.rosto),
-    pessoa_id: int | None = Form(None),
-    abordagem_id: int | None = Form(None),
-    veiculo_id: int | None = Form(None),
-    latitude: float | None = Form(None),
-    longitude: float | None = Form(None),
+    pessoa_id: int | None = Form(None, gt=0),
+    abordagem_id: int | None = Form(None, gt=0),
+    veiculo_id: int | None = Form(None, gt=0),
+    latitude: float | None = Form(None, ge=-90, le=90),
+    longitude: float | None = Form(None, ge=-180, le=180),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> FotoUploadResponse:
@@ -95,13 +100,9 @@ async def upload_foto(
             detail=f"Formato inválido. Permitidos: {', '.join(ALLOWED_IMAGE_MIMES)}",
         )
 
-    file_bytes = await file.read()
-
-    if len(file_bytes) > MAX_IMAGE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Imagem excede o tamanho máximo de 10 MB",
-        )
+    # Leitura em chunks (previne OOM) + validação de magic bytes (anti-spoofing)
+    file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
+    validar_magic_bytes_imagem(file_bytes)
 
     service = FotoService(db)
     try:
@@ -151,13 +152,17 @@ async def upload_foto(
 @router.get("/pessoa/{pessoa_id}", response_model=list[FotoRead])
 async def listar_fotos_pessoa(
     pessoa_id: int,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> list[FotoRead]:
-    """Lista fotos de uma pessoa.
+    """Lista fotos de uma pessoa com paginação.
 
     Args:
         pessoa_id: ID da pessoa.
+        skip: Registros a pular (padrão 0).
+        limit: Máximo de resultados (padrão 50, máx 100).
         db: Sessão do banco de dados.
         user: Usuário autenticado.
 
@@ -166,19 +171,23 @@ async def listar_fotos_pessoa(
     """
     service = FotoService(db)
     fotos = await service.listar_por_pessoa(pessoa_id)
-    return [FotoRead.model_validate(f) for f in fotos]
+    return [FotoRead.model_validate(f) for f in fotos[skip : skip + limit]]
 
 
 @router.get("/abordagem/{abordagem_id}", response_model=list[FotoRead])
 async def listar_fotos_abordagem(
     abordagem_id: int,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> list[FotoRead]:
-    """Lista fotos de uma abordagem.
+    """Lista fotos de uma abordagem com paginação.
 
     Args:
         abordagem_id: ID da abordagem.
+        skip: Registros a pular (padrão 0).
+        limit: Máximo de resultados (padrão 50, máx 100).
         db: Sessão do banco de dados.
         user: Usuário autenticado.
 
@@ -187,7 +196,7 @@ async def listar_fotos_abordagem(
     """
     service = FotoService(db)
     fotos = await service.listar_por_abordagem(abordagem_id)
-    return [FotoRead.model_validate(f) for f in fotos]
+    return [FotoRead.model_validate(f) for f in fotos[skip : skip + limit]]
 
 
 @router.post("/buscar-rosto", response_model=BuscaRostoResponse)
@@ -226,12 +235,23 @@ async def buscar_por_rosto(
     if face_service is None:
         return BuscaRostoResponse(resultados=[], total=0, disponivel=False)
 
-    file_bytes = await file.read()
+    file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
+    validar_magic_bytes_imagem(file_bytes)
     service = FotoService(db)
     results = await service.buscar_por_rosto(
         image_bytes=file_bytes,
         face_service=face_service,
         top_k=top_k,
+    )
+
+    # Audit log — busca biométrica é operação sensível
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="SEARCH",
+        recurso="busca_facial",
+        detalhes={"top_k": top_k, "resultados": len(results)},
+        ip_address=request.client.host if request.client else None,
     )
 
     items = [
@@ -285,13 +305,8 @@ async def extrair_placa(
             detail=f"Formato inválido. Permitidos: {', '.join(ALLOWED_IMAGE_MIMES)}",
         )
 
-    file_bytes = await file.read()
-
-    if len(file_bytes) > MAX_IMAGE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Imagem excede o tamanho máximo de 10 MB",
-        )
+    file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
+    validar_magic_bytes_imagem(file_bytes)
     ocr = OCRService()
-    placa = ocr.extrair_placa(file_bytes)
+    placa = await ocr.extrair_placa_async(file_bytes)
     return OCRPlacaResponse(placa=placa, detectada=placa is not None)

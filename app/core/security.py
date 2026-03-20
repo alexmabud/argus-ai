@@ -4,14 +4,14 @@ Fornece funções para hashing de senhas com bcrypt, verificação de credenciai
 e criação/validação de tokens JWT para fluxos de autenticação e autorização.
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
 
 def hash_senha(senha: str) -> str:
@@ -47,11 +47,16 @@ def verificar_senha(senha: str, hash: str) -> bool:
         return False
 
 
+#: Issuer e audience padrão para tokens JWT do Argus AI.
+_JWT_ISSUER = "argus-ai"
+_JWT_AUDIENCE = "argus-api"
+
+
 def criar_access_token(data: dict) -> str:
     """Cria um token JWT de acesso.
 
     Gera um token JWT de acesso com os dados fornecidos e expiração configurada
-    (padrão 8 horas). Usado para autenticação em endpoints da API.
+    (padrão 8 horas). Inclui claims iss e aud para evitar replay entre serviços.
 
     Args:
         data: Dicionário de claims a codificar (ex: {"sub": user_id, "guarnicao_id": 1}).
@@ -59,10 +64,16 @@ def criar_access_token(data: dict) -> str:
     Returns:
         String de token JWT de acesso codificado.
     """
-
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire, "type": "access"})
+    expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update(
+        {
+            "exp": expire,
+            "type": "access",
+            "iss": _JWT_ISSUER,
+            "aud": _JWT_AUDIENCE,
+        }
+    )
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -70,7 +81,7 @@ def criar_refresh_token(data: dict) -> str:
     """Cria um token JWT de refresh.
 
     Gera um token JWT de refresh com os dados fornecidos e expiração configurada
-    (padrão 30 dias). Usado para obter novos tokens de acesso.
+    (padrão 30 dias). Inclui claims iss e aud para evitar replay entre serviços.
 
     Args:
         data: Dicionário de claims a codificar (ex: {"sub": user_id, "guarnicao_id": 1}).
@@ -78,17 +89,23 @@ def criar_refresh_token(data: dict) -> str:
     Returns:
         String de token JWT de refresh codificado.
     """
-
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update(
+        {
+            "exp": expire,
+            "type": "refresh",
+            "iss": _JWT_ISSUER,
+            "aud": _JWT_AUDIENCE,
+        }
+    )
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def decodificar_token(token: str, expected_type: str = "access") -> dict | None:
     """Decodifica e valida um token JWT.
 
-    Decodifica um token JWT e valida sua assinatura e tipo de token.
+    Decodifica um token JWT e valida assinatura, tipo, issuer e audience.
     Retorna None se o token for inválido, expirado ou de tipo incorreto.
 
     Args:
@@ -98,9 +115,14 @@ def decodificar_token(token: str, expected_type: str = "access") -> dict | None:
     Returns:
         Dicionário de payload decodificado se válido, None caso contrário.
     """
-
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            audience=_JWT_AUDIENCE,
+            issuer=_JWT_ISSUER,
+        )
         if payload.get("type") != expected_type:
             return None
         return payload

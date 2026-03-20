@@ -51,7 +51,7 @@ class SoftDeleteMixin:
         desativado_por_id: ID do usuário que desativou (referência a Usuario).
     """
 
-    ativo: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", index=True)
     desativado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     @declared_attr

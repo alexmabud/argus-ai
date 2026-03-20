@@ -24,6 +24,7 @@ from app.schemas.pessoa import (
 from app.schemas.veiculo import VeiculoRead
 from app.schemas.vinculo_manual import VinculoManualCreate, VinculoManualRead
 from app.services.abordagem_service import AbordagemService
+from app.services.audit_service import AuditService
 from app.services.pessoa_service import PessoaService
 
 router = APIRouter(prefix="/pessoas", tags=["Pessoas"])
@@ -156,6 +157,15 @@ async def detalhe_pessoa(
     service = PessoaService(db)
     pessoa = await service.buscar_detalhe(pessoa_id, user)
 
+    # Audit log — acesso a dados sensíveis (CPF descriptografado)
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="READ",
+        recurso="pessoa",
+        recurso_id=pessoa.id,
+    )
+
     # Montar vínculos a partir de ambas direções de relacionamento
     vinculos = []
     for rel in pessoa.relacionamentos_como_a:
@@ -255,16 +265,20 @@ async def adicionar_endereco(
 @router.get("/{pessoa_id}/abordagens", response_model=list[AbordagemDetail])
 async def listar_abordagens_pessoa(
     pessoa_id: int,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> list[AbordagemDetail]:
     """Lista abordagens de uma pessoa com detalhes completos.
 
     Retorna abordagens com pessoas e veículos vinculados,
-    ordenadas por data/hora decrescente.
+    ordenadas por data/hora decrescente, com paginação.
 
     Args:
         pessoa_id: ID da pessoa.
+        skip: Registros a pular (padrão 0).
+        limit: Máximo de resultados (padrão 20, máx 100).
         db: Sessão do banco de dados.
         user: Usuário autenticado.
 
@@ -274,7 +288,8 @@ async def listar_abordagens_pessoa(
     pessoa_service = PessoaService(db)
     abordagem_service = AbordagemService(db)
 
-    abordagens = await abordagem_service.listar_por_pessoa(pessoa_id, user.guarnicao_id)
+    all_abordagens = await abordagem_service.listar_por_pessoa(pessoa_id, user.guarnicao_id)
+    abordagens = all_abordagens[skip : skip + limit]
 
     result = []
     for ab in abordagens:

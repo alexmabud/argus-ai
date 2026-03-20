@@ -138,6 +138,7 @@ class UsuarioAdminService:
             raise NaoEncontradoError("Usuário não encontrado")
 
         usuario.session_id = None
+        await self.db.flush()
 
         await self.audit.log(
             usuario_id=admin_id,
@@ -149,7 +150,7 @@ class UsuarioAdminService:
 
         return usuario
 
-    async def gerar_nova_senha(self, usuario_id: int, admin_id: int) -> str:
+    async def gerar_nova_senha(self, usuario_id: int, admin_id: int) -> tuple[str, str]:
         """Gera nova senha de uso único para o usuário, invalidando a sessão atual.
 
         Limpa session_id (desconecta imediatamente se havia sessão ativa),
@@ -160,13 +161,13 @@ class UsuarioAdminService:
             admin_id: ID do admin (para auditoria).
 
         Returns:
-            Nova senha em plain text — exibir UMA vez.
+            Tupla (senha_plain_text, matricula) — exibir senha UMA vez.
 
         Raises:
             NaoEncontradoError: Se usuário não existe.
         """
         result = await self.db.execute(select(Usuario).where(Usuario.id == usuario_id))
-        usuario = await result.scalar_one_or_none()  # type: ignore[misc]
+        usuario = result.scalar_one_or_none()
         if not usuario:
             raise NaoEncontradoError("Usuário não encontrado")
 
@@ -183,7 +184,7 @@ class UsuarioAdminService:
             detalhes={"acao": "gerar_senha", "admin_id": admin_id},
         )
 
-        return senha
+        return senha, usuario.matricula
 
     async def excluir_usuario(self, usuario_id: int, admin_id: int) -> None:
         """Exclui logicamente o usuário (soft delete — dados preservados por LGPD).

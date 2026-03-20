@@ -5,6 +5,7 @@ de 384 dimensões para busca semântica. Suporta cache Redis para evitar
 reprocessamento de queries repetidas.
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -82,7 +83,8 @@ class EmbeddingService:
 
         Verifica cache Redis antes de gerar embedding. Se encontrado,
         retorna do cache. Caso contrário, gera e armazena com TTL
-        configurado. Chave de cache: MD5 do texto.
+        configurado. Usa try/finally para garantir que a conexão Redis
+        seja fechada em todos os caminhos (inclusive cache hit).
 
         Args:
             texto: Texto para gerar embedding.
@@ -92,23 +94,35 @@ class EmbeddingService:
         """
         cache_key = f"emb:{hashlib.md5(texto.encode(), usedforsecurity=False).hexdigest()}"
 
+        redis_client = None
+        cached_value = None
         try:
             redis_client = aioredis.from_url(self.redis_url)
-            cached = await redis_client.get(cache_key)
-            if cached:
-                await redis_client.aclose()
-                return json.loads(cached)
+            cached_value = await redis_client.get(cache_key)
         except Exception:
             logger.warning("Redis indisponível para cache de embeddings")
-            redis_client = None
 
-        embedding = self.gerar_embedding(texto)
+        if cached_value:
+            # Cache hit — fechar conexão e retornar
+            if redis_client:
+                try:
+                    await redis_client.aclose()
+                except Exception:
+                    pass
+            return json.loads(cached_value)
 
-        if redis_client:
-            try:
+        embedding = await asyncio.to_thread(self.gerar_embedding, texto)
+
+        try:
+            if redis_client:
                 await redis_client.setex(cache_key, self.cache_ttl, json.dumps(embedding))
-                await redis_client.aclose()
-            except Exception:
-                logger.warning("Falha ao armazenar embedding no cache Redis")
+        except Exception:
+            logger.warning("Falha ao armazenar embedding no cache Redis")
+        finally:
+            if redis_client:
+                try:
+                    await redis_client.aclose()
+                except Exception:
+                    pass
 
         return embedding

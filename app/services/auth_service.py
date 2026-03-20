@@ -7,6 +7,7 @@ registro, login, refresh de tokens e validação de credenciais.
 import secrets
 import uuid
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflitoDadosError, CredenciaisInvalidasError
@@ -80,7 +81,11 @@ class AuthService:
         )
 
         self.db.add(usuario)
-        await self.db.flush()
+        try:
+            await self.db.flush()
+        except IntegrityError:
+            await self.db.rollback()
+            raise ConflitoDadosError("Matricula ja cadastrada")
 
         await self.audit.log(
             usuario_id=usuario.id,

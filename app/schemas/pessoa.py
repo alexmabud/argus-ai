@@ -134,6 +134,24 @@ class EnderecoRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class VinculoRead(BaseModel):
+    """Vínculo simplificado entre pessoas para exibição em detail.
+
+    Attributes:
+        pessoa_id: ID da pessoa vinculada.
+        nome: Nome da pessoa vinculada.
+        frequencia: Número de vezes abordadas juntas.
+        ultima_vez: Timestamp da última abordagem conjunta.
+        foto_principal_url: URL da foto principal da pessoa vinculada, para identificação visual.
+    """
+
+    pessoa_id: int
+    nome: str
+    frequencia: int
+    ultima_vez: datetime
+    foto_principal_url: str | None = None
+
+
 class PessoaDetail(PessoaRead):
     """Dados detalhados de uma pessoa com relacionamentos.
 
@@ -153,21 +171,3 @@ class PessoaDetail(PessoaRead):
     abordagens_count: int = 0
     relacionamentos: list[VinculoRead] = []
     vinculos_manuais: list[VinculoManualRead] = []
-
-
-class VinculoRead(BaseModel):
-    """Vínculo simplificado entre pessoas para exibição em detail.
-
-    Attributes:
-        pessoa_id: ID da pessoa vinculada.
-        nome: Nome da pessoa vinculada.
-        frequencia: Número de vezes abordadas juntas.
-        ultima_vez: Timestamp da última abordagem conjunta.
-        foto_principal_url: URL da foto principal da pessoa vinculada, para identificação visual.
-    """
-
-    pessoa_id: int
-    nome: str
-    frequencia: int
-    ultima_vez: datetime
-    foto_principal_url: str | None = None

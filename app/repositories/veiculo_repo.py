@@ -13,6 +13,7 @@ from app.models.abordagem import AbordagemVeiculo
 from app.models.pessoa import Pessoa
 from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
+from app.services.text_utils import escape_like
 
 
 class VeiculoRepository(BaseRepository[Veiculo]):
@@ -71,7 +72,7 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         normalized = placa_partial.upper().replace("-", "").replace(" ", "")
         query = select(Veiculo).where(
             Veiculo.ativo == True,  # noqa: E712
-            Veiculo.placa.ilike(f"%{normalized}%"),
+            Veiculo.placa.ilike(f"%{escape_like(normalized)}%"),
         )
         if guarnicao_id is not None:
             query = query.where(Veiculo.guarnicao_id == guarnicao_id)
@@ -159,11 +160,11 @@ class VeiculoRepository(BaseRepository[Veiculo]):
 
         if placa:
             normalized = placa.upper().replace("-", "").replace(" ", "")
-            query = query.where(Veiculo.placa.ilike(f"%{normalized}%"))
+            query = query.where(Veiculo.placa.ilike(f"%{escape_like(normalized)}%"))
         if modelo:
-            query = query.where(Veiculo.modelo.ilike(f"%{modelo}%"))
+            query = query.where(Veiculo.modelo.ilike(f"%{escape_like(modelo)}%"))
         if cor:
-            query = query.where(Veiculo.cor.ilike(f"%{cor}%"))
+            query = query.where(Veiculo.cor.ilike(f"%{escape_like(cor)}%"))
         if guarnicao_id is not None:
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
             query = query.where(Veiculo.guarnicao_id == guarnicao_id)

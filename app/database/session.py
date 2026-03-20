@@ -14,7 +14,9 @@ from app.config import settings
 #: Pool é configurável via DATABASE_POOL_SIZE e DATABASE_MAX_OVERFLOW.
 #: Echo de SQL é habilitado em modo DEBUG.
 engine = create_async_engine(
-    settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+    settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if settings.DATABASE_URL.startswith("postgresql://")
+    else settings.DATABASE_URL,
     pool_size=settings.DATABASE_POOL_SIZE,
     max_overflow=settings.DATABASE_MAX_OVERFLOW,
     echo=settings.DEBUG,
