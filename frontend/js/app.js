@@ -313,6 +313,9 @@ function renderHomePage(appState) {
 
   return `
     <div class="home-layout">
+      <!-- Scan line effect -->
+      <div class="login-scan-line"></div>
+
       <!-- Saudacao -->
       <div style="margin-bottom: 32px;">
         <h2 style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--color-text);">
