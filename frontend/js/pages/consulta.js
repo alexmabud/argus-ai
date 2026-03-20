@@ -1,135 +1,154 @@
 /**
- * Página de consulta unificada — Argus AI.
+ * Pagina de consulta unificada — Argus AI.
  *
- * Seções independentes: busca de pessoa (nome/CPF ou foto),
- * filtros por endereço e busca por veículo. Cada seção retorna
- * a ficha do abordado como resultado.
+ * Secoes independentes: busca de pessoa (nome/CPF ou foto),
+ * filtros por endereco e busca por veiculo. Cada secao retorna
+ * a ficha do abordado como resultado. Estetica cyberpunk tatica.
  */
 function renderConsulta() {
   return `
-    <div x-data="consultaPage()" x-init="init()" class="space-y-4">
-      <h2 class="text-lg font-bold text-slate-100">Consulta</h2>
+    <div x-data="consultaPage()" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
 
-      <!-- ── Pessoa ─────────────────────────────────────────── -->
-      <div class="card space-y-3">
-        <div class="flex items-center justify-between">
-          <p class="text-sm font-semibold text-slate-300">Pessoa</p>
+      <!-- Header da pagina -->
+      <div>
+        <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--color-text);text-transform:uppercase;letter-spacing:0.08em;">
+          Consulta Operacional
+        </h2>
+        <p style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-top:2px;">
+          Busca Integrada // Pessoa / Endereco / Veiculo
+        </p>
+      </div>
+
+      <!-- Pessoa -->
+      <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Pessoa</span>
           <button @click="showCadastroPessoa = !showCadastroPessoa; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '', bairro: '', cidade: '', estado: '' }; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
-                  class="text-xs text-blue-400 hover:text-blue-300">
+                  style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-primary);background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
             + Nova Pessoa
           </button>
         </div>
 
         <!-- Campo texto -->
-        <div class="relative">
+        <div style="position:relative;">
           <input type="text" :value="query"
                  @input="query = formatarBuscaQuery($event.target.value); onInput()"
-                 placeholder="Nome completo ou CPF..."
+                 placeholder="NOME COMPLETO OU CPF..."
                  inputmode="text"
-                 class="w-full pl-12 py-3 text-base">
-          <svg class="absolute left-3.5 top-3.5 w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                 style="padding-left:40px;padding-top:12px;padding-bottom:12px;font-size:14px;">
+          <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-text-dim);width:18px;height:18px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
           </svg>
         </div>
 
-        <!-- Separador ou -->
-        <div class="flex items-center gap-3">
-          <div class="flex-1 h-px bg-slate-700"></div>
-          <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Ou</span>
-          <div class="flex-1 h-px bg-slate-700"></div>
+        <!-- Separador -->
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;height:1px;background:var(--color-border);"></div>
+          <span style="font-family:var(--font-data);font-size:10px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Ou</span>
+          <div style="flex:1;height:1px;background:var(--color-border);"></div>
         </div>
 
-        <!-- Zona de busca por foto -->
+        <!-- Reconhecimento Facial -->
         <button x-show="!fotoFile" @click="$refs.fotoInput.click()"
-                class="w-full flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 border-dashed border-indigo-500/50 bg-indigo-500/5 hover:bg-indigo-500/10 hover:border-indigo-400 transition-all active:scale-95">
-          <div class="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-500/15 text-indigo-400">
-            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                style="width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:4px;border:2px dashed rgba(0,212,255,0.3);background:rgba(0,212,255,0.03);cursor:pointer;transition:all 150ms;"
+                onmouseover="this.style.background='rgba(0,212,255,0.06)';this.style.borderColor='rgba(0,212,255,0.5)'"
+                onmouseout="this.style.background='rgba(0,212,255,0.03)';this.style.borderColor='rgba(0,212,255,0.3)'">
+          <div style="width:40px;height:40px;border-radius:4px;background:rgba(0,212,255,0.1);display:flex;align-items:center;justify-content:center;color:var(--color-primary);">
+            <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
               <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/>
             </svg>
           </div>
-          <div class="text-center">
-            <p class="text-sm font-semibold text-indigo-300">Reconhecimento Facial</p>
-            <p class="text-xs text-slate-500 mt-0.5">Toque para enviar uma foto e comparar com o banco</p>
+          <div style="text-align:center;">
+            <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-primary);">Reconhecimento Facial</p>
+            <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Toque para enviar foto e comparar com o banco</p>
           </div>
         </button>
         <input type="file" x-ref="fotoInput" accept="image/jpeg,image/png,image/webp"
                class="hidden" @change="onFotoSelect($event)">
 
         <!-- Preview da foto -->
-        <div x-show="fotoFile" class="flex items-center gap-3 p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/30">
-          <img :src="fotoPreviewUrl" class="w-12 h-12 rounded object-cover shrink-0">
-          <div class="flex-1 min-w-0">
-            <p class="text-xs text-indigo-300 font-medium truncate" x-text="fotoFile?.name"></p>
-            <p class="text-xs text-slate-500">Comparando rosto com o banco...</p>
+        <div x-show="fotoFile" style="display:flex;align-items:center;gap:10px;padding:8px;background:rgba(0,212,255,0.05);border-radius:4px;border:1px solid rgba(0,212,255,0.2);">
+          <img :src="fotoPreviewUrl" style="width:48px;height:48px;border-radius:4px;object-fit:cover;flex-shrink:0;">
+          <div style="flex:1;min-width:0;">
+            <p style="font-family:var(--font-body);font-size:12px;color:var(--color-primary);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="fotoFile?.name"></p>
+            <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.05em;">Analisando base operacional...</p>
           </div>
-          <button @click="removeFoto()" class="p-1 text-slate-500 hover:text-red-400 transition-colors">
-            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <button @click="removeFoto()" style="padding:4px;color:var(--color-text-dim);background:transparent;border:none;cursor:pointer;transition:color 150ms;"
+                  onmouseover="this.style.color='var(--color-danger)'" onmouseout="this.style.color='var(--color-text-dim)'">
+            <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
         </div>
 
         <!-- Resultados: Pessoas por texto -->
-        <div x-show="searched && pessoasTexto.length > 0" class="space-y-2 pt-1">
-          <p class="text-xs font-semibold text-slate-500">Resultados por nome/CPF (<span x-text="pessoasTexto.length"></span>)</p>
+        <div x-show="searched && pessoasTexto.length > 0" style="display:flex;flex-direction:column;gap:6px;">
+          <p style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;">
+            Resultados por nome/CPF (<span x-text="pessoasTexto.length"></span>)
+          </p>
           <template x-for="p in pessoasTexto" :key="'t-' + p.id">
-            <div @click="viewPessoa(p.id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
-              <div class="flex items-center gap-3">
-                <!-- Avatar -->
-                <template x-if="p.foto_principal_url">
-                  <img :src="p.foto_principal_url" :alt="'Foto de ' + p.nome" class="w-8 h-8 rounded-full object-cover shrink-0">
-                </template>
-                <template x-if="!p.foto_principal_url">
-                  <div class="w-8 h-8 rounded-full bg-slate-700 shrink-0 flex items-center justify-center text-slate-500">
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-                    </svg>
-                  </div>
-                </template>
-                <!-- Texto -->
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-slate-200" x-text="p.nome"></p>
-                  <p x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + p.cpf_masked"></p>
-                  <p x-show="p.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + p.apelido"></p>
+            <div @click="viewPessoa(p.id)"
+                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;"
+                 onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
+                 onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+              <!-- Avatar -->
+              <template x-if="p.foto_principal_url">
+                <img :src="p.foto_principal_url" :alt="'Foto de ' + p.nome"
+                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);">
+              </template>
+              <template x-if="!p.foto_principal_url">
+                <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
+                  <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                  </svg>
                 </div>
-                <svg class="w-4 h-4 text-slate-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-                </svg>
+              </template>
+              <div style="flex:1;min-width:0;">
+                <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
+                <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
+                <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
               </div>
+              <svg width="16" height="16" style="color:var(--color-text-dim);flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+              </svg>
             </div>
           </template>
         </div>
 
         <!-- Resultados: Pessoas por foto -->
-        <div x-show="pessoasFoto.length > 0" class="space-y-2 pt-1">
-          <p class="text-xs font-semibold text-slate-500">Resultados por foto (<span x-text="pessoasFoto.length"></span>)</p>
+        <div x-show="pessoasFoto.length > 0" style="display:flex;flex-direction:column;gap:6px;">
+          <p style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;">
+            Resultados por foto (<span x-text="pessoasFoto.length"></span>)
+          </p>
           <template x-for="r in pessoasFoto" :key="'f-' + r.foto_id">
-            <div @click="r.pessoa_id && viewPessoa(r.pessoa_id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3 flex-1 min-w-0">
+            <div @click="r.pessoa_id && viewPessoa(r.pessoa_id)"
+                 style="padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;"
+                 onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
+                 onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
                   <img x-show="r.foto_principal_url || r.arquivo_url" :src="r.foto_principal_url || r.arquivo_url"
-                       class="w-10 h-10 rounded-full object-cover shrink-0">
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-200" x-text="r.nome || 'Pessoa sem nome'"></p>
-                    <p x-show="r.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + r.cpf_masked"></p>
-                    <p x-show="r.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + r.apelido"></p>
-                    <!-- Barra de confiança -->
-                    <div class="mt-1.5 flex items-center gap-2">
-                      <div class="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                        <div class="h-full rounded-full transition-all"
-                             :style="'width: ' + Math.round(r.similaridade * 100) + '%'"
-                             :class="r.similaridade >= 0.8 ? 'bg-green-500' : r.similaridade >= 0.6 ? 'bg-yellow-500' : 'bg-orange-500'">
+                       style="width:40px;height:40px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);">
+                  <div style="flex:1;min-width:0;">
+                    <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="r.nome || 'Pessoa sem nome'"></p>
+                    <p x-show="r.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + r.cpf_masked"></p>
+                    <p x-show="r.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + r.apelido"></p>
+                    <!-- Barra de confianca -->
+                    <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
+                      <div style="flex:1;height:4px;background:var(--color-surface-hover);border-radius:2px;overflow:hidden;">
+                        <div style="height:100%;border-radius:2px;transition:all 300ms;"
+                             :style="'width:' + Math.round(r.similaridade * 100) + '%;background:' + (r.similaridade >= 0.8 ? 'var(--color-success)' : r.similaridade >= 0.6 ? '#FFD700' : 'var(--color-danger)')">
                         </div>
                       </div>
-                      <span class="text-xs font-mono shrink-0"
-                            :class="r.similaridade >= 0.8 ? 'text-green-400' : r.similaridade >= 0.6 ? 'text-yellow-400' : 'text-orange-400'"
+                      <span style="font-family:var(--font-data);font-size:12px;font-weight:700;flex-shrink:0;"
+                            :style="'color:' + (r.similaridade >= 0.8 ? 'var(--color-success)' : r.similaridade >= 0.6 ? '#FFD700' : 'var(--color-danger)')"
                             x-text="Math.round(r.similaridade * 100) + '%'">
                       </span>
                     </div>
                   </div>
                 </div>
-                <svg class="w-4 h-4 text-slate-500 shrink-0 ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <svg width="16" height="16" style="color:var(--color-text-dim);flex-shrink:0;margin-left:8px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
                 </svg>
               </div>
@@ -139,139 +158,139 @@ function renderConsulta() {
 
         <!-- Sem resultados por foto -->
         <p x-show="fotoSearchDone && !loadingPessoa && fotoServicoIndisponivel"
-           class="text-xs text-amber-500 pt-1">
-          Reconhecimento facial indisponível neste servidor.
+           style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);text-transform:uppercase;letter-spacing:0.05em;">
+          Reconhecimento facial indisponivel neste servidor.
         </p>
         <p x-show="fotoSearchDone && !loadingPessoa && !fotoServicoIndisponivel && pessoasFoto.length === 0"
-           class="text-xs text-slate-500 pt-1">
-          Nenhuma correspondência facial encontrada.
+           style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.05em;">
+          Nenhuma correspondencia facial encontrada.
         </p>
 
         <!-- Sem resultados pessoa -->
-        <div x-show="searched && !loadingPessoa && buscouPessoa && pessoasTexto.length === 0 && pessoasFoto.length === 0 && !fotoSearchDone"
-             class="pt-1">
-          <p class="text-xs text-slate-500 inline">Nenhuma pessoa encontrada. </p>
-          <button @click="showCadastroPessoa = true; if (query && !/^\d/.test(query)) novaPessoa.nome = query; else if (query) novaPessoa.cpf = query"
-                  class="text-xs text-blue-400 hover:text-blue-300 font-medium">
+        <div x-show="searched && !loadingPessoa && buscouPessoa && pessoasTexto.length === 0 && pessoasFoto.length === 0 && !fotoSearchDone">
+          <span style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);">Nenhuma pessoa encontrada. </span>
+          <button @click="showCadastroPessoa = true; if (query && !/^\\d/.test(query)) novaPessoa.nome = query; else if (query) novaPessoa.cpf = query"
+                  style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-primary);background:transparent;border:none;cursor:pointer;">
             Cadastrar
           </button>
         </div>
 
-        <!-- Formulário inline: cadastrar nova pessoa -->
-        <div x-show="showCadastroPessoa" x-cloak class="bg-slate-800/50 border border-slate-600 rounded-lg p-4 space-y-3 mt-2">
-          <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium text-slate-200">Cadastrar nova pessoa</h3>
+        <!-- Formulario: cadastrar nova pessoa -->
+        <div x-show="showCadastroPessoa" x-cloak
+             style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-top:4px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text);text-transform:uppercase;letter-spacing:0.06em;">Cadastrar Pessoa</h3>
             <button @click="showCadastroPessoa = false; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '', bairro: '', cidade: '', estado: '' }; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
-                    class="text-slate-400 hover:text-white text-xs">Cancelar</button>
+                    style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);background:transparent;border:none;cursor:pointer;">Cancelar</button>
           </div>
 
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Nome *</label>
-            <input type="text" x-model="novaPessoa.nome" placeholder="Nome completo" class="w-full">
+            <label class="login-field-label">Nome *</label>
+            <input type="text" x-model="novaPessoa.nome" placeholder="Nome completo">
           </div>
 
           <div>
-            <label class="block text-xs text-slate-400 mb-1">CPF</label>
+            <label class="login-field-label">CPF</label>
             <input type="text" :value="novaPessoa.cpf"
                    @input="novaPessoa.cpf = formatarCPF($event.target.value)"
-                   placeholder="000.000.000-00" maxlength="14" inputmode="numeric" class="w-full">
+                   placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Data de nascimento</label>
+              <label class="login-field-label">Data de Nascimento</label>
               <input type="text" x-model="novaPessoa.data_nascimento"
                      @input="novaPessoa.data_nascimento = formatarData($event.target.value)"
-                     placeholder="DD/MM/AAAA" maxlength="10" class="w-full">
+                     placeholder="DD/MM/AAAA" maxlength="10">
             </div>
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Vulgo</label>
-              <input type="text" x-model="novaPessoa.apelido" placeholder="Apelido" class="w-full">
+              <label class="login-field-label">Vulgo</label>
+              <input type="text" x-model="novaPessoa.apelido" placeholder="Apelido">
             </div>
           </div>
 
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Endereço</label>
-            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e número" class="w-full">
+            <label class="login-field-label">Endereco</label>
+            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e numero">
           </div>
 
-          <div class="grid grid-cols-3 gap-2">
+          <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:8px;">
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Bairro</label>
-              <input type="text" list="lista-bairros-c" x-model="novaPessoa.bairro" placeholder="Bairro" class="w-full">
+              <label class="login-field-label">Bairro</label>
+              <input type="text" list="lista-bairros-c" x-model="novaPessoa.bairro" placeholder="Bairro">
             </div>
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Cidade</label>
-              <input type="text" list="lista-cidades-c" x-model="novaPessoa.cidade" placeholder="Cidade" class="w-full">
+              <label class="login-field-label">Cidade</label>
+              <input type="text" list="lista-cidades-c" x-model="novaPessoa.cidade" placeholder="Cidade">
             </div>
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Estado (UF)</label>
-              <input type="text" list="lista-estados-c" x-model="novaPessoa.estado" placeholder="DF" maxlength="2" class="w-full uppercase">
+              <label class="login-field-label">UF</label>
+              <input type="text" list="lista-estados-c" x-model="novaPessoa.estado" placeholder="DF" maxlength="2" style="text-transform:uppercase;">
             </div>
           </div>
 
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Foto</label>
-            <label class="cursor-pointer inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded bg-slate-700 text-blue-400 hover:bg-slate-600 transition-colors">
-              📁 Selecionar foto
+            <label class="login-field-label">Foto</label>
+            <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-data);font-size:11px;padding:6px 12px;border-radius:4px;background:var(--color-surface-hover);color:var(--color-primary);border:1px solid var(--color-border);transition:all 150ms;">
+              Selecionar foto
               <input type="file" accept="image/*"
                      @change="if (fotoPessoaPreviewUrl) URL.revokeObjectURL(fotoPessoaPreviewUrl); fotoPessoa = $event.target.files[0] || null; fotoPessoaPreviewUrl = fotoPessoa ? URL.createObjectURL(fotoPessoa) : ''"
                      class="hidden">
             </label>
             <template x-if="fotoPessoa">
-              <div class="flex items-center gap-2 mt-2">
-                <img :src="fotoPessoaPreviewUrl" class="w-12 h-12 rounded object-cover shrink-0">
-                <span class="text-xs text-slate-500 truncate" x-text="fotoPessoa?.name"></span>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                <img :src="fotoPessoaPreviewUrl" style="width:48px;height:48px;border-radius:4px;object-fit:cover;flex-shrink:0;">
+                <span style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="fotoPessoa?.name"></span>
               </div>
             </template>
           </div>
 
-          <button @click="criarPessoa()" class="btn btn-primary text-sm w-full"
+          <button @click="criarPessoa()" class="btn btn-primary"
                   :disabled="salvandoPessoa || !novaPessoa.nome.trim()">
-            <span x-show="!salvandoPessoa">Salvar pessoa</span>
-            <span x-show="salvandoPessoa" class="flex items-center justify-center gap-2">
-              <span class="spinner"></span> Salvando...
+            <span x-show="!salvandoPessoa">SALVAR PESSOA</span>
+            <span x-show="salvandoPessoa" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+              <span class="spinner"></span> SALVANDO...
             </span>
           </button>
-          <p x-show="erroCadastro" class="text-xs text-red-400" x-text="erroCadastro"></p>
+          <p x-show="erroCadastro" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);" x-text="erroCadastro"></p>
         </div>
 
         <!-- Spinner pessoa -->
-        <div x-show="loadingPessoa" class="flex justify-center py-2">
+        <div x-show="loadingPessoa" style="display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px;">
           <span class="spinner"></span>
+          <span style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;">Analisando base operacional...</span>
         </div>
       </div>
 
-      <!-- ── Separador ───────────────────────────────────────── -->
-      <div class="flex items-center gap-3">
-        <div class="flex-1 h-px bg-slate-700"></div>
-        <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Ou</span>
-        <div class="flex-1 h-px bg-slate-700"></div>
+      <!-- Separador -->
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="flex:1;height:1px;background:var(--color-border);"></div>
+        <span style="font-family:var(--font-data);font-size:10px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Ou</span>
+        <div style="flex:1;height:1px;background:var(--color-border);"></div>
       </div>
 
-      <!-- ── Filtros por Endereço ───────────────────────────── -->
-      <div class="card space-y-3">
-        <p class="text-sm font-semibold text-slate-300">Filtros por Endereço</p>
-        <p class="text-xs text-slate-500">Filtre abordados pelo local de residência cadastrado.</p>
+      <!-- Filtros por Endereco -->
+      <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Filtros por Endereco</span>
+          <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Filtre abordados pelo local de residencia cadastrado.</p>
+        </div>
 
-        <div class="space-y-3">
+        <div style="display:flex;flex-direction:column;gap:10px;">
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Bairro</label>
+            <label class="login-field-label">Bairro</label>
             <input type="text" list="lista-bairros-c" x-model="filtroBairro" @input="onInputEndereco()"
-                   placeholder="Bairro..." class="w-full py-3">
-            <p class="text-xs text-slate-600 mt-1">Lista todos os abordados deste bairro</p>
+                   placeholder="Bairro..." style="padding:12px 14px;">
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Cidade</label>
+            <label class="login-field-label">Cidade</label>
             <input type="text" list="lista-cidades-c" x-model="filtroCidade" @input="onInputEndereco()"
-                   placeholder="Cidade..." class="w-full py-3">
-            <p class="text-xs text-slate-600 mt-1">Lista todos os abordados desta cidade</p>
+                   placeholder="Cidade..." style="padding:12px 14px;">
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Estado (UF)</label>
+            <label class="login-field-label">Estado (UF)</label>
             <input type="text" list="lista-estados-c" x-model="filtroEstado" @input="onInputEndereco()"
-                   placeholder="DF" maxlength="2" class="w-full py-3 uppercase">
-            <p class="text-xs text-slate-600 mt-1">Lista todos os abordados deste estado</p>
+                   placeholder="DF" maxlength="2" style="padding:12px 14px;text-transform:uppercase;">
           </div>
         </div>
 
@@ -285,141 +304,137 @@ function renderConsulta() {
           <template x-for="e in localidades.estados" :key="e"><option :value="e"></option></template>
         </datalist>
 
-        <!-- Resultados por endereço -->
-        <div x-show="searchedEndereco && pessoasEndereco.length > 0" class="space-y-2 pt-1">
-          <p class="text-xs font-semibold text-slate-500">
-            Pessoas neste endereço (<span x-text="pessoasEndereco.length"></span>)
+        <!-- Resultados por endereco -->
+        <div x-show="searchedEndereco && pessoasEndereco.length > 0" style="display:flex;flex-direction:column;gap:6px;">
+          <p style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;">
+            Pessoas neste endereco (<span x-text="pessoasEndereco.length"></span>)
           </p>
           <template x-for="p in pessoasEndereco" :key="'e-' + p.id">
-            <div @click="viewPessoa(p.id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
-              <div class="flex items-center gap-3">
-                <!-- Avatar -->
-                <template x-if="p.foto_principal_url">
-                  <img :src="p.foto_principal_url" :alt="'Foto de ' + p.nome" class="w-8 h-8 rounded-full object-cover shrink-0">
-                </template>
-                <template x-if="!p.foto_principal_url">
-                  <div class="w-8 h-8 rounded-full bg-slate-700 shrink-0 flex items-center justify-center text-slate-500">
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-                    </svg>
-                  </div>
-                </template>
-                <!-- Texto -->
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-slate-200" x-text="p.nome"></p>
-                  <p x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + p.cpf_masked"></p>
-                  <p x-show="p.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + p.apelido"></p>
-                  <p x-show="p.endereco_criado_em" class="text-xs text-slate-500"
-                     x-text="'Endereço cadastrado em ' + new Date(p.endereco_criado_em).toLocaleDateString('pt-BR')"></p>
+            <div @click="viewPessoa(p.id)"
+                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;"
+                 onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
+                 onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+              <template x-if="p.foto_principal_url">
+                <img :src="p.foto_principal_url" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);">
+              </template>
+              <template x-if="!p.foto_principal_url">
+                <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
+                  <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                  </svg>
                 </div>
-                <svg class="w-4 h-4 text-slate-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-                </svg>
+              </template>
+              <div style="flex:1;min-width:0;">
+                <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
+                <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
+                <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
+                <p x-show="p.endereco_criado_em" style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);"
+                   x-text="'Cadastrado em ' + new Date(p.endereco_criado_em).toLocaleDateString('pt-BR')"></p>
               </div>
+              <svg width="16" height="16" style="color:var(--color-text-dim);flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+              </svg>
             </div>
           </template>
         </div>
 
-        <!-- Sem resultados endereço -->
         <p x-show="searchedEndereco && !loadingEndereco && pessoasEndereco.length === 0"
-           class="text-xs text-slate-500 pt-1">
-          Nenhuma pessoa encontrada neste endereço.
+           style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.05em;">
+          Nenhuma pessoa encontrada neste endereco.
         </p>
 
-        <!-- Spinner endereço -->
-        <div x-show="loadingEndereco" class="flex justify-center py-2">
+        <div x-show="loadingEndereco" style="display:flex;justify-content:center;padding:8px 0;">
           <span class="spinner"></span>
         </div>
       </div>
 
-      <!-- ── Separador ───────────────────────────────────────── -->
-      <div class="flex items-center gap-3">
-        <div class="flex-1 h-px bg-slate-700"></div>
-        <span class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Ou</span>
-        <div class="flex-1 h-px bg-slate-700"></div>
+      <!-- Separador -->
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="flex:1;height:1px;background:var(--color-border);"></div>
+        <span style="font-family:var(--font-data);font-size:10px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Ou</span>
+        <div style="flex:1;height:1px;background:var(--color-border);"></div>
       </div>
 
-      <!-- ── Buscar por Veículo ─────────────────────────────── -->
-      <div class="card space-y-3">
-        <p class="text-sm font-semibold text-slate-300">Buscar por Veículo</p>
-        <p class="text-xs text-slate-500">Encontre o abordado pelo veículo com que foi visto.</p>
+      <!-- Buscar por Veiculo -->
+      <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Buscar por Veiculo</span>
+          <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Encontre o abordado pelo veiculo com que foi visto.</p>
+        </div>
 
-        <div class="space-y-3">
+        <div style="display:flex;flex-direction:column;gap:10px;">
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Placa</label>
+            <label class="login-field-label">Placa</label>
             <input type="text" :value="filtroPlaca"
                    @input="filtroPlaca = formatarPlaca($event.target.value); onInputVeiculo()"
                    placeholder="ABC-1234..." maxlength="8"
-                   class="w-full py-3 uppercase" style="text-transform:uppercase">
+                   style="padding:12px 14px;text-transform:uppercase;">
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Modelo</label>
+            <label class="login-field-label">Modelo</label>
             <input type="text" x-model="filtroModelo" @input="onInputVeiculo()"
-                   placeholder="Modelo do veículo..." class="w-full py-3">
+                   placeholder="Modelo do veiculo..." style="padding:12px 14px;">
           </div>
           <div x-show="filtroModelo.length > 0">
-            <label class="block text-xs text-slate-400 mb-1">Cor <span class="text-slate-600">(opcional)</span></label>
+            <label class="login-field-label">Cor <span style="color:var(--color-text-dim);">(opcional)</span></label>
             <input type="text" x-model="filtroCor" @input="onInputVeiculo()"
-                   placeholder="Cor do veículo..." class="w-full py-3">
+                   placeholder="Cor do veiculo..." style="padding:12px 14px;">
           </div>
         </div>
 
-        <!-- Resultados: fichas de abordados por veículo -->
-        <div x-show="searchedVeiculo && pessoasVeiculo.length > 0" class="space-y-2 pt-1">
-          <p class="text-xs font-semibold text-slate-500">
+        <!-- Resultados veiculo -->
+        <div x-show="searchedVeiculo && pessoasVeiculo.length > 0" style="display:flex;flex-direction:column;gap:6px;">
+          <p style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;">
             Abordados vinculados (<span x-text="pessoasVeiculo.length"></span>)
           </p>
           <template x-for="p in pessoasVeiculo" :key="'v-' + p.id + '-' + (p.veiculo_info?.placa || '')">
-            <div @click="viewPessoa(p.id)" class="bg-slate-800/50 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-blue-500 transition-colors">
-              <div class="flex items-center gap-3">
-                <!-- Avatar da pessoa -->
-                <template x-if="p.foto_principal_url">
-                  <img :src="p.foto_principal_url" :alt="'Foto de ' + p.nome" class="w-8 h-8 rounded-full object-cover shrink-0">
-                </template>
-                <template x-if="!p.foto_principal_url">
-                  <div class="w-8 h-8 rounded-full bg-slate-700 shrink-0 flex items-center justify-center text-slate-500">
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-                    </svg>
-                  </div>
-                </template>
-                <!-- Texto -->
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-slate-200" x-text="p.nome"></p>
-                  <p x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="'CPF: ' + p.cpf_masked"></p>
-                  <p x-show="p.apelido" class="text-xs text-slate-400" x-text="'Vulgo: ' + p.apelido"></p>
-                  <p x-show="p.veiculo_info" class="text-xs text-slate-500 mt-0.5"
-                     x-text="'Vinculado via: ' + [p.veiculo_info?.placa, p.veiculo_info?.modelo, p.veiculo_info?.cor, p.veiculo_info?.ano].filter(Boolean).join(' · ')">
-                  </p>
+            <div @click="viewPessoa(p.id)"
+                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;"
+                 onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
+                 onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+              <template x-if="p.foto_principal_url">
+                <img :src="p.foto_principal_url" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);">
+              </template>
+              <template x-if="!p.foto_principal_url">
+                <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
+                  <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                  </svg>
                 </div>
-                <!-- Thumbnail do veículo -->
-                <template x-if="p.veiculo_info?.foto_veiculo_url">
-                  <img :src="p.veiculo_info.foto_veiculo_url" :alt="'Foto do veículo ' + (p.veiculo_info?.placa || '')"
-                       class="w-8 h-8 rounded object-cover shrink-0 border border-slate-600">
-                </template>
-                <template x-if="!p.veiculo_info?.foto_veiculo_url">
-                  <div class="w-8 h-8 rounded bg-slate-700 shrink-0 flex items-center justify-center text-slate-500">
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/>
-                    </svg>
-                  </div>
-                </template>
-                <svg class="w-4 h-4 text-slate-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-                </svg>
+              </template>
+              <div style="flex:1;min-width:0;">
+                <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
+                <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
+                <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
+                <p x-show="p.veiculo_info" style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);margin-top:2px;"
+                   x-text="'Vinculado via: ' + [p.veiculo_info?.placa, p.veiculo_info?.modelo, p.veiculo_info?.cor, p.veiculo_info?.ano].filter(Boolean).join(' \u00b7 ')">
+                </p>
               </div>
+              <!-- Thumbnail veiculo -->
+              <template x-if="p.veiculo_info?.foto_veiculo_url">
+                <img :src="p.veiculo_info.foto_veiculo_url"
+                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);">
+              </template>
+              <template x-if="!p.veiculo_info?.foto_veiculo_url">
+                <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
+                  <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/>
+                  </svg>
+                </div>
+              </template>
+              <svg width="16" height="16" style="color:var(--color-text-dim);flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+              </svg>
             </div>
           </template>
         </div>
 
-        <!-- Sem resultados veículo -->
         <p x-show="searchedVeiculo && !loadingVeiculo && pessoasVeiculo.length === 0"
-           class="text-xs text-slate-500 pt-1">
-          Nenhum abordado vinculado a este veículo.
+           style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.05em;">
+          Nenhum abordado vinculado a este veiculo.
         </p>
 
-        <!-- Spinner veículo -->
-        <div x-show="loadingVeiculo" class="flex justify-center py-2">
+        <div x-show="loadingVeiculo" style="display:flex;justify-content:center;padding:8px 0;">
           <span class="spinner"></span>
         </div>
       </div>
@@ -427,6 +442,13 @@ function renderConsulta() {
   `;
 }
 
+/**
+ * Componente Alpine.js da pagina de consulta.
+ *
+ * Gerencia estado de busca por texto, foto, endereco e veiculo.
+ * Inclui cadastro inline de nova pessoa. Toda logica de busca
+ * preservada da versao anterior.
+ */
 function consultaPage() {
   return {
     // Estado — busca pessoa por texto
@@ -444,7 +466,7 @@ function consultaPage() {
     fotoSearchDone: false,
     fotoServicoIndisponivel: false,
 
-    // Estado — endereço
+    // Estado — endereco
     filtroBairro: "",
     filtroCidade: "",
     filtroEstado: "",
@@ -453,7 +475,7 @@ function consultaPage() {
     searchedEndereco: false,
     _timerEndereco: null,
 
-    // Estado — veículo
+    // Estado — veiculo
     filtroPlaca: "",
     filtroModelo: "",
     filtroCor: "",
@@ -473,8 +495,6 @@ function consultaPage() {
     salvandoPessoa: false,
     erroCadastro: null,
 
-    // --- lifecycle ---
-
     async init() {
       try {
         this.localidades = await api.get("/consultas/localidades");
@@ -482,8 +502,6 @@ function consultaPage() {
         /* silencioso */
       }
     },
-
-    // --- handlers de input ---
 
     onInput() {
       clearTimeout(this._timerPessoa);
@@ -537,8 +555,6 @@ function consultaPage() {
       this._timerVeiculo = setTimeout(() => this.searchPorVeiculo(), 400);
     },
 
-    // --- métodos de busca ---
-
     async searchPorTexto() {
       this.loadingPessoa = true;
       this.buscouPessoa = true;
@@ -590,7 +606,7 @@ function consultaPage() {
         this.pessoasEndereco = r.pessoas || [];
         this.searchedEndereco = true;
       } catch {
-        showToast("Erro no filtro por endereço", "error");
+        showToast("Erro no filtro por endereco", "error");
       } finally {
         this.loadingEndereco = false;
       }
@@ -607,7 +623,7 @@ function consultaPage() {
         this.pessoasVeiculo = Array.isArray(r) ? r : [];
         this.searchedVeiculo = true;
       } catch {
-        showToast("Erro na busca por veículo", "error");
+        showToast("Erro na busca por veiculo", "error");
       } finally {
         this.loadingVeiculo = false;
       }
@@ -625,7 +641,7 @@ function consultaPage() {
     async criarPessoa() {
       const nome = this.novaPessoa.nome.trim();
       if (!nome) {
-        this.erroCadastro = "Nome é obrigatório.";
+        this.erroCadastro = "Nome e obrigatorio.";
         return;
       }
 
@@ -655,7 +671,6 @@ function consultaPage() {
           });
         }
 
-        // Upload foto se fornecida
         if (this.fotoPessoa) {
           await api.uploadFile("/fotos/upload", this.fotoPessoa, {
             tipo: "rosto",
@@ -663,7 +678,6 @@ function consultaPage() {
           });
         }
 
-        // Reset e navegar para ficha
         this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
         this.fotoPessoa = null;
         this.fotoPessoaPreviewUrl = "";

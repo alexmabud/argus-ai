@@ -25,99 +25,99 @@ function renderPerfil(_appState) {
   ).join("");
 
   return `
-    <div class="p-4 max-w-md mx-auto" x-data="perfilPage()">
+    <div style="padding: 1rem; max-width: 28rem; margin: 0 auto;" x-data="perfilPage()">
       <!-- Foto de perfil -->
-      <div class="flex flex-col items-center mb-6">
-        <div class="relative">
-          <div class="w-24 h-24 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center text-white text-3xl font-bold cursor-pointer"
+      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 1.5rem;">
+        <div style="position: relative;">
+          <div style="width: 96px; height: 96px; border-radius: 4px; overflow: hidden; background: var(--color-surface-hover); border: 1px solid var(--color-primary); display: flex; align-items: center; justify-content: center; color: var(--color-primary); font-size: 1.875rem; font-family: var(--font-display); font-weight: 700; cursor: pointer;"
                @click="$refs.fotoInput.click()">
             <template x-if="fotoUrl">
-              <img :src="fotoUrl" class="w-full h-full object-cover" />
+              <img :src="fotoUrl" style="width: 100%; height: 100%; object-fit: cover;" />
             </template>
             <template x-if="!fotoUrl">
               <span>${iniciais}</span>
             </template>
           </div>
           <button @click="$refs.fotoInput.click()"
-                  class="absolute bottom-0 right-0 bg-slate-700 rounded-full p-1 text-slate-300 hover:text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  style="position: absolute; bottom: -4px; right: -4px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 4px; color: var(--color-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center;"
+                  onmouseover="this.style.color='var(--color-text)'"
+                  onmouseout="this.style.color='var(--color-text-muted)'">
+            <svg xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
           </button>
         </div>
         <input type="file" accept="image/*" x-ref="fotoInput" class="hidden" @change="uploadFoto($event)" />
-        <p x-show="uploadando" class="text-xs text-slate-400 mt-2">Enviando foto...</p>
+        <p x-show="uploadando" style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.5rem; font-family: var(--font-data);">Enviando foto...</p>
       </div>
 
       <!-- Campos de perfil -->
-      <div class="space-y-4">
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Nome completo</label>
-          <input type="text" x-model="nome"
-                 class="w-full bg-slate-700 rounded-lg px-3 py-2 text-white border border-slate-600 focus:border-blue-500 focus:outline-none" />
+          <label class="login-field-label">Nome completo</label>
+          <input type="text" x-model="nome" />
         </div>
 
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Nome de guerra</label>
+          <label class="login-field-label">Nome de guerra</label>
           <input type="text" x-model="nomeGuerra"
-                 class="w-full bg-slate-700 rounded-lg px-3 py-2 text-white border border-slate-600 focus:border-blue-500 focus:outline-none"
                  placeholder="Ex: Silva" maxlength="50" />
         </div>
 
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Posto / Graduação</label>
-          <select x-model="posto"
-                  class="w-full bg-slate-700 rounded-lg px-3 py-2 text-white border border-slate-600 focus:border-blue-500 focus:outline-none">
+          <label class="login-field-label">Posto / Graduação</label>
+          <select x-model="posto">
             <option value="">Selecione...</option>
             ${optsPosto}
           </select>
         </div>
 
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Matrícula</label>
+          <label class="login-field-label">Matrícula</label>
           <input type="text" value="${user.matricula || ""}" disabled
-                 class="w-full bg-slate-800 rounded-lg px-3 py-2 text-slate-400 border border-slate-700 cursor-not-allowed" />
+                 style="background: var(--color-bg); color: var(--color-text-dim); cursor: not-allowed;" />
         </div>
 
-        <button @click="salvar()" :disabled="salvando"
-                class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition">
+        <button @click="salvar()" :disabled="salvando" class="btn btn-primary" style="width: 100%;">
           <span x-show="!salvando">Salvar alterações</span>
           <span x-show="salvando">Salvando...</span>
         </button>
 
         <template x-if="isAdmin">
-          <button @click="irParaAdmin()"
-                  class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium py-2 rounded-lg transition">
+          <button @click="irParaAdmin()" class="btn btn-secondary" style="width: 100%; margin-top: 0.25rem;">
             Gerenciar usuários
           </button>
         </template>
       </div>
 
       <!-- Botão Sair -->
-      <div class="mt-8 pt-6 border-t border-slate-700">
+      <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--color-border);">
         <button @click="confirmarSaida = true"
-                class="w-full text-red-400 hover:text-red-300 text-sm font-medium py-2 border border-red-800 hover:border-red-600 rounded-lg transition">
+                style="width: 100%; padding: 0.5rem 1rem; font-family: var(--font-data); font-size: 0.875rem; font-weight: 500; color: var(--color-danger); background: transparent; border: 1px solid var(--color-danger); border-radius: 4px; cursor: pointer; transition: opacity 0.2s;"
+                onmouseover="this.style.opacity='0.8'"
+                onmouseout="this.style.opacity='1'">
           Sair do aplicativo
         </button>
       </div>
 
       <!-- Modal de confirmação de saída -->
       <div x-show="confirmarSaida" x-cloak
-           class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-        <div class="bg-slate-800 rounded-xl p-6 max-w-sm w-full border border-slate-700">
-          <h3 class="text-white font-semibold mb-2">Sair do aplicativo?</h3>
-          <p class="text-slate-400 text-sm mb-6" x-text="isAdmin
+           style="position: fixed; inset: 0; background: rgba(5,10,15,0.8); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem;">
+        <div class="glass-card" style="padding: 1.5rem; max-width: 24rem; width: 100%; border: 1px solid var(--color-border);">
+          <h3 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 0.5rem;">Sair do aplicativo?</h3>
+          <p style="color: var(--color-text-muted); font-size: 0.875rem; margin-bottom: 1.5rem; font-family: var(--font-body);" x-text="isAdmin
             ? 'Você será desconectado. Poderá entrar novamente com sua senha de administrador.'
             : 'Se você sair, precisará que o administrador gere uma nova senha para acessar novamente.'">
           </p>
-          <div class="flex gap-3">
-            <button @click="confirmarSaida = false"
-                    class="flex-1 py-2 rounded-lg border border-slate-600 text-slate-300 hover:text-white">
+          <div style="display: flex; gap: 0.75rem;">
+            <button @click="confirmarSaida = false" class="btn btn-secondary" style="flex: 1;">
               Cancelar
             </button>
             <button @click="executarSaida()"
-                    class="flex-1 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white font-medium">
+                    style="flex: 1; padding: 0.5rem 1rem; border-radius: 4px; background: var(--color-danger); color: var(--color-text); font-family: var(--font-body); font-weight: 500; border: none; cursor: pointer; transition: opacity 0.2s;"
+                    onmouseover="this.style.opacity='0.85'"
+                    onmouseout="this.style.opacity='1'">
               Confirmar saída
             </button>
           </div>

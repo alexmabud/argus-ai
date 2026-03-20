@@ -1,19 +1,49 @@
 /**
- * Aplicação principal SPA — Argus AI.
+ * Aplicacao principal SPA — Argus AI.
  *
  * Router client-side com Alpine.js, gerenciamento de estado
- * global (autenticação, navegação, online/offline).
+ * global (autenticacao, navegacao, online/offline).
+ * Tema: cyberpunk tatico / high-tech militar.
  */
 
-// Registrar Service Worker (após limpeza feita no head)
+// Registrar Service Worker (apos limpeza feita no head)
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=3").catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=4").catch(() => {});
 }
 
 /**
- * Formata string de placa veicular inserindo traço automaticamente.
+ * Widget de relogio em tempo real para o header.
+ *
+ * Atualiza a cada segundo no formato HH:MM:SS.
+ *
+ * Returns:
+ *     Componente Alpine.js com propriedade reativa 'time'.
+ */
+function clockWidget() {
+  return {
+    time: '',
+    interval: null,
+
+    init() {
+      this._tick();
+      this.interval = setInterval(() => this._tick(), 1000);
+    },
+
+    _tick() {
+      const now = new Date();
+      this.time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    },
+
+    destroy() {
+      if (this.interval) clearInterval(this.interval);
+    }
+  };
+}
+
+/**
+ * Formata string de placa veicular inserindo traco automaticamente.
  * Aceita formato antigo (ABC-1234) e Mercosul (ABC1D23).
- * Remove caracteres inválidos e converte para maiúsculas.
+ * Remove caracteres invalidos e converte para maiusculas.
  *
  * @param {string} value - Valor bruto do input.
  * @returns {string} Placa formatada (ex: ABC-1234).
@@ -25,8 +55,8 @@ function formatarPlaca(value) {
 }
 
 /**
- * Formata string de CPF inserindo pontos e traço automaticamente.
- * Remove caracteres não numéricos e aplica a máscara 000.000.000-00.
+ * Formata string de CPF inserindo pontos e traco automaticamente.
+ * Remove caracteres nao numericos e aplica a mascara 000.000.000-00.
  *
  * @param {string} value - Valor bruto do input.
  * @returns {string} CPF formatado.
@@ -41,7 +71,7 @@ function formatarCPF(value) {
 
 /**
  * Formata string de data inserindo barras automaticamente (DD/MM/AAAA).
- * Remove caracteres não numéricos e aplica a máscara à medida que o usuário digita.
+ * Remove caracteres nao numericos e aplica a mascara a medida que o usuario digita.
  *
  * @param {string} value - Valor bruto do input.
  * @returns {string} Data formatada (ex: 25/12/1990).
@@ -55,7 +85,7 @@ function formatarData(value) {
 
 /**
  * Converte data no formato DD/MM/AAAA para YYYY-MM-DD (formato ISO para API).
- * Retorna string vazia se o valor estiver incompleto ou inválido.
+ * Retorna string vazia se o valor estiver incompleto ou invalido.
  *
  * @param {string} value - Data no formato DD/MM/AAAA.
  * @returns {string} Data no formato YYYY-MM-DD ou string vazia.
@@ -67,11 +97,11 @@ function parseDateBR(value) {
 }
 
 /**
- * Formata automaticamente como CPF se o valor contiver apenas dígitos e separadores de CPF.
- * Usado nos campos de busca por nome/CPF para aplicar máscara em tempo real.
+ * Formata automaticamente como CPF se o valor contiver apenas digitos e separadores de CPF.
+ * Usado nos campos de busca por nome/CPF para aplicar mascara em tempo real.
  *
  * @param {string} value - Valor digitado.
- * @returns {string} CPF formatado ou valor original sem alteração.
+ * @returns {string} CPF formatado ou valor original sem alteracao.
  */
 function formatarBuscaQuery(value) {
   if (/^[\d.\-]*$/.test(value) && value.replace(/\D/g, "").length > 0) {
@@ -80,8 +110,28 @@ function formatarBuscaQuery(value) {
   return value;
 }
 
+// Mapa de abreviacoes de posto/graduacao PM
+const POSTO_ABREV = {
+  "Soldado": "SD",
+  "Cabo": "CB",
+  "3\u00ba Sargento": "3\u00ba SGT",
+  "2\u00ba Sargento": "2\u00ba SGT",
+  "1\u00ba Sargento": "1\u00ba SGT",
+  "Subtenente": "ST",
+  "Aspirante": "ASP",
+  "2\u00ba Tenente": "2\u00ba TEN",
+  "1\u00ba Tenente": "1\u00ba TEN",
+  "Capit\u00e3o": "CAP",
+  "Major": "MAJ",
+  "Tenente-Coronel": "TC",
+  "Coronel": "CEL",
+};
+
 /**
- * Componente Alpine.js principal da aplicação.
+ * Componente Alpine.js principal da aplicacao.
+ *
+ * Gerencia estado global de autenticacao, navegacao entre paginas,
+ * conectividade e sincronizacao offline. Atua como router SPA.
  */
 function app() {
   return {
@@ -92,33 +142,35 @@ function app() {
     online: navigator.onLine,
     syncPending: 0,
 
+    /**
+     * Inicializa a aplicacao: conectividade, auth, sync, IndexedDB.
+     */
     async init() {
       // Monitorar conectividade
       window.addEventListener("online", () => { this.online = true; });
       window.addEventListener("offline", () => { this.online = false; });
 
-      // Escutar expiração de auth
+      // Escutar expiracao de auth
       window.addEventListener("auth:expired", () => {
         this.authenticated = false;
         this.user = null;
         this.currentPage = "login";
       });
 
-      // Escutar navegação por evento customizado
+      // Escutar navegacao por evento customizado
       window.addEventListener("navigate", (e) => this.navigate(e.detail));
 
-      // Escutar logout solicitado por componentes filhos (ex: perfil)
+      // Escutar logout solicitado por componentes filhos
       window.addEventListener("auth:logout", () => this.logout());
 
-      // Escutar atualização de dados do usuário (perfil/foto)
+      // Escutar atualizacao de dados do usuario (perfil/foto)
       window.addEventListener("user:updated", (e) => { this.user = e.detail; });
 
-      // Verificar autenticação existente
+      // Verificar autenticacao existente
       if (auth.isAuthenticated()) {
         this.authenticated = true;
         this.user = auth.getUser();
         this.currentPage = "home";
-        // Renderizar home sincronamente — o elemento existe no DOM (x-show não remove)
         this.renderPage("home");
       } else {
         this.$nextTick(() => this.renderLogin());
@@ -143,20 +195,32 @@ function app() {
       this._updateSyncCount();
     },
 
+    /**
+     * Atualiza contagem de itens pendentes de sincronizacao.
+     */
     async _updateSyncCount() {
       this.syncPending = await countPending();
     },
 
+    /**
+     * Navega para uma pagina da aplicacao.
+     *
+     * @param {string} page - Nome da pagina destino.
+     */
     navigate(page) {
       this.currentPage = page;
       this.renderPage(page);
       window.history.pushState({ page }, "", `#${page}`);
     },
 
+    /**
+     * Renderiza uma pagina no container principal.
+     *
+     * @param {string} page - Nome da pagina a renderizar.
+     */
     renderPage(page) {
       const container = document.getElementById("page-content");
       if (!container) {
-        // Fallback: tentar novamente após Alpine processar o DOM
         const self = this;
         requestAnimationFrame(function() {
           const el = document.getElementById("page-content");
@@ -169,6 +233,9 @@ function app() {
       this._renderInto(container, page);
     },
 
+    /**
+     * Injeta HTML da pagina no container e inicializa Alpine nos novos elementos.
+     */
     _renderInto(container, page) {
       const renderers = {
         home: renderHomePage,
@@ -176,7 +243,6 @@ function app() {
         consulta: renderConsulta,
         "pessoa-detalhe": renderPessoaDetalhe,
         "ocorrencia-upload": renderOcorrenciaUpload,
-
         dashboard: renderDashboard,
         perfil: renderPerfil,
         "admin-usuarios": renderAdminUsuarios,
@@ -185,7 +251,6 @@ function app() {
       const render = renderers[page];
       if (render) {
         container.innerHTML = render(this);
-        // Re-init Alpine para novos elementos
         if (this.$nextTick) {
           this.$nextTick(() => {
             container.querySelectorAll("[x-data]").forEach((el) => {
@@ -194,10 +259,13 @@ function app() {
           });
         }
       } else {
-        container.innerHTML = `<p class="text-slate-400">Página não encontrada.</p>`;
+        container.innerHTML = `<p style="color: var(--color-text-muted);">Pagina nao encontrada.</p>`;
       }
     },
 
+    /**
+     * Renderiza a pagina de login no container dedicado.
+     */
     renderLogin() {
       const loginContainer = document.getElementById("page-login");
       if (loginContainer) {
@@ -210,12 +278,18 @@ function app() {
       }
     },
 
+    /**
+     * Callback apos login bem-sucedido.
+     */
     async onLogin(user) {
       this.authenticated = true;
       this.user = user;
       this.navigate("home");
     },
 
+    /**
+     * Realiza logout e retorna para tela de login.
+     */
     logout() {
       auth.logout();
       this.authenticated = false;
@@ -226,59 +300,61 @@ function app() {
   };
 }
 
-// Mapa de abreviações de posto/graduação PM
-const POSTO_ABREV = {
-  "Soldado": "SD",
-  "Cabo": "CB",
-  "3º Sargento": "3º SGT",
-  "2º Sargento": "2º SGT",
-  "1º Sargento": "1º SGT",
-  "Subtenente": "ST",
-  "Aspirante": "ASP",
-  "2º Tenente": "2º TEN",
-  "1º Tenente": "1º TEN",
-  "Capitão": "CAP",
-  "Major": "MAJ",
-  "Tenente-Coronel": "TC",
-  "Coronel": "CEL",
-};
-
-// Home page — botões na parte inferior
+/**
+ * Renderiza a home page com saudacao e acoes rapidas.
+ *
+ * Layout com cards de acao em grid, estilo cyberpunk tatico.
+ */
 function renderHomePage(appState) {
   const user = appState.user;
   const abrev = user?.posto_graduacao ? (POSTO_ABREV[user.posto_graduacao] ?? user.posto_graduacao) : null;
   const guerra = user?.nome_guerra || user?.nome || "Agente";
   const saudacao = abrev ? `${abrev} ${guerra}` : guerra;
+
   return `
     <div class="home-layout">
-      <div>
-        <h2 class="text-xl font-bold text-slate-100">Olá, ${saudacao}</h2>
-        <p class="text-slate-400 text-sm mt-1">Argus AI — Memória Operacional</p>
+      <!-- Saudacao -->
+      <div style="margin-bottom: 32px;">
+        <h2 style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--color-text);">
+          Ola, <span style="color: var(--color-primary);">${saudacao}</span>
+        </h2>
+        <p style="font-family: var(--font-data); font-size: 13px; color: var(--color-text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em;">
+          Memoria Operacional // Status Ativo
+        </p>
       </div>
 
-      <div class="grid grid-cols-2 gap-3">
+      <!-- Acoes rapidas -->
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
         <button onclick="document.querySelector('[x-data]')._x_dataStack[0].navigate('abordagem-nova')"
-                class="card text-center py-6 hover:border-blue-500 transition-colors cursor-pointer">
-          <svg class="mx-auto mb-2 w-8 h-8 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-          <span class="text-sm font-medium">Nova Abordagem</span>
+                class="card card-interactive" style="text-align:center; padding: 24px 16px;">
+          <div style="color: var(--color-primary); margin-bottom: 10px;">
+            <svg style="margin:0 auto;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+          </div>
+          <span style="font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--color-text);">Nova Abordagem</span>
         </button>
 
         <button onclick="document.querySelector('[x-data]')._x_dataStack[0].navigate('consulta')"
-                class="card text-center py-6 hover:border-blue-500 transition-colors cursor-pointer">
-          <svg class="mx-auto mb-2 w-8 h-8 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-          <span class="text-sm font-medium">Consulta</span>
+                class="card card-interactive" style="text-align:center; padding: 24px 16px;">
+          <div style="color: var(--color-primary); margin-bottom: 10px;">
+            <svg style="margin:0 auto;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+          <span style="font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--color-text);">Consulta IA</span>
         </button>
 
         <button onclick="document.querySelector('[x-data]')._x_dataStack[0].navigate('ocorrencia-upload')"
-                class="card text-center py-6 hover:border-blue-500 transition-colors cursor-pointer">
-          <svg class="mx-auto mb-2 w-8 h-8 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
-          <span class="text-sm font-medium">Ocorrência</span>
+                class="card card-interactive" style="text-align:center; padding: 24px 16px;">
+          <div style="color: var(--color-primary); margin-bottom: 10px;">
+            <svg style="margin:0 auto;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg>
+          </div>
+          <span style="font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--color-text);">Ocorrencia</span>
         </button>
 
         <button onclick="document.querySelector('[x-data]')._x_dataStack[0].navigate('dashboard')"
-                class="card text-center py-6 hover:border-blue-500 transition-colors cursor-pointer">
-          <svg class="mx-auto mb-2 w-8 h-8 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
-          <span class="text-sm font-medium">Dashboard</span>
+                class="card card-interactive" style="text-align:center; padding: 24px 16px;">
+          <div style="color: var(--color-primary); margin-bottom: 10px;">
+            <svg style="margin:0 auto;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+          </div>
+          <span style="font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--color-text);">Analitico</span>
         </button>
       </div>
     </div>
@@ -286,7 +362,11 @@ function renderHomePage(appState) {
 }
 
 /**
- * Exibe toast notification temporário.
+ * Exibe toast notification temporario.
+ *
+ * @param {string} message - Texto da notificacao.
+ * @param {string} type - Tipo: success, error, warning.
+ * @param {number} duration - Duracao em ms (padrao 3000).
  */
 function showToast(message, type = "success", duration = 3000) {
   const container = document.getElementById("toast-container");

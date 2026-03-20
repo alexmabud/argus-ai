@@ -1,67 +1,83 @@
 /**
- * Página de login — Argus AI.
+ * Pagina de login — Argus AI.
  *
- * Formulário de autenticação com matrícula e senha,
- * loading state e exibição de erro.
+ * Tela de autenticacao com estetica cyberpunk tatica:
+ * logo com glow ciano, scan line, campos animados,
+ * indicador de status do servidor em tempo real.
  */
 function renderLoginPage(appState) {
   return `
-    <div class="min-h-screen flex items-center justify-center px-6"
-         x-data="loginForm()">
-      <div class="w-full max-w-sm space-y-8">
+    <div class="login-container" x-data="loginForm()">
+      <!-- Scan line animada -->
+      <div class="login-scan-line"></div>
+
+      <div class="login-card">
         <!-- Logo -->
-        <div class="text-center">
-          <h1 class="text-3xl font-bold text-blue-400">Argus AI</h1>
-          <p class="text-slate-400 text-sm mt-2">Memória Operacional</p>
+        <div style="margin-bottom: 40px;">
+          <div class="login-logo">ARGUS</div>
+          <div class="login-subtitle">Sistema de Inteligencia Operacional</div>
         </div>
 
-        <!-- Formulário -->
-        <form @submit.prevent="submit()" class="space-y-4">
-          <div>
-            <label class="block text-sm text-slate-300 mb-1">Matrícula</label>
+        <!-- Formulario -->
+        <form @submit.prevent="submit()" style="display:flex;flex-direction:column;gap:20px;">
+          <div class="login-field">
+            <label class="login-field-label">ID Operacional</label>
             <input type="text"
                    x-model="matricula"
-                   placeholder="Digite sua matrícula"
+                   placeholder="Matricula"
                    required
-                   autocomplete="username"
-                   class="w-full">
+                   autocomplete="username">
           </div>
 
-          <div>
-            <label class="block text-sm text-slate-300 mb-1">Senha</label>
+          <div class="login-field">
+            <label class="login-field-label">Senha</label>
             <input type="password"
                    x-model="senha"
-                   placeholder="Digite sua senha"
+                   placeholder="••••••••"
                    required
-                   autocomplete="current-password"
-                   class="w-full">
+                   autocomplete="current-password">
           </div>
 
           <!-- Erro -->
           <div x-show="erro" x-cloak
-               class="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3">
-            <span x-text="erro"></span>
+               style="background: rgba(255,107,0,0.1); border: 1px solid rgba(255,107,0,0.3); border-radius: 4px; padding: 10px 14px;">
+            <span style="color: var(--color-danger); font-size: 13px;" x-text="erro"></span>
           </div>
 
           <!-- Submit -->
           <button type="submit"
                   class="btn btn-primary"
-                  :disabled="loading">
-            <span x-show="!loading">Entrar</span>
+                  :disabled="loading"
+                  style="margin-top: 8px;">
+            <span x-show="!loading">ACESSAR SISTEMA</span>
             <span x-show="loading" class="flex items-center gap-2">
-              <span class="spinner"></span> Entrando...
+              <span class="spinner"></span> AUTENTICANDO...
             </span>
           </button>
         </form>
 
-        <p class="text-center text-slate-500 text-xs">
-          Argus AI - v1.0
-        </p>
+        <!-- Status + versao -->
+        <div style="margin-top: 32px; display:flex; flex-direction:column; align-items:center; gap:12px;">
+          <div class="login-status">
+            <span class="status-dot"
+                  :class="navigator.onLine ? 'status-dot-online' : 'status-dot-offline'"></span>
+            <span :style="navigator.onLine ? 'color: var(--color-success)' : 'color: var(--color-danger)'"
+                  x-text="navigator.onLine ? 'SERVIDOR ONLINE' : 'SERVIDOR OFFLINE'"></span>
+          </div>
+          <div class="login-version">v1.0.0 // PMDF</div>
+        </div>
       </div>
     </div>
   `;
 }
 
+/**
+ * Componente Alpine.js do formulario de login.
+ *
+ * Gerencia estado de matricula, senha, loading e erro.
+ * Delega autenticacao para AuthManager e propaga login
+ * para o componente app principal.
+ */
 function loginForm() {
   return {
     matricula: "",
@@ -69,9 +85,15 @@ function loginForm() {
     loading: false,
     erro: null,
 
+    /**
+     * Submete formulario de login.
+     *
+     * Valida campos, chama auth.login() e propaga resultado
+     * para o componente principal da aplicacao.
+     */
     async submit() {
       if (!this.matricula || !this.senha) {
-        this.erro = "Preencha matrícula e senha.";
+        this.erro = "Preencha matricula e senha.";
         return;
       }
 
@@ -80,7 +102,6 @@ function loginForm() {
 
       try {
         const user = await auth.login(this.matricula, this.senha);
-        // Propagar para o app principal
         const appEl = document.querySelector("[x-data='app()']");
         if (appEl && appEl._x_dataStack) {
           appEl._x_dataStack[0].onLogin(user);

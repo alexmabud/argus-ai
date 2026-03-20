@@ -1,145 +1,189 @@
 /**
- * Página de dashboard analítico — Argus AI.
+ * Pagina de dashboard analitico — Argus AI.
  *
- * Cards de resumo por período (hoje/mês/total), gráficos de linha ApexCharts
- * (por dia e por mês), calendário interativo com pessoas do dia escolhido,
- * e top 10 pessoas recorrentes.
+ * Cards de resumo por periodo (hoje/mes/total), graficos de linha ApexCharts
+ * (por dia e por mes), calendario interativo com pessoas do dia escolhido,
+ * e top 10 pessoas recorrentes. Estetica cyberpunk tatica.
  */
 function renderDashboard() {
   return `
-    <div x-data="dashboardPage()" x-init="load()" class="space-y-5">
-      <h2 class="text-lg font-bold text-slate-100">Dashboard</h2>
+    <div x-data="dashboardPage()" x-init="load()" style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Header da pagina -->
+      <div>
+        <h2 style="font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--color-text); text-transform: uppercase; letter-spacing: 0.08em;">
+          Analitico
+        </h2>
+        <p style="font-family: var(--font-data); font-size: 12px; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px;">
+          Metricas Operacionais
+        </p>
+      </div>
 
       <!-- Loading -->
-      <div x-show="loading" class="flex justify-center py-12">
-        <span class="spinner"></span>
+      <div x-show="loading" style="display:flex;justify-content:center;padding:48px 0;">
+        <div style="text-align:center;">
+          <span class="spinner spinner-lg"></span>
+          <p style="font-family: var(--font-data); font-size: 11px; color: var(--color-text-dim); margin-top: 12px; text-transform: uppercase; letter-spacing: 0.1em;">
+            Carregando dados...
+          </p>
+        </div>
       </div>
 
       <template x-if="!loading">
-        <div class="space-y-5">
+        <div style="display:flex;flex-direction:column;gap:20px;">
 
-          <!-- === SEÇÃO 1: Cards de Resumo === -->
-          <!-- Card: Hoje -->
-          <div class="card">
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Hoje</p>
-            <div class="grid grid-cols-2 gap-3">
-              <div class="text-center">
-                <p class="text-2xl font-bold text-blue-400" x-text="hoje.abordagens ?? 0"></p>
-                <p class="text-xs text-slate-400">Abordagens</p>
+          <!-- Cards de Resumo — grid 3 colunas desktop -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;">
+
+            <!-- Hoje -->
+            <div class="glass-card" style="padding:16px;border-radius:4px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <span style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;">Hoje</span>
+                <span class="status-dot status-dot-online"></span>
               </div>
-              <div class="text-center">
-                <p class="text-2xl font-bold text-green-400" x-text="hoje.pessoas ?? 0"></p>
-                <p class="text-xs text-slate-400">Pessoas</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <p style="font-family:var(--font-data);font-size:28px;font-weight:700;color:var(--color-primary);line-height:1;" x-text="hoje.abordagens ?? 0"></p>
+                  <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Abordagens</p>
+                </div>
+                <div>
+                  <p style="font-family:var(--font-data);font-size:28px;font-weight:700;color:var(--color-success);line-height:1;" x-text="hoje.pessoas ?? 0"></p>
+                  <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Pessoas</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Este Mes -->
+            <div class="glass-card" style="padding:16px;border-radius:4px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <span style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;">Este Mes</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-dim)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <p style="font-family:var(--font-data);font-size:28px;font-weight:700;color:var(--color-primary);line-height:1;" x-text="mes.abordagens ?? 0"></p>
+                  <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Abordagens</p>
+                </div>
+                <div>
+                  <p style="font-family:var(--font-data);font-size:28px;font-weight:700;color:var(--color-success);line-height:1;" x-text="mes.pessoas ?? 0"></p>
+                  <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Pessoas</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Total -->
+            <div class="glass-card" style="padding:16px;border-radius:4px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <span style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;">Total</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-dim)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <p style="font-family:var(--font-data);font-size:28px;font-weight:700;color:var(--color-primary);line-height:1;" x-text="total.abordagens ?? 0"></p>
+                  <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Abordagens</p>
+                </div>
+                <div>
+                  <p style="font-family:var(--font-data);font-size:28px;font-weight:700;color:var(--color-success);line-height:1;" x-text="total.pessoas ?? 0"></p>
+                  <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Pessoas</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Card: Este Mês -->
-          <div class="card">
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Este Mês</p>
-            <div class="grid grid-cols-2 gap-3">
-              <div class="text-center">
-                <p class="text-2xl font-bold text-blue-400" x-text="mes.abordagens ?? 0"></p>
-                <p class="text-xs text-slate-400">Abordagens</p>
-              </div>
-              <div class="text-center">
-                <p class="text-2xl font-bold text-green-400" x-text="mes.pessoas ?? 0"></p>
-                <p class="text-xs text-slate-400">Pessoas</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card: Total -->
-          <div class="card">
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Total</p>
-            <div class="grid grid-cols-2 gap-3">
-              <div class="text-center">
-                <p class="text-2xl font-bold text-blue-400" x-text="total.abordagens ?? 0"></p>
-                <p class="text-xs text-slate-400">Abordagens</p>
-              </div>
-              <div class="text-center">
-                <p class="text-2xl font-bold text-green-400" x-text="total.pessoas ?? 0"></p>
-                <p class="text-xs text-slate-400">Pessoas</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- === SEÇÃO 2: Gráficos === -->
-          <div class="card">
-            <h3 class="text-sm font-semibold text-slate-300 mb-3">Abordagens por Dia (últimos 30 dias)</h3>
+          <!-- Graficos -->
+          <div class="glass-card" style="padding:16px;border-radius:4px;">
+            <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">
+              Abordagens por Dia
+              <span style="color:var(--color-text-dim);font-weight:400;"> // 30 dias</span>
+            </h3>
             <div id="chart-por-dia"></div>
           </div>
 
-          <div class="card">
-            <h3 class="text-sm font-semibold text-slate-300 mb-3">Abordagens por Mês (últimos 12 meses)</h3>
+          <div class="glass-card" style="padding:16px;border-radius:4px;">
+            <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">
+              Abordagens por Mes
+              <span style="color:var(--color-text-dim);font-weight:400;"> // 12 meses</span>
+            </h3>
             <div id="chart-por-mes"></div>
           </div>
 
-          <!-- === SEÇÃO 3: Calendário + Pessoas do Dia === -->
-          <div class="card">
-            <h3 class="text-sm font-semibold text-slate-300 mb-3">Pessoas Abordadas por Dia</h3>
+          <!-- Calendario + Pessoas do Dia -->
+          <div class="glass-card" style="padding:16px;border-radius:4px;">
+            <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">
+              Pessoas Abordadas por Dia
+            </h3>
 
-            <!-- Navegação do calendário -->
-            <div class="flex items-center justify-between mb-3">
-              <button @click="mesMenos()" class="text-slate-400 hover:text-slate-200 px-2 py-1 text-lg">&#8249;</button>
-              <span class="text-sm font-medium text-slate-200" x-text="mesAtualLabel"></span>
-              <button @click="mesMais()" class="text-slate-400 hover:text-slate-200 px-2 py-1 text-lg">&#8250;</button>
+            <!-- Navegacao do calendario -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <button @click="mesMenos()"
+                      style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
+                      onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.color='var(--color-primary)'"
+                      onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-muted)'"
+              >&#8249;</button>
+              <span style="font-family:var(--font-data);font-size:14px;font-weight:600;color:var(--color-text);" x-text="mesAtualLabel"></span>
+              <button @click="mesMais()"
+                      style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
+                      onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.color='var(--color-primary)'"
+                      onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-muted)'"
+              >&#8250;</button>
             </div>
 
             <!-- Header dias da semana -->
-            <div class="grid grid-cols-7 gap-1 text-center mb-1">
-              <span class="text-[10px] text-slate-500 font-medium">D</span>
-              <span class="text-[10px] text-slate-500 font-medium">S</span>
-              <span class="text-[10px] text-slate-500 font-medium">T</span>
-              <span class="text-[10px] text-slate-500 font-medium">Q</span>
-              <span class="text-[10px] text-slate-500 font-medium">Q</span>
-              <span class="text-[10px] text-slate-500 font-medium">S</span>
-              <span class="text-[10px] text-slate-500 font-medium">S</span>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:4px;">
+              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">D</span>
+              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">S</span>
+              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">T</span>
+              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">Q</span>
+              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">Q</span>
+              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">S</span>
+              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">S</span>
             </div>
 
             <!-- Grid de dias -->
-            <div class="grid grid-cols-7 gap-1 text-center mb-4">
-              <!-- Células vazias antes do dia 1 -->
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:16px;">
               <template x-for="v in primeiroDiaSemana" :key="'v' + v">
                 <div></div>
               </template>
-              <!-- Dias do mês -->
               <template x-for="dia in diasDoMes" :key="dia">
                 <button
-                  class="relative text-xs py-1 rounded flex flex-col items-center"
-                  :class="isDiaSelecionado(dia) ? 'bg-blue-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-700'"
-                  @click="selecionarDia(dia)">
+                  style="position:relative;font-family:var(--font-data);font-size:12px;font-weight:500;padding:4px 0;border-radius:4px;display:flex;flex-direction:column;align-items:center;cursor:pointer;border:1px solid transparent;background:transparent;transition:all 150ms;"
+                  :style="isDiaSelecionado(dia)
+                    ? 'background:rgba(0,212,255,0.15);border-color:rgba(0,212,255,0.4);color:var(--color-primary);font-weight:700;box-shadow:0 0 8px rgba(0,212,255,0.15);'
+                    : 'color:var(--color-text-muted);'"
+                  @click="selecionarDia(dia)"
+                  @mouseover="if(!isDiaSelecionado(dia)) $el.style.background='var(--color-surface-hover)'"
+                  @mouseout="if(!isDiaSelecionado(dia)) $el.style.background='transparent'">
                   <span x-text="dia"></span>
-                  <span
-                    x-show="diaTemAbordagem(dia)"
-                    class="w-1 h-1 rounded-full bg-blue-400 mt-0.5">
+                  <span x-show="diaTemAbordagem(dia)"
+                        style="width:4px;height:4px;border-radius:50%;background:var(--color-primary);margin-top:2px;box-shadow:0 0 4px var(--color-primary);">
                   </span>
                 </button>
               </template>
             </div>
 
             <!-- Loading pessoas do dia -->
-            <div x-show="loadingPessoas" class="flex justify-center py-4">
+            <div x-show="loadingPessoas" style="display:flex;justify-content:center;padding:16px 0;">
               <span class="spinner"></span>
             </div>
 
             <!-- Lista de pessoas do dia -->
             <div x-show="!loadingPessoas">
-              <div x-show="pessoasDoDia.length === 0" class="text-xs text-slate-500 text-center py-4">
+              <div x-show="pessoasDoDia.length === 0"
+                   style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-align:center;padding:16px 0;text-transform:uppercase;letter-spacing:0.08em;">
                 Nenhuma abordagem neste dia.
               </div>
-              <div class="space-y-2">
+              <div style="display:flex;flex-direction:column;gap:4px;">
                 <template x-for="p in pessoasDoDia" :key="p.id">
-                  <div
-                    class="flex items-center gap-3 cursor-pointer hover:bg-slate-700 rounded p-1 -mx-1"
-                    @click="viewPessoa(p.id)">
-                    <img
-                      :src="p.foto_url || '/icons/icon-192.png'"
-                      class="w-8 h-8 rounded-full object-cover flex-shrink-0 bg-slate-700"
-                      :alt="p.nome">
-                    <div class="min-w-0">
-                      <p class="text-sm text-slate-200 truncate" x-text="p.nome"></p>
-                      <p class="text-xs text-slate-400" x-text="p.cpf || '—'"></p>
+                  <div @click="viewPessoa(p.id)"
+                       style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 150ms;"
+                       onmouseover="this.style.background='var(--color-surface-hover)';this.style.borderColor='rgba(0,212,255,0.15)'"
+                       onmouseout="this.style.background='transparent';this.style.borderColor='transparent'">
+                    <img :src="p.foto_url || '/icons/icon-192.png'"
+                         style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);"
+                         :alt="p.nome">
+                    <div style="min-width:0;flex:1;">
+                      <p style="font-family:var(--font-body);font-size:13px;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="p.nome"></p>
+                      <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="p.cpf || '\u2014'"></p>
                     </div>
                   </div>
                 </template>
@@ -147,27 +191,35 @@ function renderDashboard() {
             </div>
           </div>
 
-          <!-- === SEÇÃO 4: Pessoas Recorrentes === -->
-          <div class="card">
-            <h3 class="text-sm font-semibold text-slate-300 mb-3">Pessoas Recorrentes</h3>
-            <div x-show="recorrentes.length === 0" class="text-xs text-slate-500 text-center py-4">
-              Nenhum dado disponível.
+          <!-- Pessoas Recorrentes -->
+          <div class="glass-card" style="padding:16px;border-radius:4px;">
+            <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">
+              Pessoas Recorrentes
+              <span style="color:var(--color-text-dim);font-weight:400;"> // Top 10</span>
+            </h3>
+            <div x-show="recorrentes.length === 0"
+                 style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-align:center;padding:16px 0;text-transform:uppercase;letter-spacing:0.08em;">
+              Nenhum dado disponivel.
             </div>
-            <div class="space-y-2">
+            <div style="display:flex;flex-direction:column;gap:4px;">
               <template x-for="(p, i) in recorrentes" :key="p.id">
-                <div
-                  class="flex items-center gap-3 cursor-pointer hover:bg-slate-700 rounded p-1 -mx-1"
-                  @click="viewPessoa(p.id)">
-                  <span class="text-xs text-slate-500 w-5 flex-shrink-0" x-text="(i+1) + '.'"></span>
-                  <img
-                    :src="p.foto_url || '/icons/icon-192.png'"
-                    class="w-8 h-8 rounded-full object-cover flex-shrink-0 bg-slate-700"
-                    :alt="p.nome">
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm text-slate-200 truncate" x-text="p.nome"></p>
-                    <p class="text-xs text-slate-400" x-text="p.cpf || '—'"></p>
+                <div @click="viewPessoa(p.id)"
+                     style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 150ms;"
+                     onmouseover="this.style.background='var(--color-surface-hover)';this.style.borderColor='rgba(0,212,255,0.15)'"
+                     onmouseout="this.style.background='transparent';this.style.borderColor='transparent'">
+                  <!-- Rank badge -->
+                  <span style="font-family:var(--font-data);font-size:12px;font-weight:700;color:var(--color-primary);width:20px;flex-shrink:0;text-align:center;"
+                        x-text="(i+1)"></span>
+                  <img :src="p.foto_url || '/icons/icon-192.png'"
+                       style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);"
+                       :alt="p.nome">
+                  <div style="flex:1;min-width:0;">
+                    <p style="font-family:var(--font-body);font-size:13px;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="p.nome"></p>
+                    <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="p.cpf || '\u2014'"></p>
                   </div>
-                  <span class="text-blue-400 font-bold text-sm flex-shrink-0" x-text="p.total_abordagens + 'x'"></span>
+                  <!-- Contagem -->
+                  <span style="font-family:var(--font-data);font-size:14px;font-weight:700;color:var(--color-primary);flex-shrink:0;"
+                        x-text="p.total_abordagens + 'x'"></span>
                 </div>
               </template>
             </div>
@@ -179,6 +231,12 @@ function renderDashboard() {
   `;
 }
 
+/**
+ * Componente Alpine.js do dashboard analitico.
+ *
+ * Gerencia estado de resumos, graficos, calendario e pessoas recorrentes.
+ * Carrega dados via API e renderiza graficos ApexCharts com tema tatico.
+ */
 function dashboardPage() {
   const agora = new Date();
   return {
@@ -190,11 +248,11 @@ function dashboardPage() {
     mes: {},
     total: {},
 
-    // Gráficos
+    // Graficos
     porDia: [],
     porMes: [],
 
-    // Calendário
+    // Calendario
     anoCalendarioAtual: agora.getFullYear(),
     mesCalendarioAtual: agora.getMonth() + 1,
     anoHoje: agora.getFullYear(),
@@ -210,7 +268,7 @@ function dashboardPage() {
     recorrentes: [],
 
     get mesAtualLabel() {
-      const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+      const meses = ['Janeiro','Fevereiro','Mar\u00e7o','Abril','Maio','Junho',
                      'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
       return `${meses[this.mesCalendarioAtual - 1]} ${this.anoCalendarioAtual}`;
     },
@@ -281,6 +339,9 @@ function dashboardPage() {
       }
     },
 
+    /**
+     * Renderiza grafico de abordagens por dia com tema tatico.
+     */
     renderizarGraficoPorDia() {
       const el = document.querySelector('#chart-por-dia');
       if (!el || !this.porDia.length) return;
@@ -289,21 +350,26 @@ function dashboardPage() {
         return `${dia}/${m}`;
       });
       new ApexCharts(el, {
-        chart: { type: 'line', height: 180, background: 'transparent', toolbar: { show: false } },
+        chart: { type: 'line', height: 180, background: 'transparent', toolbar: { show: false },
+          fontFamily: 'Rajdhani, sans-serif' },
         theme: { mode: 'dark' },
         series: [
-          { name: 'Abordagens', data: this.porDia.map(d => d.abordagens), color: '#60a5fa' },
-          { name: 'Pessoas', data: this.porDia.map(d => d.pessoas), color: '#4ade80' },
+          { name: 'Abordagens', data: this.porDia.map(d => d.abordagens), color: '#00D4FF' },
+          { name: 'Pessoas', data: this.porDia.map(d => d.pessoas), color: '#00FF88' },
         ],
-        xaxis: { categories: categorias, labels: { style: { fontSize: '9px' }, rotate: -45 } },
-        yaxis: { labels: { style: { fontSize: '10px' } } },
+        xaxis: { categories: categorias, labels: { style: { fontSize: '9px', colors: '#6B8FA8' }, rotate: -45 } },
+        yaxis: { labels: { style: { fontSize: '10px', colors: '#6B8FA8' } } },
         stroke: { curve: 'smooth', width: 2 },
-        legend: { labels: { colors: '#94a3b8' } },
-        grid: { borderColor: '#334155' },
-        tooltip: { theme: 'dark' },
+        legend: { labels: { colors: '#6B8FA8' }, fontFamily: 'Rajdhani, sans-serif' },
+        grid: { borderColor: '#1A2940' },
+        tooltip: { theme: 'dark',
+          style: { fontFamily: 'IBM Plex Sans, sans-serif' } },
       }).render();
     },
 
+    /**
+     * Renderiza grafico de abordagens por mes com tema tatico.
+     */
     renderizarGraficoPorMes() {
       const el = document.querySelector('#chart-por-mes');
       if (!el || !this.porMes.length) return;
@@ -313,21 +379,26 @@ function dashboardPage() {
         return `${nomesMes[parseInt(m) - 1]}/${ano.slice(2)}`;
       });
       new ApexCharts(el, {
-        chart: { type: 'line', height: 180, background: 'transparent', toolbar: { show: false } },
+        chart: { type: 'line', height: 180, background: 'transparent', toolbar: { show: false },
+          fontFamily: 'Rajdhani, sans-serif' },
         theme: { mode: 'dark' },
         series: [
-          { name: 'Abordagens', data: this.porMes.map(d => d.abordagens), color: '#60a5fa' },
-          { name: 'Pessoas', data: this.porMes.map(d => d.pessoas), color: '#4ade80' },
+          { name: 'Abordagens', data: this.porMes.map(d => d.abordagens), color: '#00D4FF' },
+          { name: 'Pessoas', data: this.porMes.map(d => d.pessoas), color: '#00FF88' },
         ],
-        xaxis: { categories: categorias, labels: { style: { fontSize: '10px' } } },
-        yaxis: { labels: { style: { fontSize: '10px' } } },
+        xaxis: { categories: categorias, labels: { style: { fontSize: '10px', colors: '#6B8FA8' } } },
+        yaxis: { labels: { style: { fontSize: '10px', colors: '#6B8FA8' } } },
         stroke: { curve: 'smooth', width: 2 },
-        legend: { labels: { colors: '#94a3b8' } },
-        grid: { borderColor: '#334155' },
-        tooltip: { theme: 'dark' },
+        legend: { labels: { colors: '#6B8FA8' }, fontFamily: 'Rajdhani, sans-serif' },
+        grid: { borderColor: '#1A2940' },
+        tooltip: { theme: 'dark',
+          style: { fontFamily: 'IBM Plex Sans, sans-serif' } },
       }).render();
     },
 
+    /**
+     * Carrega todos os dados do dashboard via API.
+     */
     async load() {
       try {
         const dataHoje = `${this.anoHoje}-${String(this.mesHoje).padStart(2,'0')}-${String(this.diaHoje).padStart(2,'0')}`;
@@ -363,6 +434,9 @@ function dashboardPage() {
       }
     },
 
+    /**
+     * Navega para a ficha de uma pessoa.
+     */
     viewPessoa(id) {
       const appEl = document.querySelector("[x-data]");
       if (appEl?._x_dataStack) {

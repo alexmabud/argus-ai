@@ -7,49 +7,55 @@
  */
 function renderAbordagemNova() {
   return `
-    <div x-data="abordagemForm()" x-init="initForm()" class="space-y-5">
-      <h2 class="text-lg font-bold text-slate-100">Nova Abordagem</h2>
+    <div x-data="abordagemForm()" x-init="initForm()" style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Title -->
+      <div>
+        <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--color-text);text-transform:uppercase;letter-spacing:0.05em;margin:0;">NOVA ABORDAGEM</h2>
+        <span style="font-family:var(--font-data);font-size:11px;font-weight:500;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;">REGISTRO OPERACIONAL</span>
+      </div>
 
       <!-- 1. Pessoas abordadas (primeiro campo) -->
-      <div class="card space-y-3">
-        <label class="text-sm font-medium text-slate-300 block">Pessoas abordadas</label>
+      <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
+        <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Pessoas abordadas</span>
 
-        <div x-data="autocompleteComponent('pessoa')" class="relative">
+        <div x-data="autocompleteComponent('pessoa')" style="position:relative;">
           <input type="text" :value="query"
                  @input="query = formatarBuscaQuery($event.target.value); onInput()"
                  @focus="showDropdown = results.length > 0 || noResults"
-                 placeholder="Buscar por nome ou CPF..." class="w-full">
+                 placeholder="Buscar por nome ou CPF..." style="width:100%;">
 
           <!-- Dropdown resultados -->
           <div x-show="showDropdown" x-cloak @click.outside="showDropdown = false"
-               class="absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg max-h-56 overflow-y-auto shadow-lg">
+               style="position:absolute;z-index:20;width:100%;margin-top:4px;max-height:14rem;overflow-y:auto;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
 
             <!-- Resultados encontrados -->
             <template x-for="item in results" :key="item.id">
               <button @click="select(item); $dispatch('pessoa-selected', { selected: selected })"
-                      class="w-full text-left px-3 py-2 hover:bg-slate-700 text-sm text-slate-200 border-b border-slate-700 last:border-0">
+                      style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);"
+                      onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
                 <span x-text="getLabel(item)"></span>
-                <span x-show="item.cpf_masked" class="text-xs text-slate-400 ml-2" x-text="item.cpf_masked"></span>
+                <span x-show="item.cpf_masked" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);margin-left:8px;" x-text="item.cpf_masked"></span>
               </button>
             </template>
 
             <!-- Nenhum resultado -->
-            <div x-show="noResults" class="px-3 py-3 text-sm text-slate-400">
+            <div x-show="noResults" style="padding:12px;font-family:var(--font-body);font-size:14px;color:var(--color-text-muted);">
               <p>Nenhuma pessoa encontrada.</p>
               <button @click="showDropdown = false; $dispatch('abrir-cadastro-pessoa', { query: query })"
-                      class="mt-2 w-full text-left text-blue-400 hover:text-blue-300 font-medium">
+                      style="margin-top:8px;width:100%;text-align:left;color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
                 + Cadastrar novo abordado
               </button>
             </div>
           </div>
 
           <!-- Tags selecionados -->
-          <div class="flex flex-wrap gap-2 mt-2">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
             <template x-for="item in selected" :key="item.id">
-              <span class="bg-blue-900/50 text-blue-300 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+              <span style="background:rgba(0,212,255,0.15);color:var(--color-primary);border:1px solid rgba(0,212,255,0.2);font-family:var(--font-data);font-size:12px;padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;">
                 <span x-text="getLabel(item)"></span>
                 <button @click="remove(item.id); $dispatch('pessoa-selected', { selected: selected })"
-                        class="text-blue-400 hover:text-white">&times;</button>
+                        style="color:var(--color-primary);background:transparent;border:none;cursor:pointer;font-size:14px;line-height:1;">&times;</button>
               </span>
             </template>
           </div>
@@ -57,58 +63,58 @@ function renderAbordagemNova() {
 
         <!-- Botão para cadastrar sem buscar -->
         <button x-show="!showNovaPessoa" @click="showNovaPessoa = true"
-                class="text-xs text-blue-400 hover:text-blue-300">
+                style="color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;text-align:left;">
           + Adicionar pessoa não cadastrada
         </button>
 
         <!-- Formulário inline: cadastrar nova pessoa -->
-        <div x-show="showNovaPessoa" x-cloak class="bg-slate-800/50 border border-slate-600 rounded-lg p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium text-slate-200">Cadastrar novo abordado</h3>
+        <div x-show="showNovaPessoa" x-cloak style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--color-text);margin:0;">Cadastrar novo abordado</h3>
             <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',data_nascimento:'',apelido:'',endereco:'',bairro:'',cidade:'',estado:''}"
-                    class="text-slate-400 hover:text-white text-xs">Cancelar</button>
+                    style="color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;font-family:var(--font-data);font-size:11px;">Cancelar</button>
           </div>
 
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Nome *</label>
-            <input type="text" x-model="novaPessoa.nome" placeholder="Nome completo" class="w-full">
+            <label class="login-field-label">Nome *</label>
+            <input type="text" x-model="novaPessoa.nome" placeholder="Nome completo" style="width:100%;">
           </div>
 
           <div>
-            <label class="block text-xs text-slate-400 mb-1">CPF</label>
-            <input type="text" :value="novaPessoa.cpf" @input="novaPessoa.cpf = formatarCPF($event.target.value)" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" class="w-full">
+            <label class="login-field-label">CPF</label>
+            <input type="text" :value="novaPessoa.cpf" @input="novaPessoa.cpf = formatarCPF($event.target.value)" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" style="width:100%;">
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Data de nascimento</label>
+              <label class="login-field-label">Data de nascimento</label>
               <input type="text" x-model="novaPessoa.data_nascimento"
                      @input="novaPessoa.data_nascimento = formatarData($event.target.value)"
-                     placeholder="DD/MM/AAAA" maxlength="10" class="w-full">
+                     placeholder="DD/MM/AAAA" maxlength="10" style="width:100%;">
             </div>
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Vulgo</label>
-              <input type="text" x-model="novaPessoa.apelido" placeholder="Apelido" class="w-full">
+              <label class="login-field-label">Vulgo</label>
+              <input type="text" x-model="novaPessoa.apelido" placeholder="Apelido" style="width:100%;">
             </div>
           </div>
 
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Endereço</label>
-            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e número" class="w-full">
+            <label class="login-field-label">Endereço</label>
+            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e número" style="width:100%;">
           </div>
 
-          <div class="grid grid-cols-3 gap-2">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Bairro</label>
-              <input type="text" list="lista-bairros-pessoa" x-model="novaPessoa.bairro" placeholder="Bairro" class="w-full">
+              <label class="login-field-label">Bairro</label>
+              <input type="text" list="lista-bairros-pessoa" x-model="novaPessoa.bairro" placeholder="Bairro" style="width:100%;">
             </div>
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Cidade</label>
-              <input type="text" list="lista-cidades-pessoa" x-model="novaPessoa.cidade" placeholder="Cidade" class="w-full">
+              <label class="login-field-label">Cidade</label>
+              <input type="text" list="lista-cidades-pessoa" x-model="novaPessoa.cidade" placeholder="Cidade" style="width:100%;">
             </div>
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Estado (UF)</label>
-              <input type="text" list="lista-estados-pessoa" x-model="novaPessoa.estado" placeholder="DF" maxlength="2" class="w-full uppercase">
+              <label class="login-field-label">Estado (UF)</label>
+              <input type="text" list="lista-estados-pessoa" x-model="novaPessoa.estado" placeholder="DF" maxlength="2" style="width:100%;text-transform:uppercase;">
             </div>
           </div>
 
@@ -123,64 +129,66 @@ function renderAbordagemNova() {
             <template x-for="e in localidades.estados" :key="e"><option :value="e"></option></template>
           </datalist>
 
-          <button @click="criarPessoa()" class="btn btn-primary text-sm" :disabled="salvandoPessoa || !novaPessoa.nome.trim()">
+          <button @click="criarPessoa()" class="btn btn-primary" style="font-size:14px;" :disabled="salvandoPessoa || !novaPessoa.nome.trim()">
             <span x-show="!salvandoPessoa">Salvar e adicionar</span>
-            <span x-show="salvandoPessoa" class="flex items-center gap-2">
+            <span x-show="salvandoPessoa" style="display:flex;align-items:center;gap:8px;">
               <span class="spinner"></span> Salvando...
             </span>
           </button>
-          <p x-show="erroPessoa" class="text-xs text-red-400" x-text="erroPessoa"></p>
+          <p x-show="erroPessoa" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);" x-text="erroPessoa"></p>
         </div>
 
         <!-- Info e ações por abordado selecionado -->
-        <div x-show="pessoasSelecionadas.length > 0" class="border-t border-slate-700 pt-3 space-y-3">
+        <div x-show="pessoasSelecionadas.length > 0" style="border-top:1px solid var(--color-border);padding-top:12px;display:flex;flex-direction:column;gap:12px;">
           <template x-for="p in pessoasSelecionadas" :key="p.id">
-            <div class="bg-slate-800/30 rounded-lg p-3 space-y-2">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-sm text-slate-300 flex-1 truncate" x-text="p.nome"></span>
+            <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span style="font-family:var(--font-body);font-size:14px;color:var(--color-text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="p.nome"></span>
                 <label :for="'foto-p-' + p.id"
-                       class="cursor-pointer text-xs px-2 py-1 rounded flex items-center gap-1"
-                       :class="fotosPessoas[p.id] ? 'bg-green-900/50 text-green-400' : 'bg-slate-700 text-blue-400 hover:bg-slate-600'">
-                  <span x-text="fotosPessoas[p.id] ? '✓ Foto' : '📷 Foto'"></span>
+                       style="cursor:pointer;font-family:var(--font-data);font-size:11px;padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;"
+                       :style="fotosPessoas[p.id]
+                         ? 'background:rgba(0,255,136,0.1);color:var(--color-success);border:1px solid rgba(0,255,136,0.2);'
+                         : 'background:var(--color-surface-hover);color:var(--color-primary);border:1px solid rgba(0,212,255,0.2);'">
+                  <span x-text="fotosPessoas[p.id] ? 'FOTO OK' : 'CAPTURAR FOTO'"></span>
                 </label>
                 <input type="file" accept="image/*" capture="environment"
-                       :id="'foto-p-' + p.id" class="hidden"
+                       :id="'foto-p-' + p.id" style="display:none;"
                        @change="fotosPessoas = {...fotosPessoas, [p.id]: $event.target.files[0]}">
               </div>
 
               <!-- Endereço atual (se houver) -->
-              <div x-show="pessoaEnderecos[p.id]?.length > 0" class="text-xs text-slate-400">
-                <span class="text-slate-500">Endereço atual:</span>
+              <div x-show="pessoaEnderecos[p.id]?.length > 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">
+                <span style="color:var(--color-text-dim);">Endereço atual:</span>
                 <span x-text="formatEndereco(pessoaEnderecos[p.id]?.[0])"></span>
               </div>
 
               <!-- Botão novo endereço -->
               <button x-show="!novoEnderecoAberto[p.id]" @click="novoEnderecoAberto = {...novoEnderecoAberto, [p.id]: true}"
-                      class="text-xs text-blue-400 hover:text-blue-300">
+                      style="color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;text-align:left;">
                 + Cadastrar novo endereço
               </button>
 
               <!-- Mini-form novo endereço -->
-              <div x-show="novoEnderecoAberto[p.id]" x-cloak class="bg-slate-800/50 border border-slate-600 rounded-lg p-3 space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-medium text-slate-300">Novo endereço</span>
+              <div x-show="novoEnderecoAberto[p.id]" x-cloak style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text);text-transform:uppercase;letter-spacing:0.05em;">Novo endereço</span>
                   <button @click="novoEnderecoAberto = {...novoEnderecoAberto, [p.id]: false}"
-                          class="text-slate-400 hover:text-white text-xs">Cancelar</button>
+                          style="color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;font-family:var(--font-data);font-size:11px;">Cancelar</button>
                 </div>
-                <input type="text" x-model="novoEnderecoData[p.id + '_endereco']" placeholder="Rua e número" class="w-full text-sm">
-                <div class="grid grid-cols-3 gap-2">
-                  <input type="text" list="lista-bairros-pessoa" x-model="novoEnderecoData[p.id + '_bairro']" placeholder="Bairro" class="w-full text-sm">
-                  <input type="text" list="lista-cidades-pessoa" x-model="novoEnderecoData[p.id + '_cidade']" placeholder="Cidade" class="w-full text-sm">
-                  <input type="text" list="lista-estados-pessoa" x-model="novoEnderecoData[p.id + '_estado']" placeholder="UF" maxlength="2" class="w-full text-sm uppercase">
+                <input type="text" x-model="novoEnderecoData[p.id + '_endereco']" placeholder="Rua e número" style="width:100%;font-size:14px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                  <input type="text" list="lista-bairros-pessoa" x-model="novoEnderecoData[p.id + '_bairro']" placeholder="Bairro" style="width:100%;font-size:14px;">
+                  <input type="text" list="lista-cidades-pessoa" x-model="novoEnderecoData[p.id + '_cidade']" placeholder="Cidade" style="width:100%;font-size:14px;">
+                  <input type="text" list="lista-estados-pessoa" x-model="novoEnderecoData[p.id + '_estado']" placeholder="UF" maxlength="2" style="width:100%;font-size:14px;text-transform:uppercase;">
                 </div>
-                <button @click="salvarNovoEndereco(p.id)" class="btn btn-primary text-xs py-1"
+                <button @click="salvarNovoEndereco(p.id)" class="btn btn-primary" style="font-size:12px;padding:6px 0;"
                         :disabled="salvandoEndereco[p.id] || !novoEnderecoData[p.id + '_endereco']?.trim()">
                   <span x-show="!salvandoEndereco[p.id]">Salvar endereço</span>
-                  <span x-show="salvandoEndereco[p.id]" class="flex items-center gap-1">
+                  <span x-show="salvandoEndereco[p.id]" style="display:flex;align-items:center;gap:4px;">
                     <span class="spinner"></span> Salvando...
                   </span>
                 </button>
-                <p x-show="erroEndereco[p.id]" class="text-xs text-red-400" x-text="erroEndereco[p.id]"></p>
+                <p x-show="erroEndereco[p.id]" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);" x-text="erroEndereco[p.id]"></p>
               </div>
             </div>
           </template>
@@ -188,58 +196,60 @@ function renderAbordagemNova() {
       </div>
 
       <!-- 3. Localização da abordagem -->
-      <div class="card space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-medium text-slate-300">Localização da abordagem</span>
-          <button @click="captureGPS()" class="text-xs text-blue-400 hover:text-blue-300" :disabled="gpsLoading">
+      <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Localização da abordagem</span>
+          <button @click="captureGPS()" :disabled="gpsLoading"
+                  style="color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
             <span x-show="!gpsLoading">Atualizar GPS</span>
             <span x-show="gpsLoading">Obtendo...</span>
           </button>
         </div>
-        <p x-show="endereco" class="text-sm text-slate-400" x-text="endereco"></p>
-        <p x-show="!endereco && !gpsLoading" class="text-sm text-slate-500">GPS não capturado</p>
-        <p x-show="latitude" class="text-xs text-slate-500" x-text="latitude?.toFixed(6) + ', ' + longitude?.toFixed(6)"></p>
+        <p x-show="endereco" style="font-family:var(--font-data);font-size:14px;color:var(--color-text-muted);" x-text="endereco"></p>
+        <p x-show="!endereco && !gpsLoading" style="font-family:var(--font-data);font-size:14px;color:var(--color-text-dim);">GPS não capturado</p>
+        <p x-show="latitude" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);" x-text="latitude?.toFixed(6) + ', ' + longitude?.toFixed(6)"></p>
       </div>
 
       <!-- 4. Veículo envolvido na abordagem -->
-      <div class="card space-y-3">
-        <label class="text-sm font-medium text-slate-300 block">Veículo envolvido na abordagem</label>
+      <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
+        <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Veículo envolvido na abordagem</span>
 
-        <div x-data="autocompleteComponent('veiculo')" class="relative">
+        <div x-data="autocompleteComponent('veiculo')" style="position:relative;">
           <input type="text" :value="query" @input="query = formatarPlaca($event.target.value); onInput()"
                  @focus="showDropdown = results.length > 0 || noResults"
                  placeholder="Buscar por placa..." maxlength="8"
-                 class="w-full">
+                 style="width:100%;">
 
           <!-- Dropdown resultados -->
           <div x-show="showDropdown" x-cloak @click.outside="showDropdown = false"
-               class="absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg max-h-56 overflow-y-auto shadow-lg">
+               style="position:absolute;z-index:20;width:100%;margin-top:4px;max-height:14rem;overflow-y:auto;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
 
             <!-- Resultados encontrados -->
             <template x-for="item in results" :key="item.id">
               <button @click="select(item); $dispatch('veiculo-selected', { selected: selected })"
-                      class="w-full text-left px-3 py-2 hover:bg-slate-700 text-sm text-slate-200 border-b border-slate-700 last:border-0"
+                      style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);"
+                      onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'"
                       x-text="getLabel(item)">
               </button>
             </template>
 
             <!-- Nenhum resultado -->
-            <div x-show="noResults" class="px-3 py-3 text-sm text-slate-400">
+            <div x-show="noResults" style="padding:12px;font-family:var(--font-body);font-size:14px;color:var(--color-text-muted);">
               <p>Nenhum veículo encontrado.</p>
               <button @click="showDropdown = false; $dispatch('abrir-cadastro-veiculo', { query: query })"
-                      class="mt-2 w-full text-left text-blue-400 hover:text-blue-300 font-medium">
+                      style="margin-top:8px;width:100%;text-align:left;color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
                 + Cadastrar novo veículo
               </button>
             </div>
           </div>
 
           <!-- Tags selecionados -->
-          <div class="flex flex-wrap gap-2 mt-2">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
             <template x-for="item in selected" :key="item.id">
-              <span class="bg-green-900/50 text-green-300 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+              <span style="background:rgba(0,255,136,0.15);color:var(--color-success);border:1px solid rgba(0,255,136,0.2);font-family:var(--font-data);font-size:12px;padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;">
                 <span x-text="getLabel(item)"></span>
                 <button @click="remove(item.id); $dispatch('veiculo-selected', { selected: selected })"
-                        class="text-green-400 hover:text-white">&times;</button>
+                        style="color:var(--color-success);background:transparent;border:none;cursor:pointer;font-size:14px;line-height:1;">&times;</button>
               </span>
             </template>
           </div>
@@ -247,43 +257,42 @@ function renderAbordagemNova() {
 
         <!-- Vínculo veículo → abordado -->
         <div x-show="veiculosSelecionados.length > 0 && pessoasSelecionadas.length > 0"
-             class="pt-1 space-y-2">
+             style="padding-top:4px;display:flex;flex-direction:column;gap:8px;">
           <template x-for="v in veiculosSelecionados" :key="v.id">
-            <div class="rounded-lg border p-3 space-y-2 transition-colors"
-                 :class="veiculoPorPessoa[v.id]
-                   ? 'border-green-500/60 bg-green-900/10'
-                   : 'border-yellow-500/60 bg-yellow-900/10'"
+            <div style="border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:8px;transition:border-color 0.2s;"
+                 :style="veiculoPorPessoa[v.id]
+                   ? 'border:1px solid rgba(0,255,136,0.4);background:rgba(0,255,136,0.05);'
+                   : 'border:1px solid rgba(255,107,0,0.4);background:rgba(255,107,0,0.05);'"
                  :id="'vinculo-' + v.id">
 
               <!-- Cabeçalho: placa + status -->
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="text-slate-400 text-base">🚗</span>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:8px;">
                   <div>
-                    <span class="font-mono font-bold text-base text-slate-100"
+                    <span style="font-family:var(--font-data);font-weight:700;font-size:16px;color:var(--color-text);"
                           x-text="formatarPlaca(v.placa || '')"></span>
                     <span x-show="v.modelo || v.cor"
-                          class="block text-xs text-slate-400"
+                          style="display:block;font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);"
                           x-text="[v.modelo, v.cor].filter(Boolean).join(' — ')"></span>
                   </div>
                 </div>
                 <span x-show="veiculoPorPessoa[v.id]"
-                      class="text-green-400 text-sm font-medium">✓ vinculado</span>
+                      style="color:var(--color-success);font-family:var(--font-data);font-size:12px;font-weight:600;text-transform:uppercase;">vinculado</span>
                 <span x-show="!veiculoPorPessoa[v.id]"
-                      class="text-yellow-400 text-xs">⚠ sem vínculo</span>
+                      style="color:var(--color-danger);font-family:var(--font-data);font-size:11px;text-transform:uppercase;">sem vínculo</span>
               </div>
 
               <!-- Seleção do condutor -->
               <div>
-                <p class="text-xs text-slate-400 mb-2">Quem estava no veículo?</p>
-                <div class="flex flex-wrap gap-2">
+                <p style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);margin-bottom:8px;">Quem estava no veículo?</p>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;">
                   <template x-for="p in pessoasSelecionadas" :key="p.id">
                     <button type="button"
                             @click="veiculoPorPessoa = {...veiculoPorPessoa, [v.id]: veiculoPorPessoa[v.id] === p.id ? null : p.id}"
-                            class="text-sm px-3 py-2 rounded-lg border transition-colors"
-                            :class="veiculoPorPessoa[v.id] === p.id
-                              ? 'bg-blue-600 border-blue-500 text-white font-medium'
-                              : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'">
+                            style="font-family:var(--font-data);font-size:13px;padding:8px 12px;border-radius:4px;cursor:pointer;transition:all 0.15s;"
+                            :style="veiculoPorPessoa[v.id] === p.id
+                              ? 'background:rgba(0,212,255,0.15);border:1px solid var(--color-primary);color:var(--color-primary);font-weight:600;'
+                              : 'background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-text-muted);'">
                       <span x-text="p.nome"></span>
                     </button>
                   </template>
@@ -291,14 +300,16 @@ function renderAbordagemNova() {
               </div>
 
               <!-- Foto do veículo -->
-              <div class="flex items-center gap-2 mt-2">
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
                 <label :for="'foto-v-' + v.id"
-                       class="cursor-pointer text-xs px-2 py-1 rounded flex items-center gap-1"
-                       :class="fotosVeiculos[v.id] ? 'bg-green-900/50 text-green-400' : 'bg-slate-700 text-blue-400 hover:bg-slate-600'">
-                  <span x-text="fotosVeiculos[v.id] ? '✓ Foto veículo' : '📷 Foto veículo'"></span>
+                       style="cursor:pointer;font-family:var(--font-data);font-size:11px;padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;"
+                       :style="fotosVeiculos[v.id]
+                         ? 'background:rgba(0,255,136,0.1);color:var(--color-success);border:1px solid rgba(0,255,136,0.2);'
+                         : 'background:var(--color-surface-hover);color:var(--color-primary);border:1px solid rgba(0,212,255,0.2);'">
+                  <span x-text="fotosVeiculos[v.id] ? 'FOTO OK' : 'CAPTURAR FOTO'"></span>
                 </label>
                 <input type="file" accept="image/*" capture="environment"
-                       :id="'foto-v-' + v.id" class="hidden"
+                       :id="'foto-v-' + v.id" style="display:none;"
                        @change="fotosVeiculos = {...fotosVeiculos, [v.id]: $event.target.files[0]}">
               </div>
             </div>
@@ -307,48 +318,48 @@ function renderAbordagemNova() {
 
         <!-- Botão para cadastrar sem buscar -->
         <button x-show="!showNovoVeiculo" @click="showNovoVeiculo = true"
-                class="text-xs text-blue-400 hover:text-blue-300">
+                style="color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;text-align:left;">
           + Adicionar veículo não cadastrado
         </button>
 
         <!-- Formulário inline: cadastrar novo veículo -->
-        <div x-show="showNovoVeiculo" x-cloak class="bg-slate-800/50 border border-slate-600 rounded-lg p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium text-slate-200">Cadastrar novo veículo</h3>
+        <div x-show="showNovoVeiculo" x-cloak style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--color-text);margin:0;">Cadastrar novo veículo</h3>
             <button @click="showNovoVeiculo = false; novoVeiculo = {placa:'',modelo:'',cor:'',ano:''}"
-                    class="text-slate-400 hover:text-white text-xs">Cancelar</button>
+                    style="color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;font-family:var(--font-data);font-size:11px;">Cancelar</button>
           </div>
 
           <!-- Placa + Foto -->
-          <div class="grid grid-cols-2 gap-3">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Placa *</label>
+              <label class="login-field-label">Placa *</label>
               <input type="text" :value="novoVeiculo.placa"
                      @input="novoVeiculo.placa = formatarPlaca($event.target.value)"
-                     placeholder="ABC-1234" maxlength="8" class="w-full uppercase">
+                     placeholder="ABC-1234" maxlength="8" style="width:100%;text-transform:uppercase;">
             </div>
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Foto do veículo</label>
+              <label class="login-field-label">Foto do veículo</label>
               <input type="file" accept="image/*" capture="environment"
                      @change="onFotoVeiculoSelected($event)"
-                     class="text-sm text-slate-400 w-full">
-              <p x-show="fotoVeiculoFile" class="text-xs text-slate-500 mt-1" x-text="fotoVeiculoFile?.name"></p>
+                     style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);width:100%;">
+              <p x-show="fotoVeiculoFile" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:4px;" x-text="fotoVeiculoFile?.name"></p>
             </div>
           </div>
 
           <!-- Modelo + Cor + Ano -->
-          <div class="grid grid-cols-3 gap-2">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Modelo</label>
-              <input type="text" list="lista-modelos-veiculo" x-model="novoVeiculo.modelo" placeholder="Ex: Gol" class="w-full">
+              <label class="login-field-label">Modelo</label>
+              <input type="text" list="lista-modelos-veiculo" x-model="novoVeiculo.modelo" placeholder="Ex: Gol" style="width:100%;">
             </div>
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Cor</label>
-              <input type="text" list="lista-cores-veiculo" x-model="novoVeiculo.cor" placeholder="Ex: Branco" class="w-full">
+              <label class="login-field-label">Cor</label>
+              <input type="text" list="lista-cores-veiculo" x-model="novoVeiculo.cor" placeholder="Ex: Branco" style="width:100%;">
             </div>
             <div>
-              <label class="block text-xs text-slate-400 mb-1">Ano</label>
-              <input type="number" x-model="novoVeiculo.ano" placeholder="2020" min="1900" max="2100" class="w-full">
+              <label class="login-field-label">Ano</label>
+              <input type="number" x-model="novoVeiculo.ano" placeholder="2020" min="1900" max="2100" style="width:100%;">
             </div>
           </div>
 
@@ -360,70 +371,72 @@ function renderAbordagemNova() {
             <template x-for="c in veiculoLocalidades.cores" :key="c"><option :value="c"></option></template>
           </datalist>
 
-          <button @click="criarVeiculo()" class="btn btn-primary text-sm" :disabled="salvandoVeiculo || !novoVeiculo.placa.trim()">
+          <button @click="criarVeiculo()" class="btn btn-primary" style="font-size:14px;" :disabled="salvandoVeiculo || !novoVeiculo.placa.trim()">
             <span x-show="!salvandoVeiculo">Salvar e adicionar</span>
-            <span x-show="salvandoVeiculo" class="flex items-center gap-2">
+            <span x-show="salvandoVeiculo" style="display:flex;align-items:center;gap:8px;">
               <span class="spinner"></span> Salvando...
             </span>
           </button>
-          <p x-show="erroVeiculo" class="text-xs text-red-400" x-text="erroVeiculo"></p>
+          <p x-show="erroVeiculo" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);" x-text="erroVeiculo"></p>
         </div>
       </div>
 
       <!-- 5. Observação -->
       <div>
-        <div class="flex items-center justify-between mb-1">
-          <label class="text-sm text-slate-300">Observação</label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <label class="login-field-label" style="margin-bottom:0;">Observação</label>
           <button x-show="voiceSupported" @click="toggleVoice()"
-                  class="text-xs px-2 py-1 rounded"
-                  :class="recording ? 'bg-red-600 text-white' : 'bg-slate-700 text-slate-300'">
-            <span x-text="recording ? 'Parar' : 'Voz'"></span>
+                  style="font-family:var(--font-data);font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;border:none;transition:all 0.15s;"
+                  :style="recording
+                    ? 'background:rgba(255,107,0,0.2);color:var(--color-danger);border:1px solid rgba(255,107,0,0.4);box-shadow:0 0 8px rgba(255,107,0,0.3);'
+                    : 'background:var(--color-surface);color:var(--color-text-muted);border:1px solid var(--color-border);'">
+            <span x-text="recording ? 'PARAR' : 'VOZ'"></span>
           </button>
         </div>
         <textarea x-model="observacao" rows="3" placeholder="Descreva a abordagem..."></textarea>
       </div>
 
       <!-- 6. Submit -->
-      <div class="space-y-3 pt-2">
+      <div style="display:flex;flex-direction:column;gap:12px;padding-top:8px;">
         <button @click="submit()" class="btn btn-primary" :disabled="submitting">
           <span x-show="!submitting">Registrar Abordagem</span>
-          <span x-show="submitting" class="flex items-center gap-2">
+          <span x-show="submitting" style="display:flex;align-items:center;gap:8px;">
             <span class="spinner"></span> Salvando...
           </span>
         </button>
 
-        <p x-show="erro" class="text-sm text-red-400" x-text="erro"></p>
+        <p x-show="erro" style="font-family:var(--font-data);font-size:13px;color:var(--color-danger);" x-text="erro"></p>
       </div>
 
       <!-- Modal de sucesso -->
       <div x-show="showSuccessModal" x-cloak
            role="dialog" aria-modal="true" aria-labelledby="modal-sucesso-titulo"
-           class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4">
-        <div class="bg-slate-800 border border-slate-600 rounded-xl p-6 max-w-sm w-full space-y-5 shadow-2xl">
+           style="position:fixed;inset:0;z-index:50;background:rgba(5,10,15,0.85);display:flex;align-items:center;justify-content:center;padding:0 16px;">
+        <div class="glass-card" style="padding:24px;border-radius:4px;max-width:384px;width:100%;display:flex;flex-direction:column;gap:20px;border:1px solid rgba(0,212,255,0.3);box-shadow:0 0 20px rgba(0,212,255,0.1);">
 
           <!-- Ícone de check -->
-          <div class="flex justify-center">
-            <div class="w-14 h-14 rounded-full bg-green-900/50 border border-green-500/50 flex items-center justify-center">
-              <svg class="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <div style="display:flex;justify-content:center;">
+            <div style="width:56px;height:56px;border-radius:4px;background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);display:flex;align-items:center;justify-content:center;">
+              <svg style="width:32px;height:32px;color:var(--color-success);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
           </div>
 
           <!-- Título e mensagem -->
-          <div class="text-center space-y-1">
-            <h3 id="modal-sucesso-titulo" class="text-lg font-bold text-slate-100">Abordagem registrada!</h3>
-            <p class="text-sm text-slate-400" x-text="successMessage"></p>
+          <div style="text-align:center;display:flex;flex-direction:column;gap:4px;">
+            <h3 id="modal-sucesso-titulo" style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--color-text);text-transform:uppercase;letter-spacing:0.05em;margin:0;">Abordagem registrada!</h3>
+            <p style="font-family:var(--font-data);font-size:13px;color:var(--color-text-muted);" x-text="successMessage"></p>
           </div>
 
           <!-- Ações -->
-          <div class="space-y-2 pt-1">
+          <div style="display:flex;flex-direction:column;gap:8px;padding-top:4px;">
             <button @click="document.querySelector('[x-data]')._x_dataStack[0].navigate('abordagem-nova')"
-                    class="btn btn-primary w-full">
+                    class="btn btn-primary" style="width:100%;">
               Registrar nova abordagem
             </button>
             <button @click="document.querySelector('[x-data]')._x_dataStack[0].navigate('home')"
-                    class="w-full px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-slate-100 hover:bg-slate-700 transition-colors">
+                    class="btn btn-secondary" style="width:100%;">
               Ir para página inicial
             </button>
           </div>
