@@ -56,8 +56,12 @@
   padding: 0;
 }
 
-body {
+html {
   background-color: var(--color-bg);
+}
+
+body {
+  background-color: transparent;
   color: var(--color-text);
   font-family: var(--font-body);
   font-weight: 400;
