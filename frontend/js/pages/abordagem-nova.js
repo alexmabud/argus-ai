@@ -206,7 +206,8 @@ function renderAbordagemNova() {
           </button>
         </div>
         <p x-show="endereco" style="font-family:var(--font-data);font-size:14px;color:var(--color-text-muted);" x-text="endereco"></p>
-        <p x-show="!endereco && !gpsLoading" style="font-family:var(--font-data);font-size:14px;color:var(--color-text-dim);">GPS não capturado</p>
+        <p x-show="!endereco && !gpsLoading && !gpsErro" style="font-family:var(--font-data);font-size:14px;color:var(--color-text-dim);">GPS não capturado</p>
+        <p x-show="gpsErro" style="font-family:var(--font-data);font-size:13px;color:var(--color-warning, #f59e0b);" x-text="gpsErro"></p>
         <p x-show="latitude" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);" x-text="latitude?.toFixed(6) + ', ' + longitude?.toFixed(6)"></p>
       </div>
 
@@ -454,6 +455,7 @@ function abordagemForm() {
     longitude: null,
     endereco: "",
     gpsLoading: false,
+    gpsErro: null,
 
     // Formulário
     observacao: "",
@@ -696,13 +698,33 @@ function abordagemForm() {
 
     async captureGPS() {
       this.gpsLoading = true;
+      this.gpsErro = null;
       try {
         const loc = await getGPSLocation();
         this.latitude = loc.latitude;
         this.longitude = loc.longitude;
         this.endereco = loc.endereco_texto || "";
-      } catch {
+      } catch (err) {
+        // Se TIMEOUT com high accuracy, tenta novamente com low accuracy
+        if (err && err.code === 3) {
+          try {
+            const loc = await getGPSLocationLowAccuracy();
+            this.latitude = loc.latitude;
+            this.longitude = loc.longitude;
+            this.endereco = loc.endereco_texto || "";
+            return;
+          } catch { /* fallback também falhou */ }
+        }
         this.endereco = "";
+        if (err && err.code === 1) {
+          this.gpsErro = "Permissão de localização negada. Habilite nas configurações do navegador.";
+        } else if (err && err.code === 2) {
+          this.gpsErro = "Sinal de GPS indisponível.";
+        } else if (err && err.code === 3) {
+          this.gpsErro = "Tempo esgotado ao capturar GPS.";
+        } else {
+          this.gpsErro = "GPS não suportado neste dispositivo.";
+        }
       } finally {
         this.gpsLoading = false;
       }
