@@ -6,82 +6,82 @@
  * Todas as informações aparecem sem ocultação.
  */
 const PALETTE = [
-  'border-l-blue-500',
-  'border-l-green-500',
-  'border-l-orange-500',
-  'border-l-purple-500',
-  'border-l-teal-500',
-  'border-l-yellow-500',
-  'border-l-red-400',
-  'border-l-pink-500',
+  'border-left: 3px solid var(--color-primary)',
+  'border-left: 3px solid var(--color-success)',
+  'border-left: 3px solid var(--color-secondary)',
+  'border-left: 3px solid #A78BFA',
+  'border-left: 3px solid #14B8A6',
+  'border-left: 3px solid var(--color-warning)',
+  'border-left: 3px solid var(--color-danger)',
+  'border-left: 3px solid #EC4899',
 ];
 
 function renderPessoaDetalhe(appState) {
   const pessoaId = appState._pessoaId;
   if (!pessoaId) {
-    return `<p class="text-slate-400">Nenhuma pessoa selecionada.</p>`;
+    return `<p style="color: var(--color-text-muted)">Nenhuma pessoa selecionada.</p>`;
   }
 
   return `
-    <div x-data="pessoaDetalhePage(${pessoaId})" x-init="load()" class="space-y-4 pb-24">
+    <div x-data="pessoaDetalhePage(${pessoaId})" x-init="load()" style="display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem;">
       <!-- Loading -->
-      <div x-show="loading" class="flex justify-center py-12">
+      <div x-show="loading" style="display: flex; justify-content: center; padding: 3rem 0;">
         <span class="spinner"></span>
       </div>
 
       <!-- Conteúdo -->
       <template x-if="pessoa && !loading">
-        <div class="space-y-4">
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
           <!-- Header -->
           <div>
-            <button @click="goBack()" class="text-blue-400 text-sm mb-2">&larr; Voltar</button>
-            <h2 class="text-xl font-bold text-slate-100" x-text="pessoa.nome"></h2>
-            <p x-show="pessoa.apelido" class="text-sm text-yellow-400 font-medium" x-text="'Vulgo: ' + pessoa.apelido"></p>
+            <button @click="goBack()" style="color: var(--color-primary); font-family: var(--font-body); font-size: 0.875rem; background: none; border: none; cursor: pointer; margin-bottom: 0.5rem; display: block;">&larr; Voltar</button>
+            <h2 x-text="pessoa.nome" style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--color-text); text-transform: uppercase; margin: 0;"></h2>
+            <p x-show="pessoa.apelido" x-text="'Vulgo: ' + pessoa.apelido" style="font-size: 0.875rem; color: var(--color-secondary); font-weight: 500; margin: 0.25rem 0 0 0;"></p>
           </div>
 
           <!-- Dados pessoais -->
-          <div class="card space-y-2 border-l-4 border-l-slate-400">
-            <h3 class="text-sm font-semibold text-slate-300">Dados Pessoais</h3>
-            <div class="grid grid-cols-2 gap-2 text-sm">
+          <div class="glass-card" style="border-left: 3px solid var(--color-primary); display: flex; flex-direction: column; gap: 0.5rem;">
+            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Dados Pessoais</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.875rem;">
               <div>
-                <span class="text-slate-500">CPF:</span>
-                <span class="text-slate-300 ml-1" x-text="pessoa.cpf || pessoa.cpf_masked || '—'"></span>
+                <span style="color: var(--color-text-dim)">CPF:</span>
+                <span style="color: var(--color-text-muted); margin-left: 0.25rem;" x-text="pessoa.cpf || pessoa.cpf_masked || '—'"></span>
               </div>
               <div>
-                <span class="text-slate-500">Cadastro:</span>
-                <span class="text-slate-300 ml-1" x-text="new Date(pessoa.criado_em).toLocaleDateString('pt-BR')"></span>
+                <span style="color: var(--color-text-dim)">Cadastro:</span>
+                <span style="color: var(--color-text-muted); margin-left: 0.25rem;" x-text="new Date(pessoa.criado_em).toLocaleDateString('pt-BR')"></span>
               </div>
               <div>
-                <span class="text-slate-500">Nascimento:</span>
-                <span class="text-slate-300 ml-1" x-text="pessoa.data_nascimento ? new Date(pessoa.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'"></span>
+                <span style="color: var(--color-text-dim)">Nascimento:</span>
+                <span style="color: var(--color-text-muted); margin-left: 0.25rem;" x-text="pessoa.data_nascimento ? new Date(pessoa.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'"></span>
               </div>
               <div>
-                <span class="text-slate-500">Abordagens:</span>
-                <span class="text-slate-300 ml-1" x-text="pessoa.abordagens_count || 0"></span>
+                <span style="color: var(--color-text-dim)">Abordagens:</span>
+                <span style="color: var(--color-text-muted); margin-left: 0.25rem;" x-text="pessoa.abordagens_count || 0"></span>
               </div>
             </div>
-            <div x-show="pessoa.observacoes" class="pt-1">
-              <span class="text-xs text-slate-500">Obs:</span>
-              <p class="text-xs text-slate-400" x-text="pessoa.observacoes"></p>
+            <div x-show="pessoa.observacoes" style="padding-top: 0.25rem;">
+              <span style="font-size: 0.75rem; color: var(--color-text-dim)">Obs:</span>
+              <p style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;" x-text="pessoa.observacoes"></p>
             </div>
           </div>
 
           <!-- Fotos -->
-          <div class="card space-y-2 border-l-4 border-l-amber-500">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-slate-300">
+          <div class="glass-card" style="border-left: 3px solid var(--color-success); display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
                 Fotos (<span x-text="fotos.length"></span>)
               </h3>
               <!-- Botões câmera + galeria -->
-              <div class="flex gap-1.5">
-                <label class="cursor-pointer text-xs px-2 py-1 rounded bg-slate-700 text-blue-400 hover:bg-slate-600 transition-colors">
+              <div style="display: flex; gap: 0.375rem;">
+                <label style="cursor: pointer; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface-hover); color: var(--color-primary);">
                   📷
-                  <input type="file" accept="image/*" capture="environment" class="hidden"
+                  <input type="file" accept="image/*" capture="environment" style="display: none;"
                          @change="onNovaFotoSelected($event)">
                 </label>
-                <label class="cursor-pointer text-xs px-2 py-1 rounded bg-slate-700 text-blue-400 hover:bg-slate-600 transition-colors">
+                <label style="cursor: pointer; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface-hover); color: var(--color-primary);">
                   📁
-                  <input type="file" accept="image/*" class="hidden"
+                  <input type="file" accept="image/*" style="display: none;"
                          @change="onNovaFotoSelected($event)">
                 </label>
               </div>
@@ -89,20 +89,21 @@ function renderPessoaDetalhe(appState) {
 
             <!-- Preview + botão enviar (aparece após selecionar) -->
             <template x-if="novaFotoFile">
-              <div class="flex items-center gap-3 p-2 bg-slate-700/50 rounded-lg">
-                <img :src="novaFotoPreviewUrl" class="w-12 h-12 rounded object-cover shrink-0">
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-slate-400 truncate" x-text="novaFotoFile?.name"></p>
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: var(--color-surface-hover); border-radius: 4px;">
+                <img :src="novaFotoPreviewUrl" style="width: 3rem; height: 3rem; border-radius: 4px; object-fit: cover; flex-shrink: 0;">
+                <div style="flex: 1; min-width: 0;">
+                  <p style="font-size: 0.75rem; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0;" x-text="novaFotoFile?.name"></p>
                 </div>
-                <div class="flex gap-1.5 shrink-0">
+                <div style="display: flex; gap: 0.375rem; flex-shrink: 0;">
                   <button @click="uploadNovaFoto()"
                           :disabled="uploadandoFoto"
-                          class="text-xs px-2 py-1 rounded bg-green-700 text-green-200 hover:bg-green-600 transition-colors disabled:opacity-50">
+                          style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-success); color: var(--color-bg); border: none; cursor: pointer; opacity: 1;"
+                          :style="uploadandoFoto ? 'opacity: 0.5' : ''">
                     <span x-show="!uploadandoFoto">Enviar</span>
                     <span x-show="uploadandoFoto" class="spinner"></span>
                   </button>
                   <button @click="cancelarNovaFoto()"
-                          class="text-xs px-2 py-1 rounded bg-slate-600 text-slate-400 hover:bg-slate-500 transition-colors">
+                          style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-border); cursor: pointer;">
                     ✕
                   </button>
                 </div>
@@ -110,16 +111,16 @@ function renderPessoaDetalhe(appState) {
             </template>
 
             <!-- Grid de fotos existentes -->
-            <div x-show="fotos.length > 0" class="grid grid-cols-3 gap-2">
+            <div x-show="fotos.length > 0" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
               <template x-for="foto in fotos" :key="foto.id">
                 <div>
-                  <div class="relative">
-                    <img :src="foto.arquivo_url" class="w-full h-28 object-cover rounded-lg" loading="lazy"
+                  <div style="position: relative;">
+                    <img :src="foto.arquivo_url" style="width: 100%; height: 7rem; object-fit: cover; border-radius: 4px; cursor: pointer;" loading="lazy"
                          @click="fotoAmpliada = foto.arquivo_url">
-                    <span class="absolute bottom-1 left-1 bg-black/60 text-[10px] text-slate-300 px-1 rounded"
+                    <span style="position: absolute; bottom: 0.25rem; left: 0.25rem; background: rgba(5,10,15,0.7); font-size: 10px; color: var(--color-text-muted); padding: 0 0.25rem; border-radius: 2px;"
                           x-text="foto.tipo || 'foto'"></span>
                   </div>
-                  <p class="text-xs text-slate-400 text-center mt-1"
+                  <p style="font-size: 0.75rem; color: var(--color-text-muted); text-align: center; margin-top: 0.25rem;"
                      x-show="foto.data_hora"
                      x-text="foto.data_hora ? new Date(foto.data_hora).toLocaleDateString('pt-BR') : ''"></p>
                 </div>
@@ -127,53 +128,54 @@ function renderPessoaDetalhe(appState) {
             </div>
 
             <!-- Estado vazio -->
-            <p x-show="fotos.length === 0 && !novaFotoFile" class="text-xs text-slate-500">
+            <p x-show="fotos.length === 0 && !novaFotoFile" style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
               Nenhuma foto cadastrada.
             </p>
           </div>
 
           <!-- Foto ampliada (modal) -->
           <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
-               class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-            <img :src="fotoAmpliada" class="max-w-full max-h-full rounded-lg">
+               style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+            <img :src="fotoAmpliada" style="max-width: 100%; max-height: 100%; border-radius: 4px;">
           </div>
 
           <!-- Modal preview de pessoa coabordada -->
           <div x-show="pessoaPreview" x-cloak
                @click.self="pessoaPreview = null"
-               class="fixed inset-0 bg-black/60 z-50 flex items-end justify-center sm:items-center p-4">
+               style="position: fixed; inset: 0; background: rgba(5,10,15,0.7); z-index: 50; display: flex; align-items: flex-end; justify-content: center; padding: 1rem;">
             <div @click="viewPessoa(pessoaPreview.id)"
-                 class="bg-slate-800 border border-slate-600 rounded-2xl p-5 w-full max-w-sm space-y-3 cursor-pointer hover:border-blue-500 transition-colors">
+                 class="glass-card"
+                 style="border: 1px solid var(--color-border); padding: 1.25rem; width: 100%; max-width: 24rem; display: flex; flex-direction: column; gap: 0.75rem; cursor: pointer;">
               <!-- Foto ou ícone -->
-              <div class="flex justify-center">
+              <div style="display: flex; justify-content: center;">
                 <template x-if="pessoaPreview?.foto_principal_url">
                   <img :src="pessoaPreview.foto_principal_url"
-                       class="w-20 h-20 rounded-full object-cover border-2 border-slate-500">
+                       style="width: 5rem; height: 5rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border);">
                 </template>
                 <template x-if="!pessoaPreview?.foto_principal_url">
-                  <div class="w-20 h-20 rounded-full bg-slate-700 border-2 border-slate-500 flex items-center justify-center text-slate-400">
-                    <svg class="w-10 h-10" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <div style="width: 5rem; height: 5rem; border-radius: 4px; background: var(--color-surface-hover); border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim);">
+                    <svg style="width: 2.5rem; height: 2.5rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                     </svg>
                   </div>
                 </template>
               </div>
               <!-- Dados -->
-              <div class="text-center space-y-1">
-                <p class="text-base font-bold text-slate-100" x-text="pessoaPreview?.nome"></p>
+              <div style="text-align: center; display: flex; flex-direction: column; gap: 0.25rem;">
+                <p style="font-size: 1rem; font-weight: 700; color: var(--color-text); font-family: var(--font-display); text-transform: uppercase; margin: 0;" x-text="pessoaPreview?.nome"></p>
                 <p x-show="pessoaPreview?.apelido"
-                   class="text-sm text-yellow-400 font-medium"
+                   style="font-size: 0.875rem; color: var(--color-secondary); font-weight: 500; margin: 0;"
                    x-text="'Vulgo: ' + pessoaPreview?.apelido"></p>
                 <p x-show="pessoaPreview?.cpf_masked"
-                   class="text-xs text-slate-400"
+                   style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;"
                    x-text="'CPF: ' + pessoaPreview?.cpf_masked"></p>
                 <p x-show="pessoaPreview?.data_nascimento"
-                   class="text-xs text-slate-400"
+                   style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;"
                    x-text="'Nascimento: ' + (pessoaPreview?.data_nascimento ? new Date(pessoaPreview.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '')"></p>
               </div>
               <!-- Botão -->
-              <div class="pt-1">
-                <div class="w-full text-center text-sm font-semibold text-blue-400 py-2 rounded-lg border border-blue-500/40 bg-blue-500/10">
+              <div style="padding-top: 0.25rem;">
+                <div style="width: 100%; text-align: center; font-size: 0.875rem; font-weight: 600; color: var(--color-primary); padding: 0.5rem; border-radius: 4px; border: 1px solid rgba(0,212,255,0.3); background: rgba(0,212,255,0.08); font-family: var(--font-data); text-transform: uppercase; letter-spacing: 0.05em;">
                   Ver ficha completa →
                 </div>
               </div>
@@ -183,141 +185,147 @@ function renderPessoaDetalhe(appState) {
           <!-- Modal de cadastro de vínculo manual -->
           <div x-show="modalVinculo" x-cloak
                @click.self="fecharModalVinculo()"
-               class="fixed inset-0 bg-black/60 z-50 flex items-end justify-center sm:items-center p-4">
-            <div class="bg-slate-800 border border-slate-600 rounded-2xl p-5 w-full max-w-sm space-y-4"
+               style="position: fixed; inset: 0; background: rgba(5,10,15,0.7); z-index: 50; display: flex; align-items: flex-end; justify-content: center; padding: 1rem;">
+            <div class="glass-card"
+                 style="border: 1px solid var(--color-border); padding: 1.25rem; width: 100%; max-width: 24rem; display: flex; flex-direction: column; gap: 1rem;"
                  @click.stop>
-              <div class="flex items-center justify-between">
-                <h3 class="text-base font-semibold text-slate-100">Cadastrar Vínculo Manual</h3>
-                <button @click="fecharModalVinculo()" class="text-slate-400 hover:text-slate-200 text-lg leading-none">&times;</button>
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <h3 style="font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--color-text); margin: 0;">Cadastrar Vínculo Manual</h3>
+                <button @click="fecharModalVinculo()" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
               </div>
 
               <!-- Busca de pessoa -->
               <div x-show="!pessoaSelecionada && !subFormNovaPessoa">
-                <label class="text-xs text-slate-400 font-medium block mb-1">Buscar pessoa</label>
+                <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Buscar pessoa</label>
                 <input type="text"
                        x-model="buscaVinculo"
                        @input="onBuscaVinculo()"
                        placeholder="Nome, apelido ou CPF..."
-                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                       style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
+                       onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
 
                 <!-- Loading -->
-                <div x-show="buscandoPessoa" class="flex justify-center py-2">
+                <div x-show="buscandoPessoa" style="display: flex; justify-content: center; padding: 0.5rem 0;">
                   <span class="spinner"></span>
                 </div>
 
                 <!-- Resultados -->
                 <div x-show="resultadosBusca.length > 0 || (buscaVinculo.trim().length >= 2 && !buscandoPessoa)"
-                     class="mt-1 bg-slate-700 border border-slate-600 rounded-lg overflow-hidden">
+                     style="margin-top: 0.25rem; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; overflow: hidden;">
                   <template x-for="p in resultadosBusca" :key="p.id">
                     <div @click="selecionarPessoa(p)"
-                         class="flex items-center gap-2 px-3 py-2 border-b border-slate-600 last:border-0 cursor-pointer hover:bg-slate-600 transition-colors">
+                         style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--color-border); cursor: pointer;"
+                         onmouseover="this.style.background='var(--color-surface)'" onmouseout="this.style.background='transparent'">
                       <template x-if="p.foto_principal_url">
-                        <img :src="p.foto_principal_url" class="w-7 h-7 rounded-full object-cover">
+                        <img :src="p.foto_principal_url" style="width: 1.75rem; height: 1.75rem; border-radius: 4px; object-fit: cover;">
                       </template>
                       <template x-if="!p.foto_principal_url">
-                        <div class="w-7 h-7 rounded-full bg-slate-500 flex items-center justify-center text-slate-300 text-xs" x-text="p.nome[0]"></div>
+                        <div style="width: 1.75rem; height: 1.75rem; border-radius: 4px; background: var(--color-surface); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 0.75rem;" x-text="p.nome[0]"></div>
                       </template>
                       <div>
-                        <div class="text-sm text-slate-100" x-text="p.nome"></div>
-                        <div x-show="p.cpf_masked" class="text-xs text-slate-400" x-text="p.cpf_masked"></div>
+                        <div style="font-size: 0.875rem; color: var(--color-text);" x-text="p.nome"></div>
+                        <div x-show="p.cpf_masked" style="font-size: 0.75rem; color: var(--color-text-muted);" x-text="p.cpf_masked"></div>
                       </div>
                     </div>
                   </template>
                   <!-- Cadastrar novo -->
                   <div x-show="buscaVinculo.trim().length >= 2 && !buscandoPessoa"
                        @click="iniciarCadastroNovo()"
-                       class="flex items-center gap-2 px-3 py-2 bg-blue-900/30 cursor-pointer hover:bg-blue-900/50 transition-colors">
-                    <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">+</div>
+                       style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(0,212,255,0.05); cursor: pointer;"
+                       onmouseover="this.style.background='rgba(0,212,255,0.1)'" onmouseout="this.style.background='rgba(0,212,255,0.05)'">
+                    <div style="width: 1.75rem; height: 1.75rem; border-radius: 4px; background: var(--color-primary); display: flex; align-items: center; justify-content: center; color: var(--color-bg); font-size: 0.875rem; font-weight: 700;">+</div>
                     <div>
-                      <div class="text-sm text-blue-400 font-medium">Cadastrar novo</div>
-                      <div class="text-xs text-slate-400">Pessoa não encontrada — clique para cadastrar</div>
+                      <div style="font-size: 0.875rem; color: var(--color-primary); font-weight: 500;">Cadastrar novo</div>
+                      <div style="font-size: 0.75rem; color: var(--color-text-muted);">Pessoa não encontrada — clique para cadastrar</div>
                     </div>
                   </div>
                 </div>
               </div>
 
               <!-- Pessoa selecionada -->
-              <div x-show="pessoaSelecionada" class="flex items-center gap-2 bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2">
-                <div class="w-7 h-7 rounded-full bg-slate-500 flex items-center justify-center text-slate-300 text-xs"
+              <div x-show="pessoaSelecionada" style="display: flex; align-items: center; gap: 0.5rem; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem;">
+                <div style="width: 1.75rem; height: 1.75rem; border-radius: 4px; background: var(--color-surface); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 0.75rem;"
                      x-text="pessoaSelecionada?.nome?.[0] || ''"></div>
-                <div class="flex-1">
-                  <div class="text-sm text-slate-100" x-text="pessoaSelecionada?.nome"></div>
+                <div style="flex: 1;">
+                  <div style="font-size: 0.875rem; color: var(--color-text);" x-text="pessoaSelecionada?.nome"></div>
                 </div>
                 <button @click="pessoaSelecionada = null; buscaVinculo = ''"
-                        class="text-slate-400 hover:text-slate-200 text-xs">trocar</button>
+                        style="color: var(--color-text-muted); font-size: 0.75rem; background: none; border: none; cursor: pointer;">trocar</button>
               </div>
 
               <!-- Sub-formulário: cadastrar nova pessoa -->
-              <div x-show="subFormNovaPessoa" class="space-y-2">
-                <p class="text-xs text-blue-400 font-medium">Nova pessoa</p>
+              <div x-show="subFormNovaPessoa" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <p style="font-size: 0.75rem; color: var(--color-primary); font-weight: 500; margin: 0;">Nova pessoa</p>
                 <input type="text" x-model="novaPessoaForm.nome" placeholder="Nome *"
-                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                       style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;">
                 <input type="text" x-model="novaPessoaForm.apelido" placeholder="Apelido (opcional)"
-                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                       style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;">
                 <input type="text" x-model="novaPessoaForm.cpf" placeholder="CPF (opcional)"
-                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                       style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;">
                 <input type="text" x-model="novaPessoaForm.data_nascimento"
                        @input="novaPessoaForm.data_nascimento = formatarData($event.target.value)"
                        placeholder="DD/MM/AAAA" maxlength="10"
-                       class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
-                <div class="flex gap-2">
+                       style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;">
+                <div style="display: flex; gap: 0.5rem;">
                   <button @click="subFormNovaPessoa = false"
-                          class="flex-1 bg-slate-600 text-slate-300 rounded-lg py-2 text-sm">Cancelar</button>
+                          style="flex: 1; background: var(--color-surface-hover); color: var(--color-text-muted); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem; font-size: 0.875rem; cursor: pointer;">Cancelar</button>
                   <button @click="cadastrarNovaPessoa()"
                           :disabled="!novaPessoaForm.nome.trim()"
-                          class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg py-2 text-sm font-medium transition-colors">Cadastrar</button>
+                          class="btn btn-primary"
+                          style="flex: 1; border-radius: 4px; padding: 0.5rem; font-size: 0.875rem; font-weight: 500;">Cadastrar</button>
                 </div>
               </div>
 
               <!-- Tipo e descrição (só aparece quando pessoa selecionada) -->
-              <div x-show="pessoaSelecionada" class="space-y-3">
+              <div x-show="pessoaSelecionada" style="display: flex; flex-direction: column; gap: 0.75rem;">
                 <div>
-                  <label class="text-xs text-slate-400 font-medium block mb-1">
-                    Tipo do vínculo <span class="text-red-400">*</span>
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Tipo do vínculo <span style="color: var(--color-danger)">*</span>
                   </label>
                   <input type="text"
                          x-model="novoVinculo.tipo"
                          placeholder="Ex: Irmão, Pai, Amigo, Sócio..."
-                         class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
-                  <p class="text-xs text-slate-500 mt-1">Palavra curta que define a relação</p>
+                         style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;">
+                  <p style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0.25rem 0 0 0;">Palavra curta que define a relação</p>
                 </div>
                 <div>
-                  <label class="text-xs text-slate-400 font-medium block mb-1">
-                    Descrição <span class="text-slate-500">(opcional)</span>
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Descrição <span style="color: var(--color-text-dim)">(opcional)</span>
                   </label>
                   <textarea x-model="novoVinculo.descricao"
                             placeholder="Ex: Traficando junto na casa ao lado..."
                             rows="2"
-                            class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                            style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); resize: none; box-sizing: border-box;"></textarea>
                 </div>
-                <div class="flex gap-2">
+                <div style="display: flex; gap: 0.5rem;">
                   <button @click="fecharModalVinculo()"
-                          class="flex-1 bg-slate-600 text-slate-300 rounded-lg py-2.5 text-sm">Cancelar</button>
+                          style="flex: 1; background: var(--color-surface-hover); color: var(--color-text-muted); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.625rem; font-size: 0.875rem; cursor: pointer;">Cancelar</button>
                   <button @click="salvarVinculo()"
                           :disabled="!novoVinculo.tipo.trim()"
-                          class="flex-2 flex-grow bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg py-2.5 text-sm font-medium transition-colors">Salvar Vínculo</button>
+                          class="btn btn-primary"
+                          style="flex: 2; border-radius: 4px; padding: 0.625rem; font-size: 0.875rem; font-weight: 500;">Salvar Vínculo</button>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Endereços -->
-          <div x-show="pessoa.enderecos?.length > 0" class="card space-y-2 border-l-4 border-l-blue-600">
-            <h3 class="text-sm font-semibold text-slate-300">
+          <div x-show="pessoa.enderecos?.length > 0" class="glass-card" style="border-left: 3px solid var(--color-primary); display: flex; flex-direction: column; gap: 0.5rem;">
+            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
               Endereços (<span x-text="pessoa.enderecos.length"></span>)
             </h3>
-            <div class="space-y-2">
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
               <template x-for="(end, idx) in pessoa.enderecos" :key="end.id">
-                <div class="border border-slate-700/40 border-l-4 rounded-lg p-3" :class="PALETTE[idx % PALETTE.length]">
-                  <div class="flex items-start justify-between gap-2">
-                    <p class="text-sm text-slate-300" x-text="formatEndereco(end)"></p>
-                    <span x-show="end.criado_em" class="text-xs text-slate-500 shrink-0"
+                <div style="border: 1px solid var(--color-border); border-radius: 4px; padding: 0.75rem;" :style="PALETTE[idx % PALETTE.length]">
+                  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
+                    <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0;" x-text="formatEndereco(end)"></p>
+                    <span x-show="end.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim); flex-shrink: 0;"
                           x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
                   </div>
-                  <div class="flex gap-3 text-[10px] text-slate-500 mt-0.5">
+                  <div style="display: flex; gap: 0.75rem; font-size: 10px; color: var(--color-text-dim); margin-top: 0.125rem;">
                     <span x-show="end.data_inicio" x-text="'Desde ' + new Date(end.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
                     <span x-show="end.data_fim" x-text="'Até ' + new Date(end.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
-                    <span x-show="idx === 0" class="text-blue-400 font-medium">Atual</span>
+                    <span x-show="idx === 0" style="color: var(--color-primary); font-weight: 500;">Atual</span>
                   </div>
                 </div>
               </template>
@@ -325,26 +333,26 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Veículos Vinculados ao Abordado (container pai) -->
-          <div x-show="veiculos.length > 0" class="card space-y-3 border-l-4 border-l-emerald-500">
-            <h3 class="text-sm font-semibold text-slate-300">Veículos Vinculados ao Abordado</h3>
+          <div x-show="veiculos.length > 0" class="glass-card" style="border-left: 3px solid var(--color-success); display: flex; flex-direction: column; gap: 0.75rem;">
+            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Veículos Vinculados ao Abordado</h3>
 
             <!-- Lista de veículos -->
-            <div x-show="veiculos.length > 0" class="space-y-2">
+            <div x-show="veiculos.length > 0" style="display: flex; flex-direction: column; gap: 0.5rem;">
               <template x-for="(v, idx) in veiculos" :key="v.id">
-                <div class="flex items-center border border-slate-700/40 border-l-4 rounded-lg p-3" :class="PALETTE[idx % PALETTE.length]">
-                  <div class="flex items-start justify-between gap-2 w-full">
+                <div style="display: flex; align-items: center; border: 1px solid var(--color-border); border-radius: 4px; padding: 0.75rem;" :style="PALETTE[idx % PALETTE.length]">
+                  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; width: 100%;">
                     <div>
-                      <span class="font-mono font-bold text-slate-100 tracking-wider" x-text="formatPlaca(v.placa)"></span>
-                      <p x-show="v.modelo || v.cor || v.ano" class="text-xs text-slate-400"
+                      <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em;" x-text="formatPlaca(v.placa)"></span>
+                      <p x-show="v.modelo || v.cor || v.ano" style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;"
                          x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
                       <template x-if="fotosVeiculos[v.id]">
                         <img :src="fotosVeiculos[v.id].arquivo_url"
-                             class="w-16 h-16 object-cover rounded-lg cursor-pointer mt-1"
+                             style="width: 4rem; height: 4rem; object-fit: cover; border-radius: 4px; cursor: pointer; margin-top: 0.25rem;"
                              @click="fotoAmpliada = fotosVeiculos[v.id].arquivo_url"
                              loading="lazy">
                       </template>
                     </div>
-                    <span x-show="v.criado_em" class="text-xs text-slate-500 shrink-0"
+                    <span x-show="v.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim); flex-shrink: 0;"
                           x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></span>
                   </div>
                 </div>
@@ -354,42 +362,44 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Vínculos (automáticos + manuais) -->
-          <div class="card space-y-2 border-l-4 border-l-orange-500">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-slate-300">Vínculos</h3>
+          <div class="glass-card" style="border-left: 3px solid var(--color-secondary); display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Vínculos</h3>
               <button @click="abrirModalVinculo()"
-                      class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors">
+                      class="btn btn-primary"
+                      style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px;">
                 + Adicionar
               </button>
             </div>
 
             <!-- Seção 1: Vínculos em Abordagem -->
-            <div x-show="pessoa.relacionamentos?.length > 0" class="space-y-1">
-              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+            <div x-show="pessoa.relacionamentos?.length > 0" style="display: flex; flex-direction: column; gap: 0.25rem;">
+              <p style="font-size: 10px; font-family: var(--font-data); font-weight: 600; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
                 Vínculos em Abordagem (<span x-text="pessoa.relacionamentos.length"></span>)
               </p>
-              <div class="space-y-2">
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <template x-for="rel in pessoa.relacionamentos" :key="rel.pessoa_id">
                   <div @click="viewPessoa(rel.pessoa_id)"
-                       class="flex items-center justify-between border border-slate-700/40 border-l-4 border-l-orange-500 rounded-lg p-3 cursor-pointer hover:bg-slate-800/50">
-                    <div class="flex items-center gap-2">
+                       style="display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--color-border); border-left: 3px solid var(--color-secondary); border-radius: 4px; padding: 0.75rem; cursor: pointer;"
+                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
                       <template x-if="rel.foto_principal_url">
                         <img :src="rel.foto_principal_url"
-                             class="w-8 h-8 rounded-full object-cover border-2 border-slate-600 shrink-0"
+                             style="width: 2rem; height: 2rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border); flex-shrink: 0;"
                              loading="lazy">
                       </template>
                       <template x-if="!rel.foto_principal_url">
-                        <div class="w-8 h-8 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center text-slate-400 shrink-0">
-                          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <div style="width: 2rem; height: 2rem; border-radius: 4px; background: var(--color-surface-hover); border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); flex-shrink: 0;">
+                          <svg style="width: 1rem; height: 1rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                           </svg>
                         </div>
                       </template>
-                      <span class="text-sm text-slate-300" x-text="rel.nome"></span>
+                      <span style="font-size: 0.875rem; color: var(--color-text-muted);" x-text="rel.nome"></span>
                     </div>
-                    <div class="text-right">
-                      <span class="text-xs text-blue-400 font-medium" x-text="rel.frequencia + 'x juntos'"></span>
-                      <p x-show="rel.ultima_vez" class="text-[10px] text-slate-500"
+                    <div style="text-align: right;">
+                      <span style="font-size: 0.75rem; color: var(--color-primary); font-weight: 500;" x-text="rel.frequencia + 'x juntos'"></span>
+                      <p x-show="rel.ultima_vez" style="font-size: 10px; color: var(--color-text-dim); margin: 0;"
                          x-text="'Última: ' + new Date(rel.ultima_vez).toLocaleDateString('pt-BR')"></p>
                     </div>
                   </div>
@@ -399,45 +409,47 @@ function renderPessoaDetalhe(appState) {
 
             <!-- Separador (só quando ambas as seções têm itens) -->
             <div x-show="pessoa.relacionamentos?.length > 0 && vinculosManuais.length > 0"
-                 class="border-t border-slate-700/50"></div>
+                 style="border-top: 1px solid var(--color-border);"></div>
 
             <!-- Seção 2: Vínculos Manuais -->
-            <div x-show="vinculosManuais.length > 0" class="space-y-1">
-              <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+            <div x-show="vinculosManuais.length > 0" style="display: flex; flex-direction: column; gap: 0.25rem;">
+              <p style="font-size: 10px; font-family: var(--font-data); font-weight: 600; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
                 Vínculos Manuais (<span x-text="vinculosManuais.length"></span>)
               </p>
-              <div class="space-y-2">
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <template x-for="vm in vinculosManuais" :key="vm.id">
                   <div @click="viewPessoa(vm.pessoa_vinculada_id)"
-                       class="flex items-start justify-between border border-slate-700/40 border-l-4 border-l-purple-500 rounded-lg p-3 cursor-pointer hover:bg-slate-800/50">
-                    <div class="flex items-start gap-2">
+                       style="display: flex; align-items: flex-start; justify-content: space-between; border: 1px solid var(--color-border); border-left: 3px solid #A78BFA; border-radius: 4px; padding: 0.75rem; cursor: pointer;"
+                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
+                    <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
                       <template x-if="vm.foto_principal_url">
                         <img :src="vm.foto_principal_url"
-                             class="w-8 h-8 rounded-full object-cover border-2 border-slate-600 shrink-0 mt-0.5"
+                             style="width: 2rem; height: 2rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border); flex-shrink: 0; margin-top: 0.125rem;"
                              loading="lazy">
                       </template>
                       <template x-if="!vm.foto_principal_url">
-                        <div class="w-8 h-8 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
-                          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <div style="width: 2rem; height: 2rem; border-radius: 4px; background: var(--color-surface-hover); border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); flex-shrink: 0; margin-top: 0.125rem;">
+                          <svg style="width: 1rem; height: 1rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                           </svg>
                         </div>
                       </template>
                       <div>
-                        <span class="text-sm text-slate-300" x-text="vm.nome"></span>
-                        <p class="text-xs text-purple-400 font-semibold mt-0.5" x-text="vm.tipo"></p>
+                        <span style="font-size: 0.875rem; color: var(--color-text-muted);" x-text="vm.nome"></span>
+                        <p style="font-size: 0.75rem; color: #A78BFA; font-weight: 600; margin: 0.125rem 0 0 0;" x-text="vm.tipo"></p>
                         <p x-show="vm.descricao"
-                           class="text-xs text-slate-400 italic mt-0.5"
+                           style="font-size: 0.75rem; color: var(--color-text-muted); font-style: italic; margin: 0.125rem 0 0 0;"
                            x-text="'&quot;' + vm.descricao + '&quot;'"></p>
                       </div>
                     </div>
-                    <div class="flex flex-col items-end gap-1 shrink-0 ml-2">
-                      <span x-show="vm.criado_em" class="text-[10px] text-slate-500"
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex-shrink: 0; margin-left: 0.5rem;">
+                      <span x-show="vm.criado_em" style="font-size: 10px; color: var(--color-text-dim);"
                             x-text="new Date(vm.criado_em).toLocaleDateString('pt-BR')"></span>
                       <button @click.stop="removerVinculo(vm.id)"
-                              class="text-slate-500 hover:text-red-400 transition-colors"
+                              style="color: var(--color-text-dim); background: none; border: none; cursor: pointer;"
+                              onmouseover="this.style.color='var(--color-danger)'" onmouseout="this.style.color='var(--color-text-dim)'"
                               title="Remover vínculo">
-                        <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                       </button>
@@ -449,51 +461,51 @@ function renderPessoaDetalhe(appState) {
 
             <!-- Mensagem quando não há vínculos -->
             <div x-show="!pessoa.relacionamentos?.length && !vinculosManuais.length"
-                 class="text-xs text-slate-500 text-center py-2">
+                 style="font-size: 0.75rem; color: var(--color-text-dim); text-align: center; padding: 0.5rem 0;">
               Nenhum vínculo cadastrado
             </div>
           </div>
 
           <!-- Histórico de abordagens -->
-          <div x-show="abordagens.length > 0" class="card space-y-2 border-l-4 border-l-purple-600">
-            <h3 class="text-sm font-semibold text-slate-300">
+          <div x-show="abordagens.length > 0" class="glass-card" style="border-left: 3px solid #A78BFA; display: flex; flex-direction: column; gap: 0.5rem;">
+            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
               Histórico de Abordagens (<span x-text="abordagens.length"></span>)
             </h3>
-            <div class="space-y-3">
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
               <template x-for="(ab, idx) in abordagens" :key="ab.id">
-                <div class="border border-slate-700/40 border-l-4 rounded-lg p-3 space-y-2" :class="PALETTE[idx % PALETTE.length]">
-                  <div class="flex items-start justify-between gap-2">
+                <div style="border: 1px solid var(--color-border); border-radius: 4px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;" :style="PALETTE[idx % PALETTE.length]">
+                  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
                     <div>
-                      <span class="text-xs font-medium text-blue-400" x-text="'#' + ab.id"></span>
+                      <span style="font-size: 0.75rem; font-weight: 500; color: var(--color-primary);" x-text="'#' + ab.id"></span>
                     </div>
-                    <span x-show="ab.criado_em" class="text-xs text-slate-500 shrink-0"
+                    <span x-show="ab.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim); flex-shrink: 0;"
                           x-text="'Cadastrada em ' + new Date(ab.criado_em).toLocaleDateString('pt-BR') + ' às ' + new Date(ab.criado_em).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})"></span>
                   </div>
                   <!-- Endereço da Abordagem -->
-                  <div x-show="ab.endereco_texto" class="text-xs">
-                    <span class="text-slate-500 font-medium">Endereço da Abordagem:</span>
-                    <span class="text-slate-400 ml-1" x-text="ab.endereco_texto"></span>
+                  <div x-show="ab.endereco_texto" style="font-size: 0.75rem;">
+                    <span style="color: var(--color-text-dim); font-weight: 500;">Endereço da Abordagem:</span>
+                    <span style="color: var(--color-text-muted); margin-left: 0.25rem;" x-text="ab.endereco_texto"></span>
                   </div>
 
                   <!-- Observação -->
-                  <div x-show="ab.observacao" class="text-xs">
-                    <span class="text-slate-500 font-medium">Observação:</span>
-                    <span class="text-slate-300 ml-1" x-text="ab.observacao"></span>
+                  <div x-show="ab.observacao" style="font-size: 0.75rem;">
+                    <span style="color: var(--color-text-dim); font-weight: 500;">Observação:</span>
+                    <span style="color: var(--color-text-muted); margin-left: 0.25rem;" x-text="ab.observacao"></span>
                   </div>
 
                   <!-- Veículos desta abordagem -->
                   <template x-if="ab.veiculos?.length > 0">
-                    <div class="pt-1">
-                      <p class="text-[10px] font-semibold text-slate-500 mb-1.5">Veículos na Abordagem:</p>
-                      <div class="flex flex-col gap-1.5">
+                    <div style="padding-top: 0.25rem;">
+                      <p style="font-size: 10px; font-family: var(--font-data); font-weight: 600; color: var(--color-text-dim); margin: 0 0 0.375rem 0; text-transform: uppercase; letter-spacing: 0.05em;">Veículos na Abordagem:</p>
+                      <div style="display: flex; flex-direction: column; gap: 0.375rem;">
                         <template x-for="v in ab.veiculos" :key="v.id">
-                          <div class="text-xs text-slate-300">
-                            <span class="font-mono font-semibold text-slate-100 tracking-wider" x-text="formatPlaca(v.placa)"></span>
+                          <div style="font-size: 0.75rem; color: var(--color-text-muted);">
+                            <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em;" x-text="formatPlaca(v.placa)"></span>
                             <template x-if="v.modelo || v.cor">
-                              <span class="text-slate-400" x-text="' ' + [v.modelo, v.cor].filter(Boolean).join(' · ')"></span>
+                              <span style="color: var(--color-text-muted);" x-text="' ' + [v.modelo, v.cor].filter(Boolean).join(' · ')"></span>
                             </template>
                             <template x-if="v.pessoa_id">
-                              <span class="text-slate-500" x-text="' — ' + (ab.pessoas?.find(p => p.id === v.pessoa_id)?.nome || 'N/A')"></span>
+                              <span style="color: var(--color-text-dim);" x-text="' — ' + (ab.pessoas?.find(p => p.id === v.pessoa_id)?.nome || 'N/A')"></span>
                             </template>
                           </div>
                         </template>
@@ -503,27 +515,27 @@ function renderPessoaDetalhe(appState) {
 
                   <!-- Coabordados nesta abordagem -->
                   <template x-if="ab.pessoas?.filter(p => p.id !== ${pessoaId}).length > 0">
-                    <div class="pt-1">
-                      <p class="text-[10px] font-semibold text-slate-500 mb-1.5">Abordados juntos:</p>
-                      <div class="flex flex-wrap gap-3">
+                    <div style="padding-top: 0.25rem;">
+                      <p style="font-size: 10px; font-family: var(--font-data); font-weight: 600; color: var(--color-text-dim); margin: 0 0 0.375rem 0; text-transform: uppercase; letter-spacing: 0.05em;">Abordados juntos:</p>
+                      <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
                         <template x-for="p in ab.pessoas.filter(pp => pp.id !== ${pessoaId})" :key="p.id">
                           <div @click.stop="pessoaPreview = p"
-                               class="flex flex-col items-center gap-1 cursor-pointer w-10">
+                               style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem; cursor: pointer; width: 2.5rem;">
                             <!-- Com foto -->
                             <template x-if="p.foto_principal_url">
                               <img :src="p.foto_principal_url"
-                                   class="w-10 h-10 rounded-full object-cover border-2 border-slate-600 hover:border-blue-400 transition-colors"
+                                   style="width: 2.5rem; height: 2.5rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border);"
                                    loading="lazy">
                             </template>
                             <!-- Sem foto: ícone silhueta -->
                             <template x-if="!p.foto_principal_url">
-                              <div class="w-10 h-10 rounded-full bg-slate-700 border-2 border-slate-600 hover:border-blue-400 transition-colors flex items-center justify-center text-slate-400">
-                                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                              <div style="width: 2.5rem; height: 2.5rem; border-radius: 4px; background: var(--color-surface-hover); border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim);">
+                                <svg style="width: 1.25rem; height: 1.25rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                   <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                                 </svg>
                               </div>
                             </template>
-                            <span class="text-[9px] text-slate-400 text-center leading-tight w-10 truncate"
+                            <span style="font-size: 9px; color: var(--color-text-muted); text-align: center; line-height: 1.2; width: 2.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                                   x-text="p.nome.split(' ')[0]"></span>
                           </div>
                         </template>
@@ -536,25 +548,25 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Mapa de Abordagens -->
-          <div x-show="pontosComLocalizacao.length > 0" class="card space-y-2 border-l-4 border-l-teal-500">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-slate-300">
+          <div x-show="pontosComLocalizacao.length > 0" class="glass-card" style="border-left: 3px solid #14B8A6; display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
                 Mapa de Abordagens (<span x-text="pontosComLocalizacao.length"></span>)
               </h3>
-              <div class="flex gap-1">
+              <div style="display: flex; gap: 0.25rem;">
                 <button
                   @click="toggleModoMapa('marcadores')"
                   :aria-pressed="modoMapa === 'marcadores'"
-                  class="text-xs px-2 py-1 rounded transition-colors"
-                  :class="modoMapa === 'marcadores' ? 'bg-teal-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'"
+                  style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; border: none; cursor: pointer; transition: all 0.2s;"
+                  :style="modoMapa === 'marcadores' ? 'background: #14B8A6; color: var(--color-bg);' : 'background: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-border);'"
                 >
                   Marcadores
                 </button>
                 <button
                   @click="toggleModoMapa('calor')"
                   :aria-pressed="modoMapa === 'calor'"
-                  class="text-xs px-2 py-1 rounded transition-colors"
-                  :class="modoMapa === 'calor' ? 'bg-teal-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'"
+                  style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; border: none; cursor: pointer; transition: all 0.2s;"
+                  :style="modoMapa === 'calor' ? 'background: #14B8A6; color: var(--color-bg);' : 'background: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-border);'"
                 >
                   Calor
                 </button>
@@ -562,14 +574,14 @@ function renderPessoaDetalhe(appState) {
             </div>
             <div
               id="mapa-pessoa-${pessoaId}"
-              class="w-full h-[350px] rounded-lg bg-slate-800 z-[1]"
+              style="width: 100%; height: 350px; border-radius: 4px; background: var(--color-surface); z-index: 1;"
             ></div>
           </div>
         </div>
       </template>
 
       <!-- Erro -->
-      <p x-show="erro" class="text-red-400 text-sm" x-text="erro"></p>
+      <p x-show="erro" style="color: var(--color-danger); font-size: 0.875rem;" x-text="erro"></p>
     </div>
   `;
 }

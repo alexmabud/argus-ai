@@ -7,56 +7,63 @@
 
 function renderAdminUsuarios() {
   return `
-    <div class="p-4" x-data="adminUsuariosPage()" x-init="init()">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-white font-semibold text-lg">Gerenciar Usuários</h2>
-        <button @click="mostrarFormCriacao = true"
-                class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1.5 rounded-lg">
+    <div style="padding: 1rem;" x-data="adminUsuariosPage()" x-init="init()">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <div>
+          <h2 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; font-size: 1.125rem; text-transform: uppercase; letter-spacing: 0.05em;">GERENCIAR USUARIOS</h2>
+          <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem; margin-top: 0.125rem;">Controle de acesso da guarnição</p>
+        </div>
+        <button @click="mostrarFormCriacao = true" class="btn btn-primary" style="font-size: 0.8125rem; padding: 0.375rem 0.75rem;">
           + Novo usuário
         </button>
       </div>
 
       <!-- Loading -->
-      <div x-show="carregando" class="text-slate-400 text-sm text-center py-8">Carregando...</div>
+      <div x-show="carregando" style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.875rem; text-align: center; padding: 2rem 0;">Carregando...</div>
 
       <!-- Lista -->
-      <div x-show="!carregando" class="space-y-3">
+      <div x-show="!carregando" style="display: flex; flex-direction: column; gap: 0.75rem;">
         <template x-for="u in usuarios" :key="u.id">
-          <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
-            <div class="flex items-center gap-3">
+          <div class="glass-card" style="padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
               <!-- Avatar -->
-              <div class="w-10 h-10 rounded-full bg-blue-700 flex items-center justify-center text-white text-sm font-bold overflow-hidden flex-shrink-0">
+              <div style="width: 40px; height: 40px; border-radius: 4px; background: var(--color-surface-hover); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-primary); font-size: 0.875rem; font-family: var(--font-display); font-weight: 700; overflow: hidden; flex-shrink: 0;">
                 <template x-if="u.foto_url">
-                  <img :src="u.foto_url" class="w-full h-full object-cover" />
+                  <img :src="u.foto_url" style="width: 100%; height: 100%; object-fit: cover;" />
                 </template>
                 <template x-if="!u.foto_url">
                   <span x-text="(u.nome || '?').split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase()"></span>
                 </template>
               </div>
               <!-- Info -->
-              <div class="flex-1 min-w-0">
-                <p class="text-white font-medium text-sm truncate" x-text="u.nome"></p>
-                <p class="text-slate-400 text-xs" x-text="u.matricula + (u.posto_graduacao ? ' · ' + u.posto_graduacao : '')"></p>
+              <div style="flex: 1; min-width: 0;">
+                <p style="color: var(--color-text); font-family: var(--font-body); font-weight: 500; font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="u.nome"></p>
+                <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;" x-text="u.matricula + (u.posto_graduacao ? ' · ' + u.posto_graduacao : '')"></p>
               </div>
               <!-- Status -->
-              <span :class="u.tem_sessao ? 'bg-green-900 text-green-300' : 'bg-slate-700 text-slate-400'"
-                    class="text-xs px-2 py-0.5 rounded-full flex-shrink-0">
+              <span :style="u.tem_sessao
+                ? 'background: rgba(0,255,136,0.15); color: var(--color-success);'
+                : 'background: rgba(58,80,104,0.3); color: var(--color-text-dim);'"
+                    style="font-size: 0.75rem; font-family: var(--font-data); padding: 0.125rem 0.5rem; border-radius: 4px; flex-shrink: 0;">
                 <span x-text="u.tem_sessao ? 'Ativo' : 'Sem sessão'"></span>
               </span>
             </div>
             <!-- Ações -->
-            <div class="flex gap-2 mt-3">
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
               <button @click="pausarUsuario(u)"
                       x-show="u.tem_sessao"
-                      class="flex-1 text-xs py-1.5 rounded-lg bg-yellow-900 text-yellow-300 hover:bg-yellow-800">
+                      style="flex: 1; font-size: 0.75rem; font-family: var(--font-data); padding: 0.375rem 0.5rem; border-radius: 4px; background: rgba(255,165,0,0.15); color: #FFA500; border: 1px solid rgba(255,165,0,0.3); cursor: pointer; transition: opacity 0.2s;"
+                      onmouseover="this.style.opacity='0.8'"
+                      onmouseout="this.style.opacity='1'">
                 Pausar acesso
               </button>
-              <button @click="gerarSenha(u)"
-                      class="flex-1 text-xs py-1.5 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600">
+              <button @click="gerarSenha(u)" class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 0.375rem 0.5rem;">
                 Gerar nova senha
               </button>
               <button @click="excluirUsuario(u)"
-                      class="text-xs py-1.5 px-3 rounded-lg bg-red-900 text-red-300 hover:bg-red-800">
+                      style="font-size: 0.75rem; font-family: var(--font-data); padding: 0.375rem 0.75rem; border-radius: 4px; background: rgba(255,107,0,0.15); color: var(--color-danger); border: 1px solid rgba(255,107,0,0.3); cursor: pointer; transition: opacity 0.2s;"
+                      onmouseover="this.style.opacity='0.8'"
+                      onmouseout="this.style.opacity='1'">
                 Excluir
               </button>
             </div>
@@ -66,22 +73,19 @@ function renderAdminUsuarios() {
 
       <!-- Modal: Criar usuário -->
       <div x-show="mostrarFormCriacao" x-cloak
-           class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-        <div class="bg-slate-800 rounded-xl p-6 max-w-sm w-full border border-slate-700">
-          <h3 class="text-white font-semibold mb-4">Novo usuário</h3>
-          <div class="mb-4">
-            <label class="block text-sm text-slate-400 mb-1">Matrícula</label>
+           style="position: fixed; inset: 0; background: rgba(5,10,15,0.8); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem;">
+        <div class="glass-card" style="padding: 1.5rem; max-width: 24rem; width: 100%; border: 1px solid var(--color-border);">
+          <h3 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 1rem;">Novo usuário</h3>
+          <div style="margin-bottom: 1rem;">
+            <label class="login-field-label">Matrícula</label>
             <input type="text" x-model="novaMatricula"
-                   class="w-full bg-slate-700 rounded-lg px-3 py-2 text-white border border-slate-600 focus:border-blue-500 focus:outline-none"
                    placeholder="Ex: PM001" />
           </div>
-          <div class="flex gap-3">
-            <button @click="mostrarFormCriacao = false; novaMatricula = ''"
-                    class="flex-1 py-2 rounded-lg border border-slate-600 text-slate-300">
+          <div style="display: flex; gap: 0.75rem;">
+            <button @click="mostrarFormCriacao = false; novaMatricula = ''" class="btn btn-secondary" style="flex: 1;">
               Cancelar
             </button>
-            <button @click="criarUsuario()" :disabled="criando"
-                    class="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium">
+            <button @click="criarUsuario()" :disabled="criando" class="btn btn-primary" style="flex: 1;">
               <span x-show="!criando">Criar</span>
               <span x-show="criando">Criando...</span>
             </button>
@@ -91,18 +95,17 @@ function renderAdminUsuarios() {
 
       <!-- Modal: Exibir senha gerada (uso único) -->
       <div x-show="senhaGerada" x-cloak
-           class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-        <div class="bg-slate-800 rounded-xl p-6 max-w-sm w-full border border-yellow-700">
-          <h3 class="text-yellow-400 font-semibold mb-2">Senha gerada — anote agora</h3>
-          <p class="text-slate-400 text-sm mb-4">
+           style="position: fixed; inset: 0; background: rgba(5,10,15,0.8); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem;">
+        <div class="glass-card" style="padding: 1.5rem; max-width: 24rem; width: 100%; border: 1px solid #FFA500;">
+          <h3 style="color: #FFA500; font-family: var(--font-display); font-weight: 600; margin-bottom: 0.5rem;">Senha gerada — anote agora</h3>
+          <p style="color: var(--color-text-muted); font-family: var(--font-body); font-size: 0.875rem; margin-bottom: 1rem;">
             Esta senha será exibida apenas uma vez. Entregue pessoalmente ao usuário.
           </p>
-          <div class="bg-slate-900 rounded-lg p-4 text-center mb-4">
-            <p class="text-slate-400 text-xs mb-1" x-text="'Matrícula: ' + (senhaGerada?.matricula || '')"></p>
-            <p class="text-white font-mono text-2xl font-bold tracking-widest" x-text="senhaGerada?.senha"></p>
+          <div style="background: var(--color-bg); border-radius: 4px; padding: 1rem; text-align: center; margin-bottom: 1rem; border: 1px solid var(--color-border);">
+            <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem; margin-bottom: 0.25rem;" x-text="'Matrícula: ' + (senhaGerada?.matricula || '')"></p>
+            <p style="color: var(--color-text); font-family: var(--font-data); font-size: 1.5rem; font-weight: 700; letter-spacing: 0.1em;" x-text="senhaGerada?.senha"></p>
           </div>
-          <button @click="senhaGerada = null"
-                  class="w-full py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white">
+          <button @click="senhaGerada = null" class="btn btn-secondary" style="width: 100%;">
             Entendi, já anotei
           </button>
         </div>
