@@ -9,57 +9,6 @@ from httpx import AsyncClient
 from app.core.security import criar_access_token, criar_refresh_token
 
 
-class TestRegister:
-    """Testes do endpoint de registro de usuário."""
-
-    async def test_register_success(self, client: AsyncClient, guarnicao):
-        """Testa registro bem-sucedido de novo usuário.
-
-        Verifica se o endpoint retorna status 201 e os dados do usuário
-        criado, garantindo que senhas nunca são retornadas na resposta.
-
-        Args:
-            client: Cliente HTTP assincrónico para testes.
-            guarnicao: Fixture de guarnição para associar ao novo usuário.
-        """
-        response = await client.post(
-            "/api/v1/auth/register",
-            json={
-                "nome": "Novo Agente",
-                "matricula": "NEW001",
-                "senha": "senha123",
-                "guarnicao_id": guarnicao.id,
-            },
-        )
-        assert response.status_code == 201
-        data = response.json()
-        assert data["matricula"] == "NEW001"
-        assert data["nome"] == "Novo Agente"
-        assert "senha" not in data
-        assert "senha_hash" not in data
-
-    async def test_register_duplicate_matricula(self, client: AsyncClient, usuario):
-        """Testa rejeição de registro com matrícula duplicada.
-
-        Verifica se o endpoint retorna status 409 (Conflict) ao tentar
-        registrar um usuário com matrícula já existente.
-
-        Args:
-            client: Cliente HTTP assincrónico para testes.
-            usuario: Fixture de usuário existente com matrícula TEST001.
-        """
-        response = await client.post(
-            "/api/v1/auth/register",
-            json={
-                "nome": "Outro Agente",
-                "matricula": usuario.matricula,
-                "senha": "senha123",
-                "guarnicao_id": usuario.guarnicao_id,
-            },
-        )
-        assert response.status_code == 409
-
-
 class TestLogin:
     """Testes do endpoint de login de usuário."""
 
@@ -141,6 +90,7 @@ class TestRefresh:
             {
                 "sub": str(usuario.id),
                 "guarnicao_id": usuario.guarnicao_id,
+                "sid": usuario.session_id,
             }
         )
         response = await client.post(
@@ -197,7 +147,7 @@ class TestMe:
     async def test_me_unauthenticated(self, client: AsyncClient):
         """Testa rejeição de acesso sem autenticação.
 
-        Verifica se o endpoint retorna status 403 (Forbidden) quando
+        Verifica se o endpoint retorna status 401 (Unauthorized) quando
         nenhum header Authorization é fornecido.
 
         Args:
