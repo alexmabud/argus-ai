@@ -36,7 +36,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=()"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
@@ -46,7 +46,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "https://fonts.googleapis.com https://unpkg.com; "
             "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
             "img-src 'self' data: blob: https://*.tile.openstreetmap.org; "
-            "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com"
+            "connect-src 'self' "
+            "https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com "
+            "https://nominatim.openstreetmap.org https://fonts.googleapis.com "
+            "https://fonts.gstatic.com"
         )
         return response
 
