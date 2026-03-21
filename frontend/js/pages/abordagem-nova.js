@@ -505,8 +505,19 @@ function abordagemForm() {
     veiculoLocalidades: { modelos: [], cores: [] },
 
     async initForm() {
-      // Capturar GPS automaticamente
-      this.captureGPS();
+      // Auto-capturar GPS apenas se permissão já foi concedida.
+      // Se "prompt" (ainda não decidida), aguarda gesto do usuário para evitar
+      // que o dialog apareça em momento inesperado e seja negado acidentalmente.
+      if (navigator.permissions) {
+        try {
+          const perm = await navigator.permissions.query({ name: "geolocation" });
+          if (perm.state === "granted") this.captureGPS();
+        } catch {
+          this.captureGPS(); // permissions API não suportada — tenta normalmente
+        }
+      } else {
+        this.captureGPS();
+      }
 
       // Carregar localidades para autocomplete
       try {
