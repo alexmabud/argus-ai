@@ -272,6 +272,23 @@ function app() {
 }
 
 /**
+ * Escapa caracteres especiais HTML para prevenir XSS.
+ *
+ * Deve ser aplicada em todo dado de usuario antes de interpolacao em innerHTML.
+ *
+ * @param {string} str - Valor a escapar.
+ * @returns {string} Valor seguro para interpolacao em HTML.
+ */
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * Renderiza a home page com saudacao e acoes rapidas.
  *
  * Cards no estilo glass + HUD tatico: fundo glassmorphism, clip-path no canto
@@ -280,9 +297,9 @@ function app() {
  */
 function renderHomePage(appState) {
   const user = appState.user;
-  const abrev = user?.posto_graduacao ? (POSTO_ABREV[user.posto_graduacao] ?? user.posto_graduacao) : null;
-  const guerra = user?.nome_guerra || user?.nome || "Agente";
-  const saudacao = abrev ? `${abrev} ${guerra}` : guerra;
+  const abrevRaw = user?.posto_graduacao ? (POSTO_ABREV[user.posto_graduacao] ?? user.posto_graduacao) : null;
+  const guerraRaw = user?.nome_guerra || user?.nome || "Agente";
+  const saudacao = abrevRaw ? `${escapeHtml(abrevRaw)} ${escapeHtml(guerraRaw)}` : escapeHtml(guerraRaw);
 
   const cards = [
     {
