@@ -71,14 +71,15 @@ async def test_gerar_nova_senha_invalida_sessao(mock_db):
     usuario.session_id = "sessao-velha"
     usuario.ativo = True
 
-    mock_db.execute = AsyncMock()
-    mock_db.execute.return_value.scalar_one_or_none.return_value = usuario
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = usuario
+    mock_db.execute = AsyncMock(return_value=mock_result)
 
     service = UsuarioAdminService(mock_db)
     service.audit = AsyncMock()
 
     with patch("app.services.usuario_admin_service.hash_senha", return_value="novo_hash"):
-        senha = await service.gerar_nova_senha(usuario_id=1, admin_id=2)
+        senha, matricula = await service.gerar_nova_senha(usuario_id=1, admin_id=2)
 
     assert len(senha) >= 8
     assert usuario.session_id is None

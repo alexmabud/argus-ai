@@ -56,6 +56,8 @@ async def setup_db(test_engine):
         test_engine: Engine assincrónico de teste.
     """
     async with test_engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(text(f'DROP TABLE IF EXISTS "{table.name}" CASCADE'))
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with test_engine.begin() as conn:
