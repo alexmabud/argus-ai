@@ -12,35 +12,6 @@ if ("serviceWorker" in navigator) {
 }
 
 /**
- * Widget de relogio em tempo real para o header.
- *
- * Atualiza a cada segundo no formato HH:MM:SS.
- *
- * Returns:
- *     Componente Alpine.js com propriedade reativa 'time'.
- */
-function clockWidget() {
-  return {
-    time: '',
-    interval: null,
-
-    init() {
-      this._tick();
-      this.interval = setInterval(() => this._tick(), 1000);
-    },
-
-    _tick() {
-      const now = new Date();
-      this.time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    },
-
-    destroy() {
-      if (this.interval) clearInterval(this.interval);
-    }
-  };
-}
-
-/**
  * Formata string de placa veicular inserindo traco automaticamente.
  * Aceita formato antigo (ABC-1234) e Mercosul (ABC1D23).
  * Remove caracteres invalidos e converte para maiusculas.
