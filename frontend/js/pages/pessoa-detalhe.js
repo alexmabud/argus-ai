@@ -763,6 +763,11 @@ function pessoaDetalhePage(pessoaId) {
         const bounds = L.latLngBounds(pontos.map(p => [p.lat, p.lng]));
         this.mapaInst.fitBounds(bounds, { padding: [30, 30] });
       }
+
+      // Força recálculo das dimensões após o container estar completamente visível.
+      // O IntersectionObserver dispara em threshold=0.1, mas o container pode ainda
+      // não ter dimensões estáveis — invalidateSize() corrige tiles em branco.
+      setTimeout(() => this.mapaInst && this.mapaInst.invalidateSize(), 200);
     },
 
     toggleModoMapa(modo) {
