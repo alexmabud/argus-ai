@@ -785,7 +785,7 @@ input.input-warning {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 64px;
+  height: 68px;
   background: rgba(5, 10, 15, 0.55);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -794,7 +794,7 @@ input.input-warning {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 0 8px;
+  padding: 0 4px;
   z-index: 150;
 }
 
@@ -803,34 +803,84 @@ input.input-warning {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
   flex: 1;
   height: 100%;
   background: transparent;
   border: none;
   cursor: pointer;
-  color: var(--color-text-muted);
-  transition: transform var(--transition), color var(--transition);
   padding: 0;
   -webkit-tap-highlight-color: transparent;
+  transition: all 200ms ease;
 }
 
-.bottom-nav-btn:hover {
-  transform: scale(1.08);
-  color: var(--color-text);
+/* Pill — wrapper interno de cada botão */
+.nav-pill {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px 6px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: all 200ms ease;
 }
 
-.bottom-nav-btn.active {
-  color: var(--color-primary);
-  filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.6));
+/* Barra indicadora no topo da pill */
+.nav-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: 0 0 2px 2px;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.8), 0 0 16px rgba(0, 212, 255, 0.4);
 }
 
+/* Hover — pill ilumina */
+.bottom-nav-btn:hover .nav-pill {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.15);
+  transform: scale(1.06);
+}
+
+/* Ativo — pill sólida + indicador visível */
+.bottom-nav-btn.active .nav-pill {
+  background: rgba(0, 212, 255, 0.12);
+  border-color: rgba(0, 212, 255, 0.25);
+}
+
+.bottom-nav-btn.active .nav-indicator {
+  opacity: 1;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Ícones */
 .bottom-nav-btn svg {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
+  color: var(--color-text-dim);
+  filter: drop-shadow(0 0 3px rgba(0, 212, 255, 0.15));
+  transition: filter 200ms ease, color 200ms ease;
 }
 
+.bottom-nav-btn:hover svg {
+  color: var(--color-text-muted);
+  filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.5));
+}
+
+.bottom-nav-btn.active svg {
+  color: var(--color-primary);
+  filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.8));
+}
+
+/* Labels */
 .bottom-nav-label {
   font-family: var(--font-data);
   font-size: 9px;
@@ -838,6 +888,16 @@ input.input-warning {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   line-height: 1;
+  color: var(--color-text-dim);
+  transition: color 200ms ease;
+}
+
+.bottom-nav-btn:hover .bottom-nav-label {
+  color: var(--color-text-muted);
+}
+
+.bottom-nav-btn.active .bottom-nav-label {
+  color: var(--color-primary);
 }
 
 /* ========================================
