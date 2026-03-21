@@ -10,11 +10,14 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <link rel="stylesheet" href="/css/app.css?v=6">
+  <link rel="stylesheet" href="/css/app.css?v=8">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
+      corePlugins: {
+        preflight: false,
+      },
       theme: {
         extend: {
           colors: {
@@ -133,30 +136,46 @@
     </main>
 
     <!-- Bottom Navigation (só fora da home) -->
+    <!-- Bottom Navigation (só fora da home) -->
     <nav class="bottom-nav" x-show="currentPage !== 'home'" x-cloak>
       <button class="bottom-nav-btn" :class="{ active: currentPage === 'abordagem-nova' }" @click="navigate('abordagem-nova')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-        <span class="bottom-nav-label">Abordagem</span>
+        <div class="nav-pill">
+          <div class="nav-indicator"></div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+          <span class="bottom-nav-label">Abordagem</span>
+        </div>
       </button>
 
       <button class="bottom-nav-btn" :class="{ active: currentPage === 'consulta' }" @click="navigate('consulta')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <span class="bottom-nav-label">Consulta IA</span>
+        <div class="nav-pill">
+          <div class="nav-indicator"></div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span class="bottom-nav-label">Consulta IA</span>
+        </div>
       </button>
 
       <button class="bottom-nav-btn" :class="{ active: currentPage === 'home' }" @click="navigate('home')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        <span class="bottom-nav-label">Início</span>
+        <div class="nav-pill">
+          <div class="nav-indicator"></div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span class="bottom-nav-label">Início</span>
+        </div>
       </button>
 
       <button class="bottom-nav-btn" :class="{ active: currentPage === 'ocorrencia-upload' }" @click="navigate('ocorrencia-upload')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg>
-        <span class="bottom-nav-label">Ocorrência</span>
+        <div class="nav-pill">
+          <div class="nav-indicator"></div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg>
+          <span class="bottom-nav-label">Ocorrência</span>
+        </div>
       </button>
 
       <button class="bottom-nav-btn" :class="{ active: currentPage === 'dashboard' }" @click="navigate('dashboard')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-        <span class="bottom-nav-label">Analítico</span>
+        <div class="nav-pill">
+          <div class="nav-indicator"></div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+          <span class="bottom-nav-label">Analítico</span>
+        </div>
       </button>
     </nav>
   </div>
@@ -184,7 +203,7 @@
   <script src="/js/pages/dashboard.js?v=3"></script>
   <script src="/js/pages/admin-usuarios.js?v=3"></script>
   <script src="/js/pages/perfil.js?v=2"></script>
-  <script src="/js/app.js?v=6"></script>
+  <script src="/js/app.js?v=7"></script>
   <!-- Leaflet JS + plugins -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
