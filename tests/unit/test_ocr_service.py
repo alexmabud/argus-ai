@@ -16,6 +16,7 @@ class TestOCRService:
 
         return OCRService()
 
+    @patch("app.services.ocr_service._reader_loaded", True)
     @patch("app.services.ocr_service._reader")
     def test_extrair_placa_mercosul(self, mock_reader):
         """Deve extrair placa no padrão Mercosul (ABC1D23)."""
@@ -28,6 +29,7 @@ class TestOCRService:
 
         assert result == "ABC1D23"
 
+    @patch("app.services.ocr_service._reader_loaded", True)
     @patch("app.services.ocr_service._reader")
     def test_extrair_placa_antiga(self, mock_reader):
         """Deve extrair placa no padrão antigo (ABC-1234)."""
@@ -40,6 +42,7 @@ class TestOCRService:
 
         assert result == "ABC1234"
 
+    @patch("app.services.ocr_service._reader_loaded", True)
     @patch("app.services.ocr_service._reader")
     def test_extrair_placa_nenhuma_detectada(self, mock_reader):
         """Deve retornar None quando nenhuma placa é encontrada."""
@@ -68,6 +71,7 @@ class TestOCRService:
         assert service._normalizar("ABC 1D23") == "ABC1D23"
         assert service._normalizar("abc-1234") == "ABC1234"
 
+    @patch("app.services.ocr_service._reader_loaded", True)
     @patch("app.services.ocr_service._reader")
     def test_mercosul_prioritario_sobre_antigo(self, mock_reader):
         """Deve priorizar padrão Mercosul quando ambos são possíveis."""
