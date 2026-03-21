@@ -22,6 +22,7 @@ async def test_login_gera_session_id(mock_db):
     usuario.id = 1
     usuario.guarnicao_id = 1
     usuario.session_id = None
+    usuario.is_admin = False
 
     service = AuthService(mock_db)
     service.repo = AsyncMock()
@@ -49,6 +50,7 @@ async def test_login_invalida_senha_apos_uso(mock_db):
     usuario.id = 1
     usuario.guarnicao_id = None
     usuario.session_id = None
+    usuario.is_admin = False
 
     service = AuthService(mock_db)
     service.repo = AsyncMock()

@@ -7,7 +7,7 @@ com deduplicação por client_id.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -17,12 +17,13 @@ class SyncItem(BaseModel):
 
     Attributes:
         client_id: UUID gerado pelo cliente para deduplicação.
-        tipo: Tipo do item ("abordagem", "pessoa", "veiculo").
+        tipo: Tipo do item ("abordagem", "pessoa", "veiculo"). Tipos desconhecidos
+            são aceitos pelo schema e tratados com status "error" pelo SyncService.
         dados: Payload completo do item a ser criado.
     """
 
     client_id: str
-    tipo: Literal["abordagem", "pessoa", "veiculo"]
+    tipo: str
     dados: dict[str, Any]
 
 
