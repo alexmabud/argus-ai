@@ -274,7 +274,9 @@ function app() {
 /**
  * Renderiza a home page com saudacao e acoes rapidas.
  *
- * Layout com cards de acao em grid, estilo cyberpunk tatico.
+ * Cards no estilo glass + HUD tatico: fundo glassmorphism, clip-path no canto
+ * inferior direito, scan line no hover, codigo tatico e glow no icone.
+ * Animacao de entrada em stagger (60ms por card).
  */
 function renderHomePage(appState) {
   const user = appState.user;
@@ -282,12 +284,50 @@ function renderHomePage(appState) {
   const guerra = user?.nome_guerra || user?.nome || "Agente";
   const saudacao = abrev ? `${abrev} ${guerra}` : guerra;
 
+  const cards = [
+    {
+      code: '// ABD',
+      page: 'abordagem-nova',
+      label: 'Nova Abordagem',
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>`,
+    },
+    {
+      code: '// IA',
+      page: 'consulta',
+      label: 'Consulta IA',
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
+    },
+    {
+      code: '// OCR',
+      page: 'ocorrencia-upload',
+      label: 'Ocorr\u00eancia',
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg>`,
+    },
+    {
+      code: '// ANL',
+      page: 'dashboard',
+      label: 'Anal\u00edtico',
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>`,
+    },
+  ];
+
+  const cardsHtml = cards.map((c, i) => `
+    <button onclick="document.querySelector('[x-data]')._x_dataStack[0].navigate('${c.page}')"
+            class="home-action-card"
+            style="animation-delay: ${i * 60}ms;">
+      <div class="card-code">
+        <span>${c.code}</span>
+        <span>\u25c6</span>
+      </div>
+      <div class="card-icon">${c.icon}</div>
+      <span class="card-label">${c.label}</span>
+    </button>
+  `).join('');
+
   return `
     <div class="home-layout">
-      <!-- Scan line effect -->
       <div class="login-scan-line"></div>
 
-      <!-- Saudacao -->
       <div style="margin-bottom: 32px;">
         <h2 style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--color-text);">
           Ola, <span style="color: var(--color-primary);">${saudacao}</span>
@@ -297,39 +337,8 @@ function renderHomePage(appState) {
         </p>
       </div>
 
-      <!-- Acoes rapidas -->
       <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-        <button onclick="document.querySelector('[x-data]')._x_dataStack[0].navigate('abordagem-nova')"
-                class="card card-interactive" style="text-align:center; padding: 24px 16px;">
-          <div style="color: var(--color-primary); margin-bottom: 10px;">
-            <svg style="margin:0 auto;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-          </div>
-          <span style="font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--color-text);">Nova Abordagem</span>
-        </button>
-
-        <button onclick="document.querySelector('[x-data]')._x_dataStack[0].navigate('consulta')"
-                class="card card-interactive" style="text-align:center; padding: 24px 16px;">
-          <div style="color: var(--color-primary); margin-bottom: 10px;">
-            <svg style="margin:0 auto;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          </div>
-          <span style="font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--color-text);">Consulta IA</span>
-        </button>
-
-        <button onclick="document.querySelector('[x-data]')._x_dataStack[0].navigate('ocorrencia-upload')"
-                class="card card-interactive" style="text-align:center; padding: 24px 16px;">
-          <div style="color: var(--color-primary); margin-bottom: 10px;">
-            <svg style="margin:0 auto;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg>
-          </div>
-          <span style="font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--color-text);">Ocorrencia</span>
-        </button>
-
-        <button onclick="document.querySelector('[x-data]')._x_dataStack[0].navigate('dashboard')"
-                class="card card-interactive" style="text-align:center; padding: 24px 16px;">
-          <div style="color: var(--color-primary); margin-bottom: 10px;">
-            <svg style="margin:0 auto;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-          </div>
-          <span style="font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--color-text);">Analitico</span>
-        </button>
+        ${cardsHtml}
       </div>
     </div>
   `;
