@@ -10,10 +10,10 @@ function renderOcorrenciaUpload() {
 
       <!-- Header -->
       <div>
-        <h2 style="font-family:var(--font-display);font-size:1.25rem;font-weight:700;color:var(--color-text);text-transform:uppercase;letter-spacing:0.1em;margin:0;">
+        <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--color-text);text-transform:uppercase;letter-spacing:0.1em;margin:0;">
           UPLOAD DE OCORRENCIA
         </h2>
-        <p style="font-family:var(--font-data);font-size:0.7rem;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;margin-top:4px;">
+        <p style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;margin-top:4px;">
           DOCUMENTOS OPERACIONAIS
         </p>
       </div>
@@ -62,10 +62,10 @@ function renderOcorrenciaUpload() {
           </div>
           <div x-show="envolvidos.length > 0" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
             <template x-for="(nome, i) in envolvidos" :key="i">
-              <span style="display:flex;align-items:center;gap:4px;font-size:0.75rem;background:rgba(0,212,255,0.1);color:var(--color-primary);padding:2px 10px;border-radius:4px;border:1px solid rgba(0,212,255,0.2);">
+              <span style="display:flex;align-items:center;gap:4px;font-size:12px;background:rgba(0,212,255,0.1);color:var(--color-primary);padding:2px 10px;border-radius:4px;border:1px solid rgba(0,212,255,0.2);">
                 <span x-text="nome"></span>
                 <button type="button" @click="removerEnvolvido(i)"
-                        style="color:var(--color-text-muted);cursor:pointer;line-height:1;margin-left:2px;background:none;border:none;font-size:0.875rem;"
+                        style="color:var(--color-text-muted);cursor:pointer;line-height:1;margin-left:2px;background:none;border:none;font-size:14px;"
                         onmouseover="this.style.color='var(--color-danger)'"
                         onmouseout="this.style.color='var(--color-text-muted)'">&times;</button>
               </span>
@@ -82,12 +82,12 @@ function renderOcorrenciaUpload() {
         </span>
       </button>
 
-      <p x-show="sucesso" style="font-size:0.875rem;color:var(--color-success);" x-text="sucesso"></p>
-      <p x-show="erro" style="font-size:0.875rem;color:var(--color-danger);" x-text="erro"></p>
+      <p x-show="sucesso" style="font-size:14px;color:var(--color-success);" x-text="sucesso"></p>
+      <p x-show="erro" style="font-size:14px;color:var(--color-danger);" x-text="erro"></p>
 
       <!-- Busca de ocorrências -->
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;margin-top:8px;">
-        <h3 style="font-family:var(--font-display);font-size:0.85rem;font-weight:600;color:var(--color-text);text-transform:uppercase;letter-spacing:0.08em;margin:0;">
+        <h3 style="font-family:var(--font-display);font-size:12px;font-weight:600;color:var(--color-text);text-transform:uppercase;letter-spacing:0.08em;margin:0;">
           Buscar Ocorrência
         </h3>
 
