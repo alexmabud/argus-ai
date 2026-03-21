@@ -703,8 +703,11 @@ function pessoaDetalhePage(pessoaId) {
         this._mapaObserver.disconnect();
         this._mapaObserver = null;
       }
-      // x-if já renderizou o conteúdo, mas aguarda Alpine processar o DOM
-      await this.$nextTick();
+      // x-if usa múltiplos níveis de microtask para renderizar o template.
+      // $nextTick() (microtask) pode resolver antes que o DOM esteja pronto.
+      // setTimeout(0) garante que todos os microtasks pendentes do Alpine
+      // completem antes de buscar o div.
+      await new Promise(r => setTimeout(r, 0));
       const divId = `mapa-pessoa-${pessoaId}`;
       const div = document.getElementById(divId);
       if (!div) return;
