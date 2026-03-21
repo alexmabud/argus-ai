@@ -25,11 +25,11 @@ function renderPerfil(_appState) {
   ).join("");
 
   return `
-    <div style="padding: 1rem; max-width: 28rem; margin: 0 auto;" x-data="perfilPage()">
+    <div style="padding: 16px; max-width: 448px; margin: 0 auto;" x-data="perfilPage()">
       <!-- Foto de perfil -->
-      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 1.5rem;">
+      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 24px;">
         <div style="position: relative;">
-          <div style="width: 96px; height: 96px; border-radius: 4px; overflow: hidden; background: var(--color-surface-hover); border: 1px solid var(--color-primary); display: flex; align-items: center; justify-content: center; color: var(--color-primary); font-size: 1.875rem; font-family: var(--font-display); font-weight: 700; cursor: pointer;"
+          <div style="width: 96px; height: 96px; border-radius: 4px; overflow: hidden; background: var(--color-surface-hover); border: 1px solid var(--color-primary); display: flex; align-items: center; justify-content: center; color: var(--color-primary); font-size: 28px; font-family: var(--font-display); font-weight: 700; cursor: pointer;"
                @click="$refs.fotoInput.click()">
             <template x-if="fotoUrl">
               <img :src="fotoUrl" style="width: 100%; height: 100%; object-fit: cover;" />
@@ -49,11 +49,11 @@ function renderPerfil(_appState) {
           </button>
         </div>
         <input type="file" accept="image/*" x-ref="fotoInput" class="hidden" @change="uploadFoto($event)" />
-        <p x-show="uploadando" style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.5rem; font-family: var(--font-data);">Enviando foto...</p>
+        <p x-show="uploadando" style="font-size: 12px; color: var(--color-text-muted); margin-top: 8px; font-family: var(--font-data);">Enviando foto...</p>
       </div>
 
       <!-- Campos de perfil -->
-      <div style="display: flex; flex-direction: column; gap: 1rem;">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
         <div>
           <label class="login-field-label">Nome completo</label>
           <input type="text" x-model="nome" />
@@ -85,16 +85,16 @@ function renderPerfil(_appState) {
         </button>
 
         <template x-if="isAdmin">
-          <button @click="irParaAdmin()" class="btn btn-secondary" style="width: 100%; margin-top: 0.25rem;">
+          <button @click="irParaAdmin()" class="btn btn-secondary" style="width: 100%; margin-top: 4px;">
             Gerenciar usuários
           </button>
         </template>
       </div>
 
       <!-- Botão Sair -->
-      <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--color-border);">
+      <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--color-border);">
         <button @click="mostrarModalSaida()"
-                style="width: 100%; padding: 0.5rem 1rem; font-family: var(--font-data); font-size: 0.875rem; font-weight: 500; color: var(--color-danger); background: transparent; border: 1px solid var(--color-danger); border-radius: 4px; cursor: pointer; transition: opacity 0.2s;"
+                style="width: 100%; padding: 8px 16px; font-family: var(--font-data); font-size: 14px; font-weight: 500; color: var(--color-danger); background: transparent; border: 1px solid var(--color-danger); border-radius: 4px; cursor: pointer; transition: opacity 0.2s;"
                 onmouseover="this.style.opacity='0.8'"
                 onmouseout="this.style.opacity='1'">
           Sair do aplicativo
@@ -166,16 +166,16 @@ function perfilPage() {
         : 'Se você sair, precisará que o administrador gere uma nova senha para acessar novamente.';
 
       const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(5,10,15,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem;';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(5,10,15,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;';
       overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
 
       overlay.innerHTML = `
-        <div class="glass-card" style="padding:1.5rem;max-width:24rem;width:100%;border:1px solid var(--color-border);">
-          <h3 style="color:var(--color-text);font-family:var(--font-display);font-weight:600;margin-bottom:0.5rem;">Sair do aplicativo?</h3>
-          <p style="color:var(--color-text-muted);font-size:0.875rem;margin-bottom:1.5rem;font-family:var(--font-body);">${msg}</p>
-          <div style="display:flex;gap:0.75rem;">
+        <div class="glass-card" style="padding:24px;max-width:384px;width:100%;border:1px solid var(--color-border);">
+          <h3 style="color:var(--color-text);font-family:var(--font-display);font-weight:600;margin-bottom:8px;">Sair do aplicativo?</h3>
+          <p style="color:var(--color-text-muted);font-size:14px;margin-bottom:24px;font-family:var(--font-body);">${msg}</p>
+          <div style="display:flex;gap:12px;">
             <button id="modal-cancelar" class="btn btn-secondary" style="flex:1;">Cancelar</button>
-            <button id="modal-confirmar" style="flex:1;padding:0.5rem 1rem;border-radius:4px;background:var(--color-danger);color:var(--color-text);font-family:var(--font-body);font-weight:500;border:none;cursor:pointer;">Confirmar saída</button>
+            <button id="modal-confirmar" style="flex:1;padding:8px 16px;border-radius:4px;background:var(--color-danger);color:var(--color-text);font-family:var(--font-body);font-weight:500;border:none;cursor:pointer;">Confirmar saída</button>
           </div>
         </div>
       `;
