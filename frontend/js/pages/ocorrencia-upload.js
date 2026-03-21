@@ -45,8 +45,8 @@ function renderOcorrenciaUpload() {
         <div>
           <label class="login-field-label">Arquivo PDF</label>
           <input type="file" accept="application/pdf" @change="onFileSelected($event)"
-                 style="font-size:0.875rem;color:var(--color-text-muted);">
-          <p x-show="file" style="font-size:0.75rem;color:var(--color-text-dim);margin-top:4px;" x-text="file?.name + ' (' + formatSize(file?.size) + ')'"></p>
+                 style="font-size:14px;color:var(--color-text-muted);">
+          <p x-show="file" style="font-size:12px;color:var(--color-text-dim);margin-top:4px;" x-text="file?.name + ' (' + formatSize(file?.size) + ')'"></p>
         </div>
 
         <!-- Envolvidos -->
@@ -119,22 +119,22 @@ function renderOcorrenciaUpload() {
 
         <div x-show="resultadosBusca !== null">
           <p x-show="resultadosBusca !== null && resultadosBusca.length === 0"
-             style="font-size:0.75rem;color:var(--color-text-dim);text-align:center;padding:8px 0;">Nenhuma ocorrência encontrada.</p>
+             style="font-size:12px;color:var(--color-text-dim);text-align:center;padding:8px 0;">Nenhuma ocorrência encontrada.</p>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <template x-for="oc in (resultadosBusca || [])" :key="oc.id">
               <div class="glass-card" style="padding:12px;border-radius:4px;display:flex;align-items:center;justify-content:space-between;transition:box-shadow 0.2s ease;"
                    onmouseover="this.style.boxShadow='0 0 12px rgba(0,212,255,0.15)'"
                    onmouseout="this.style.boxShadow='none'">
                 <div>
-                  <p style="font-size:0.875rem;font-weight:500;color:var(--color-text);font-family:var(--font-data);" x-text="oc.numero_ocorrencia"></p>
-                  <p style="font-size:0.75rem;color:var(--color-text-dim);"
+                  <p style="font-size:14px;font-weight:500;color:var(--color-text);font-family:var(--font-data);" x-text="oc.numero_ocorrencia"></p>
+                  <p style="font-size:12px;color:var(--color-text-dim);"
                      x-text="'Ocorrido em ' + formatDate(oc.data_ocorrencia) + ' · Registrado em ' + formatDate(oc.criado_em)"></p>
                   <p x-show="oc.nomes_envolvidos && oc.nomes_envolvidos.length > 0"
-                     style="font-size:0.75rem;color:var(--color-text-muted);margin-top:2px;"
+                     style="font-size:12px;color:var(--color-text-muted);margin-top:2px;"
                      x-text="oc.nomes_envolvidos.join(' · ')"></p>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                  <span style="font-size:0.75rem;padding:2px 8px;border-radius:4px;"
+                  <span style="font-size:12px;padding:2px 8px;border-radius:4px;"
                         :style="oc.processada
                           ? 'background:rgba(0,255,136,0.15);color:var(--color-success);'
                           : 'background:rgba(255,107,0,0.15);color:var(--color-danger);'"
@@ -142,7 +142,7 @@ function renderOcorrenciaUpload() {
                   <template x-if="oc.arquivo_pdf_url">
                     <a :href="oc.arquivo_pdf_url" target="_blank" rel="noopener noreferrer"
                        :aria-label="'Abrir PDF da ocorrência ' + oc.numero_ocorrencia"
-                       class="btn btn-secondary" style="font-size:0.75rem;padding:4px 12px;">Abrir PDF</a>
+                       class="btn btn-secondary" style="font-size:12px;padding:4px 12px;">Abrir PDF</a>
                   </template>
                 </div>
               </div>
@@ -153,7 +153,7 @@ function renderOcorrenciaUpload() {
 
       <!-- Lista de ocorrências recentes -->
       <div style="margin-top:8px;">
-        <h3 style="font-family:var(--font-display);font-size:0.85rem;font-weight:600;color:var(--color-text);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px 0;">
+        <h3 style="font-family:var(--font-display);font-size:12px;font-weight:600;color:var(--color-text);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px 0;">
           Ocorrências Registradas
         </h3>
         <div x-show="loadingList" style="display:flex;justify-content:center;padding:16px 0;"><span class="spinner"></span></div>
@@ -164,15 +164,15 @@ function renderOcorrenciaUpload() {
                  onmouseout="this.style.boxShadow='none'">
               <div style="display:flex;align-items:center;justify-content:space-between;">
                 <div>
-                  <p style="font-size:0.875rem;font-weight:500;color:var(--color-text);font-family:var(--font-data);" x-text="oc.numero_ocorrencia"></p>
-                  <p style="font-size:0.75rem;color:var(--color-text-dim);"
+                  <p style="font-size:14px;font-weight:500;color:var(--color-text);font-family:var(--font-data);" x-text="oc.numero_ocorrencia"></p>
+                  <p style="font-size:12px;color:var(--color-text-dim);"
                      x-text="'Ocorrido em ' + formatDate(oc.data_ocorrencia) + ' · Registrado em ' + formatDate(oc.criado_em)"></p>
                   <p x-show="oc.nomes_envolvidos && oc.nomes_envolvidos.length > 0"
-                     style="font-size:0.75rem;color:var(--color-text-muted);margin-top:2px;"
+                     style="font-size:12px;color:var(--color-text-muted);margin-top:2px;"
                      x-text="oc.nomes_envolvidos.join(' · ')"></p>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                  <span style="font-size:0.75rem;padding:2px 8px;border-radius:4px;"
+                  <span style="font-size:12px;padding:2px 8px;border-radius:4px;"
                         :style="oc.processada
                           ? 'background:rgba(0,255,136,0.15);color:var(--color-success);'
                           : 'background:rgba(255,107,0,0.15);color:var(--color-danger);'"
@@ -180,14 +180,14 @@ function renderOcorrenciaUpload() {
                   <template x-if="oc.arquivo_pdf_url">
                     <a :href="oc.arquivo_pdf_url" target="_blank" rel="noopener noreferrer"
                        :aria-label="'Abrir PDF da ocorrência ' + oc.numero_ocorrencia"
-                       class="btn btn-secondary" style="font-size:0.75rem;padding:4px 12px;">Abrir PDF</a>
+                       class="btn btn-secondary" style="font-size:12px;padding:4px 12px;">Abrir PDF</a>
                   </template>
                 </div>
               </div>
             </div>
           </template>
         </div>
-        <p x-show="!loadingList && ocorrencias.length === 0" style="font-size:0.75rem;color:var(--color-text-dim);text-align:center;padding:16px 0;">
+        <p x-show="!loadingList && ocorrencias.length === 0" style="font-size:12px;color:var(--color-text-dim);text-align:center;padding:16px 0;">
           Nenhuma ocorrência cadastrada.
         </p>
       </div>
