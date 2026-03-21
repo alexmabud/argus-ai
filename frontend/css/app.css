@@ -892,9 +892,3 @@ input.input-warning {
   }
 }
 
-/* ========================================
-   BOTTOM NAV — HIDDEN (legacy, will be removed in Onda 2)
-   ======================================== */
-.bottom-nav {
-  display: none;
-}
