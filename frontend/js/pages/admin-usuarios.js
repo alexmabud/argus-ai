@@ -72,8 +72,8 @@ function renderAdminUsuarios() {
       </div>
 
       <!-- Modal: Criar usuário -->
-      <div x-show="mostrarFormCriacao" x-cloak
-           style="position: fixed; inset: 0; background: rgba(5,10,15,0.8); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem;">
+      <div x-cloak
+           :style="mostrarFormCriacao ? 'display:flex;position:fixed;inset:0;background:rgba(5,10,15,0.8);align-items:center;justify-content:center;z-index:50;padding:1rem;' : 'display:none;'">
         <div class="glass-card" style="padding: 1.5rem; max-width: 24rem; width: 100%; border: 1px solid var(--color-border);">
           <h3 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 1rem;">Novo usuário</h3>
           <div style="margin-bottom: 1rem;">
@@ -94,8 +94,8 @@ function renderAdminUsuarios() {
       </div>
 
       <!-- Modal: Exibir senha gerada (uso único) -->
-      <div x-show="senhaGerada" x-cloak
-           style="position: fixed; inset: 0; background: rgba(5,10,15,0.8); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem;">
+      <div x-cloak
+           :style="senhaGerada ? 'display:flex;position:fixed;inset:0;background:rgba(5,10,15,0.8);align-items:center;justify-content:center;z-index:50;padding:1rem;' : 'display:none;'">
         <div class="glass-card" style="padding: 1.5rem; max-width: 24rem; width: 100%; border: 1px solid #FFA500;">
           <h3 style="color: #FFA500; font-family: var(--font-display); font-weight: 600; margin-bottom: 0.5rem;">Senha gerada — anote agora</h3>
           <p style="color: var(--color-text-muted); font-family: var(--font-body); font-size: 0.875rem; margin-bottom: 1rem;">

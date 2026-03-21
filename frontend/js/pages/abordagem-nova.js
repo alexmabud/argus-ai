@@ -7,7 +7,7 @@
  */
 function renderAbordagemNova() {
   return `
-    <div x-data="abordagemForm()" x-init="initForm()" style="display:flex;flex-direction:column;gap:20px;">
+    <div x-data="abordagemForm()" x-init="initForm()" style="display:flex;flex-direction:column;gap:16px;">
 
       <!-- Title -->
       <div>
@@ -77,44 +77,44 @@ function renderAbordagemNova() {
 
           <div>
             <label class="login-field-label">Nome *</label>
-            <input type="text" x-model="novaPessoa.nome" placeholder="Nome completo" style="width:100%;">
+            <input type="text" x-model="novaPessoa.nome" placeholder="Nome completo">
           </div>
 
           <div>
             <label class="login-field-label">CPF</label>
-            <input type="text" :value="novaPessoa.cpf" @input="novaPessoa.cpf = formatarCPF($event.target.value)" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" style="width:100%;">
+            <input type="text" :value="novaPessoa.cpf" @input="novaPessoa.cpf = formatarCPF($event.target.value)" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div>
               <label class="login-field-label">Data de nascimento</label>
               <input type="text" x-model="novaPessoa.data_nascimento"
                      @input="novaPessoa.data_nascimento = formatarData($event.target.value)"
-                     placeholder="DD/MM/AAAA" maxlength="10" style="width:100%;">
+                     placeholder="DD/MM/AAAA" maxlength="10">
             </div>
             <div>
               <label class="login-field-label">Vulgo</label>
-              <input type="text" x-model="novaPessoa.apelido" placeholder="Apelido" style="width:100%;">
+              <input type="text" x-model="novaPessoa.apelido" placeholder="Apelido">
             </div>
           </div>
 
           <div>
             <label class="login-field-label">Endereço</label>
-            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e número" style="width:100%;">
+            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e número">
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
             <div>
               <label class="login-field-label">Bairro</label>
-              <input type="text" list="lista-bairros-pessoa" x-model="novaPessoa.bairro" placeholder="Bairro" style="width:100%;">
+              <input type="text" list="lista-bairros-pessoa" x-model="novaPessoa.bairro" placeholder="Bairro">
             </div>
             <div>
               <label class="login-field-label">Cidade</label>
-              <input type="text" list="lista-cidades-pessoa" x-model="novaPessoa.cidade" placeholder="Cidade" style="width:100%;">
+              <input type="text" list="lista-cidades-pessoa" x-model="novaPessoa.cidade" placeholder="Cidade">
             </div>
             <div>
               <label class="login-field-label">Estado (UF)</label>
-              <input type="text" list="lista-estados-pessoa" x-model="novaPessoa.estado" placeholder="DF" maxlength="2" style="width:100%;text-transform:uppercase;">
+              <input type="text" list="lista-estados-pessoa" x-model="novaPessoa.estado" placeholder="DF" maxlength="2" style="text-transform:uppercase;">
             </div>
           </div>
 
@@ -129,7 +129,7 @@ function renderAbordagemNova() {
             <template x-for="e in localidades.estados" :key="e"><option :value="e"></option></template>
           </datalist>
 
-          <button @click="criarPessoa()" class="btn btn-primary" style="font-size:14px;" :disabled="salvandoPessoa || !novaPessoa.nome.trim()">
+          <button @click="criarPessoa()" class="btn btn-primary" :disabled="salvandoPessoa || !novaPessoa.nome.trim()">
             <span x-show="!salvandoPessoa">Salvar e adicionar</span>
             <span x-show="salvandoPessoa" style="display:flex;align-items:center;gap:8px;">
               <span class="spinner"></span> Salvando...
@@ -175,11 +175,11 @@ function renderAbordagemNova() {
                   <button @click="novoEnderecoAberto = {...novoEnderecoAberto, [p.id]: false}"
                           style="color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;font-family:var(--font-data);font-size:11px;">Cancelar</button>
                 </div>
-                <input type="text" x-model="novoEnderecoData[p.id + '_endereco']" placeholder="Rua e número" style="width:100%;font-size:14px;">
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-                  <input type="text" list="lista-bairros-pessoa" x-model="novoEnderecoData[p.id + '_bairro']" placeholder="Bairro" style="width:100%;font-size:14px;">
-                  <input type="text" list="lista-cidades-pessoa" x-model="novoEnderecoData[p.id + '_cidade']" placeholder="Cidade" style="width:100%;font-size:14px;">
-                  <input type="text" list="lista-estados-pessoa" x-model="novoEnderecoData[p.id + '_estado']" placeholder="UF" maxlength="2" style="width:100%;font-size:14px;text-transform:uppercase;">
+                <input type="text" x-model="novoEnderecoData[p.id + '_endereco']" placeholder="Rua e número">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                  <input type="text" list="lista-bairros-pessoa" x-model="novoEnderecoData[p.id + '_bairro']" placeholder="Bairro">
+                  <input type="text" list="lista-cidades-pessoa" x-model="novoEnderecoData[p.id + '_cidade']" placeholder="Cidade">
+                  <input type="text" list="lista-estados-pessoa" x-model="novoEnderecoData[p.id + '_estado']" placeholder="UF" maxlength="2" style="text-transform:uppercase;">
                 </div>
                 <button @click="salvarNovoEndereco(p.id)" class="btn btn-primary" style="font-size:12px;padding:6px 0;"
                         :disabled="salvandoEndereco[p.id] || !novoEnderecoData[p.id + '_endereco']?.trim()">
@@ -337,30 +337,30 @@ function renderAbordagemNova() {
               <label class="login-field-label">Placa *</label>
               <input type="text" :value="novoVeiculo.placa"
                      @input="novoVeiculo.placa = formatarPlaca($event.target.value)"
-                     placeholder="ABC-1234" maxlength="8" style="width:100%;text-transform:uppercase;">
+                     placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase;">
             </div>
             <div>
               <label class="login-field-label">Foto do veículo</label>
               <input type="file" accept="image/*" capture="environment"
                      @change="onFotoVeiculoSelected($event)"
-                     style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);width:100%;">
+                     style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">
               <p x-show="fotoVeiculoFile" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:4px;" x-text="fotoVeiculoFile?.name"></p>
             </div>
           </div>
 
           <!-- Modelo + Cor + Ano -->
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
             <div>
               <label class="login-field-label">Modelo</label>
-              <input type="text" list="lista-modelos-veiculo" x-model="novoVeiculo.modelo" placeholder="Ex: Gol" style="width:100%;">
+              <input type="text" list="lista-modelos-veiculo" x-model="novoVeiculo.modelo" placeholder="Ex: Gol">
             </div>
             <div>
               <label class="login-field-label">Cor</label>
-              <input type="text" list="lista-cores-veiculo" x-model="novoVeiculo.cor" placeholder="Ex: Branco" style="width:100%;">
+              <input type="text" list="lista-cores-veiculo" x-model="novoVeiculo.cor" placeholder="Ex: Branco">
             </div>
             <div>
               <label class="login-field-label">Ano</label>
-              <input type="number" x-model="novoVeiculo.ano" placeholder="2020" min="1900" max="2100" style="width:100%;">
+              <input type="number" x-model="novoVeiculo.ano" placeholder="2020" min="1900" max="2100">
             </div>
           </div>
 
@@ -372,7 +372,7 @@ function renderAbordagemNova() {
             <template x-for="c in veiculoLocalidades.cores" :key="c"><option :value="c"></option></template>
           </datalist>
 
-          <button @click="criarVeiculo()" class="btn btn-primary" style="font-size:14px;" :disabled="salvandoVeiculo || !novoVeiculo.placa.trim()">
+          <button @click="criarVeiculo()" class="btn btn-primary" :disabled="salvandoVeiculo || !novoVeiculo.placa.trim()">
             <span x-show="!salvandoVeiculo">Salvar e adicionar</span>
             <span x-show="salvandoVeiculo" style="display:flex;align-items:center;gap:8px;">
               <span class="spinner"></span> Salvando...
@@ -410,9 +410,9 @@ function renderAbordagemNova() {
       </div>
 
       <!-- Modal de sucesso -->
-      <div x-show="showSuccessModal" x-cloak
+      <div x-cloak
            role="dialog" aria-modal="true" aria-labelledby="modal-sucesso-titulo"
-           style="position:fixed;inset:0;z-index:50;background:rgba(5,10,15,0.85);display:flex;align-items:center;justify-content:center;padding:0 16px;">
+           :style="showSuccessModal ? 'display:flex;position:fixed;inset:0;z-index:50;background:rgba(5,10,15,0.85);align-items:center;justify-content:center;padding:0 16px;' : 'display:none;'">
         <div class="glass-card" style="padding:24px;border-radius:4px;max-width:384px;width:100%;display:flex;flex-direction:column;gap:20px;border:1px solid rgba(0,212,255,0.3);box-shadow:0 0 20px rgba(0,212,255,0.1);">
 
           <!-- Ícone de check -->

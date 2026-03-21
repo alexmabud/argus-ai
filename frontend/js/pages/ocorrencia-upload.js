@@ -6,7 +6,7 @@
  */
 function renderOcorrenciaUpload() {
   return `
-    <div x-data="ocorrenciaUploadPage()" style="display:flex;flex-direction:column;gap:20px;">
+    <div x-data="ocorrenciaUploadPage()" style="display:flex;flex-direction:column;gap:16px;">
 
       <!-- Header -->
       <div>
@@ -93,11 +93,10 @@ function renderOcorrenciaUpload() {
 
         <div>
           <label class="login-field-label">Nome do abordado</label>
-          <input type="text" x-model="buscaNome" placeholder="Ex: Carlos Eduardo Souza"
-                 style="width:100%;">
+          <input type="text" x-model="buscaNome" placeholder="Ex: Carlos Eduardo Souza">
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div>
             <label class="login-field-label">Número RAP</label>
             <input type="text" x-model="buscaRap" placeholder="Ex: 2026/000123">
@@ -110,7 +109,7 @@ function renderOcorrenciaUpload() {
           </div>
         </div>
 
-        <button @click="buscar()" class="btn btn-primary" style="width:100%;" :disabled="buscando">
+        <button @click="buscar()" class="btn btn-primary" :disabled="buscando">
           <span x-show="!buscando">Buscar</span>
           <span x-show="buscando" style="display:flex;align-items:center;justify-content:center;gap:8px;">
             <span class="spinner"></span> Buscando...

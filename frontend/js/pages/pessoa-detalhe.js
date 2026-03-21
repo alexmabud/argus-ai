@@ -183,9 +183,9 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Modal de cadastro de vínculo manual -->
-          <div x-show="modalVinculo" x-cloak
+          <div x-cloak
                @click.self="fecharModalVinculo()"
-               style="position: fixed; inset: 0; background: rgba(5,10,15,0.7); z-index: 50; display: flex; align-items: flex-end; justify-content: center; padding: 1rem;">
+               :style="modalVinculo ? 'display:flex;position:fixed;inset:0;background:rgba(5,10,15,0.7);z-index:50;align-items:center;justify-content:center;padding:1rem;' : 'display:none;'">
             <div class="glass-card"
                  style="border: 1px solid var(--color-border); padding: 1.25rem; width: 100%; max-width: 24rem; display: flex; flex-direction: column; gap: 1rem;"
                  @click.stop>
