@@ -919,3 +919,103 @@ input.input-warning {
   }
 }
 
+/* ========================================
+   HOME ACTION CARDS
+   ======================================== */
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-scan {
+  from { top: -40px; opacity: 0.6; }
+  to   { top: 100%;  opacity: 0;   }
+}
+
+.home-action-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 16px;
+  background: rgba(13, 21, 32, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  cursor: pointer;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+  animation: card-enter 250ms ease-out both;
+}
+
+/* Scan line — pseudo-elemento que desce no hover */
+.home-action-card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(transparent, rgba(0, 212, 255, 0.06), transparent);
+  top: -40px;
+  pointer-events: none;
+}
+
+.home-action-card:hover {
+  border-color: rgba(0, 212, 255, 0.5);
+  box-shadow:
+    0 0 16px rgba(0, 212, 255, 0.12),
+    inset 0 0 20px rgba(0, 212, 255, 0.04);
+  transform: translateY(-2px);
+}
+
+.home-action-card:hover::after {
+  animation: card-scan 0.4s ease forwards;
+}
+
+.home-action-card:active {
+  transform: translateY(0);
+}
+
+/* Cabeçalho tático: código + dot */
+.home-action-card .card-code {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 14px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  color: var(--color-text-dim);
+  letter-spacing: 0.05em;
+}
+
+/* Ícone com glow sutil */
+.home-action-card .card-icon {
+  color: var(--color-primary);
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.35));
+  transition: filter 200ms ease;
+}
+
+.home-action-card:hover .card-icon {
+  filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.7));
+}
+
+/* Label */
+.home-action-card .card-label {
+  font-family: var(--font-data);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
