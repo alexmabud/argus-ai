@@ -711,18 +711,6 @@ function abordagemForm() {
       this.gpsLoading = true;
       this.gpsErro = null;
 
-      // Verificar estado da permissão antes de chamar a API
-      if (navigator.permissions) {
-        try {
-          const perm = await navigator.permissions.query({ name: "geolocation" });
-          if (perm.state === "denied") {
-            this.gpsErro = "GPS bloqueado. Clique no cadeado (🔒) na barra de endereços → Localização → Permitir. No Windows, verifique também: Configurações → Privacidade → Localização → Ativar.";
-            this.gpsLoading = false;
-            return;
-          }
-        } catch { /* navigator.permissions não suportado — continua normalmente */ }
-      }
-
       try {
         const loc = await getGPSLocation();
         this.latitude = loc.latitude;
