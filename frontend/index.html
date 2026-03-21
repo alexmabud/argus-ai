@@ -75,129 +75,90 @@
   <div x-show="authenticated" x-cloak>
 
     <!-- Header -->
-    <header class="app-header" x-data="{ searchQuery: '' }">
-      <!-- Mobile hamburger -->
-      <button class="hamburger-btn" @click="$dispatch('sidebar:toggle-mobile')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+    <header class="app-header">
+      <!-- Botão Voltar (só fora da home) -->
+      <button class="header-back-btn"
+              x-show="currentPage !== 'home'"
+              x-cloak
+              @click="navigate('home')"
+              title="Voltar">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
 
       <!-- Logo -->
-      <span class="header-logo" @click="$dispatch('navigate', 'home')">ARGUS</span>
-
-      <!-- Desktop sidebar toggle -->
-      <button class="sidebar-toggle" @click="$dispatch('sidebar:toggle')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
-      </button>
+      <span class="header-logo" @click="navigate('home')">ARGUS</span>
 
       <!-- Search bar -->
-      <div class="header-search">
+      <div class="header-search" x-data="{ searchQuery: '' }">
         <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="text"
                x-model="searchQuery"
                placeholder="CONSULTAR BASE OPERACIONAL..."
-               @keydown.enter.prevent="if(searchQuery.trim()) { $dispatch('navigate', 'consulta'); }">
+               @keydown.enter.prevent="if(searchQuery.trim()) { navigate('consulta'); }">
       </div>
 
-      <!-- Header info (desktop) -->
-      <div class="header-info">
-        <div class="header-info-item" x-show="user?.matricula">
-          <span class="label">OP</span>
-          <span class="value font-data" x-text="user?.matricula || ''"></span>
-        </div>
+      <!-- Spacer -->
+      <div style="flex:1"></div>
 
-        <div class="header-info-item" x-show="user?.guarnicao_nome">
-          <span class="label">GU</span>
-          <span class="value font-data" x-text="user?.guarnicao_nome || ''"></span>
-        </div>
-
-        <div class="header-clock font-data" x-data="clockWidget()" x-text="time"></div>
-
-        <div class="flex items-center gap-2">
+      <!-- LEDs de status -->
+      <div class="header-status-leds">
+        <div class="header-status-led">
           <span class="status-dot" :class="online ? 'status-dot-online' : 'status-dot-offline'"></span>
-          <span x-show="syncPending > 0" class="text-xs font-data" style="color: var(--color-primary);" x-text="syncPending + ' sync'"></span>
+          <span>API</span>
         </div>
+        <div class="header-status-led">
+          <span class="status-dot status-dot-online"></span>
+          <span>IA</span>
+        </div>
+        <div class="header-status-led">
+          <span class="status-dot status-dot-sync"></span>
+          <span>DB</span>
+        </div>
+      </div>
+
+      <!-- Avatar do usuário -->
+      <div class="header-user-avatar" @click="navigate('perfil')" title="Perfil">
+        <template x-if="user?.foto_url">
+          <img :src="user.foto_url" :alt="user.nome" />
+        </template>
+        <template x-if="!user?.foto_url">
+          <span x-text="user?.nome ? user.nome.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase() : '?'"></span>
+        </template>
       </div>
     </header>
 
-    <!-- Sidebar -->
-    <div x-data="sidebarComponent()"
-         @sidebar:toggle.window="toggle()"
-         @sidebar:toggle-mobile.window="mobileOpen ? closeMobile() : openMobile()">
+    <!-- Main content -->
+    <main class="app-main" :class="{ 'has-bottom-nav': currentPage !== 'home' }">
+      <div id="page-content"></div>
+    </main>
 
-      <!-- Mobile overlay -->
-      <div class="sidebar-overlay"
-           :class="{ 'active': mobileOpen }"
-           @click="closeMobile()"></div>
+    <!-- Bottom Navigation (só fora da home) -->
+    <nav class="bottom-nav" x-show="currentPage !== 'home'" x-cloak>
+      <button class="bottom-nav-btn" :class="{ active: currentPage === 'abordagem-nova' }" @click="navigate('abordagem-nova')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+        <span class="bottom-nav-label">Abordagem</span>
+      </button>
 
-      <!-- Sidebar panel -->
-      <aside class="sidebar"
-             :class="{ 'collapsed': collapsed, 'mobile-open': mobileOpen }">
+      <button class="bottom-nav-btn" :class="{ active: currentPage === 'consulta' }" @click="navigate('consulta')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span class="bottom-nav-label">Consulta IA</span>
+      </button>
 
-        <!-- Navigation -->
-        <nav class="sidebar-nav">
-          <template x-for="item in items" :key="item.id">
-            <a class="sidebar-item"
-               :class="{ 'active': currentPage === item.page }"
-               @click.prevent="navigateTo(item.page)"
-               :title="item.label">
-              <span x-html="getIcon(item.icon)"></span>
-              <span class="sidebar-label" x-text="item.label"></span>
-            </a>
-          </template>
+      <button class="bottom-nav-btn" :class="{ active: currentPage === 'home' }" @click="navigate('home')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span class="bottom-nav-label">Início</span>
+      </button>
 
-          <!-- Admin item (conditional) -->
-          <template x-if="user?.tipo === 'admin'">
-            <a class="sidebar-item"
-               :class="{ 'active': currentPage === 'admin-usuarios' }"
-               @click.prevent="navigateTo('admin-usuarios')"
-               title="Admin">
-              <span x-html="getIcon('admin')"></span>
-              <span class="sidebar-label">Admin</span>
-            </a>
-          </template>
-        </nav>
+      <button class="bottom-nav-btn" :class="{ active: currentPage === 'ocorrencia-upload' }" @click="navigate('ocorrencia-upload')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg>
+        <span class="bottom-nav-label">Ocorrência</span>
+      </button>
 
-        <!-- Footer -->
-        <div class="sidebar-footer">
-          <!-- System status -->
-          <div class="sidebar-status">
-            <div class="sidebar-status-item">
-              <span class="status-dot" :class="online ? 'status-dot-online' : 'status-dot-offline'"></span>
-              <span>API</span>
-            </div>
-            <div class="sidebar-status-item">
-              <span class="status-dot status-dot-online"></span>
-              <span>IA</span>
-            </div>
-            <div class="sidebar-status-item">
-              <span class="status-dot status-dot-sync"></span>
-              <span>DB</span>
-            </div>
-          </div>
-
-          <!-- User info -->
-          <div class="sidebar-user" @click="navigateTo('perfil')" style="cursor:pointer">
-            <div class="sidebar-user-avatar">
-              <template x-if="user?.foto_url">
-                <img :src="user.foto_url" />
-              </template>
-              <template x-if="!user?.foto_url">
-                <span x-text="user?.nome ? user.nome.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase() : '?'"></span>
-              </template>
-            </div>
-            <div class="sidebar-user-info">
-              <div class="sidebar-user-name" x-text="user?.nome_guerra || user?.nome || 'Operador'"></div>
-              <div class="sidebar-user-role" x-text="user?.posto_graduacao || user?.tipo || ''"></div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Main content -->
-      <main class="app-main" :class="{ 'sidebar-collapsed': collapsed }">
-        <div id="page-content"></div>
-      </main>
-    </div>
+      <button class="bottom-nav-btn" :class="{ active: currentPage === 'dashboard' }" @click="navigate('dashboard')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        <span class="bottom-nav-label">Analítico</span>
+      </button>
+    </nav>
   </div>
 
   <!-- Toast container -->
@@ -215,7 +176,6 @@
   <script src="/js/components/ocr-placa.js?v=3"></script>
   <script src="/js/components/offline-indicator.js?v=3"></script>
   <script src="/js/components/sync-queue.js?v=3"></script>
-  <script src="/js/components/sidebar.js?v=4"></script>
   <script src="/js/pages/login.js?v=4"></script>
   <script src="/js/pages/abordagem-nova.js?v=6"></script>
   <script src="/js/pages/consulta.js?v=5"></script>
