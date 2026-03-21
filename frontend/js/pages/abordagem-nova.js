@@ -699,6 +699,19 @@ function abordagemForm() {
     async captureGPS() {
       this.gpsLoading = true;
       this.gpsErro = null;
+
+      // Verificar estado da permissão antes de chamar a API
+      if (navigator.permissions) {
+        try {
+          const perm = await navigator.permissions.query({ name: "geolocation" });
+          if (perm.state === "denied") {
+            this.gpsErro = "GPS bloqueado. Clique no cadeado (🔒) na barra de endereços → Localização → Permitir. No Windows, verifique também: Configurações → Privacidade → Localização → Ativar.";
+            this.gpsLoading = false;
+            return;
+          }
+        } catch { /* navigator.permissions não suportado — continua normalmente */ }
+      }
+
       try {
         const loc = await getGPSLocation();
         this.latitude = loc.latitude;
@@ -717,7 +730,7 @@ function abordagemForm() {
         }
         this.endereco = "";
         if (err && err.code === 1) {
-          this.gpsErro = "Permissão de localização negada. Habilite nas configurações do navegador.";
+          this.gpsErro = "GPS bloqueado. Clique no cadeado (🔒) na barra de endereços → Localização → Permitir. No Windows, verifique também: Configurações → Privacidade → Localização → Ativar.";
         } else if (err && err.code === 2) {
           this.gpsErro = "Sinal de GPS indisponível.";
         } else if (err && err.code === 3) {
