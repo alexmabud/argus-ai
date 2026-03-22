@@ -131,7 +131,7 @@
     </header>
 
     <!-- Main content -->
-    <main class="app-main" :class="{ 'has-bottom-nav': currentPage !== 'home' }">
+    <main class="app-main" :class="{ 'has-bottom-nav': currentPage !== 'home', 'is-home': currentPage === 'home' }">
       <div id="page-content"></div>
     </main>
 
