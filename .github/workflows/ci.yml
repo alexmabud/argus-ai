@@ -96,7 +96,7 @@ jobs:
       DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/argus_test
       REDIS_URL: redis://localhost:6379
       SECRET_KEY: test-secret-key-for-ci
-      ENCRYPTION_KEY: dGVzdC1lbmNyeXB0aW9uLWtleS1mb3ItY2k=
+      ENCRYPTION_KEY: Eas3Nq_BCCCbr_ok5M2YX84TuOdNZA_hukLRXUr4nxQ=
       S3_ENDPOINT: http://localhost:9000
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
