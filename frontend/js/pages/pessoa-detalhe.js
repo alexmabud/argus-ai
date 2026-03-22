@@ -69,7 +69,7 @@ function renderPessoaDetalhe(appState) {
           <!-- Fotos -->
           <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">
                 Fotos (<span x-text="fotos.length"></span>)
               </h3>
               <!-- Botões câmera + galeria -->
@@ -364,7 +364,7 @@ function renderPessoaDetalhe(appState) {
           <!-- Vínculos (automáticos + manuais) -->
           <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">Vínculos</h3>
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">Vínculos</h3>
               <button @click="abrirModalVinculo()"
                       class="btn btn-primary"
                       style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px;">
@@ -550,7 +550,7 @@ function renderPessoaDetalhe(appState) {
           <!-- Mapa de Abordagens -->
           <div x-show="pontosComLocalizacao.length > 0" class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">
                 Mapa de Abordagens (<span x-text="pontosComLocalizacao.length"></span>)
               </h3>
               <div style="display: flex; gap: 0.25rem;">
