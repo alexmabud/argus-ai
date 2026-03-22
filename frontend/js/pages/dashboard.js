@@ -195,17 +195,14 @@ function renderDashboard() {
               </template>
               <template x-for="dia in diasDoMes" :key="dia">
                 <button
-                  style="position:relative;font-family:var(--font-data);font-size:12px;font-weight:500;padding:4px 0;border-radius:4px;display:flex;flex-direction:column;align-items:center;cursor:pointer;border:1px solid transparent;background:transparent;transition:all 150ms;"
-                  :style="isDiaSelecionado(dia)
-                    ? 'background:rgba(0,212,255,0.15);border-color:rgba(0,212,255,0.4);color:var(--color-primary);font-weight:700;box-shadow:0 0 8px rgba(0,212,255,0.15);'
-                    : 'color:var(--color-text-muted);'"
-                  @click="selecionarDia(dia)"
-                  @mouseover="if(!isDiaSelecionado(dia)) $el.style.background='var(--color-surface-hover)'"
-                  @mouseout="if(!isDiaSelecionado(dia)) $el.style.background='transparent'">
-                  <span x-text="dia"></span>
-                  <span x-show="diaTemAbordagem(dia)"
-                        style="width:4px;height:4px;border-radius:50%;background:var(--color-primary);margin-top:2px;box-shadow:0 0 4px var(--color-primary);">
-                  </span>
+                  class="cal-day"
+                  :class="{
+                    'is-selecionado': isDiaSelecionado(dia),
+                    'is-hoje': diaEHoje(dia)
+                  }"
+                  @click="selecionarDia(dia)">
+                  <span class="cal-day-num" x-text="dia"></span>
+                  <span class="cal-led" x-show="diaTemAbordagem(dia)"></span>
                 </button>
               </template>
             </div>
