@@ -38,22 +38,22 @@ class LLMService:
             LLMIndisponivelError: Quando a API Anthropic retorna erro ou está inacessível.
         """
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": settings.ANTHROPIC_API_KEY,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": "claude-3-haiku-20240307",
-                        "max_tokens": max_tokens,
-                        "system": system,
-                        "messages": [{"role": "user", "content": prompt}],
-                    },
-                )
-                return response.json()["content"][0]["text"]
+            client = httpx.AsyncClient(timeout=60.0)
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": settings.ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-3-haiku-20240307",
+                    "max_tokens": max_tokens,
+                    "system": system,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+            )
+            return response.json()["content"][0]["text"]
         except Exception as exc:
             logger.error("Erro ao chamar Anthropic: %s", exc)
             raise LLMIndisponivelError() from exc
@@ -73,16 +73,16 @@ class LLMService:
             LLMIndisponivelError: Quando o servidor Ollama está inacessível.
         """
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                response = await client.post(
-                    f"{settings.OLLAMA_BASE_URL}/api/generate",
-                    json={
-                        "model": settings.OLLAMA_MODEL,
-                        "prompt": f"{system}\n\n{prompt}",
-                        "stream": False,
-                        "options": {"num_predict": max_tokens},
-                    },
-                )
+            client = httpx.AsyncClient(timeout=120.0)
+            response = await client.post(
+                f"{settings.OLLAMA_BASE_URL}/api/generate",
+                json={
+                    "model": settings.OLLAMA_MODEL,
+                    "prompt": f"{system}\n\n{prompt}",
+                    "stream": False,
+                    "options": {"num_predict": max_tokens},
+                },
+            )
             return response.json()["response"]
         except Exception as exc:
             logger.error("Erro ao chamar Ollama: %s", exc)
