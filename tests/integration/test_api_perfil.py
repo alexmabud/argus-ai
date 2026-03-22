@@ -69,7 +69,7 @@ async def test_upload_foto_perfil(client: AsyncClient, auth_headers):
 
         response = await client.post(
             "/api/v1/auth/perfil/foto",
-            files={"foto": ("foto.jpg", BytesIO(b"fake-image-bytes"), "image/jpeg")},
+            files={"foto": ("foto.jpg", BytesIO(b"\xff\xd8\xff\xe0" + b"\x00" * 16), "image/jpeg")},
             headers=auth_headers,
         )
 

@@ -53,7 +53,7 @@ class LLMService:
                         "messages": [{"role": "user", "content": prompt}],
                     },
                 )
-            return response.json()["content"][0]["text"]
+                return response.json()["content"][0]["text"]
         except Exception as exc:
             logger.error("Erro ao chamar Anthropic: %s", exc)
             raise LLMIndisponivelError() from exc

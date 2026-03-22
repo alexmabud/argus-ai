@@ -33,7 +33,7 @@ class TestUploadFoto:
 
         response = await client.post(
             "/api/v1/fotos/upload",
-            files={"file": ("test.jpg", b"fake_image_data", "image/jpeg")},
+            files={"file": ("test.jpg", b"\xff\xd8\xff\xe0" + b"\x00" * 16, "image/jpeg")},
             data={"tipo": "rosto"},
             headers=auth_headers,
         )
