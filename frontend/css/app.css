@@ -185,20 +185,10 @@ body::after {
   animation: led-pulse-blue 2.5s ease-in-out infinite;
 }
 
-@keyframes led-pulse-blue {
-  0%, 100% { box-shadow: -3px 0 8px rgba(0, 212, 255, 0.4); }
-  50%       { box-shadow: -3px 0 14px rgba(0, 212, 255, 0.8), -1px 0 4px rgba(0, 212, 255, 0.3); }
-}
-
 /* LED roxo — containers filho (nível 2, cards internos) */
 .card-led-purple {
   border-left: 3px solid #A78BFA;
   animation: led-pulse-purple 2.5s ease-in-out infinite;
-}
-
-@keyframes led-pulse-purple {
-  0%, 100% { box-shadow: -3px 0 8px rgba(167, 139, 250, 0.35); }
-  50%       { box-shadow: -3px 0 14px rgba(167, 139, 250, 0.7), -1px 0 4px rgba(167, 139, 250, 0.25); }
 }
 
 /* ========================================
@@ -206,6 +196,16 @@ body::after {
    ======================================== */
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes led-pulse-blue {
+  0%, 100% { box-shadow: -3px 0 8px rgba(0, 212, 255, 0.4); }
+  50%       { box-shadow: -3px 0 14px rgba(0, 212, 255, 0.8), -1px 0 4px rgba(0, 212, 255, 0.3); }
+}
+
+@keyframes led-pulse-purple {
+  0%, 100% { box-shadow: -3px 0 8px rgba(167, 139, 250, 0.35); }
+  50%       { box-shadow: -3px 0 14px rgba(167, 139, 250, 0.7), -1px 0 4px rgba(167, 139, 250, 0.25); }
 }
 
 @keyframes pulse-glow {
