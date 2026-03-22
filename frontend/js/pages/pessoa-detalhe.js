@@ -315,7 +315,10 @@ function renderPessoaDetalhe(appState) {
                   <div style="display: flex; gap: 0.75rem; font-size: 10px; color: var(--color-text-dim); margin-top: 0.125rem;">
                     <span x-show="end.data_inicio" x-text="'Desde ' + new Date(end.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
                     <span x-show="end.data_fim" x-text="'Até ' + new Date(end.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
-                    <span x-show="idx === 0" style="color: var(--color-primary); font-weight: 500;">Atual</span>
+                    <span x-show="idx === 0"
+                          style="font-size: 10px; color: var(--color-primary); font-weight: 600; font-family: var(--font-data); background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); padding: 0 0.375rem; border-radius: 2px; letter-spacing: 0.05em; text-transform: uppercase;">
+                      Atual
+                    </span>
                   </div>
                 </div>
               </template>
@@ -332,7 +335,7 @@ function renderPessoaDetalhe(appState) {
                 <div class="card-led-purple" style="display: flex; align-items: center; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem;">
                   <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; width: 100%;">
                     <div>
-                      <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em;" x-text="formatPlaca(v.placa)"></span>
+                      <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em; background: var(--color-surface-hover); padding: 0.125rem 0.375rem; border-radius: 2px; border: 1px solid var(--color-border);" x-text="formatPlaca(v.placa)"></span>
                       <p x-show="v.modelo || v.cor || v.ano" style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;"
                          x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
                       <template x-if="fotosVeiculos[v.id]">
@@ -490,7 +493,7 @@ function renderPessoaDetalhe(appState) {
                       <div style="display: flex; flex-direction: column; gap: 0.375rem;">
                         <template x-for="v in ab.veiculos" :key="v.id">
                           <div style="font-size: 0.75rem; color: var(--color-text-muted);">
-                            <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em;" x-text="formatPlaca(v.placa)"></span>
+                            <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em; background: var(--color-surface-hover); padding: 0.125rem 0.375rem; border-radius: 2px; border: 1px solid var(--color-border);" x-text="formatPlaca(v.placa)"></span>
                             <template x-if="v.modelo || v.cor">
                               <span style="color: var(--color-text-muted);" x-text="' ' + [v.modelo, v.cor].filter(Boolean).join(' · ')"></span>
                             </template>
