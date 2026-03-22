@@ -120,7 +120,8 @@ jobs:
         run: |
           docker exec $(docker ps -q --filter "ancestor=postgis/postgis:16-3.4") bash -c "
             apt-get update &&
-            apt-get install -y --no-install-recommends ca-certificates git build-essential postgresql-server-dev-16 clang &&
+            apt-get install -y --no-install-recommends ca-certificates git build-essential postgresql-server-dev-16 clang llvm &&
+            ln -sf \$(which clang) /usr/bin/clang-13 &&
             git clone --branch v0.8.1 --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector &&
             cd /tmp/pgvector && make && make install &&
             rm -rf /tmp/pgvector
