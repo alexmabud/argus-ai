@@ -223,7 +223,7 @@ function renderPessoaDetalhe(appState) {
                        @click="iniciarCadastroNovo()"
                        style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(0,212,255,0.05); cursor: pointer;"
                        onmouseover="this.style.background='rgba(0,212,255,0.1)'" onmouseout="this.style.background='rgba(0,212,255,0.05)'">
-                    <div style="width: 1.75rem; height: 1.75rem; border-radius: 4px; background: var(--color-primary); display: flex; align-items: center; justify-content: center; color: var(--color-bg); font-size: 0.875rem; font-weight: 700;">+</div>
+                    <div style="width: 2rem; height: 2rem; border-radius: 4px; background: var(--color-primary); display: flex; align-items: center; justify-content: center; color: var(--color-bg); font-size: 0.875rem; font-weight: 700;">+</div>
                     <div>
                       <div style="font-size: 0.875rem; color: var(--color-primary); font-weight: 500;">Cadastrar novo</div>
                       <div style="font-size: 0.75rem; color: var(--color-text-muted);">Pessoa não encontrada — clique para cadastrar</div>
@@ -234,7 +234,7 @@ function renderPessoaDetalhe(appState) {
 
               <!-- Pessoa selecionada -->
               <div x-show="pessoaSelecionada" style="display: flex; align-items: center; gap: 0.5rem; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem;">
-                <div style="width: 1.75rem; height: 1.75rem; border-radius: 4px; background: var(--color-surface); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 0.75rem;"
+                <div style="width: 2rem; height: 2rem; border-radius: 4px; background: var(--color-surface); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 0.75rem;"
                      x-text="pessoaSelecionada?.nome?.[0] || ''"></div>
                 <div style="flex: 1;">
                   <div style="font-size: 0.875rem; color: var(--color-text);" x-text="pessoaSelecionada?.nome"></div>
