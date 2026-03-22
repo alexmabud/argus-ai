@@ -143,6 +143,7 @@ function app() {
         this.user = auth.getUser();
         this.currentPage = "home";
         this.renderPage("home");
+        document.body.style.overflow = "hidden";
       } else {
         this.$nextTick(() => this.renderLogin());
       }
@@ -182,6 +183,7 @@ function app() {
       this.currentPage = page;
       this.renderPage(page);
       window.history.pushState({ page }, "", `#${page}`);
+      document.body.style.overflow = page === "home" ? "hidden" : "";
     },
 
     /**
