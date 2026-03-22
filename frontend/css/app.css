@@ -477,9 +477,7 @@ body::after {
 
 .app-main.is-home {
   min-height: unset;
-  height: calc(100vh - var(--header-height));
   overflow: hidden;
-  box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
@@ -685,7 +683,7 @@ input.input-warning {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 100%;
+  height: calc(100vh - var(--header-height) - 40px);
   overflow: hidden;
   padding-bottom: 16px;
 }
