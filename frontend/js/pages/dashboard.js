@@ -7,6 +7,55 @@
  */
 function renderDashboard() {
   return `
+    <style>
+      .cal-day {
+        position: relative;
+        font-family: var(--font-data);
+        font-size: 13px;
+        font-weight: 500;
+        aspect-ratio: 1;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 1px solid transparent;
+        background: transparent;
+        transition: background 150ms, border-color 150ms, color 150ms;
+        color: var(--color-text-muted);
+        width: 100%;
+      }
+      .cal-day:hover {
+        background: rgba(0, 212, 255, 0.06);
+        border-color: rgba(0, 212, 255, 0.2);
+        color: var(--color-text);
+      }
+      .cal-day.is-selecionado {
+        background: rgba(0, 212, 255, 0.15);
+        border-color: rgba(0, 212, 255, 0.4);
+        color: var(--color-primary);
+        font-weight: 700;
+        box-shadow: 0 0 8px rgba(0, 212, 255, 0.15);
+      }
+      .cal-day.is-selecionado:hover {
+        background: rgba(0, 212, 255, 0.2);
+      }
+      .cal-day.is-hoje .cal-day-num {
+        color: var(--color-primary);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      .cal-led {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--color-primary);
+        box-shadow: 0 0 6px var(--color-primary);
+        margin-top: 3px;
+        flex-shrink: 0;
+      }
+    </style>
     <div x-data="dashboardPage()" x-init="load()" style="display:flex;flex-direction:column;gap:20px;">
 
       <!-- Header da pagina -->
