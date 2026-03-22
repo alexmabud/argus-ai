@@ -356,9 +356,9 @@ function renderPessoaDetalhe(appState) {
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">Vínculos</h3>
               <button @click="abrirModalVinculo()"
-                      class="btn btn-primary"
-                      style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px;">
-                + Adicionar
+                      style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-size: 0.75rem; font-family: var(--font-data); font-weight: 600; letter-spacing: 0.05em; padding: 0; opacity: 0.85; transition: opacity 0.15s;"
+                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+                + Adicionar Vínculo
               </button>
             </div>
 
