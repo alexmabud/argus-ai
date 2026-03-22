@@ -4,7 +4,7 @@ Valida roteamento para Anthropic e Ollama, tratamento de erros
 e exceção LLMIndisponivelError.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -19,7 +19,7 @@ class TestLLMService:
         """Deve gerar texto via Anthropic quando disponível."""
         service = LLMService()
 
-        mock_response = AsyncMock()
+        mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"content": [{"text": "Relatório gerado"}]}
 
@@ -27,10 +27,8 @@ class TestLLMService:
             mock_settings.LLM_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
 
-            with patch("httpx.AsyncClient") as mock_client_cls:
+            with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
-                mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                mock_client.__aexit__ = AsyncMock(return_value=False)
                 mock_client.post = AsyncMock(return_value=mock_response)
                 mock_client_cls.return_value = mock_client
 
@@ -47,10 +45,8 @@ class TestLLMService:
             mock_settings.LLM_PROVIDER = "anthropic"
             mock_settings.ANTHROPIC_API_KEY = "test-key"
 
-            with patch("httpx.AsyncClient") as mock_client_cls:
+            with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
-                mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                mock_client.__aexit__ = AsyncMock(return_value=False)
                 mock_client.post = AsyncMock(side_effect=Exception("Connection error"))
                 mock_client_cls.return_value = mock_client
 
