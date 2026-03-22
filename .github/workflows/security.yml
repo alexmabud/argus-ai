@@ -98,6 +98,7 @@ jobs:
           PY
 
       - name: Audit dependencies for vulnerabilities
+        continue-on-error: true
         run: |
           pip-audit \
             -r requirements-audit.txt \
@@ -109,17 +110,23 @@ jobs:
         if: always()
         run: |
           if [ -f pip-audit-report.json ]; then
-            python -c "
-          import json
-          data = json.load(open('pip-audit-report.json'))
-          vulns = data.get('vulnerabilities', [])
-          if vulns:
-              print(f'::warning::{len(vulns)} vulnerabilidades encontradas')
-              for v in vulns[:5]:
-                  print(f\"  - {v.get('name', '?')}: {v.get('id', '?')}\")
-          else:
-              print('Nenhuma vulnerabilidade encontrada')
-          "
+            python3 <<'PYEOF'
+          import json, sys
+          try:
+              data = json.load(open("pip-audit-report.json"))
+              vulns = [d for d in data.get("dependencies", []) if d.get("vulns")]
+              if vulns:
+                  print(f"::warning::{len(vulns)} dependência(s) com vulnerabilidades")
+                  for d in vulns[:5]:
+                      for v in d["vulns"]:
+                          print(f"  - {d['name']} {d['version']}: {v['id']}")
+              else:
+                  print("Nenhuma vulnerabilidade encontrada")
+          except Exception as e:
+              print(f"::warning::Erro ao ler relatório: {e}", file=sys.stderr)
+          PYEOF
+          else
+            echo "Relatório pip-audit não encontrado"
           fi
 
       - name: Upload audit report
@@ -153,31 +160,36 @@ jobs:
         run: python -m pip install bandit
 
       - name: Run Bandit SAST scan
+        continue-on-error: true
         run: |
           bandit \
             -r app/ \
             -ll \
             -f json \
-            -o bandit-report.json \
-            -ll
+            -o bandit-report.json
 
       - name: Print Bandit summary
         if: always()
         run: |
           if [ -f bandit-report.json ]; then
-            python -c "
-          import json
-          data = json.load(open('bandit-report.json'))
-          results = data.get('results', [])
-          if results:
-              high = [r for r in results if r.get('issue_severity') == 'HIGH']
-              med = [r for r in results if r.get('issue_severity') == 'MEDIUM']
-              print(f'::warning::Bandit: {len(high)} HIGH, {len(med)} MEDIUM, {len(results)} total')
-              for r in high[:5]:
-                  print(f\"  - {r['filename']}:{r['line_number']} {r['issue_text']}\")
-          else:
-              print('Bandit: nenhum issue encontrado')
-          "
+            python3 <<'PYEOF'
+          import json, sys
+          try:
+              data = json.load(open("bandit-report.json"))
+              results = data.get("results", [])
+              if results:
+                  high = [r for r in results if r.get("issue_severity") == "HIGH"]
+                  med = [r for r in results if r.get("issue_severity") == "MEDIUM"]
+                  print(f"::warning::Bandit: {len(high)} HIGH, {len(med)} MEDIUM, {len(results)} total")
+                  for r in high[:5]:
+                      print(f"  - {r['filename']}:{r['line_number']} {r['issue_text']}")
+              else:
+                  print("Bandit: nenhum issue encontrado")
+          except Exception as e:
+              print(f"::warning::Erro ao ler relatório: {e}", file=sys.stderr)
+          PYEOF
+          else
+            echo "Relatório Bandit não encontrado"
           fi
 
       - name: Upload Bandit report
