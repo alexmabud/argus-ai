@@ -48,8 +48,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           install-deps: lint
 
-      - name: Install mypy
-        run: python -m pip install mypy
+      - name: Install mypy with pydantic plugin
+        run: python -m pip install mypy pydantic
 
       - name: Ruff check
         run: ruff check app/ tests/
@@ -115,23 +115,23 @@ jobs:
       - name: Install additional test dependencies
         run: python -m pip install aioboto3
 
-      - name: Install pgvector in service container
+      - name: Build pgvector from source in service container
         run: |
           docker exec $(docker ps -q --filter "ancestor=postgis/postgis:16-3.4") bash -c "
             apt-get update &&
-            apt-get install -y --no-install-recommends postgresql-16-pgvector ||
-            (apt-get install -y --no-install-recommends ca-certificates git build-essential postgresql-server-dev-16 &&
-             git clone --branch v0.8.1 --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector &&
-             cd /tmp/pgvector && make && make install)
+            apt-get install -y --no-install-recommends ca-certificates git build-essential postgresql-server-dev-16 &&
+            git clone --branch v0.8.1 --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector &&
+            cd /tmp/pgvector && make && make install &&
+            rm -rf /tmp/pgvector
           "
 
       - name: Enable database extensions
         run: |
-          PGPASSWORD=test psql -h localhost -U test -d argus_test -c "
+          PGPASSWORD=test psql -h localhost -U test -d argus_test <<'SQL'
             CREATE EXTENSION IF NOT EXISTS vector;
             CREATE EXTENSION IF NOT EXISTS postgis;
             CREATE EXTENSION IF NOT EXISTS pg_trgm;
-          "
+          SQL
 
       - name: Run tests
         run: pytest -v --cov=app --cov-report=term-missing --tb=short
