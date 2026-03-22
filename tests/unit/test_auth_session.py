@@ -29,8 +29,9 @@ async def test_login_gera_session_id(mock_db):
     service.repo.get_by_matricula.return_value = usuario
     service.audit = AsyncMock()
 
-    with patch("app.services.auth_service.verificar_senha", return_value=True), patch(
-        "app.services.auth_service.hash_senha", return_value="hash_aleatorio"
+    with (
+        patch("app.services.auth_service.verificar_senha", return_value=True),
+        patch("app.services.auth_service.hash_senha", return_value="hash_aleatorio"),
     ):
         result = await service.login("TEST001", "senha123")
 
@@ -58,8 +59,9 @@ async def test_login_invalida_senha_apos_uso(mock_db):
     service.audit = AsyncMock()
 
     novo_hash = "hash_novo_inutilizavel"
-    with patch("app.services.auth_service.verificar_senha", return_value=True), patch(
-        "app.services.auth_service.hash_senha", return_value=novo_hash
+    with (
+        patch("app.services.auth_service.verificar_senha", return_value=True),
+        patch("app.services.auth_service.hash_senha", return_value=novo_hash),
     ):
         await service.login("TEST001", "senha_unica")
 
