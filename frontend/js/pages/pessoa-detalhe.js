@@ -5,16 +5,6 @@
  * (vínculos com outras pessoas), veículos e histórico de abordagens.
  * Todas as informações aparecem sem ocultação.
  */
-const PALETTE = [
-  'border-left: 3px solid var(--color-primary)',
-  'border-left: 3px solid var(--color-success)',
-  'border-left: 3px solid var(--color-secondary)',
-  'border-left: 3px solid #A78BFA',
-  'border-left: 3px solid #14B8A6',
-  'border-left: 3px solid var(--color-warning)',
-  'border-left: 3px solid var(--color-danger)',
-  'border-left: 3px solid #EC4899',
-];
 
 function renderPessoaDetalhe(appState) {
   const pessoaId = appState._pessoaId;
@@ -316,7 +306,7 @@ function renderPessoaDetalhe(appState) {
             </h3>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
               <template x-for="(end, idx) in pessoa.enderecos" :key="end.id">
-                <div style="border: 1px solid var(--color-border); border-radius: 4px; padding: 0.75rem;" :style="PALETTE[idx % PALETTE.length]">
+                <div class="card-led-purple" style="border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem;">
                   <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
                     <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0;" x-text="formatEndereco(end)"></p>
                     <span x-show="end.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim); flex-shrink: 0;"
@@ -339,7 +329,7 @@ function renderPessoaDetalhe(appState) {
             <!-- Lista de veículos -->
             <div x-show="veiculos.length > 0" style="display: flex; flex-direction: column; gap: 0.5rem;">
               <template x-for="(v, idx) in veiculos" :key="v.id">
-                <div style="display: flex; align-items: center; border: 1px solid var(--color-border); border-radius: 4px; padding: 0.75rem;" :style="PALETTE[idx % PALETTE.length]">
+                <div class="card-led-purple" style="display: flex; align-items: center; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem;">
                   <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; width: 100%;">
                     <div>
                       <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em;" x-text="formatPlaca(v.placa)"></span>
@@ -380,7 +370,7 @@ function renderPessoaDetalhe(appState) {
               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <template x-for="rel in pessoa.relacionamentos" :key="rel.pessoa_id">
                   <div @click="viewPessoa(rel.pessoa_id)"
-                       style="display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--color-border); border-left: 3px solid var(--color-secondary); border-radius: 4px; padding: 0.75rem; cursor: pointer;"
+                       class="card-led-purple" style="display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; cursor: pointer;"
                        onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                       <template x-if="rel.foto_principal_url">
@@ -419,7 +409,7 @@ function renderPessoaDetalhe(appState) {
               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <template x-for="vm in vinculosManuais" :key="vm.id">
                   <div @click="viewPessoa(vm.pessoa_vinculada_id)"
-                       style="display: flex; align-items: flex-start; justify-content: space-between; border: 1px solid var(--color-border); border-left: 3px solid #A78BFA; border-radius: 4px; padding: 0.75rem; cursor: pointer;"
+                       class="card-led-purple" style="display: flex; align-items: flex-start; justify-content: space-between; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; cursor: pointer;"
                        onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
                     <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
                       <template x-if="vm.foto_principal_url">
@@ -473,7 +463,7 @@ function renderPessoaDetalhe(appState) {
             </h3>
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
               <template x-for="(ab, idx) in abordagens" :key="ab.id">
-                <div style="border: 1px solid var(--color-border); border-radius: 4px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;" :style="PALETTE[idx % PALETTE.length]">
+                <div class="card-led-purple" style="border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
                   <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
                     <div>
                       <span style="font-size: 0.75rem; font-weight: 500; color: var(--color-primary);" x-text="'#' + ab.id"></span>
