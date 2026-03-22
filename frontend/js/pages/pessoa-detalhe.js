@@ -105,7 +105,7 @@ function renderPessoaDetalhe(appState) {
               <template x-for="foto in fotos" :key="foto.id">
                 <div>
                   <div style="position: relative;">
-                    <img :src="foto.arquivo_url" style="width: 100%; height: 7rem; object-fit: cover; border-radius: 4px; cursor: pointer;" loading="lazy"
+                    <img :src="foto.arquivo_url" style="width: 100%; height: 5rem; object-fit: cover; border-radius: 4px; cursor: pointer;" loading="lazy"
                          @click="fotoAmpliada = foto.arquivo_url">
                     <span style="position: absolute; bottom: 0.25rem; left: 0.25rem; background: rgba(5,10,15,0.7); font-size: 10px; color: var(--color-text-muted); padding: 0 0.25rem; border-radius: 2px;"
                           x-text="foto.tipo || 'foto'"></span>
@@ -207,10 +207,10 @@ function renderPessoaDetalhe(appState) {
                          style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--color-border); cursor: pointer;"
                          onmouseover="this.style.background='var(--color-surface)'" onmouseout="this.style.background='transparent'">
                       <template x-if="p.foto_principal_url">
-                        <img :src="p.foto_principal_url" style="width: 1.75rem; height: 1.75rem; border-radius: 4px; object-fit: cover;">
+                        <img :src="p.foto_principal_url" style="width: 2rem; height: 2rem; border-radius: 4px; object-fit: cover;">
                       </template>
                       <template x-if="!p.foto_principal_url">
-                        <div style="width: 1.75rem; height: 1.75rem; border-radius: 4px; background: var(--color-surface); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 0.75rem;" x-text="p.nome[0]"></div>
+                        <div style="width: 2rem; height: 2rem; border-radius: 4px; background: var(--color-surface); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 0.75rem;" x-text="p.nome[0]"></div>
                       </template>
                       <div>
                         <div style="font-size: 0.875rem; color: var(--color-text);" x-text="p.nome"></div>
@@ -337,7 +337,7 @@ function renderPessoaDetalhe(appState) {
                          x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
                       <template x-if="fotosVeiculos[v.id]">
                         <img :src="fotosVeiculos[v.id].arquivo_url"
-                             style="width: 4rem; height: 4rem; object-fit: cover; border-radius: 4px; cursor: pointer; margin-top: 0.25rem;"
+                             style="width: 3.5rem; height: 3.5rem; object-fit: cover; border-radius: 4px; cursor: pointer; margin-top: 0.25rem;"
                              @click="fotoAmpliada = fotosVeiculos[v.id].arquivo_url"
                              loading="lazy">
                       </template>
@@ -375,11 +375,11 @@ function renderPessoaDetalhe(appState) {
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                       <template x-if="rel.foto_principal_url">
                         <img :src="rel.foto_principal_url"
-                             style="width: 2rem; height: 2rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border); flex-shrink: 0;"
+                             style="width: 2.5rem; height: 2.5rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border); flex-shrink: 0;"
                              loading="lazy">
                       </template>
                       <template x-if="!rel.foto_principal_url">
-                        <div style="width: 2rem; height: 2rem; border-radius: 4px; background: var(--color-surface-hover); border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); flex-shrink: 0;">
+                        <div style="width: 2.5rem; height: 2.5rem; border-radius: 4px; background: var(--color-surface-hover); border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); flex-shrink: 0;">
                           <svg style="width: 1rem; height: 1rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                           </svg>
@@ -414,11 +414,11 @@ function renderPessoaDetalhe(appState) {
                     <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
                       <template x-if="vm.foto_principal_url">
                         <img :src="vm.foto_principal_url"
-                             style="width: 2rem; height: 2rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border); flex-shrink: 0; margin-top: 0.125rem;"
+                             style="width: 2.5rem; height: 2.5rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border); flex-shrink: 0; margin-top: 0.125rem;"
                              loading="lazy">
                       </template>
                       <template x-if="!vm.foto_principal_url">
-                        <div style="width: 2rem; height: 2rem; border-radius: 4px; background: var(--color-surface-hover); border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); flex-shrink: 0; margin-top: 0.125rem;">
+                        <div style="width: 2.5rem; height: 2.5rem; border-radius: 4px; background: var(--color-surface-hover); border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); flex-shrink: 0; margin-top: 0.125rem;">
                           <svg style="width: 1rem; height: 1rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                           </svg>
