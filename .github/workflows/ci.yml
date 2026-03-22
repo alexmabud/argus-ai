@@ -69,7 +69,7 @@ jobs:
 
     services:
       db:
-        image: postgis/postgis:16-3.4
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -128,15 +128,11 @@ jobs:
       - name: Install additional test dependencies
         run: python -m pip install aioboto3
 
-      - name: Build pgvector from source in service container
+      - name: Install PostGIS in database container
         run: |
-          docker exec $(docker ps -q --filter "ancestor=postgis/postgis:16-3.4") bash -c "
-            apt-get update &&
-            apt-get install -y --no-install-recommends ca-certificates git build-essential postgresql-server-dev-16 &&
-            sed -i 's/with_llvm = yes/with_llvm = no/' /usr/lib/postgresql/16/lib/pgxs/src/Makefile.global &&
-            git clone --branch v0.8.1 --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector &&
-            cd /tmp/pgvector && make && make install &&
-            rm -rf /tmp/pgvector
+          docker exec $(docker ps -q --filter "ancestor=pgvector/pgvector:pg16") bash -c "
+            apt-get update -qq &&
+            apt-get install -y --no-install-recommends postgresql-16-postgis-3 postgresql-16-postgis-3-scripts
           "
 
       - name: Enable database extensions
