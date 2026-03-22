@@ -3,14 +3,22 @@
 Processa a imagem original removendo o fundo branco e substituindo
 pelo fundo escuro do app (#050A0F), depois redimensiona para os
 tamanhos exigidos pelo manifest.json.
+
+Dependências:
+    pip install Pillow numpy
 """
 
+import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-SOURCE = Path(r"C:\Users\User\Downloads\Phone Link\1772505697458.png")
+SOURCE = (
+    Path(sys.argv[1])
+    if len(sys.argv) > 1
+    else Path(r"C:\Users\User\Downloads\Phone Link\1772505697458.png")
+)
 OUT_DIR = Path(__file__).parent.parent / "frontend" / "icons"
 BG_COLOR = (5, 10, 15)  # #050A0F
 
@@ -57,6 +65,10 @@ def generate(source: Path, out_dir: Path) -> None:
         source: Caminho da imagem original do olho cyberpunk.
         out_dir: Diretório de saída (frontend/icons/).
     """
+    if not source.exists():
+        print(f"Erro: arquivo não encontrado: {source}")
+        sys.exit(1)
+
     out_dir.mkdir(parents=True, exist_ok=True)
 
     img = Image.open(source)
