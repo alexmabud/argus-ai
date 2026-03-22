@@ -1,0 +1,77 @@
+# ══════════════════════════════════════════════════════════════
+# Argus AI — Deploy Pipeline
+# ══════════════════════════════════════════════════════════════
+# Deploy automático na VM quando CI passa na main.
+# Também pode ser disparado manualmente via workflow_dispatch.
+# Conecta via SSH e executa docker compose up --build.
+#
+# Secrets necessários no GitHub:
+#   VM_SSH_HOST — IP ou hostname da VM
+#   VM_SSH_USER — Usuário SSH (ex: root, ubuntu)
+#   VM_SSH_KEY  — Chave privada SSH (conteúdo completo)
+#   VM_SSH_PORT — Porta SSH (opcional, default 22)
+# ══════════════════════════════════════════════════════════════
+
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+# ══════════════════════════════════════════════════════════════
+jobs:
+
+  deploy:
+    name: Deploy to VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_SSH_HOST }}
+          username: ${{ secrets.VM_SSH_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          command_timeout: 10m
+          script: |
+            set -e
+            echo "══════ Limpando espaço ══════"
+            docker system prune -f
+
+            echo "══════ Atualizando código ══════"
+            cd ~/argus_ai
+            git pull
+
+            echo "══════ Build e deploy ══════"
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            echo "══════ Aguardando health check ══════"
+            sleep 10
+            if curl -sf http://localhost:8000/health > /dev/null; then
+              echo "Deploy concluído com sucesso!"
+            else
+              echo "::warning::Health check falhou — verificar logs"
+              docker compose -f docker-compose.prod.yml logs --tail=20 api
+              exit 1
+            fi
