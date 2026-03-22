@@ -1,4 +1,4 @@
-const CACHE_NAME = "argus-v6";
+const CACHE_NAME = "argus-v7";
 const STATIC_ASSETS = [
   "/",
   "/css/app.css",
@@ -32,10 +32,17 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch — network-first for API, cache-first for assets
+// Fetch — só intercepta requisições same-origin.
+// Requisições cross-origin (MinIO, OSM tiles, CDNs) são tratadas diretamente
+// pelo browser — a SW não interfere para evitar respostas opacas em <img>.
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Deixa o browser tratar recursos de outras origens diretamente
+  if (url.origin !== self.location.origin) {
+    return;
+  }
 
   if (url.pathname.startsWith("/api/")) {
     // API: network-first
