@@ -225,6 +225,35 @@ async def detalhe_pessoa(
     )
 
 
+@router.delete("/{pessoa_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def deletar_pessoa(
+    request: Request,
+    pessoa_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> None:
+    """Soft delete de pessoa (ativo=False).
+
+    Marca a pessoa como inativa sem remoção física do banco.
+    Registra auditoria da operação.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa a desativar.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Raises:
+        NaoEncontradoError: Se pessoa não existe.
+        AcessoNegadoError: Se pessoa de outra guarnição.
+
+    Status Code:
+        204: Pessoa desativada com sucesso.
+    """
+    service = PessoaService(db)
+    await service.desativar(pessoa_id, user)
+
+
 @router.post(
     "/{pessoa_id}/enderecos",
     response_model=EnderecoRead,

@@ -201,6 +201,7 @@ class TestVinculoManualCrossTenant:
         db_session: AsyncSession,
         pessoa,
         guarnicao: Guarnicao,
+        usuario,
     ):
         """Testa que operador não pode criar vínculo com pessoa de outra guarnição.
 
@@ -241,7 +242,9 @@ class TestVinculoManualCrossTenant:
         await db_session.flush()
 
         # Gerar token do tenant A (operador da guarnição principal)
-        token_a = criar_access_token({"sub": str(1), "guarnicao_id": guarnicao.id})
+        token_a = criar_access_token(
+            {"sub": str(usuario.id), "guarnicao_id": guarnicao.id, "sid": usuario.session_id}
+        )
         headers_a = {"Authorization": f"Bearer {token_a}"}
 
         # Tentar criar vínculo da pessoa do tenant A com pessoa do tenant B
