@@ -341,6 +341,14 @@ function dashboardPage() {
       );
     },
 
+    diaEHoje(dia) {
+      return (
+        dia === this.diaHoje &&
+        this.mesCalendarioAtual === this.mesHoje &&
+        this.anoCalendarioAtual === this.anoHoje
+      );
+    },
+
     async mesMenos() {
       if (this.mesCalendarioAtual === 1) {
         this.mesCalendarioAtual = 12;
