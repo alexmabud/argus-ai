@@ -11,10 +11,10 @@ function renderDashboard() {
       .cal-day {
         position: relative;
         font-family: var(--font-data);
-        font-size: 13px;
+        font-size: 11px;
         font-weight: 500;
-        aspect-ratio: 1;
-        border-radius: 6px;
+        height: 30px;
+        border-radius: 4px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -47,12 +47,12 @@ function renderDashboard() {
         text-underline-offset: 3px;
       }
       .cal-led {
-        width: 5px;
-        height: 5px;
+        width: 4px;
+        height: 4px;
         border-radius: 50%;
         background: var(--color-primary);
-        box-shadow: 0 0 6px var(--color-primary);
-        margin-top: 3px;
+        box-shadow: 0 0 5px var(--color-primary);
+        margin-top: 2px;
         flex-shrink: 0;
       }
     </style>
@@ -178,7 +178,7 @@ function renderDashboard() {
             </div>
 
             <!-- Header dias da semana -->
-            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:4px;">
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-bottom:2px;">
               <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">D</span>
               <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">S</span>
               <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">T</span>
@@ -189,7 +189,7 @@ function renderDashboard() {
             </div>
 
             <!-- Grid de dias -->
-            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:16px;">
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-bottom:12px;">
               <template x-for="v in primeiroDiaSemana" :key="'v' + v">
                 <div></div>
               </template>
