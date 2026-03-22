@@ -40,8 +40,8 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Dados pessoais -->
-          <div class="glass-card" style="border-left: 3px solid var(--color-primary); display: flex; flex-direction: column; gap: 0.5rem;">
-            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Dados Pessoais</h3>
+          <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">Dados Pessoais</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.875rem;">
               <div>
                 <span style="color: var(--color-text-dim)">CPF:</span>
@@ -67,9 +67,9 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Fotos -->
-          <div class="glass-card" style="border-left: 3px solid var(--color-success); display: flex; flex-direction: column; gap: 0.5rem;">
+          <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
                 Fotos (<span x-text="fotos.length"></span>)
               </h3>
               <!-- Botões câmera + galeria -->
@@ -310,8 +310,8 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Endereços -->
-          <div x-show="pessoa.enderecos?.length > 0" class="glass-card" style="border-left: 3px solid var(--color-primary); display: flex; flex-direction: column; gap: 0.5rem;">
-            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
+          <div x-show="pessoa.enderecos?.length > 0" class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
               Endereços (<span x-text="pessoa.enderecos.length"></span>)
             </h3>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -333,8 +333,8 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Veículos Vinculados ao Abordado (container pai) -->
-          <div x-show="veiculos.length > 0" class="glass-card" style="border-left: 3px solid var(--color-success); display: flex; flex-direction: column; gap: 0.75rem;">
-            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Veículos Vinculados ao Abordado</h3>
+          <div x-show="veiculos.length > 0" class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">Veículos Vinculados ao Abordado</h3>
 
             <!-- Lista de veículos -->
             <div x-show="veiculos.length > 0" style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -362,9 +362,9 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Vínculos (automáticos + manuais) -->
-          <div class="glass-card" style="border-left: 3px solid var(--color-secondary); display: flex; flex-direction: column; gap: 0.5rem;">
+          <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Vínculos</h3>
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">Vínculos</h3>
               <button @click="abrirModalVinculo()"
                       class="btn btn-primary"
                       style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px;">
@@ -467,8 +467,8 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Histórico de abordagens -->
-          <div x-show="abordagens.length > 0" class="glass-card" style="border-left: 3px solid #A78BFA; display: flex; flex-direction: column; gap: 0.5rem;">
-            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
+          <div x-show="abordagens.length > 0" class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
               Histórico de Abordagens (<span x-text="abordagens.length"></span>)
             </h3>
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
@@ -548,9 +548,9 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Mapa de Abordagens -->
-          <div x-show="pontosComLocalizacao.length > 0" class="glass-card" style="border-left: 3px solid #14B8A6; display: flex; flex-direction: column; gap: 0.5rem;">
+          <div x-show="pontosComLocalizacao.length > 0" class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
                 Mapa de Abordagens (<span x-text="pontosComLocalizacao.length"></span>)
               </h3>
               <div style="display: flex; gap: 0.25rem;">
@@ -766,8 +766,13 @@ function pessoaDetalhePage(pessoaId) {
 
       // Força recálculo das dimensões após o container estar completamente visível.
       // O IntersectionObserver dispara em threshold=0.1, mas o container pode ainda
-      // não ter dimensões estáveis — invalidateSize() corrige tiles em branco.
-      setTimeout(() => this.mapaInst && this.mapaInst.invalidateSize(), 200);
+      // não ter dimensões estáveis — múltiplas chamadas garantem que pelo menos uma
+      // acerta o momento em que o flex layout já foi calculado pelo browser.
+      requestAnimationFrame(() => {
+        this.mapaInst && this.mapaInst.invalidateSize({ animate: false });
+        setTimeout(() => this.mapaInst && this.mapaInst.invalidateSize({ animate: false }), 200);
+        setTimeout(() => this.mapaInst && this.mapaInst.invalidateSize({ animate: false }), 500);
+      });
     },
 
     toggleModoMapa(modo) {
