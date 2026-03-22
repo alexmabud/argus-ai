@@ -162,3 +162,4 @@ yarn.lock
 # Credenciais e chaves privadas
 Claude Flare - Argus.txt
 .worktrees/
+.claude/worktrees/
