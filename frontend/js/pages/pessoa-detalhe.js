@@ -101,18 +101,13 @@ function renderPessoaDetalhe(appState) {
             </template>
 
             <!-- Grid de fotos existentes -->
-            <div x-show="fotos.length > 0" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+            <div x-show="fotos.length > 0" style="display: flex; flex-wrap: wrap; gap: 0.375rem;">
               <template x-for="foto in fotos" :key="foto.id">
-                <div>
-                  <div style="position: relative;">
-                    <img :src="foto.arquivo_url" style="width: 100%; height: 5rem; object-fit: cover; border-radius: 4px; cursor: pointer;" loading="lazy"
-                         @click="fotoAmpliada = foto.arquivo_url">
-                    <span style="position: absolute; bottom: 0.25rem; left: 0.25rem; background: rgba(5,10,15,0.7); font-size: 10px; color: var(--color-text-muted); padding: 0 0.25rem; border-radius: 2px;"
-                          x-text="foto.tipo || 'foto'"></span>
-                  </div>
-                  <p style="font-size: 0.75rem; color: var(--color-text-muted); text-align: center; margin-top: 0.25rem;"
-                     x-show="foto.data_hora"
-                     x-text="foto.data_hora ? new Date(foto.data_hora).toLocaleDateString('pt-BR') : ''"></p>
+                <div style="position: relative; flex-shrink: 0;">
+                  <img :src="foto.arquivo_url" style="width: 4rem; height: 4rem; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
+                       @click="fotoAmpliada = foto.arquivo_url">
+                  <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
+                        x-text="foto.tipo || 'foto'"></span>
                 </div>
               </template>
             </div>
