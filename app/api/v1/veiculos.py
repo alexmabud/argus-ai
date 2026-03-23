@@ -4,7 +4,7 @@ Fornece endpoints para criação, listagem, detalhe, atualização
 e soft delete de veículos registrados em abordagens.
 """
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
@@ -15,6 +15,36 @@ from app.schemas.veiculo import VeiculoCreate, VeiculoRead
 from app.services.veiculo_service import VeiculoService
 
 router = APIRouter(prefix="/veiculos", tags=["Veículos"])
+
+
+@router.get("/", response_model=list[VeiculoRead])
+async def listar_veiculos(
+    request: Request,
+    placa: str | None = Query(None, description="Busca parcial por placa"),
+    limit: int = Query(10, ge=1, le=100),
+    skip: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[VeiculoRead]:
+    """Lista veículos com busca opcional por placa.
+
+    Busca parcial via ILIKE na placa normalizada. Sem filtros, retorna
+    lista paginada da guarnição.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        placa: Trecho da placa para busca parcial (opcional).
+        limit: Máximo de resultados (1-100).
+        skip: Registros a pular.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista de VeiculoRead.
+    """
+    service = VeiculoService(db)
+    veiculos = await service.buscar(placa=placa, skip=skip, limit=limit, user=user)
+    return [VeiculoRead.model_validate(v) for v in veiculos]
 
 
 @router.post("/", response_model=VeiculoRead, status_code=status.HTTP_201_CREATED)
