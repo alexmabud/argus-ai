@@ -10,6 +10,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.usuario import POSTOS_GRADUACAO
+from app.services.storage_service import normalize_storage_url
 
 #: Regex para validação de complexidade de senha.
 _SENHA_PATTERN = re.compile(
@@ -135,6 +136,8 @@ class UsuarioRead(BaseModel):
     foto_url: str | None = None
     criado_em: datetime
 
+    _normalize_foto = field_validator("foto_url", mode="before")(normalize_storage_url)
+
     model_config = {"from_attributes": True}
 
 
@@ -248,5 +251,7 @@ class UsuarioAdminRead(BaseModel):
     ativo: bool
     tem_sessao: bool
     guarnicao_id: int | None = None
+
+    _normalize_foto = field_validator("foto_url", mode="before")(normalize_storage_url)
 
     model_config = {"from_attributes": True}

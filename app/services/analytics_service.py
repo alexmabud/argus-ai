@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.crypto import decrypt
 from app.models.abordagem import Abordagem, AbordagemPessoa
 from app.models.pessoa import Pessoa
+from app.services.storage_service import normalize_storage_url
 
 
 class AnalyticsService:
@@ -176,7 +177,7 @@ class AnalyticsService:
                     "total_abordagens": int(row[3]),
                     "ultima_abordagem": row[4].isoformat() if row[4] else None,
                     "cpf": decrypt(row[5]) if row[5] else None,
-                    "foto_url": row[6],
+                    "foto_url": normalize_storage_url(row[6]),
                 }
                 for row in rows
             ]
@@ -439,7 +440,7 @@ class AnalyticsService:
                     "id": row[0],
                     "nome": row[1],
                     "cpf": cpf,
-                    "foto_url": row[3],
+                    "foto_url": normalize_storage_url(row[3]),
                 }
             )
         return pessoas

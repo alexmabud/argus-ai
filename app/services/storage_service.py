@@ -1,10 +1,12 @@
 """Serviço de armazenamento de arquivos em S3/R2.
 
 Gerencia upload, download e remoção de arquivos em storage S3-compatível
-(Cloudflare R2 em produção, MinIO em desenvolvimento).
+(Cloudflare R2 em produção, MinIO em desenvolvimento). URLs geradas são
+sempre relativas (/storage/...) para evitar mixed-content em HTTPS.
 """
 
 import logging
+import re
 import uuid
 
 import aioboto3
@@ -12,6 +14,33 @@ import aioboto3
 from app.config import settings
 
 logger = logging.getLogger("argus")
+
+#: Regex para extrair chave relativa de URLs absolutas legadas do storage.
+#: Captura o path a partir do nome do bucket (ex: "argus/fotos/img.jpg").
+_ABSOLUTE_URL_RE = re.compile(r"https?://[^/]+/(" + re.escape(settings.S3_BUCKET) + r"/.+)$")
+
+
+def normalize_storage_url(url: str | None) -> str | None:
+    """Converte URL de storage absoluta legada para path relativo.
+
+    URLs novas já são relativas (/storage/bucket/key). URLs antigas
+    armazenadas como http://host:port/bucket/key são convertidas para
+    o formato relativo, eliminando erros de mixed-content em HTTPS.
+
+    Args:
+        url: URL do arquivo no storage (absoluta ou relativa) ou None.
+
+    Returns:
+        Path relativo (/storage/bucket/key) ou None se entrada for None.
+    """
+    if url is None:
+        return None
+    if url.startswith("/storage/"):
+        return url
+    match = _ABSOLUTE_URL_RE.match(url)
+    if match:
+        return f"/storage/{match.group(1)}"
+    return url
 
 
 class StorageService:
@@ -74,7 +103,7 @@ class StorageService:
                 ContentType=content_type,
             )
 
-        url = f"{settings.s3_public_url}/{settings.S3_BUCKET}/{key}"
+        url = f"/storage/{settings.S3_BUCKET}/{key}"
         logger.info("Upload concluído: %s", key)
         return url
 

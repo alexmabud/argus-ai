@@ -2,15 +2,17 @@
 
 Cria a instância principal da aplicação FastAPI com middlewares, routers
 e hooks de ciclo de vida configurados. Também gerencia inicialização de
-modelos de ML e ciclo de vida de conexões com banco de dados.
+modelos de ML e ciclo de vida de conexões com banco de dados. Inclui
+proxy reverso para storage S3/MinIO para evitar mixed-content em HTTPS.
 """
 
 import logging
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.api.health import router as health_router
@@ -43,9 +45,12 @@ async def lifespan(app: FastAPI):
     # Startup rápido: serviços de IA são carregados sob demanda (lazy loading).
     app.state.embedding_service = None
     app.state.face_service = None
+    # Cliente HTTP para proxy de storage (MinIO/R2).
+    app.state.storage_http = httpx.AsyncClient(timeout=30.0)
 
     yield
     # Shutdown
+    await app.state.storage_http.aclose()
     await engine.dispose()
 
 
@@ -98,6 +103,36 @@ def create_app() -> FastAPI:
     # Routers
     app.include_router(health_router)
     app.include_router(api_router, prefix="/api/v1")
+
+    # Proxy reverso para storage S3/MinIO — evita mixed-content em HTTPS.
+    # Em produção o Caddy intercepta /storage/* antes de chegar aqui,
+    # mas em dev (sem Caddy) o FastAPI faz o proxy.
+    @app.get("/storage/{path:path}")
+    async def storage_proxy(path: str, request: Request) -> Response:
+        """Proxy reverso para arquivos no storage S3/MinIO.
+
+        Repassa a requisição para o endpoint S3 configurado, permitindo
+        que URLs relativas (/storage/bucket/key) funcionem em qualquer
+        ambiente sem mixed-content.
+
+        Args:
+            path: Caminho do arquivo no storage (bucket/key).
+            request: Request HTTP original.
+
+        Returns:
+            Response com o conteúdo do arquivo e headers preservados.
+        """
+        upstream_url = f"{settings.S3_ENDPOINT}/{path}"
+        client: httpx.AsyncClient = request.app.state.storage_http
+        upstream = await client.get(upstream_url)
+        return Response(
+            content=upstream.content,
+            status_code=upstream.status_code,
+            headers={
+                "Content-Type": upstream.headers.get("Content-Type", "application/octet-stream"),
+                "Cache-Control": "public, max-age=86400",
+            },
+        )
 
     # Frontend PWA — deve ser o último mount (catch-all)
     app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

@@ -404,7 +404,7 @@ function dashboardPage() {
         return `${dia}/${m}`;
       });
       new ApexCharts(el, {
-        chart: { type: 'line', height: 180, background: 'transparent', toolbar: { show: false },
+        chart: { type: 'line', height: 180, width: '100%', background: 'transparent', toolbar: { show: false },
           fontFamily: 'Rajdhani, sans-serif' },
         theme: { mode: 'dark' },
         series: [
@@ -433,7 +433,7 @@ function dashboardPage() {
         return `${nomesMes[parseInt(m) - 1]}/${ano.slice(2)}`;
       });
       new ApexCharts(el, {
-        chart: { type: 'line', height: 180, background: 'transparent', toolbar: { show: false },
+        chart: { type: 'line', height: 180, width: '100%', background: 'transparent', toolbar: { show: false },
           fontFamily: 'Rajdhani, sans-serif' },
         theme: { mode: 'dark' },
         series: [
@@ -483,8 +483,12 @@ function dashboardPage() {
       } finally {
         this.loading = false;
         await this.$nextTick();
-        this.renderizarGraficoPorDia();
-        this.renderizarGraficoPorMes();
+        // Aguarda o browser calcular layout do DOM (x-if insere elementos
+        // apenas no nextTick, mas dimensões só existem após paint).
+        requestAnimationFrame(() => {
+          this.renderizarGraficoPorDia();
+          this.renderizarGraficoPorMes();
+        });
       }
     },
 

@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.vinculo_manual import VinculoManualRead
+from app.services.storage_service import normalize_storage_url
 
 
 class PessoaCreate(BaseModel):
@@ -81,6 +82,8 @@ class PessoaRead(BaseModel):
     criado_em: datetime
     atualizado_em: datetime
 
+    _normalize_foto = field_validator("foto_principal_url", mode="before")(normalize_storage_url)
+
     model_config = {"from_attributes": True}
 
 
@@ -150,6 +153,8 @@ class VinculoRead(BaseModel):
     frequencia: int
     ultima_vez: datetime
     foto_principal_url: str | None = None
+
+    _normalize_foto = field_validator("foto_principal_url", mode="before")(normalize_storage_url)
 
 
 class PessoaDetail(PessoaRead):
