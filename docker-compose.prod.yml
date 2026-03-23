@@ -1,4 +1,4 @@
-# Docker Compose de produção — Google Cloud / Oracle Cloud
+# Docker Compose de produção — Oracle Cloud
 # HTTPS automático via Caddy (Let's Encrypt)
 # Uso: docker compose -f docker-compose.prod.yml up -d
 
@@ -20,7 +20,7 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - /mnt/banco/pgdata:/var/lib/postgresql/data
       - ./scripts/init_extensions.sql:/docker-entrypoint-initdb.d/init.sql
 
   redis:
@@ -35,7 +35,7 @@ services:
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
-      - redis_data:/data
+      - /mnt/banco/redis:/data
 
   api:
     build:
@@ -104,7 +104,7 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - minio_data:/data
+      - /mnt/fotos:/data
 
   minio-init:
     image: minio/mc:latest
@@ -138,9 +138,6 @@ services:
         condition: service_healthy
 
 volumes:
-  pgdata:
-  redis_data:
   caddy_data:
   caddy_config:
-  minio_data:
   insightface_models:

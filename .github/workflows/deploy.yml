@@ -58,7 +58,7 @@ jobs:
             docker system prune -f
 
             echo "══════ Atualizando código ══════"
-            cd ~/argus_ai
+            cd ~/argus-ai
             git pull
 
             echo "══════ Build e deploy ══════"
