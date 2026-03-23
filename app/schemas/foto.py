@@ -10,7 +10,9 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.services.storage_service import normalize_storage_url
 
 
 class FotoTipo(StrEnum):
@@ -58,6 +60,8 @@ class FotoRead(BaseModel):
     veiculo_id: int | None = None
     face_processada: bool
 
+    _normalize_url = field_validator("arquivo_url", mode="before")(normalize_storage_url)
+
     model_config = {"from_attributes": True}
 
 
@@ -73,6 +77,8 @@ class FotoUploadResponse(BaseModel):
     id: int
     arquivo_url: str
     tipo: str
+
+    _normalize_url = field_validator("arquivo_url", mode="before")(normalize_storage_url)
 
 
 class BuscaRostoItem(BaseModel):
@@ -97,6 +103,10 @@ class BuscaRostoItem(BaseModel):
     cpf_masked: str | None = None
     apelido: str | None = None
     foto_principal_url: str | None = None
+
+    _normalize_urls = field_validator("arquivo_url", "foto_principal_url", mode="before")(
+        normalize_storage_url
+    )
 
     model_config = {"from_attributes": True}
 

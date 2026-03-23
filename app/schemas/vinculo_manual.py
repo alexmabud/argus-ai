@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.services.storage_service import normalize_storage_url
 
 
 class VinculoManualCreate(BaseModel):
@@ -45,5 +47,7 @@ class VinculoManualRead(BaseModel):
     tipo: str
     descricao: str | None = None
     criado_em: datetime
+
+    _normalize_foto = field_validator("foto_principal_url", mode="before")(normalize_storage_url)
 
     model_config = {"from_attributes": True}
