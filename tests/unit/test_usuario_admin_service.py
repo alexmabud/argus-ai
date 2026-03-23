@@ -16,6 +16,13 @@ async def test_criar_usuario_retorna_senha_gerada(mock_db):
     """Verifica que criação gera senha aleatória e retorna em plain text."""
     from app.services.usuario_admin_service import UsuarioAdminService
 
+    # Configurar mock para query de guarnição padrão (guarnicao_id não informado)
+    mock_guarnicao = MagicMock()
+    mock_guarnicao.id = 1
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_guarnicao
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
     service = UsuarioAdminService(mock_db)
     service.repo = AsyncMock()
     service.repo.get_by_matricula.return_value = None
