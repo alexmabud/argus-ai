@@ -9,7 +9,6 @@
 #   VM_SSH_HOST — IP ou hostname da VM
 #   VM_SSH_USER — Usuário SSH (ex: root, ubuntu)
 #   VM_SSH_KEY  — Chave privada SSH (conteúdo completo)
-#   VM_SSH_PORT — Porta SSH (opcional, default 22)
 # ══════════════════════════════════════════════════════════════
 
 name: Deploy
