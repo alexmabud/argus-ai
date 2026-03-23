@@ -64,17 +64,22 @@ async def shutdown(ctx: dict) -> None:
 def _parse_redis_settings() -> RedisSettings:
     """Converte REDIS_URL em RedisSettings do arq.
 
+    Suporta formatos:
+        - redis://host:port/db
+        - redis://:password@host:port/db
+
     Returns:
         Configurações Redis para o worker arq.
     """
-    url = settings.REDIS_URL
-    # redis://host:port/db
-    url = url.replace("redis://", "")
-    parts = url.split(":")
-    host = parts[0] if parts[0] else "localhost"
-    port = int(parts[1].split("/")[0]) if len(parts) > 1 else 6379
-    database = int(parts[1].split("/")[1]) if len(parts) > 1 and "/" in parts[1] else 0
-    return RedisSettings(host=host, port=port, database=database)
+    from urllib.parse import urlparse
+
+    parsed = urlparse(settings.REDIS_URL)
+    return RedisSettings(
+        host=parsed.hostname or "localhost",
+        port=parsed.port or 6379,
+        database=int(parsed.path.lstrip("/") or 0),
+        password=parsed.password,
+    )
 
 
 class WorkerSettings:
