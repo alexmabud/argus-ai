@@ -8,9 +8,10 @@ de texto e geração de embedding via arq worker) e consultas.
 import logging
 from datetime import date
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NaoEncontradoError
+from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
 from app.models.ocorrencia import Ocorrencia
 from app.repositories.ocorrencia_repo import OcorrenciaRepository
 from app.services.audit_service import AuditService
@@ -87,7 +88,11 @@ class OcorrenciaService:
             usuario_id=usuario_id,
             guarnicao_id=guarnicao_id,
         )
-        ocorrencia = await self.repo.create(ocorrencia)
+        try:
+            ocorrencia = await self.repo.create(ocorrencia)
+        except IntegrityError:
+            await self.db.rollback()
+            raise ConflitoDadosError(f"Ocorrência com número '{numero_ocorrencia}' já existe")
 
         await self.audit.log(
             usuario_id=usuario_id,
