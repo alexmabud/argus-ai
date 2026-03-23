@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limit import limiter
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_pdf
 from app.database.session import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_current_user_with_guarnicao
 from app.models.usuario import Usuario
 from app.schemas.ocorrencia import OcorrenciaRead
 from app.services.ocorrencia_service import OcorrenciaService
@@ -37,7 +37,7 @@ async def criar_ocorrencia(
     nomes_envolvidos: str | None = Form(None, max_length=2000),
     data_ocorrencia: date = Form(..., description="Data real do fato (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
 ) -> OcorrenciaRead:
     """Cria ocorrência com upload de PDF do boletim.
 
@@ -52,7 +52,7 @@ async def criar_ocorrencia(
         nomes_envolvidos: Nomes dos envolvidos separados por pipe (opcional).
         data_ocorrencia: Data real do fato ocorrido (formato YYYY-MM-DD).
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado com guarnição atribuída.
 
     Returns:
         OcorrenciaRead com processada=False.

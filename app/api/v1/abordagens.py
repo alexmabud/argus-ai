@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
 from app.database.session import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user_with_guarnicao
 from app.models.usuario import Usuario
 from app.schemas.abordagem import (
     AbordagemCreate,
@@ -25,7 +25,7 @@ async def criar_abordagem(
     request: Request,
     data: AbordagemCreate,
     db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
 ) -> AbordagemRead:
     """Cria nova abordagem com vinculações em payload único.
 
@@ -38,13 +38,14 @@ async def criar_abordagem(
         request: Objeto Request do FastAPI.
         data: Dados completos da abordagem.
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado com guarnição atribuída.
 
     Returns:
         AbordagemRead com dados da abordagem criada.
 
     Status Code:
         201: Abordagem criada.
+        403: Usuário sem guarnição.
         429: Rate limit (30/min).
     """
     service = AbordagemService(db)

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
 from app.database.session import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_current_user_with_guarnicao
 from app.models.usuario import Usuario
 from app.schemas.veiculo import VeiculoCreate, VeiculoRead
 from app.services.veiculo_service import VeiculoService
@@ -23,7 +23,7 @@ async def criar_veiculo(
     request: Request,
     data: VeiculoCreate,
     db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
 ) -> VeiculoRead:
     """Cria novo veículo com placa normalizada.
 
@@ -33,7 +33,7 @@ async def criar_veiculo(
         request: Objeto Request do FastAPI.
         data: Dados do veículo (placa, modelo, cor, ano, tipo).
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado com guarnição atribuída.
 
     Returns:
         VeiculoRead com dados do veículo criado.
@@ -43,6 +43,7 @@ async def criar_veiculo(
 
     Status Code:
         201: Veículo criado.
+        403: Usuário sem guarnição.
         409: Placa duplicada.
         429: Rate limit (30/min).
     """

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
 from app.database.session import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_current_user_with_guarnicao
 from app.models.usuario import Usuario
 from app.schemas.abordagem import AbordagemDetail, VeiculoAbordagemRead
 from app.schemas.pessoa import (
@@ -60,7 +60,7 @@ async def criar_pessoa(
     request: Request,
     data: PessoaCreate,
     db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
 ) -> PessoaRead:
     """Cria nova pessoa com CPF criptografado.
 
@@ -71,7 +71,7 @@ async def criar_pessoa(
         request: Objeto Request do FastAPI.
         data: Dados de criação (nome, cpf, nascimento, apelido, observacoes).
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado com guarnição atribuída.
 
     Returns:
         PessoaRead com dados da pessoa criada.
@@ -81,6 +81,7 @@ async def criar_pessoa(
 
     Status Code:
         201: Pessoa criada com sucesso.
+        403: Usuário sem guarnição.
         409: CPF duplicado.
         429: Rate limit (30/min).
     """

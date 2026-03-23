@@ -86,6 +86,42 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_with_guarnicao(
+    user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Usuario:
+    """Garante que o usuário possui guarnição atribuída, criando se necessário.
+
+    Se o usuário não tem guarnicao_id, busca ou cria a guarnição padrão
+    ("Geral") e atribui automaticamente. Isso evita erros em endpoints
+    que dependem de guarnicao_id para criação de registros (MultiTenantMixin).
+
+    Args:
+        user: Usuário autenticado via get_current_user.
+        db: Sessão do banco de dados.
+
+    Returns:
+        Usuário com guarnicao_id garantidamente não-nulo.
+    """
+    if not user.guarnicao_id:
+        from app.models.guarnicao import Guarnicao
+
+        result = await db.execute(select(Guarnicao).where(Guarnicao.ativo == True).limit(1))  # noqa: E712
+        guarnicao = result.scalar_one_or_none()
+        if not guarnicao:
+            guarnicao = Guarnicao(nome="Geral", unidade="Geral", codigo="GERAL-001")
+            db.add(guarnicao)
+            await db.flush()
+
+        user.guarnicao_id = guarnicao.id
+        await db.flush()
+        logger.info(
+            "Guarnição padrão (id=%d) atribuída ao usuário %s", guarnicao.id, user.matricula
+        )
+
+    return user
+
+
 async def get_face_service(request: Request):
     """Obtém serviço de reconhecimento facial do application state.
 
