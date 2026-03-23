@@ -7,6 +7,7 @@ proxy reverso para storage S3/MinIO para evitar mixed-content em HTTPS.
 """
 
 import logging
+import traceback
 from contextlib import asynccontextmanager
 
 import httpx
@@ -14,6 +15,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
 
 from app.api.health import router as health_router
 from app.api.v1.router import api_router
@@ -78,6 +80,15 @@ def create_app() -> FastAPI:
     # Rate limiting
     app.state.limiter = limiter
 
+    # Handler obrigatório do SlowAPI para retornar 429 em vez de 500
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+        """Retorna 429 quando rate limit é excedido."""
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Muitas requisições. Tente novamente em alguns segundos."},
+        )
+
     # Middlewares (ordem importa — último adicionado executa primeiro)
     app.add_middleware(AuditMiddleware)
     app.add_middleware(LoggingMiddleware)
@@ -94,7 +105,14 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Retorna JSON para qualquer exceção não-tratada, evitando plain text 500."""
-        logger.error("Erro interno não tratado: %s", type(exc).__name__)
+        logger.error(
+            "Erro interno não tratado em %s %s: %s: %s\n%s",
+            request.method,
+            request.url.path,
+            type(exc).__name__,
+            exc,
+            traceback.format_exc(),
+        )
         return JSONResponse(
             status_code=500,
             content={"detail": "Erro interno do servidor. Tente novamente."},
