@@ -359,7 +359,7 @@ function renderHomePage(appState) {
 
       <div style="margin-bottom: 32px;">
         <h2 style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--color-text);">
-          Ola, <span style="color: var(--color-primary);">${saudacao}</span>
+          Olá, <span style="color: var(--color-primary);">${saudacao}</span>
         </h2>
         <p style="font-family: var(--font-data); font-size: 13px; color: var(--color-text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em;">
           Memoria Operacional // Status Ativo

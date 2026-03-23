@@ -404,8 +404,9 @@ function dashboardPage() {
         return `${dia}/${m}`;
       });
       this._chartDia = new ApexCharts(el, {
-        chart: { type: 'line', height: 180, width: '100%', background: 'transparent', toolbar: { show: false },
-          fontFamily: 'Rajdhani, sans-serif' },
+        chart: { type: 'line', height: 180, width: el.offsetWidth, background: 'transparent',
+          toolbar: { show: false }, fontFamily: 'Rajdhani, sans-serif',
+          animations: { enabled: false } },
         theme: { mode: 'dark' },
         series: [
           { name: 'Abordagens', data: this.porDia.map(d => d.abordagens), color: '#00D4FF' },
@@ -434,8 +435,9 @@ function dashboardPage() {
         return `${nomesMes[parseInt(m) - 1]}/${ano.slice(2)}`;
       });
       this._chartMes = new ApexCharts(el, {
-        chart: { type: 'line', height: 180, width: '100%', background: 'transparent', toolbar: { show: false },
-          fontFamily: 'Rajdhani, sans-serif' },
+        chart: { type: 'line', height: 180, width: el.offsetWidth, background: 'transparent',
+          toolbar: { show: false }, fontFamily: 'Rajdhani, sans-serif',
+          animations: { enabled: false } },
         theme: { mode: 'dark' },
         series: [
           { name: 'Abordagens', data: this.porMes.map(d => d.abordagens), color: '#00D4FF' },
