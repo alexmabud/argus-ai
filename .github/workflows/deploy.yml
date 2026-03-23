@@ -67,7 +67,7 @@ jobs:
 
             echo "══════ Aguardando health check ══════"
             sleep 10
-            if curl -sf http://localhost:8000/health > /dev/null; then
+            if curl -sf http://localhost:80/health > /dev/null; then
               echo "Deploy concluído com sucesso!"
             else
               echo "::warning::Health check falhou — verificar logs"
