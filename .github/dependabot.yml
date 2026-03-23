@@ -1,0 +1,44 @@
+# ══════════════════════════════════════════════════════════════
+# Argus AI — Dependabot
+# ══════════════════════════════════════════════════════════════
+# Verifica atualizações de dependências automaticamente.
+# Abre PRs quando há novas versões ou correções de segurança.
+# ══════════════════════════════════════════════════════════════
+
+version: 2
+
+updates:
+  # Dependências Python (pyproject.toml / pip)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps"
+
+  # GitHub Actions (versões das actions nos workflows)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "ci"
+    commit-message:
+      prefix: "ci"
+
+  # Docker (imagens base no Dockerfile)
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels:
+      - "docker"
+    commit-message:
+      prefix: "docker"
