@@ -149,7 +149,7 @@ function renderAbordagemNova() {
                        :style="fotosPessoas[p.id]
                          ? 'background:rgba(0,255,136,0.1);color:var(--color-success);border:1px solid rgba(0,255,136,0.2);'
                          : 'background:var(--color-surface-hover);color:var(--color-primary);border:1px solid rgba(0,212,255,0.2);'">
-                  <span x-text="fotosPessoas[p.id] ? 'FOTO OK' : 'CAPTURAR FOTO'"></span>
+                  <span x-html="fotosPessoas[p.id] ? 'FOTO OK' : '📷 TIRAR FOTO'"></span>
                 </label>
                 <input type="file" accept="image/*" capture="environment"
                        :id="'foto-p-' + p.id" style="display:none;"
@@ -260,7 +260,7 @@ function renderAbordagemNova() {
         <div x-show="veiculosSelecionados.length > 0 && pessoasSelecionadas.length > 0"
              style="padding-top:4px;display:flex;flex-direction:column;gap:8px;">
           <template x-for="v in veiculosSelecionados" :key="v.id">
-            <div style="border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:8px;transition:border-color 0.2s;"
+            <div style="border-radius:4px;padding:16px 20px;display:flex;flex-direction:column;gap:10px;transition:border-color 0.2s;"
                  :style="veiculoPorPessoa[v.id]
                    ? 'border:1px solid rgba(0,255,136,0.4);background:rgba(0,255,136,0.05);'
                    : 'border:1px solid rgba(255,107,0,0.4);background:rgba(255,107,0,0.05);'"
@@ -285,7 +285,7 @@ function renderAbordagemNova() {
 
               <!-- Seleção do condutor -->
               <div>
-                <p style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);margin-bottom:8px;">Quem estava no veículo?</p>
+                <p style="font-family:var(--font-data);font-size:12px;color:var(--color-danger);margin-bottom:8px;font-weight:600;">Quem estava no veículo?</p>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
                   <template x-for="p in pessoasSelecionadas" :key="p.id">
                     <button type="button"
@@ -307,7 +307,7 @@ function renderAbordagemNova() {
                        :style="fotosVeiculos[v.id]
                          ? 'background:rgba(0,255,136,0.1);color:var(--color-success);border:1px solid rgba(0,255,136,0.2);'
                          : 'background:var(--color-surface-hover);color:var(--color-primary);border:1px solid rgba(0,212,255,0.2);'">
-                  <span x-text="fotosVeiculos[v.id] ? 'FOTO OK' : 'CAPTURAR FOTO'"></span>
+                  <span x-html="fotosVeiculos[v.id] ? 'FOTO OK' : '📷 TIRAR FOTO'"></span>
                 </label>
                 <input type="file" accept="image/*" capture="environment"
                        :id="'foto-v-' + v.id" style="display:none;"
