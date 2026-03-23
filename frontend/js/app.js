@@ -221,6 +221,16 @@ function app() {
         "admin-usuarios": renderAdminUsuarios,
       };
 
+      // Destroi graficos ApexCharts antes de trocar de pagina para evitar
+      // erros de NaN em SVGs orfaos que continuam tentando atualizar.
+      container.querySelectorAll('[x-data]').forEach(el => {
+        if (el._x_dataStack) {
+          const data = el._x_dataStack[0];
+          if (data._chartDia) { try { data._chartDia.destroy(); } catch {} }
+          if (data._chartMes) { try { data._chartMes.destroy(); } catch {} }
+        }
+      });
+
       const render = renderers[page];
       if (render) {
         container.innerHTML = render(this);

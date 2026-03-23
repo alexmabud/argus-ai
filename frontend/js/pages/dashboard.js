@@ -398,12 +398,12 @@ function dashboardPage() {
      */
     renderizarGraficoPorDia() {
       const el = document.querySelector('#chart-por-dia');
-      if (!el || !this.porDia.length) return;
+      if (!el || !this.porDia.length || !el.offsetWidth) return;
       const categorias = this.porDia.map(d => {
         const [, m, dia] = d.data.split('-');
         return `${dia}/${m}`;
       });
-      new ApexCharts(el, {
+      this._chartDia = new ApexCharts(el, {
         chart: { type: 'line', height: 180, width: '100%', background: 'transparent', toolbar: { show: false },
           fontFamily: 'Rajdhani, sans-serif' },
         theme: { mode: 'dark' },
@@ -418,7 +418,8 @@ function dashboardPage() {
         grid: { borderColor: '#1A2940' },
         tooltip: { theme: 'dark',
           style: { fontFamily: 'IBM Plex Sans, sans-serif' } },
-      }).render();
+      });
+      this._chartDia.render();
     },
 
     /**
@@ -426,13 +427,13 @@ function dashboardPage() {
      */
     renderizarGraficoPorMes() {
       const el = document.querySelector('#chart-por-mes');
-      if (!el || !this.porMes.length) return;
+      if (!el || !this.porMes.length || !el.offsetWidth) return;
       const nomesMes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
       const categorias = this.porMes.map(d => {
         const [ano, m] = d.mes.split('-');
         return `${nomesMes[parseInt(m) - 1]}/${ano.slice(2)}`;
       });
-      new ApexCharts(el, {
+      this._chartMes = new ApexCharts(el, {
         chart: { type: 'line', height: 180, width: '100%', background: 'transparent', toolbar: { show: false },
           fontFamily: 'Rajdhani, sans-serif' },
         theme: { mode: 'dark' },
@@ -447,7 +448,8 @@ function dashboardPage() {
         grid: { borderColor: '#1A2940' },
         tooltip: { theme: 'dark',
           style: { fontFamily: 'IBM Plex Sans, sans-serif' } },
-      }).render();
+      });
+      this._chartMes.render();
     },
 
     /**
@@ -483,11 +485,15 @@ function dashboardPage() {
       } finally {
         this.loading = false;
         await this.$nextTick();
-        // Aguarda o browser calcular layout do DOM (x-if insere elementos
-        // apenas no nextTick, mas dimensões só existem após paint).
+        // Aguarda o browser calcular layout do DOM. x-if insere elementos
+        // no nextTick, mas dimensões computadas só existem após o primeiro
+        // paint. Dois requestAnimationFrame garantem: 1º = elementos
+        // inseridos, 2º = layout calculado com larguras reais.
         requestAnimationFrame(() => {
-          this.renderizarGraficoPorDia();
-          this.renderizarGraficoPorMes();
+          requestAnimationFrame(() => {
+            this.renderizarGraficoPorDia();
+            this.renderizarGraficoPorMes();
+          });
         });
       }
     },
