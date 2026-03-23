@@ -252,6 +252,13 @@ function ocorrenciaUploadPage() {
       this.sucesso = null;
       this.erro = null;
 
+      const dataISO = parseDateBR(this.dataOcorrencia);
+      if (!dataISO) {
+        this.erro = "Data inválida. Use o formato DD/MM/AAAA.";
+        this.submitting = false;
+        return;
+      }
+
       try {
         const form = new FormData();
         form.append("arquivo_pdf", this.file);
@@ -260,7 +267,7 @@ function ocorrenciaUploadPage() {
         if (this.envolvidos.length > 0) {
           form.append("nomes_envolvidos", this.envolvidos.join("|"));
         }
-        form.append("data_ocorrencia", parseDateBR(this.dataOcorrencia));
+        form.append("data_ocorrencia", dataISO);
 
         await api.request("POST", "/ocorrencias/", form);
         this.sucesso = `Ocorrência ${this.numero} enviada! Processamento em andamento.`;
