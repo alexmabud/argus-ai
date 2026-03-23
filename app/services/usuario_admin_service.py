@@ -96,6 +96,20 @@ class UsuarioAdminService:
         if existing:
             raise ConflitoDadosError("Matrícula já cadastrada")
 
+        # Garantir guarnição: busca ou cria a padrão se não informada
+        if not guarnicao_id:
+            from app.models.guarnicao import Guarnicao
+
+            result = await self.db.execute(
+                select(Guarnicao).where(Guarnicao.ativo == True).limit(1)  # noqa: E712
+            )
+            guarnicao = result.scalar_one_or_none()
+            if not guarnicao:
+                guarnicao = Guarnicao(nome="Geral", unidade="Geral", codigo="GERAL-001")
+                self.db.add(guarnicao)
+                await self.db.flush()
+            guarnicao_id = guarnicao.id
+
         senha = _gerar_senha()
         usuario = Usuario(
             nome=matricula,  # nome provisório até o usuário atualizar o perfil
