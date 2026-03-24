@@ -260,7 +260,7 @@ function renderAbordagemNova() {
         <div x-show="veiculosSelecionados.length > 0 && pessoasSelecionadas.length > 0"
              style="padding-top:4px;display:flex;flex-direction:column;gap:8px;">
           <template x-for="v in veiculosSelecionados" :key="v.id">
-            <div style="border-radius:4px;padding:16px 20px;display:flex;flex-direction:column;gap:10px;transition:border-color 0.2s;"
+            <div style="border-radius:8px;padding:20px 24px;display:flex;flex-direction:column;gap:12px;transition:border-color 0.2s;"
                  :style="veiculoPorPessoa[v.id]
                    ? 'border:1px solid rgba(0,255,136,0.4);background:rgba(0,255,136,0.05);'
                    : 'border:1px solid rgba(255,107,0,0.4);background:rgba(255,107,0,0.05);'"
