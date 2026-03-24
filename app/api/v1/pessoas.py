@@ -16,9 +16,11 @@ from app.schemas.abordagem import AbordagemDetail, VeiculoAbordagemRead
 from app.schemas.pessoa import (
     EnderecoCreate,
     EnderecoRead,
+    EnderecoUpdate,
     PessoaCreate,
     PessoaDetail,
     PessoaRead,
+    PessoaUpdate,
     VinculoRead,
 )
 from app.schemas.veiculo import VeiculoRead
@@ -226,6 +228,52 @@ async def detalhe_pessoa(
     )
 
 
+@router.patch("/{pessoa_id}", response_model=PessoaRead)
+@limiter.limit("30/minute")
+async def atualizar_pessoa(
+    request: Request,
+    pessoa_id: int,
+    data: PessoaUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> PessoaRead:
+    """Atualiza dados de uma pessoa existente.
+
+    Permite atualização parcial (PATCH). Se CPF alterado, re-criptografa
+    com Fernet e recalcula hash SHA-256.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa a atualizar.
+        data: Dados de atualização parcial.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        PessoaRead com dados atualizados.
+
+    Raises:
+        NaoEncontradoError: Se pessoa não existe.
+        AcessoNegadoError: Se pessoa de outra guarnição.
+        ConflitoDadosError: Se novo CPF já cadastrado.
+
+    Status Code:
+        200: Pessoa atualizada com sucesso.
+        404: Pessoa não encontrada.
+        409: CPF duplicado.
+        429: Rate limit (30/min).
+    """
+    service = PessoaService(db)
+    pessoa = await service.atualizar(
+        pessoa_id,
+        data,
+        user,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return _to_pessoa_read(pessoa, service)
+
+
 @router.delete("/{pessoa_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def deletar_pessoa(
     request: Request,
@@ -289,6 +337,56 @@ async def adicionar_endereco(
     """
     service = PessoaService(db)
     endereco = await service.adicionar_endereco(pessoa_id, data, user)
+    return EnderecoRead.model_validate(endereco)
+
+
+@router.patch(
+    "/{pessoa_id}/enderecos/{endereco_id}",
+    response_model=EnderecoRead,
+)
+@limiter.limit("30/minute")
+async def atualizar_endereco(
+    request: Request,
+    pessoa_id: int,
+    endereco_id: int,
+    data: EnderecoUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> EnderecoRead:
+    """Atualiza endereço existente de uma pessoa.
+
+    Permite atualização parcial de campos do endereço. Se coordenadas
+    informadas, atualiza ponto PostGIS.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa dona do endereço.
+        endereco_id: ID do endereço a atualizar.
+        data: Dados de atualização parcial.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        EnderecoRead com dados atualizados.
+
+    Raises:
+        NaoEncontradoError: Se pessoa ou endereço não existe.
+        AcessoNegadoError: Se pessoa de outra guarnição.
+
+    Status Code:
+        200: Endereço atualizado.
+        404: Pessoa ou endereço não encontrado.
+        429: Rate limit (30/min).
+    """
+    service = PessoaService(db)
+    endereco = await service.atualizar_endereco(
+        pessoa_id,
+        endereco_id,
+        data,
+        user,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     return EnderecoRead.model_validate(endereco)
 
 
