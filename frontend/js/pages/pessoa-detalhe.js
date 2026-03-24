@@ -31,7 +31,17 @@ function renderPessoaDetalhe(appState) {
 
           <!-- Dados pessoais -->
           <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
-            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">Dados Pessoais</h3>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Dados Pessoais</h3>
+              <button @click="abrirModalEditarPessoa()"
+                      style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); padding: 0.125rem; transition: color 0.15s;"
+                      onmouseover="this.style.color='var(--color-primary)'" onmouseout="this.style.color='var(--color-text-dim)'"
+                      title="Editar dados pessoais">
+                <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/>
+                </svg>
+              </button>
+            </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.875rem;">
               <div>
                 <span style="color: var(--color-text-dim)">CPF:</span>
@@ -122,6 +132,120 @@ function renderPessoaDetalhe(appState) {
           <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
                style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;">
             <img :src="fotoAmpliada" style="max-width: 100%; max-height: 100%; border-radius: 4px;">
+          </div>
+
+          <!-- Modal editar dados pessoais -->
+          <div x-cloak
+               @click.self="modalEditarPessoa = false"
+               :style="modalEditarPessoa ? 'display:flex;position:fixed;inset:0;background:rgba(5,10,15,0.7);z-index:50;align-items:center;justify-content:center;padding:1rem;' : 'display:none;'">
+            <div class="glass-card"
+                 style="border: 1px solid var(--color-border); padding: 1.25rem; width: 100%; max-width: 24rem; display: flex; flex-direction: column; gap: 0.75rem;"
+                 @click.stop>
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <h3 style="font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--color-text); margin: 0;">Editar Dados Pessoais</h3>
+                <button @click="modalEditarPessoa = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <div>
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Nome <span style="color: var(--color-danger)">*</span></label>
+                  <input type="text" x-model="editPessoaForm.nome"
+                         style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
+                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                </div>
+                <div>
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">CPF</label>
+                  <input type="text" x-model="editPessoaForm.cpf"
+                         style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
+                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                </div>
+                <div>
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Data de Nascimento</label>
+                  <input type="text" x-model="editPessoaForm.data_nascimento"
+                         @input="editPessoaForm.data_nascimento = formatarData($event.target.value)"
+                         placeholder="DD/MM/AAAA" maxlength="10"
+                         style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
+                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                </div>
+                <div>
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Apelido</label>
+                  <input type="text" x-model="editPessoaForm.apelido"
+                         style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
+                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                </div>
+                <div>
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Observações</label>
+                  <textarea x-model="editPessoaForm.observacoes" rows="2"
+                            style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); resize: none; box-sizing: border-box;"
+                            onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'"></textarea>
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.5rem; padding-top: 0.25rem;">
+                <button @click="modalEditarPessoa = false"
+                        style="flex: 1; background: var(--color-surface-hover); color: var(--color-text-muted); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.625rem; font-size: 0.875rem; cursor: pointer;">Cancelar</button>
+                <button @click="salvarEditPessoa()"
+                        :disabled="!editPessoaForm.nome.trim() || salvandoPessoa"
+                        class="btn btn-primary"
+                        style="flex: 2; border-radius: 4px; padding: 0.625rem; font-size: 0.875rem; font-weight: 500;">
+                  <span x-show="!salvandoPessoa">Salvar</span>
+                  <span x-show="salvandoPessoa" class="spinner"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal editar/criar endereço -->
+          <div x-cloak
+               @click.self="modalEditarEndereco = false"
+               :style="modalEditarEndereco ? 'display:flex;position:fixed;inset:0;background:rgba(5,10,15,0.7);z-index:50;align-items:center;justify-content:center;padding:1rem;' : 'display:none;'">
+            <div class="glass-card"
+                 style="border: 1px solid var(--color-border); padding: 1.25rem; width: 100%; max-width: 24rem; display: flex; flex-direction: column; gap: 0.75rem;"
+                 @click.stop>
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <h3 style="font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--color-text); margin: 0;"
+                    x-text="modoEndereco === 'editar' ? 'Editar Endereço' : 'Novo Endereço'"></h3>
+                <button @click="modalEditarEndereco = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <div>
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Logradouro <span style="color: var(--color-danger)">*</span></label>
+                  <input type="text" x-model="editEnderecoForm.endereco"
+                         placeholder="Rua, número..."
+                         style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
+                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                </div>
+                <div>
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Bairro</label>
+                  <input type="text" x-model="editEnderecoForm.bairro"
+                         style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
+                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <div style="flex: 2;">
+                    <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Cidade</label>
+                    <input type="text" x-model="editEnderecoForm.cidade"
+                           style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
+                           onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                  </div>
+                  <div style="flex: 1;">
+                    <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">UF</label>
+                    <input type="text" x-model="editEnderecoForm.estado" maxlength="2"
+                           style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box; text-transform: uppercase;"
+                           onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.5rem; padding-top: 0.25rem;">
+                <button @click="modalEditarEndereco = false"
+                        style="flex: 1; background: var(--color-surface-hover); color: var(--color-text-muted); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.625rem; font-size: 0.875rem; cursor: pointer;">Cancelar</button>
+                <button @click="salvarEditEndereco()"
+                        :disabled="!editEnderecoForm.endereco.trim() || salvandoEndereco"
+                        class="btn btn-primary"
+                        style="flex: 2; border-radius: 4px; padding: 0.625rem; font-size: 0.875rem; font-weight: 500;">
+                  <span x-show="!salvandoEndereco">Salvar</span>
+                  <span x-show="salvandoEndereco" class="spinner"></span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Modal preview de pessoa coabordada -->
@@ -295,17 +419,34 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Endereços -->
-          <div x-show="pessoa.enderecos?.length > 0" class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
-            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
-              Endereços (<span x-text="pessoa.enderecos.length"></span>)
-            </h3>
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
+                Endereços (<span x-text="pessoa.enderecos?.length || 0"></span>)
+              </h3>
+              <button @click="abrirModalNovoEndereco()"
+                      style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-size: 0.75rem; font-family: var(--font-data); font-weight: 600; letter-spacing: 0.05em; padding: 0; opacity: 0.85; transition: opacity 0.15s;"
+                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+                + Novo Endereço
+              </button>
+            </div>
+            <div x-show="pessoa.enderecos?.length > 0" style="display: flex; flex-direction: column; gap: 0.5rem;">
               <template x-for="(end, idx) in pessoa.enderecos" :key="end.id">
                 <div class="card-led-purple" style="border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem;">
                   <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
-                    <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0;" x-text="formatEndereco(end)"></p>
-                    <span x-show="end.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim); flex-shrink: 0;"
-                          x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
+                    <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0; flex: 1;" x-text="formatEndereco(end)"></p>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+                      <button @click="abrirModalEditarEndereco(end)"
+                              style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); padding: 0.125rem; transition: color 0.15s;"
+                              onmouseover="this.style.color='var(--color-primary)'" onmouseout="this.style.color='var(--color-text-dim)'"
+                              title="Editar endereço">
+                        <svg style="width: 0.75rem; height: 0.75rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/>
+                        </svg>
+                      </button>
+                      <span x-show="end.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim);"
+                            x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
+                    </div>
                   </div>
                   <div style="display: flex; gap: 0.75rem; font-size: 10px; color: var(--color-text-dim); margin-top: 0.125rem;">
                     <span x-show="end.data_inicio" x-text="'Desde ' + new Date(end.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
@@ -318,6 +459,9 @@ function renderPessoaDetalhe(appState) {
                 </div>
               </template>
             </div>
+            <p x-show="!pessoa.enderecos?.length" style="font-size: 0.75rem; color: var(--color-text-dim); text-align: center; margin: 0;">
+              Nenhum endereço cadastrado
+            </p>
           </div>
 
           <!-- Veículos Vinculados ao Abordado (container pai) -->
@@ -607,6 +751,17 @@ function pessoaDetalhePage(pessoaId) {
     novaPessoaForm: { nome: '', cpf: '', apelido: '', data_nascimento: '' },
     _buscaTimer: null,
 
+    // Edição de dados pessoais
+    modalEditarPessoa: false,
+    editPessoaForm: { nome: '', cpf: '', data_nascimento: '', apelido: '', observacoes: '' },
+    salvandoPessoa: false,
+
+    // Edição de endereço
+    modalEditarEndereco: false,
+    editEnderecoForm: { id: null, endereco: '', bairro: '', cidade: '', estado: '' },
+    salvandoEndereco: false,
+    modoEndereco: 'criar',
+
     async load() {
       try {
         // Buscar pessoa com detalhes
@@ -884,6 +1039,109 @@ function pessoaDetalhePage(pessoaId) {
         this.vinculosManuais = this.vinculosManuais.filter(v => v.id !== vinculoId);
       } catch (err) {
         alert(err.message || 'Erro ao remover vínculo.');
+      }
+    },
+
+    // ------- Edição de Dados Pessoais -------
+
+    abrirModalEditarPessoa() {
+      const p = this.pessoa;
+      this.editPessoaForm = {
+        nome: p.nome || '',
+        cpf: p.cpf || '',
+        data_nascimento: p.data_nascimento
+          ? new Date(p.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR')
+          : '',
+        apelido: p.apelido || '',
+        observacoes: p.observacoes || '',
+      };
+      this.modalEditarPessoa = true;
+    },
+
+    async salvarEditPessoa() {
+      if (!this.editPessoaForm.nome.trim()) return;
+      this.salvandoPessoa = true;
+      try {
+        const body = {};
+        const f = this.editPessoaForm;
+        if (f.nome.trim() !== (this.pessoa.nome || '')) body.nome = f.nome.trim();
+        if (f.cpf.trim() !== (this.pessoa.cpf || '')) body.cpf = f.cpf.trim() || null;
+        if (f.apelido.trim() !== (this.pessoa.apelido || '')) body.apelido = f.apelido.trim() || null;
+        if (f.observacoes.trim() !== (this.pessoa.observacoes || '')) body.observacoes = f.observacoes.trim() || null;
+
+        const dataParsed = parseDateBR(f.data_nascimento);
+        const dataAtual = this.pessoa.data_nascimento || null;
+        if (dataParsed !== dataAtual) body.data_nascimento = dataParsed || null;
+
+        if (Object.keys(body).length === 0) {
+          this.modalEditarPessoa = false;
+          return;
+        }
+
+        await api.patch(`/pessoas/${pessoaId}`, body);
+
+        // Recarregar dados atualizados
+        this.pessoa = await api.get(`/pessoas/${pessoaId}`);
+        this.vinculosManuais = this.pessoa.vinculos_manuais || [];
+        this.modalEditarPessoa = false;
+        showToast('Dados atualizados com sucesso!', 'success');
+      } catch (err) {
+        showToast(err?.message || 'Erro ao atualizar dados.', 'error');
+      } finally {
+        this.salvandoPessoa = false;
+      }
+    },
+
+    // ------- Edição/Criação de Endereço -------
+
+    abrirModalEditarEndereco(end) {
+      this.modoEndereco = 'editar';
+      this.editEnderecoForm = {
+        id: end.id,
+        endereco: end.endereco || '',
+        bairro: end.bairro || '',
+        cidade: end.cidade || '',
+        estado: end.estado || '',
+      };
+      this.modalEditarEndereco = true;
+    },
+
+    abrirModalNovoEndereco() {
+      this.modoEndereco = 'criar';
+      this.editEnderecoForm = { id: null, endereco: '', bairro: '', cidade: '', estado: '' };
+      this.modalEditarEndereco = true;
+    },
+
+    async salvarEditEndereco() {
+      if (!this.editEnderecoForm.endereco.trim()) return;
+      this.salvandoEndereco = true;
+      try {
+        const f = this.editEnderecoForm;
+        const body = {
+          endereco: f.endereco.trim(),
+          bairro: f.bairro.trim() || null,
+          cidade: f.cidade.trim() || null,
+          estado: f.estado.trim().toUpperCase() || null,
+        };
+
+        if (this.modoEndereco === 'editar') {
+          await api.patch(`/pessoas/${pessoaId}/enderecos/${f.id}`, body);
+        } else {
+          await api.post(`/pessoas/${pessoaId}/enderecos`, body);
+        }
+
+        // Recarregar dados atualizados
+        this.pessoa = await api.get(`/pessoas/${pessoaId}`);
+        this.vinculosManuais = this.pessoa.vinculos_manuais || [];
+        this.modalEditarEndereco = false;
+        showToast(
+          this.modoEndereco === 'editar' ? 'Endereço atualizado!' : 'Endereço cadastrado!',
+          'success'
+        );
+      } catch (err) {
+        showToast(err?.message || 'Erro ao salvar endereço.', 'error');
+      } finally {
+        this.salvandoEndereco = false;
       }
     },
 
