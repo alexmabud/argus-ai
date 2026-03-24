@@ -184,6 +184,7 @@ function app() {
       this.renderPage(page);
       window.history.pushState({ page }, "", `#${page}`);
       document.body.style.overflow = page === "home" ? "hidden" : "";
+      window.scrollTo(0, 0);
     },
 
     /**
