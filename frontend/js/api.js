@@ -9,6 +9,7 @@ class ApiClient {
     this.baseUrl = "/api/v1";
     this.token = localStorage.getItem("argus_token");
     this.refreshToken = localStorage.getItem("argus_refresh_token");
+    this._refreshPromise = null;
   }
 
   setTokens(access, refresh) {
@@ -93,19 +94,29 @@ class ApiClient {
   }
 
   async _refreshAccessToken() {
-    try {
-      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: this.refreshToken }),
-      });
-      if (!response.ok) return false;
-      const data = await response.json();
-      this.setTokens(data.access_token, data.refresh_token);
-      return true;
-    } catch {
-      return false;
-    }
+    // Mutex: se já existe um refresh em andamento, aguarda o resultado dele
+    // em vez de disparar outro (evita race condition com requests paralelas)
+    if (this._refreshPromise) return this._refreshPromise;
+
+    this._refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token: this.refreshToken }),
+        });
+        if (!response.ok) return false;
+        const data = await response.json();
+        this.setTokens(data.access_token, data.refresh_token);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        this._refreshPromise = null;
+      }
+    })();
+
+    return this._refreshPromise;
   }
 
   _sleep(ms) {
