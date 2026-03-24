@@ -111,6 +111,32 @@ class EnderecoCreate(BaseModel):
     data_fim: date | None = None
 
 
+class EnderecoUpdate(BaseModel):
+    """Requisição de atualização parcial de endereço.
+
+    Todos os campos são opcionais. Apenas os campos enviados serão atualizados.
+
+    Attributes:
+        endereco: Logradouro e número atualizado.
+        bairro: Bairro atualizado.
+        cidade: Cidade atualizada.
+        estado: Sigla UF atualizada.
+        latitude: Latitude GPS atualizada.
+        longitude: Longitude GPS atualizada.
+        data_inicio: Data de início atualizada.
+        data_fim: Data de fim atualizada.
+    """
+
+    endereco: str | None = Field(None, min_length=1, max_length=500)
+    bairro: str | None = Field(None, max_length=200)
+    cidade: str | None = Field(None, max_length=200)
+    estado: str | None = Field(None, max_length=2)
+    latitude: float | None = None
+    longitude: float | None = None
+    data_inicio: date | None = None
+    data_fim: date | None = None
+
+
 class EnderecoRead(BaseModel):
     """Dados de leitura de um endereço de pessoa.
 

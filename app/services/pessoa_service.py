@@ -19,7 +19,7 @@ from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.models.vinculo_manual import VinculoManual
 from app.repositories.pessoa_repo import PessoaRepository
-from app.schemas.pessoa import EnderecoCreate, PessoaCreate, PessoaUpdate
+from app.schemas.pessoa import EnderecoCreate, EnderecoUpdate, PessoaCreate, PessoaUpdate
 from app.schemas.vinculo_manual import VinculoManualCreate
 from app.services.audit_service import AuditService
 
@@ -341,6 +341,76 @@ class PessoaService:
         )
         self.db.add(endereco)
         await self.db.flush()
+        return endereco
+
+    async def atualizar_endereco(
+        self,
+        pessoa_id: int,
+        endereco_id: int,
+        data: EnderecoUpdate,
+        user: Usuario,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> EnderecoPessoa:
+        """Atualiza endereço existente de uma pessoa.
+
+        Se latitude e longitude forem informadas, atualiza o ponto PostGIS.
+        Registra auditoria com campos alterados.
+
+        Args:
+            pessoa_id: ID da pessoa dona do endereço.
+            endereco_id: ID do endereço a atualizar.
+            data: Dados de atualização parcial.
+            user: Usuário autenticado (para verificação de tenant).
+            ip_address: Endereço IP da requisição (opcional).
+            user_agent: User-Agent do cliente (opcional).
+
+        Returns:
+            Endereço atualizado.
+
+        Raises:
+            NaoEncontradoError: Se pessoa ou endereço não existe.
+            AcessoNegadoError: Se pessoa pertence a outra guarnição.
+        """
+        pessoa = await self.repo.get(pessoa_id)
+        if not pessoa:
+            raise NaoEncontradoError("Pessoa")
+        TenantFilter.check_ownership(pessoa, user)
+
+        result = await self.db.execute(
+            select(EnderecoPessoa).where(
+                EnderecoPessoa.id == endereco_id,
+                EnderecoPessoa.pessoa_id == pessoa_id,
+                EnderecoPessoa.ativo == True,  # noqa: E712
+            )
+        )
+        endereco = result.scalar_one_or_none()
+        if not endereco:
+            raise NaoEncontradoError("Endereço")
+
+        update_data = data.model_dump(exclude_unset=True)
+
+        # Atualizar geometria PostGIS se coordenadas mudaram
+        lat = update_data.pop("latitude", None)
+        lng = update_data.pop("longitude", None)
+        if lat is not None and lng is not None:
+            endereco.localizacao = f"POINT({lng} {lat})"
+
+        for field, value in update_data.items():
+            setattr(endereco, field, value)
+
+        await self.db.flush()
+
+        await self.audit.log(
+            usuario_id=user.id,
+            acao="UPDATE",
+            recurso="endereco",
+            recurso_id=endereco.id,
+            detalhes={"campos_alterados": list(data.model_dump(exclude_unset=True).keys())},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
         return endereco
 
     @staticmethod
