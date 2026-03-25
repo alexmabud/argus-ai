@@ -72,6 +72,49 @@ class PessoaRepository(BaseRepository[Pessoa]):
         result = await self.db.execute(query)
         return result.scalars().all()
 
+    async def search_by_nome_contains(
+        self,
+        nome: str,
+        guarnicao_id: int | None,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> Sequence[Pessoa]:
+        """Busca pessoas por substring no nome, ignorando acentos e case.
+
+        Utiliza unaccent + ILIKE para busca parcial. Resultados são
+        ordenados pela posição do match no nome (primeiro nome = prioridade maior).
+
+        Args:
+            nome: Termo de busca (nome ou parte do nome).
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            skip: Número de registros a pular.
+            limit: Número máximo de resultados.
+
+        Returns:
+            Sequência de Pessoas ordenadas por posição do match no nome.
+        """
+        nome_clean = nome.strip()
+        if not nome_clean:
+            return []
+
+        unaccent_nome = func.unaccent(func.lower(Pessoa.nome))
+        unaccent_query = func.unaccent(func.lower(nome_clean))
+
+        query = select(Pessoa).where(
+            Pessoa.ativo == True,  # noqa: E712
+            unaccent_nome.like("%" + unaccent_query + "%"),
+        )
+        if guarnicao_id is not None:
+            query = query.where(Pessoa.guarnicao_id == guarnicao_id)
+
+        query = (
+            query.order_by(func.position(unaccent_query, unaccent_nome).asc())
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
     async def get_by_cpf_hash(self, cpf_hash: str, guarnicao_id: int | None) -> Pessoa | None:
         """Busca pessoa por hash SHA-256 do CPF.
 
