@@ -212,7 +212,7 @@ class ConsultaService:
         ids_vistos = set()
 
         # Busca fuzzy por nome
-        fuzzy_results = await self.pessoa_repo.search_by_nome_fuzzy(
+        fuzzy_results = await self.pessoa_repo.search_by_nome_contains(
             q, guarnicao_id, skip=skip, limit=limit
         )
         for pessoa in fuzzy_results:
