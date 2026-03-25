@@ -433,21 +433,19 @@ function renderPessoaDetalhe(appState) {
             <div x-show="pessoa.enderecos?.length > 0" style="display: flex; flex-direction: column; gap: 0.5rem;">
               <template x-for="(end, idx) in pessoa.enderecos" :key="end.id">
                 <div class="card-led-purple" style="border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem;">
-                  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
-                    <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0; flex: 1;" x-text="formatEndereco(end)"></p>
-                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
-                      <button @click="abrirModalEditarEndereco(end)"
-                              style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); padding: 0.125rem; transition: color 0.15s;"
-                              onmouseover="this.style.color='var(--color-primary)'" onmouseout="this.style.color='var(--color-text-dim)'"
-                              title="Editar endereço">
-                        <svg style="width: 0.75rem; height: 0.75rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/>
-                        </svg>
-                      </button>
-                      <span x-show="end.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim);"
-                            x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
-                    </div>
+                  <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; margin-bottom: 0.375rem;">
+                    <span x-show="end.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim);"
+                          x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
+                    <button @click="abrirModalEditarEndereco(end)"
+                            style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); padding: 0.125rem; transition: color 0.15s;"
+                            onmouseover="this.style.color='var(--color-primary)'" onmouseout="this.style.color='var(--color-text-dim)'"
+                            title="Editar endereço">
+                      <svg style="width: 0.75rem; height: 0.75rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/>
+                      </svg>
+                    </button>
                   </div>
+                  <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0;" x-text="formatEndereco(end)"></p>
                   <div style="display: flex; gap: 0.75rem; font-size: 10px; color: var(--color-text-dim); margin-top: 0.125rem;">
                     <span x-show="end.data_inicio" x-text="'Desde ' + new Date(end.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
                     <span x-show="end.data_fim" x-text="'Até ' + new Date(end.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')"></span>
@@ -606,12 +604,12 @@ function renderPessoaDetalhe(appState) {
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
               <template x-for="(ab, idx) in abordagens" :key="ab.id">
                 <div class="card-led-purple" style="border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
-                    <div>
-                      <span style="font-size: 0.75rem; font-weight: 500; color: var(--color-primary);" x-text="'#' + ab.id"></span>
-                    </div>
-                    <span x-show="ab.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim); flex-shrink: 0;"
+                  <div style="display: flex; align-items: center; justify-content: flex-end;">
+                    <span x-show="ab.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim);"
                           x-text="'Cadastrada em ' + new Date(ab.criado_em).toLocaleDateString('pt-BR') + ' às ' + new Date(ab.criado_em).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})"></span>
+                  </div>
+                  <div>
+                    <span style="font-size: 0.75rem; font-weight: 500; color: var(--color-primary);" x-text="'#' + ab.id"></span>
                   </div>
                   <!-- Endereço da Abordagem -->
                   <div x-show="ab.endereco_texto" style="font-size: 0.75rem;">
