@@ -137,6 +137,34 @@ services:
       api:
         condition: service_healthy
 
+  # Backup automático do banco — roda diariamente às 3h da manhã
+  db-backup:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      PGHOST: db
+      PGUSER: ${DB_USER:-argus}
+      PGPASSWORD: ${DB_PASSWORD}
+      PGDATABASE: ${DB_NAME:-argus_db}
+    entrypoint: >
+      /bin/sh -c "
+      while true; do
+        sleep_until=\$$(date -d 'tomorrow 03:00' +%s 2>/dev/null || date -v+1d -v3H -v0M -v0S +%s);
+        now=\$$(date +%s);
+        sleep \$$((sleep_until - now));
+        echo \"[\$$(date)] Iniciando backup...\";
+        pg_dump -Fc > /backups/argus_\$$(date +%Y%m%d_%H%M%S).dump;
+        echo \"[\$$(date)] Backup concluído.\";
+        ls -t /backups/argus_*.dump | tail -n +8 | xargs rm -f 2>/dev/null;
+        echo \"[\$$(date)] Backups antigos removidos (mantendo últimos 7).\";
+      done
+      "
+    volumes:
+      - /mnt/banco/backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   caddy_data:
   caddy_config:
