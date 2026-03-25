@@ -108,7 +108,7 @@ class PessoaRepository(BaseRepository[Pessoa]):
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
 
         query = (
-            query.order_by(func.position(unaccent_query, unaccent_nome).asc())
+            query.order_by(func.strpos(unaccent_nome, unaccent_query).asc())
             .offset(skip)
             .limit(limit)
         )
