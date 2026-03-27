@@ -111,7 +111,8 @@ function renderPessoaDetalhe(appState) {
             </template>
 
             <!-- Grid de fotos existentes -->
-            <div x-show="fotos.length > 0" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+            <div x-show="fotos.length > 0">
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
               <template x-for="foto in fotos.slice(0, 4)" :key="foto.id">
                 <div style="position: relative;">
                   <img :src="foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
@@ -120,6 +121,7 @@ function renderPessoaDetalhe(appState) {
                         x-text="foto.tipo || 'foto'"></span>
                 </div>
               </template>
+              </div>
             </div>
 
             <button x-show="fotos.length > 4" @click="modalTodasFotos = true"

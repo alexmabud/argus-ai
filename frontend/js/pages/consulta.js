@@ -450,7 +450,6 @@ function renderConsulta() {
           <span class="spinner"></span>
         </div>
       </div>
-    </div>
 
     <!-- Modal ver mais — busca por nome/CPF -->
     <div x-show="modalVerMaisTexto" x-cloak
@@ -544,6 +543,7 @@ function renderConsulta() {
         </div>
       </div>
     </div>
+  </div>
   `;
 }
 
