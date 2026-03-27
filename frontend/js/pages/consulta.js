@@ -454,19 +454,19 @@ function renderConsulta() {
     <!-- Modal ver mais — busca por nome/CPF -->
     <div x-show="modalVerMaisTexto" x-cloak
          @click.self="modalVerMaisTexto = false"
-         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto;">
-      <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; max-width: 32rem;">
+         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
+      <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; box-sizing: border-box; max-height: calc(100vh - 2rem); overflow-y: auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
             Resultados (<span x-text="pessoasTexto.length"></span>)
           </h3>
           <button @click="modalVerMaisTexto = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasTexto" :key="'mt-' + p.id">
-            <div @click="modalVerMaisTexto = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center;">
+            <div @click="modalVerMaisTexto = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center; min-width: 0;">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border);">
+                <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--color-surface-hover); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); border: 1px solid var(--color-border);">
@@ -475,7 +475,7 @@ function renderConsulta() {
                   </svg>
                 </div>
               </template>
-              <p style="font-family: var(--font-data); font-size: 11px; color: var(--color-text); margin-top: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
+              <p style="font-family: var(--font-data); font-size: 10px; color: var(--color-text); margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
             </div>
           </template>
         </div>
@@ -485,19 +485,19 @@ function renderConsulta() {
     <!-- Modal ver mais — busca por endereço -->
     <div x-show="modalVerMaisEndereco" x-cloak
          @click.self="modalVerMaisEndereco = false"
-         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto;">
-      <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; max-width: 32rem;">
+         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
+      <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; box-sizing: border-box; max-height: calc(100vh - 2rem); overflow-y: auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
             Resultados por endereço (<span x-text="pessoasEndereco.length"></span>)
           </h3>
           <button @click="modalVerMaisEndereco = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasEndereco" :key="'me-' + p.id">
-            <div @click="modalVerMaisEndereco = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center;">
+            <div @click="modalVerMaisEndereco = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center; min-width: 0;">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border);">
+                <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--color-surface-hover); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); border: 1px solid var(--color-border);">
@@ -506,7 +506,7 @@ function renderConsulta() {
                   </svg>
                 </div>
               </template>
-              <p style="font-family: var(--font-data); font-size: 11px; color: var(--color-text); margin-top: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
+              <p style="font-family: var(--font-data); font-size: 10px; color: var(--color-text); margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
             </div>
           </template>
         </div>
@@ -516,19 +516,19 @@ function renderConsulta() {
     <!-- Modal ver mais — busca por veículo -->
     <div x-show="modalVerMaisVeiculo" x-cloak
          @click.self="modalVerMaisVeiculo = false"
-         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto;">
-      <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; max-width: 32rem;">
+         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
+      <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; box-sizing: border-box; max-height: calc(100vh - 2rem); overflow-y: auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
             Abordados vinculados (<span x-text="pessoasVeiculo.length"></span>)
           </h3>
           <button @click="modalVerMaisVeiculo = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasVeiculo" :key="'mvv-' + p.id + '-' + (p.veiculo_info?.placa || '')">
-            <div @click="modalVerMaisVeiculo = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center;">
+            <div @click="modalVerMaisVeiculo = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center; min-width: 0;">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border);">
+                <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--color-surface-hover); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); border: 1px solid var(--color-border);">
@@ -537,7 +537,7 @@ function renderConsulta() {
                   </svg>
                 </div>
               </template>
-              <p style="font-family: var(--font-data); font-size: 11px; color: var(--color-text); margin-top: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
+              <p style="font-family: var(--font-data); font-size: 10px; color: var(--color-text); margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
             </div>
           </template>
         </div>
