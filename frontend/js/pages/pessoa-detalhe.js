@@ -111,16 +111,21 @@ function renderPessoaDetalhe(appState) {
             </template>
 
             <!-- Grid de fotos existentes -->
-            <div x-show="fotos.length > 0" style="display: flex; flex-wrap: wrap; gap: 0.375rem;">
-              <template x-for="foto in fotos" :key="foto.id">
-                <div style="position: relative; flex-shrink: 0;">
-                  <img :src="foto.arquivo_url" style="width: 4rem; height: 4rem; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
+            <div x-show="fotos.length > 0" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+              <template x-for="foto in fotos.slice(0, 4)" :key="foto.id">
+                <div style="position: relative;">
+                  <img :src="foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
                        @click="fotoAmpliada = foto.arquivo_url">
                   <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                         x-text="foto.tipo || 'foto'"></span>
                 </div>
               </template>
             </div>
+
+            <button x-show="fotos.length > 4" @click="modalTodasFotos = true"
+                    style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0; align-self: flex-start;">
+              Ver mais (<span x-text="fotos.length - 4"></span>)
+            </button>
 
             <!-- Estado vazio -->
             <p x-show="fotos.length === 0 && !novaFotoFile" style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
@@ -132,6 +137,50 @@ function renderPessoaDetalhe(appState) {
           <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
                style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;">
             <img :src="fotoAmpliada" style="max-width: 100%; max-height: 100%; border-radius: 4px;">
+          </div>
+
+          <!-- Modal todas as fotos -->
+          <div x-show="modalTodasFotos" x-cloak
+               @click.self="modalTodasFotos = false"
+               style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 45; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto;">
+            <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; max-width: 32rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
+                  Fotos de <span x-text="pessoa.nome"></span> (<span x-text="fotos.length"></span>)
+                </h3>
+                <button @click="modalTodasFotos = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+                <template x-for="foto in fotos" :key="'modal-' + foto.id">
+                  <div style="position: relative;">
+                    <img :src="foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
+                         @click="fotoAmpliada = foto.arquivo_url">
+                    <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
+                          x-text="foto.tipo || 'foto'"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal todas fotos de veículo -->
+          <div x-show="modalFotosVeiculo" x-cloak
+               @click.self="modalFotosVeiculo = null"
+               style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 45; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto;">
+            <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; max-width: 32rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
+                  Fotos do Veículo (<span x-text="fotosVeiculos[modalFotosVeiculo]?.length || 0"></span>)
+                </h3>
+                <button @click="modalFotosVeiculo = null" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+                <template x-for="fv in (fotosVeiculos[modalFotosVeiculo] || [])" :key="'mv-' + fv.id">
+                  <img :src="fv.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
+                       @click="fotoAmpliada = fv.arquivo_url">
+                </template>
+              </div>
+            </div>
           </div>
 
           <!-- Modal editar dados pessoais -->
@@ -475,11 +524,21 @@ function renderPessoaDetalhe(appState) {
                       <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em; background: var(--color-surface-hover); padding: 0.125rem 0.375rem; border-radius: 2px; border: 1px solid var(--color-border);" x-text="formatPlaca(v.placa)"></span>
                       <p x-show="v.modelo || v.cor || v.ano" style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;"
                          x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
-                      <template x-if="fotosVeiculos[v.id]">
-                        <img :src="fotosVeiculos[v.id].arquivo_url"
-                             style="width: 3.5rem; height: 3.5rem; object-fit: cover; border-radius: 4px; cursor: pointer; margin-top: 0.25rem;"
-                             @click="fotoAmpliada = fotosVeiculos[v.id].arquivo_url"
-                             loading="lazy">
+                      <template x-if="fotosVeiculos[v.id]?.length > 0">
+                        <div style="margin-top: 0.25rem;">
+                          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.25rem;">
+                            <template x-for="fv in fotosVeiculos[v.id].slice(0, 4)" :key="fv.id">
+                              <img :src="fv.arquivo_url"
+                                   style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;"
+                                   @click="fotoAmpliada = fv.arquivo_url"
+                                   loading="lazy">
+                            </template>
+                          </div>
+                          <button x-show="fotosVeiculos[v.id].length > 4" @click="modalFotosVeiculo = v.id"
+                                  style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0;">
+                            Ver mais (<span x-text="fotosVeiculos[v.id].length - 4"></span>)
+                          </button>
+                        </div>
                       </template>
                     </div>
                     <span x-show="v.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim); flex-shrink: 0;"
@@ -727,6 +786,8 @@ function pessoaDetalhePage(pessoaId) {
     abordagens: [],
     veiculos: [],
     fotoAmpliada: null,
+    modalTodasFotos: false,
+    modalFotosVeiculo: null,
     pessoaPreview: null,
     loading: true,
     erro: null,
@@ -802,11 +863,12 @@ function pessoaDetalhePage(pessoaId) {
         const fotosResultados = await Promise.all(fotosPromises);
         const tiposVeiculo = ['veiculo', 'placa'];
         const fotosPlanas = fotosResultados.flat().filter(f => tiposVeiculo.includes(f.tipo));
-        // Mapa veiculo_id → primeira foto do veículo
+        // Mapa veiculo_id → array de todas as fotos do veículo
         const mapaFotos = {};
         for (const foto of fotosPlanas) {
-          if (foto.veiculo_id && !mapaFotos[foto.veiculo_id]) {
-            mapaFotos[foto.veiculo_id] = foto;
+          if (foto.veiculo_id) {
+            if (!mapaFotos[foto.veiculo_id]) mapaFotos[foto.veiculo_id] = [];
+            mapaFotos[foto.veiculo_id].push(foto);
           }
         }
         this.fotosVeiculos = mapaFotos;
