@@ -49,17 +49,25 @@ class ApiClient {
 
       // Token expirado — tentar refresh
       if (response.status === 401 && this.refreshToken) {
-        const refreshed = await this._refreshAccessToken();
-        if (refreshed) {
+        const refreshResult = await this._refreshAccessToken();
+        if (refreshResult === "ok") {
           headers["Authorization"] = `Bearer ${this.token}`;
           const retryResponse = await fetch(url, { ...options, headers });
           if (retryResponse.ok) return await retryResponse.json();
-          throw new ApiError(retryResponse.status, await retryResponse.text());
+          const retryErr = await retryResponse.json().catch(() => ({}));
+          const retryDetail = retryErr.detail;
+          const retryMsg = typeof retryDetail === "string" ? retryDetail : "Erro na requisição";
+          throw new ApiError(retryResponse.status, retryMsg);
         }
-        // Refresh falhou — limpar tokens
-        this.clearTokens();
-        window.dispatchEvent(new Event("auth:expired"));
-        throw new ApiError(401, "Sessão expirada");
+        if (refreshResult === "invalid") {
+          // Sessão realmente inválida (servidor confirmou) — logout
+          this.clearTokens();
+          window.dispatchEvent(new Event("auth:expired"));
+          throw new ApiError(401, "Sessão expirada");
+        }
+        // refreshResult === "network_error" — rede instável, NÃO destruir tokens
+        // Os tokens permanecem no localStorage para tentar novamente depois
+        throw new ApiError(0, "Sem conexão com o servidor");
       }
 
       // Rate limit
@@ -93,30 +101,52 @@ class ApiClient {
     }
   }
 
+  /**
+   * Renova o access token via refresh token com retry resiliente.
+   *
+   * @returns {Promise<"ok"|"invalid"|"network_error">}
+   *   - "ok": refresh bem-sucedido, novos tokens salvos
+   *   - "invalid": servidor confirmou sessão inválida (401) — logout necessário
+   *   - "network_error": falha de rede após 3 tentativas — tokens preservados
+   */
   async _refreshAccessToken() {
     // Mutex: se já existe um refresh em andamento, aguarda o resultado dele
     // em vez de disparar outro (evita race condition com requests paralelas)
     if (this._refreshPromise) return this._refreshPromise;
 
     this._refreshPromise = (async () => {
-      try {
-        const response = await fetch(`${this.baseUrl}/auth/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh_token: this.refreshToken }),
-        });
-        if (!response.ok) return false;
-        const data = await response.json();
-        this.setTokens(data.access_token, data.refresh_token);
-        return true;
-      } catch {
-        return false;
-      } finally {
-        this._refreshPromise = null;
+      const maxRetries = 3;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_token: this.refreshToken }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            this.setTokens(data.access_token, data.refresh_token);
+            return "ok";
+          }
+          // 401 = sessão realmente inválida no servidor, não adianta tentar de novo
+          if (response.status === 401) return "invalid";
+          // Outros erros do servidor (500, 502, 503) — tentar de novo
+        } catch {
+          // Erro de rede — tentar de novo
+        }
+        if (attempt < maxRetries - 1) {
+          await this._sleep(1000 * (attempt + 1));
+        }
       }
+      // Esgotou tentativas sem resposta do servidor — preservar tokens
+      return "network_error";
     })();
 
-    return this._refreshPromise;
+    try {
+      return await this._refreshPromise;
+    } finally {
+      this._refreshPromise = null;
+    }
   }
 
   _sleep(ms) {

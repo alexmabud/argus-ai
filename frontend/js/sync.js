@@ -69,6 +69,11 @@ class SyncManager {
 
       this._notify("done", { synced, failed });
     } catch (err) {
+      // Auth/rede: sync de background NUNCA deve causar logout — abortar silenciosamente
+      if (err.status === 401 || err.status === 0) {
+        this._notify("done", { synced: 0, failed: 0 });
+        return;
+      }
       // Se endpoint não existe ainda, sincronizar individualmente
       await this._syncIndividual(pending);
     } finally {
