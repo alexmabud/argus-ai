@@ -61,7 +61,7 @@ async def consulta_unificada(
     cidade: str | None = Query(None, max_length=200, description="Filtrar pessoas por cidade"),
     estado: str | None = Query(None, max_length=2, description="Filtrar pessoas por estado (UF)"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=10000),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> ConsultaUnificadaResponse:
@@ -122,7 +122,7 @@ async def pessoas_por_veiculo(
     modelo: str | None = Query(None, max_length=100, description="Modelo do veículo"),
     cor: str | None = Query(None, max_length=50, description="Cor do veículo (opcional)"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=10000),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> list[PessoaComVeiculoRead]:
