@@ -114,7 +114,7 @@ function renderConsulta() {
               </svg>
             </div>
           </template>
-          <button x-show="pessoasTexto.length > 10" @click="modalVerMaisTexto = true"
+          <button x-show="pessoasTexto.length > 10" @click="abrirVerMaisTexto()"
                   style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0; align-self: center;">
             Ver mais resultados (<span x-text="pessoasTexto.length"></span> total)
           </button>
@@ -340,7 +340,7 @@ function renderConsulta() {
               </svg>
             </div>
           </template>
-          <button x-show="pessoasEndereco.length > 10" @click="modalVerMaisEndereco = true"
+          <button x-show="pessoasEndereco.length > 10" @click="abrirVerMaisEndereco()"
                   style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0; align-self: center;">
             Ver mais resultados (<span x-text="pessoasEndereco.length"></span> total)
           </button>
@@ -435,7 +435,7 @@ function renderConsulta() {
               </svg>
             </div>
           </template>
-          <button x-show="pessoasVeiculo.length > 10" @click="modalVerMaisVeiculo = true"
+          <button x-show="pessoasVeiculo.length > 10" @click="abrirVerMaisVeiculo()"
                   style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0; align-self: center;">
             Ver mais resultados (<span x-text="pessoasVeiculo.length"></span> total)
           </button>
@@ -462,7 +462,10 @@ function renderConsulta() {
           </h3>
           <button @click="modalVerMaisTexto = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+        <div x-show="loadingVerMais" style="display: flex; justify-content: center; padding: 1.5rem;">
+          <span class="spinner"></span>
+        </div>
+        <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasTexto" :key="'mt-' + p.id">
             <div @click="modalVerMaisTexto = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center; min-width: 0;">
               <template x-if="p.foto_principal_url">
@@ -493,7 +496,10 @@ function renderConsulta() {
           </h3>
           <button @click="modalVerMaisEndereco = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+        <div x-show="loadingVerMais" style="display: flex; justify-content: center; padding: 1.5rem;">
+          <span class="spinner"></span>
+        </div>
+        <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasEndereco" :key="'me-' + p.id">
             <div @click="modalVerMaisEndereco = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center; min-width: 0;">
               <template x-if="p.foto_principal_url">
@@ -524,7 +530,10 @@ function renderConsulta() {
           </h3>
           <button @click="modalVerMaisVeiculo = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+        <div x-show="loadingVerMais" style="display: flex; justify-content: center; padding: 1.5rem;">
+          <span class="spinner"></span>
+        </div>
+        <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasVeiculo" :key="'mvv-' + p.id + '-' + (p.veiculo_info?.placa || '')">
             <div @click="modalVerMaisVeiculo = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center; min-width: 0;">
               <template x-if="p.foto_principal_url">
@@ -593,6 +602,7 @@ function consultaPage() {
     modalVerMaisTexto: false,
     modalVerMaisEndereco: false,
     modalVerMaisVeiculo: false,
+    loadingVerMais: false,
 
     // Dados auxiliares
     localidades: { bairros: [], cidades: [], estados: [] },
@@ -731,6 +741,55 @@ function consultaPage() {
         showToast("Erro na busca por veiculo", "error");
       } finally {
         this.loadingVeiculo = false;
+      }
+    },
+
+    async abrirVerMaisTexto() {
+      this.modalVerMaisTexto = true;
+      this.loadingVerMais = true;
+      try {
+        const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa&limit=100`;
+        const r = await api.get(url);
+        this.pessoasTexto = r.pessoas || [];
+      } catch {
+        showToast("Erro ao carregar todos os resultados", "error");
+      } finally {
+        this.loadingVerMais = false;
+      }
+    },
+
+    async abrirVerMaisEndereco() {
+      this.modalVerMaisEndereco = true;
+      this.loadingVerMais = true;
+      try {
+        let url = `/consultas/?q=&tipo=pessoa&limit=100`;
+        if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
+        if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
+        if (this.filtroEstado.length >= 1) url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
+        const r = await api.get(url);
+        this.pessoasEndereco = r.pessoas || [];
+      } catch {
+        showToast("Erro ao carregar todos os resultados", "error");
+      } finally {
+        this.loadingVerMais = false;
+      }
+    },
+
+    async abrirVerMaisVeiculo() {
+      this.modalVerMaisVeiculo = true;
+      this.loadingVerMais = true;
+      try {
+        const params = new URLSearchParams();
+        if (this.filtroPlaca.length >= 2) params.append("placa", this.filtroPlaca.toUpperCase());
+        if (this.filtroModelo.length >= 2) params.append("modelo", this.filtroModelo);
+        if (this.filtroCor.length >= 1) params.append("cor", this.filtroCor);
+        params.append("limit", "100");
+        const r = await api.get(`/consultas/pessoas-por-veiculo?${params}`);
+        this.pessoasVeiculo = Array.isArray(r) ? r : [];
+      } catch {
+        showToast("Erro ao carregar todos os resultados", "error");
+      } finally {
+        this.loadingVerMais = false;
       }
     },
 
