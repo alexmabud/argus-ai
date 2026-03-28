@@ -97,7 +97,7 @@ function renderConsulta() {
                 <img :src="p.foto_principal_url" :alt="'Foto de ' + p.nome"
                      @pointerdown.stop="iniciarZoom(p.foto_principal_url)"
                      @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()"
-                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:none;">
+                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
@@ -324,7 +324,7 @@ function renderConsulta() {
                 <img :src="p.foto_principal_url"
                      @pointerdown.stop="iniciarZoom(p.foto_principal_url)"
                      @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()"
-                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:none;">
+                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
@@ -409,7 +409,7 @@ function renderConsulta() {
                 <img :src="p.foto_principal_url"
                      @pointerdown.stop="iniciarZoom(p.foto_principal_url)"
                      @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()"
-                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:none;">
+                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
