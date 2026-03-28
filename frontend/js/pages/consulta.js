@@ -95,8 +95,7 @@ function renderConsulta() {
               <!-- Avatar -->
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_url" :alt="'Foto de ' + p.nome"
-                     @pointerdown.stop="iniciarZoom(p.foto_principal_url)" @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
-                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;">
+                     @pointerdown.stop="iniciarZoom(p.foto_principal_url)" @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()" @contextmenu.prevent style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;-webkit-touch-callout:none;user-select:none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
@@ -321,8 +320,7 @@ function renderConsulta() {
                  onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_url"
-                     @pointerdown.stop="iniciarZoom(p.foto_principal_url)" @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
-                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;">
+                     @pointerdown.stop="iniciarZoom(p.foto_principal_url)" @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()" @contextmenu.prevent style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;-webkit-touch-callout:none;user-select:none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
@@ -405,8 +403,7 @@ function renderConsulta() {
                  onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_url"
-                     @pointerdown.stop="iniciarZoom(p.foto_principal_url)" @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
-                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;">
+                     @pointerdown.stop="iniciarZoom(p.foto_principal_url)" @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()" @contextmenu.prevent style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;-webkit-touch-callout:none;user-select:none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
@@ -470,14 +467,14 @@ function renderConsulta() {
         <div x-show="loadingVerMais" style="display: flex; justify-content: center; padding: 1.5rem;">
           <span class="spinner"></span>
         </div>
-        <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+        <div x-show="!loadingVerMais"><div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasTexto" :key="'mt-' + p.id">
             <div @pointerdown.stop="iniciarZoom(p.foto_principal_url)"
                  @pointerup="if (!zoomFotoVisible) { cancelarZoom(); modalVerMaisTexto = false; viewPessoa(p.id); } else { cancelarZoom(); }"
                  @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
                  style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
+                <img :src="p.foto_principal_url" @contextmenu.prevent style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block; -webkit-touch-callout: none; user-select: none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--color-surface-hover); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); border: 1px solid var(--color-border);">
@@ -489,7 +486,7 @@ function renderConsulta() {
               <p style="font-family: var(--font-data); font-size: 10px; color: var(--color-text); margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
             </div>
           </template>
-        </div>
+        </div></div>
       </div>
     </div>
 
@@ -507,14 +504,14 @@ function renderConsulta() {
         <div x-show="loadingVerMais" style="display: flex; justify-content: center; padding: 1.5rem;">
           <span class="spinner"></span>
         </div>
-        <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+        <div x-show="!loadingVerMais"><div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasEndereco" :key="'me-' + p.id">
             <div @pointerdown.stop="iniciarZoom(p.foto_principal_url)"
                  @pointerup="if (!zoomFotoVisible) { cancelarZoom(); modalVerMaisEndereco = false; viewPessoa(p.id); } else { cancelarZoom(); }"
                  @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
                  style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
+                <img :src="p.foto_principal_url" @contextmenu.prevent style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block; -webkit-touch-callout: none; user-select: none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--color-surface-hover); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); border: 1px solid var(--color-border);">
@@ -526,7 +523,7 @@ function renderConsulta() {
               <p style="font-family: var(--font-data); font-size: 10px; color: var(--color-text); margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
             </div>
           </template>
-        </div>
+        </div></div>
       </div>
     </div>
 
@@ -544,14 +541,14 @@ function renderConsulta() {
         <div x-show="loadingVerMais" style="display: flex; justify-content: center; padding: 1.5rem;">
           <span class="spinner"></span>
         </div>
-        <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+        <div x-show="!loadingVerMais"><div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasVeiculo" :key="'mvv-' + p.id + '-' + (p.veiculo_info?.placa || '')">
             <div @pointerdown.stop="iniciarZoom(p.foto_principal_url)"
                  @pointerup="if (!zoomFotoVisible) { cancelarZoom(); modalVerMaisVeiculo = false; viewPessoa(p.id); } else { cancelarZoom(); }"
                  @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
                  style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
+                <img :src="p.foto_principal_url" @contextmenu.prevent style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block; -webkit-touch-callout: none; user-select: none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--color-surface-hover); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); border: 1px solid var(--color-border);">
@@ -563,7 +560,7 @@ function renderConsulta() {
               <p style="font-family: var(--font-data); font-size: 10px; color: var(--color-text); margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
             </div>
           </template>
-        </div>
+        </div></div>
       </div>
     </div>
 
