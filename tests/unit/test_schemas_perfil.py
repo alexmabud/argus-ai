@@ -71,6 +71,7 @@ def test_usuario_admin_read_tem_sessao():
         is_admin=False,
         ativo=True,
         tem_sessao=True,
+        guarnicao_id=1,
     )
     assert schema.tem_sessao is True
 
