@@ -339,3 +339,39 @@ class TestPessoasDoDia:
         result = await service.pessoas_do_dia(guarnicao_id=1, data="2026-03-14")
 
         assert result == []
+
+
+class TestAbordacoesdoDia:
+    """Testes para AnalyticsService.abordagens_do_dia()."""
+
+    @pytest.fixture
+    def service(self):
+        """Cria instância de AnalyticsService com session mock."""
+        db = AsyncMock()
+        return AnalyticsService(db)
+
+    async def test_retorna_pontos_com_coordenadas(self, service):
+        """Deve retornar lista de pontos com lat, lng e horario."""
+        mock_result = MagicMock()
+        mock_result.all.return_value = [
+            (-23.5505, -46.6333, datetime(2026, 3, 28, 14, 32, tzinfo=UTC)),
+            (-23.5510, -46.6340, datetime(2026, 3, 28, 15, 10, tzinfo=UTC)),
+        ]
+        service.db.execute = AsyncMock(return_value=mock_result)
+
+        result = await service.abordagens_do_dia(guarnicao_id=1, data="2026-03-28")
+
+        assert len(result) == 2
+        assert result[0]["lat"] == -23.5505
+        assert result[0]["lng"] == -46.6333
+        assert result[0]["horario"] == "14:32"
+
+    async def test_sem_abordagens_retorna_lista_vazia(self, service):
+        """Deve retornar lista vazia quando não há abordagens com localização."""
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        service.db.execute = AsyncMock(return_value=mock_result)
+
+        result = await service.abordagens_do_dia(guarnicao_id=1, data="2026-03-28")
+
+        assert result == []
