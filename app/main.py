@@ -152,6 +152,29 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Service Worker — nunca pode ser cacheado pelo browser HTTP.
+    # O browser precisa sempre buscar a versão mais recente para detectar atualizações da PWA.
+    @app.get("/sw.js")
+    async def service_worker() -> Response:
+        """Serve o Service Worker com headers que impedem cache HTTP.
+
+        O SW deve ser sempre buscado do servidor para que o browser detecte
+        atualizações da PWA. Cache HTTP do sw.js impede o ciclo de update.
+
+        Returns:
+            Response com o conteúdo do sw.js e Cache-Control: no-cache.
+        """
+        import os
+
+        sw_path = os.path.join("frontend", "sw.js")
+        with open(sw_path, encoding="utf-8") as f:
+            content = f.read()
+        return Response(
+            content=content,
+            media_type="application/javascript",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
+
     # Frontend PWA — deve ser o último mount (catch-all)
     app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
