@@ -5,6 +5,8 @@ Testa endpoints de métricas operacionais do dashboard.
 
 from httpx import AsyncClient
 
+from app.models.abordagem import Abordagem
+
 
 class TestPessoasRecorrentes:
     """Testes do endpoint GET /api/v1/analytics/pessoas-recorrentes."""
@@ -171,3 +173,55 @@ class TestPessoasDoDiaEndpoint:
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
+
+
+class TestAbordagensDoDia:
+    """Testes de integração para GET /analytics/abordagens-do-dia."""
+
+    async def test_retorna_pontos_do_dia(
+        self, client: AsyncClient, auth_headers: dict, abordagem: Abordagem
+    ):
+        """Deve retornar pontos do dia com lat, lng e horario.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+            abordagem: Fixture de abordagem com coordenadas associada à guarnição.
+        """
+        data = abordagem.data_hora.date().isoformat()
+        resp = await client.get(
+            f"/api/v1/analytics/abordagens-do-dia?data={data}",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        pontos = resp.json()
+        assert isinstance(pontos, list)
+        assert len(pontos) >= 1
+        assert "lat" in pontos[0]
+        assert "lng" in pontos[0]
+        assert "horario" in pontos[0]
+
+    async def test_dia_sem_abordagens_retorna_lista_vazia(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Deve retornar lista vazia para dia sem abordagens.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+        """
+        resp = await client.get(
+            "/api/v1/analytics/abordagens-do-dia?data=2000-01-01",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_requer_autenticacao(self, client: AsyncClient):
+        """Deve retornar 401 sem token.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+        """
+        resp = await client.get("/api/v1/analytics/abordagens-do-dia?data=2026-03-28")
+        assert resp.status_code == 401
