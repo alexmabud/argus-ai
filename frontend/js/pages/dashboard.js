@@ -310,6 +310,14 @@ function dashboardPage() {
     diasComAbordagem: [],
     pessoasDoDia: [],
 
+    // Mapa do dia
+    pontosMapaDia: [],
+    mapaAnaliticoInst: null,
+    _mapaAnaliticoObserver: null,
+    modoMapaAnalitico: 'marcadores',
+    clusterAnalitico: null,
+    heatAnalitico: null,
+
     // Recorrentes
     recorrentes: [],
 
@@ -356,6 +364,7 @@ function dashboardPage() {
       } else {
         this.mesCalendarioAtual--;
       }
+      this.destroyMapaAnalitico();
       this.diaSelecionado = null;
       await this.carregarDiasComAbordagem();
     },
@@ -367,6 +376,7 @@ function dashboardPage() {
       } else {
         this.mesCalendarioAtual++;
       }
+      this.destroyMapaAnalitico();
       this.diaSelecionado = null;
       await this.carregarDiasComAbordagem();
     },
@@ -376,7 +386,11 @@ function dashboardPage() {
       this._mesSelec = this.mesCalendarioAtual;
       this._anoSelec = this.anoCalendarioAtual;
       const dataStr = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
-      await this.carregarPessoasDoDia(dataStr);
+      this.destroyMapaAnalitico();
+      await Promise.all([
+        this.carregarPessoasDoDia(dataStr),
+        this.carregarPontosMapaDia(dataStr),
+      ]);
     },
 
     async carregarDiasComAbordagem() {
@@ -391,6 +405,98 @@ function dashboardPage() {
       } finally {
         this.loadingPessoas = false;
       }
+    },
+
+    async carregarPontosMapaDia(data) {
+      this.pontosMapaDia = await api.get(`/analytics/abordagens-do-dia?data=${data}`).catch(() => []);
+      if (this.pontosMapaDia.length > 0) {
+        await this.$nextTick();
+        await this.setupMapaAnaliticoObserver();
+      }
+    },
+
+    async setupMapaAnaliticoObserver() {
+      if (this._mapaAnaliticoObserver) {
+        this._mapaAnaliticoObserver.disconnect();
+        this._mapaAnaliticoObserver = null;
+      }
+      await new Promise(r => setTimeout(r, 0));
+      const div = document.getElementById('mapa-analitico-dia');
+      if (!div) return;
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          observer.disconnect();
+          this.initMapaAnalitico();
+        }
+      }, { threshold: 0.1 });
+      observer.observe(div);
+      this._mapaAnaliticoObserver = observer;
+    },
+
+    initMapaAnalitico() {
+      const div = document.getElementById('mapa-analitico-dia');
+      if (!div || this.mapaAnaliticoInst) return;
+      if (typeof L === 'undefined') return;
+
+      this.mapaAnaliticoInst = L.map(div, { zoomControl: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19,
+      }).addTo(this.mapaAnaliticoInst);
+
+      const pontos = this.pontosMapaDia;
+
+      this.clusterAnalitico = L.markerClusterGroup();
+      pontos.forEach(p => {
+        const marker = L.marker([p.lat, p.lng]);
+        marker.bindPopup(`<span style="font-family:monospace;font-size:12px;">${p.horario}</span>`);
+        this.clusterAnalitico.addLayer(marker);
+      });
+
+      const heatPontos = pontos.map(p => [p.lat, p.lng, 1]);
+      this.heatAnalitico = L.heatLayer(heatPontos, { radius: 30, blur: 20, maxZoom: 17 });
+
+      this.mapaAnaliticoInst.addLayer(this.clusterAnalitico);
+
+      if (pontos.length === 1) {
+        this.mapaAnaliticoInst.setView([pontos[0].lat, pontos[0].lng], 15);
+      } else {
+        const bounds = L.latLngBounds(pontos.map(p => [p.lat, p.lng]));
+        this.mapaAnaliticoInst.fitBounds(bounds, { padding: [30, 30] });
+      }
+
+      requestAnimationFrame(() => {
+        this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false });
+        setTimeout(() => this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false }), 200);
+        setTimeout(() => this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false }), 500);
+      });
+    },
+
+    toggleModoMapaAnalitico(modo) {
+      if (!this.mapaAnaliticoInst || modo === this.modoMapaAnalitico) return;
+      this.modoMapaAnalitico = modo;
+      if (modo === 'marcadores') {
+        this.mapaAnaliticoInst.removeLayer(this.heatAnalitico);
+        this.mapaAnaliticoInst.addLayer(this.clusterAnalitico);
+      } else {
+        this.mapaAnaliticoInst.removeLayer(this.clusterAnalitico);
+        this.mapaAnaliticoInst.addLayer(this.heatAnalitico);
+      }
+    },
+
+    destroyMapaAnalitico() {
+      if (this._mapaAnaliticoObserver) {
+        this._mapaAnaliticoObserver.disconnect();
+        this._mapaAnaliticoObserver = null;
+      }
+      if (this.mapaAnaliticoInst) {
+        this.mapaAnaliticoInst.remove();
+        this.mapaAnaliticoInst = null;
+        this.clusterAnalitico = null;
+        this.heatAnalitico = null;
+      }
+      this.pontosMapaDia = [];
+      this.modoMapaAnalitico = 'marcadores';
     },
 
     /**
