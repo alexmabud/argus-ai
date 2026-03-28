@@ -130,7 +130,7 @@ class UsuarioRead(BaseModel):
     matricula: str
     email: str | None = None
     is_admin: bool
-    guarnicao_id: int | None = None
+    guarnicao_id: int
     posto_graduacao: str | None = None
     nome_guerra: str | None = None
     foto_url: str | None = None
@@ -250,7 +250,7 @@ class UsuarioAdminRead(BaseModel):
     is_admin: bool
     ativo: bool
     tem_sessao: bool
-    guarnicao_id: int | None = None
+    guarnicao_id: int
 
     _normalize_foto = field_validator("foto_url", mode="before")(normalize_storage_url)
 

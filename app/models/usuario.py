@@ -64,7 +64,7 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     nome_guerra: Mapped[str | None] = mapped_column(String(50), nullable=True)
     foto_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
-    guarnicao_id: Mapped[int | None] = mapped_column(ForeignKey("guarnicoes.id"), nullable=True)
+    guarnicao_id: Mapped[int] = mapped_column(ForeignKey("guarnicoes.id"), nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
 
     guarnicao = relationship(
