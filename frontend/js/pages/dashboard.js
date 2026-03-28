@@ -449,7 +449,10 @@ function dashboardPage() {
       this.clusterAnalitico = L.markerClusterGroup();
       pontos.forEach(p => {
         const marker = L.marker([p.lat, p.lng]);
-        marker.bindPopup(`<span style="font-family:monospace;font-size:12px;">${p.horario}</span>`);
+        const popupEl = document.createElement('span');
+        popupEl.style.cssText = 'font-family:monospace;font-size:12px;';
+        popupEl.textContent = p.horario;
+        marker.bindPopup(popupEl);
         this.clusterAnalitico.addLayer(marker);
       });
 
