@@ -476,8 +476,8 @@ function renderConsulta() {
         <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasTexto" :key="'mt-' + p.id">
             <div @pointerdown="iniciarZoom(p.foto_principal_url)"
-                 @pointerup="cancelarZoom(); if (!zoomFotoVisible) { modalVerMaisTexto = false; viewPessoa(p.id); }"
-                 @pointerleave="cancelarZoom()"
+                 @pointerup="if (!zoomFotoVisible) { cancelarZoom(); modalVerMaisTexto = false; viewPessoa(p.id); } else { cancelarZoom(); }"
+                 @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
                  style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
@@ -513,8 +513,8 @@ function renderConsulta() {
         <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasEndereco" :key="'me-' + p.id">
             <div @pointerdown="iniciarZoom(p.foto_principal_url)"
-                 @pointerup="cancelarZoom(); if (!zoomFotoVisible) { modalVerMaisEndereco = false; viewPessoa(p.id); }"
-                 @pointerleave="cancelarZoom()"
+                 @pointerup="if (!zoomFotoVisible) { cancelarZoom(); modalVerMaisEndereco = false; viewPessoa(p.id); } else { cancelarZoom(); }"
+                 @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
                  style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
@@ -550,8 +550,8 @@ function renderConsulta() {
         <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasVeiculo" :key="'mvv-' + p.id + '-' + (p.veiculo_info?.placa || '')">
             <div @pointerdown="iniciarZoom(p.foto_principal_url)"
-                 @pointerup="cancelarZoom(); if (!zoomFotoVisible) { modalVerMaisVeiculo = false; viewPessoa(p.id); }"
-                 @pointerleave="cancelarZoom()"
+                 @pointerup="if (!zoomFotoVisible) { cancelarZoom(); modalVerMaisVeiculo = false; viewPessoa(p.id); } else { cancelarZoom(); }"
+                 @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
                  style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
