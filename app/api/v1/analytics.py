@@ -153,6 +153,29 @@ async def dias_com_abordagem(
     return await service.dias_com_abordagem(user.guarnicao_id, mes)
 
 
+@router.get("/abordagens-do-dia")
+async def abordagens_do_dia(
+    data: date = Query(...),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[dict]:
+    """Retorna pontos geográficos das abordagens de um dia específico.
+
+    Usado pelo mapa no dashboard analítico para exibir onde foram realizadas
+    as abordagens do dia selecionado no calendário.
+
+    Args:
+        data: Data no formato YYYY-MM-DD.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista com lat, lng e horario (HH:MM) de cada abordagem com localização.
+    """
+    service = AnalyticsService(db)
+    return await service.abordagens_do_dia(user.guarnicao_id, str(data))
+
+
 @router.get("/pessoas-do-dia")
 async def pessoas_do_dia(
     data: date = Query(...),
