@@ -13,6 +13,7 @@ from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.services.analytics_service import AnalyticsService
+from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -172,6 +173,13 @@ async def abordagens_do_dia(
     Returns:
         Lista com lat, lng e horario (HH:MM) de cada abordagem com localização.
     """
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="READ",
+        recurso="mapa_abordagens_dia",
+        detalhes={"data": str(data)},
+    )
     service = AnalyticsService(db)
     return await service.abordagens_do_dia(user.guarnicao_id, str(data))
 
