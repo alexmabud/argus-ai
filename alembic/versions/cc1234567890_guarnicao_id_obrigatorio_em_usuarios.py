@@ -4,7 +4,7 @@ Todo usuário pertence a uma guarnição. Reflete a regra de negócio atual
 onde existe uma única guarnição genérica e todos os usuários são vinculados
 a ela. Remove o nullable=True que foi adicionado anteriormente.
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: cc1234567890
 Revises: f5a6b7c8d9e0
 Create Date: 2026-03-28
 
@@ -16,7 +16,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "a1b2c3d4e5f6"
+revision: str = "cc1234567890"
 down_revision: str | None = "f5a6b7c8d9e0"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
