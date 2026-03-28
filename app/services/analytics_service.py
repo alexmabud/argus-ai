@@ -445,6 +445,49 @@ class AnalyticsService:
             )
         return pessoas
 
+    async def abordagens_do_dia(self, guarnicao_id: int, data: str) -> list[dict]:
+        """Retorna pontos geográficos das abordagens de um dia específico.
+
+        Retorna apenas abordagens que possuem coordenadas GPS registradas.
+        Usado para renderizar o mapa no dashboard analítico ao selecionar
+        um dia no calendário.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            data: Data no formato "YYYY-MM-DD" (ex: "2026-03-28").
+
+        Returns:
+            Lista de dicionários com lat (float), lng (float) e horario (str HH:MM).
+        """
+        data_obj = date.fromisoformat(data)
+
+        query = (
+            select(
+                Abordagem.latitude,
+                Abordagem.longitude,
+                Abordagem.data_hora,
+            )
+            .where(
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo,
+                func.date(Abordagem.data_hora) == data_obj,
+                Abordagem.latitude.isnot(None),
+                Abordagem.longitude.isnot(None),
+            )
+            .order_by(Abordagem.data_hora)
+        )
+        result = await self.db.execute(query)
+        rows = result.all()
+
+        return [
+            {
+                "lat": float(row[0]),
+                "lng": float(row[1]),
+                "horario": row[2].strftime("%H:%M") if row[2] else "—",
+            }
+            for row in rows
+        ]
+
     async def metricas_rag(self, guarnicao_id: int) -> dict:
         """Retorna métricas de ocorrências para o módulo RAG.
 
