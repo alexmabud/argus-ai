@@ -1,7 +1,8 @@
 """Testes unitários para o serviço de analytics.
 
 Valida geração de métricas operacionais: resumo, distribuição
-horária, pessoas recorrentes e qualidade RAG.
+horária, pessoas recorrentes, qualidade RAG e pontos geográficos
+de abordagens por dia.
 """
 
 from datetime import UTC, datetime
