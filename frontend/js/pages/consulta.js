@@ -116,7 +116,7 @@ function renderConsulta() {
           </template>
           <button x-show="pessoasTexto.length > 10" @click="abrirVerMaisTexto()"
                   style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0; align-self: center;">
-            Ver mais resultados (<span x-text="pessoasTexto.length"></span> total)
+            Ver mais resultados
           </button>
         </div>
 
@@ -343,7 +343,7 @@ function renderConsulta() {
           </template>
           <button x-show="pessoasEndereco.length > 10" @click="abrirVerMaisEndereco()"
                   style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0; align-self: center;">
-            Ver mais resultados (<span x-text="pessoasEndereco.length"></span> total)
+            Ver mais resultados
           </button>
         </div>
 
@@ -439,7 +439,7 @@ function renderConsulta() {
           </template>
           <button x-show="pessoasVeiculo.length > 10" @click="abrirVerMaisVeiculo()"
                   style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0; align-self: center;">
-            Ver mais resultados (<span x-text="pessoasVeiculo.length"></span> total)
+            Ver mais resultados
           </button>
         </div>
 
@@ -700,7 +700,7 @@ function consultaPage() {
       this.loadingPessoa = true;
       this.buscouPessoa = true;
       try {
-        const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa`;
+        const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa&limit=10000`;
         const r = await api.get(url);
         this.pessoasTexto = r.pessoas || [];
         this.searched = true;
@@ -734,7 +734,7 @@ function consultaPage() {
     async searchPorEndereco() {
       this.loadingEndereco = true;
       try {
-        let url = `/consultas/?q=&tipo=pessoa`;
+        let url = `/consultas/?q=&tipo=pessoa&limit=10000`;
         if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
         if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
         if (this.filtroEstado.length >= 1) url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
@@ -755,6 +755,7 @@ function consultaPage() {
         if (this.filtroPlaca.length >= 2) params.append("placa", this.filtroPlaca.toUpperCase());
         if (this.filtroModelo.length >= 2) params.append("modelo", this.filtroModelo);
         if (this.filtroCor.length >= 1) params.append("cor", this.filtroCor);
+        params.append("limit", "10000");
         const r = await api.get(`/consultas/pessoas-por-veiculo?${params}`);
         this.pessoasVeiculo = Array.isArray(r) ? r : [];
         this.searchedVeiculo = true;
