@@ -95,7 +95,9 @@ function renderConsulta() {
               <!-- Avatar -->
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_url" :alt="'Foto de ' + p.nome"
-                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);">
+                     @pointerdown.stop="iniciarZoom(p.foto_principal_url)"
+                     @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()"
+                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
@@ -319,7 +321,10 @@ function renderConsulta() {
                  onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
                  onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);">
+                <img :src="p.foto_principal_url"
+                     @pointerdown.stop="iniciarZoom(p.foto_principal_url)"
+                     @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()"
+                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
@@ -401,7 +406,10 @@ function renderConsulta() {
                  onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
                  onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);">
+                <img :src="p.foto_principal_url"
+                     @pointerdown.stop="iniciarZoom(p.foto_principal_url)"
+                     @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()"
+                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
@@ -552,6 +560,13 @@ function renderConsulta() {
         </div>
       </div>
     </div>
+
+    <!-- Overlay de zoom de foto -->
+    <div x-show="zoomFotoVisible" @pointerdown.stop="cancelarZoom()"
+         style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;touch-action:none;">
+      <img :src="zoomFotoUrl" alt="Foto ampliada"
+           style="max-width:80vw;max-height:80vh;border-radius:4px;object-fit:contain;pointer-events:none;">
+    </div>
   </div>
   `;
 }
@@ -603,6 +618,9 @@ function consultaPage() {
     modalVerMaisEndereco: false,
     modalVerMaisVeiculo: false,
     loadingVerMais: false,
+    zoomFotoUrl: '',
+    zoomFotoVisible: false,
+    _zoomTimer: null,
 
     // Dados auxiliares
     localidades: { bairros: [], cidades: [], estados: [] },
@@ -791,6 +809,20 @@ function consultaPage() {
       } finally {
         this.loadingVerMais = false;
       }
+    },
+
+    iniciarZoom(url) {
+      if (!url) return;
+      this._zoomTimer = setTimeout(() => {
+        this.zoomFotoUrl = url;
+        this.zoomFotoVisible = true;
+      }, 200);
+    },
+
+    cancelarZoom() {
+      clearTimeout(this._zoomTimer);
+      this._zoomTimer = null;
+      this.zoomFotoVisible = false;
     },
 
     viewPessoa(id) {
