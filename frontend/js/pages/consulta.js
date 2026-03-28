@@ -7,7 +7,7 @@
  */
 function renderConsulta() {
   return `
-    <div x-data="consultaPage()" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
+    <div x-data="consultaPage()" x-init="init()" @pointerdown="cancelarZoom()" style="display:flex;flex-direction:column;gap:16px;">
 
       <!-- Header da pagina -->
       <div>
@@ -775,7 +775,7 @@ function consultaPage() {
       this.modalVerMaisTexto = true;
       this.loadingVerMais = true;
       try {
-        const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa&limit=100`;
+        const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa&limit=10000`;
         const r = await api.get(url);
         this.pessoasTexto = r.pessoas || [];
       } catch {
@@ -789,7 +789,7 @@ function consultaPage() {
       this.modalVerMaisEndereco = true;
       this.loadingVerMais = true;
       try {
-        let url = `/consultas/?q=&tipo=pessoa&limit=100`;
+        let url = `/consultas/?q=&tipo=pessoa&limit=10000`;
         if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
         if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
         if (this.filtroEstado.length >= 1) url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
@@ -810,7 +810,7 @@ function consultaPage() {
         if (this.filtroPlaca.length >= 2) params.append("placa", this.filtroPlaca.toUpperCase());
         if (this.filtroModelo.length >= 2) params.append("modelo", this.filtroModelo);
         if (this.filtroCor.length >= 1) params.append("cor", this.filtroCor);
-        params.append("limit", "100");
+        params.append("limit", "10000");
         const r = await api.get(`/consultas/pessoas-por-veiculo?${params}`);
         this.pessoasVeiculo = Array.isArray(r) ? r : [];
       } catch {
