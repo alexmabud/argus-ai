@@ -237,6 +237,41 @@ function renderDashboard() {
             </div>
           </div>
 
+          <!-- Mapa de Abordagens do Dia -->
+          <div x-show="diaSelecionado !== null && !loadingPessoas"
+               class="glass-card"
+               style="padding:16px;border-radius:4px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin:0;">
+                Localização das Abordagens
+              </h3>
+              <div x-show="pontosMapaDia.length > 0" style="display:flex;gap:0.25rem;">
+                <button
+                  @click="toggleModoMapaAnalitico('marcadores')"
+                  style="font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:4px;border:none;cursor:pointer;transition:all 0.2s;"
+                  :style="modoMapaAnalitico === 'marcadores' ? 'background:#14B8A6;color:var(--color-bg);' : 'background:var(--color-surface);color:var(--color-text-muted);border:1px solid var(--color-border);'"
+                >Marcadores</button>
+                <button
+                  @click="toggleModoMapaAnalitico('calor')"
+                  style="font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:4px;border:none;cursor:pointer;transition:all 0.2s;"
+                  :style="modoMapaAnalitico === 'calor' ? 'background:#14B8A6;color:var(--color-bg);' : 'background:var(--color-surface);color:var(--color-text-muted);border:1px solid var(--color-border);'"
+                >Calor</button>
+              </div>
+            </div>
+
+            <!-- Sem localização -->
+            <div x-show="pontosMapaDia.length === 0"
+                 style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-align:center;padding:16px 0;text-transform:uppercase;letter-spacing:0.08em;">
+              Sem dados de localização para este dia.
+            </div>
+
+            <!-- Mapa -->
+            <div x-show="pontosMapaDia.length > 0">
+              <div id="mapa-analitico-dia"
+                   style="width:100%;height:280px;border-radius:4px;background:var(--color-surface);z-index:1;"></div>
+            </div>
+          </div>
+
           <!-- Pessoas Recorrentes -->
           <div class="glass-card" style="padding:16px;border-radius:4px;">
             <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">
