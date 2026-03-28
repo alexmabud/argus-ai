@@ -475,7 +475,10 @@ function renderConsulta() {
         </div>
         <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasTexto" :key="'mt-' + p.id">
-            <div @click="modalVerMaisTexto = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center; min-width: 0;">
+            <div @pointerdown="iniciarZoom(p.foto_principal_url)"
+                 @pointerup="cancelarZoom(); if (!zoomFotoVisible) { modalVerMaisTexto = false; viewPessoa(p.id); }"
+                 @pointerleave="cancelarZoom()"
+                 style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
               </template>
@@ -509,7 +512,10 @@ function renderConsulta() {
         </div>
         <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasEndereco" :key="'me-' + p.id">
-            <div @click="modalVerMaisEndereco = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center; min-width: 0;">
+            <div @pointerdown="iniciarZoom(p.foto_principal_url)"
+                 @pointerup="cancelarZoom(); if (!zoomFotoVisible) { modalVerMaisEndereco = false; viewPessoa(p.id); }"
+                 @pointerleave="cancelarZoom()"
+                 style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
               </template>
@@ -543,7 +549,10 @@ function renderConsulta() {
         </div>
         <div x-show="!loadingVerMais" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
           <template x-for="p in pessoasVeiculo" :key="'mvv-' + p.id + '-' + (p.veiculo_info?.placa || '')">
-            <div @click="modalVerMaisVeiculo = false; viewPessoa(p.id)" style="cursor: pointer; text-align: center; min-width: 0;">
+            <div @pointerdown="iniciarZoom(p.foto_principal_url)"
+                 @pointerup="cancelarZoom(); if (!zoomFotoVisible) { modalVerMaisVeiculo = false; viewPessoa(p.id); }"
+                 @pointerleave="cancelarZoom()"
+                 style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block;">
               </template>
