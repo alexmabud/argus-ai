@@ -4,20 +4,19 @@ Armazena localidades de forma hierárquica (estado → cidade → bairro)
 para uso em endereços com autocomplete e sem duplicatas.
 """
 
-from __future__ import annotations
-
-from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy import CheckConstraint, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 
-class Localidade(Base, TimestampMixin):
+class Localidade(Base, TimestampMixin, SoftDeleteMixin):
     """Localidade geográfica hierárquica (estado, cidade ou bairro).
 
     Armazena estados, cidades e bairros em uma única tabela hierárquica
     com parent_id apontando para o nível acima. Estados não têm pai.
     A busca usa o campo `nome` normalizado (sem acento, minúsculas).
+    O campo `ativo` e metadados de desativação vêm de SoftDeleteMixin.
 
     Attributes:
         id: Identificador único.
@@ -26,12 +25,15 @@ class Localidade(Base, TimestampMixin):
         tipo: Nível hierárquico — 'estado', 'cidade' ou 'bairro'.
         sigla: Sigla UF de 2 letras (apenas para estados).
         parent_id: FK para o nível acima (null para estados).
-        ativo: Se a localidade está disponível para uso.
         parent: Relacionamento com localidade pai.
         filhos: Localidades filhas (cidades de um estado, bairros de uma cidade).
     """
 
     __tablename__ = "localidades"
+
+    __table_args__ = (
+        CheckConstraint("tipo IN ('estado', 'cidade', 'bairro')", name="ck_localidades_tipo"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(200), index=True)
@@ -41,9 +43,8 @@ class Localidade(Base, TimestampMixin):
     parent_id: Mapped[int | None] = mapped_column(
         ForeignKey("localidades.id"), nullable=True, index=True
     )
-    ativo: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
-    parent: Mapped[Localidade | None] = relationship(
-        "Localidade", back_populates="filhos", remote_side="Localidade.id"
+    parent: Mapped["Localidade | None"] = relationship(
+        "Localidade", back_populates="filhos", remote_side=[id]
     )
-    filhos: Mapped[list[Localidade]] = relationship("Localidade", back_populates="parent")
+    filhos: Mapped[list["Localidade"]] = relationship("Localidade", back_populates="parent")
