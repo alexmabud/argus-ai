@@ -48,6 +48,12 @@ class ApiClient {
       const response = await fetch(url, options);
 
       // Token expirado — tentar refresh
+      if (response.status === 401 && !this.refreshToken) {
+        // Sem refresh token: sessão inválida, forçar re-login
+        this.clearTokens();
+        window.dispatchEvent(new Event("auth:expired"));
+        throw new ApiError(401, "Sessão expirada");
+      }
       if (response.status === 401 && this.refreshToken) {
         const refreshResult = await this._refreshAccessToken();
         if (refreshResult === "ok") {
