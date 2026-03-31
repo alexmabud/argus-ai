@@ -95,6 +95,9 @@ class EnderecoCreate(BaseModel):
         bairro: Bairro do endereço (opcional, até 200 caracteres).
         cidade: Cidade do endereço (opcional, até 200 caracteres).
         estado: Sigla do estado UF (opcional, até 2 caracteres).
+        estado_id: ID da localidade estado (opcional, preferido sobre campo texto).
+        cidade_id: ID da localidade cidade (opcional, preferido sobre campo texto).
+        bairro_id: ID da localidade bairro (opcional, preferido sobre campo texto).
         latitude: Latitude GPS (opcional, para PostGIS).
         longitude: Longitude GPS (opcional, para PostGIS).
         data_inicio: Data de início da associação com endereço.
@@ -105,6 +108,9 @@ class EnderecoCreate(BaseModel):
     bairro: str | None = Field(None, max_length=200)
     cidade: str | None = Field(None, max_length=200)
     estado: str | None = Field(None, max_length=2)
+    estado_id: int | None = None
+    cidade_id: int | None = None
+    bairro_id: int | None = None
     latitude: float | None = None
     longitude: float | None = None
     data_inicio: date | None = None
@@ -121,6 +127,9 @@ class EnderecoUpdate(BaseModel):
         bairro: Bairro atualizado.
         cidade: Cidade atualizada.
         estado: Sigla UF atualizada.
+        estado_id: ID da localidade estado (opcional, preferido sobre campo texto).
+        cidade_id: ID da localidade cidade (opcional, preferido sobre campo texto).
+        bairro_id: ID da localidade bairro (opcional, preferido sobre campo texto).
         latitude: Latitude GPS atualizada.
         longitude: Longitude GPS atualizada.
         data_inicio: Data de início atualizada.
@@ -131,6 +140,9 @@ class EnderecoUpdate(BaseModel):
     bairro: str | None = Field(None, max_length=200)
     cidade: str | None = Field(None, max_length=200)
     estado: str | None = Field(None, max_length=2)
+    estado_id: int | None = None
+    cidade_id: int | None = None
+    bairro_id: int | None = None
     latitude: float | None = None
     longitude: float | None = None
     data_inicio: date | None = None
@@ -146,6 +158,9 @@ class EnderecoRead(BaseModel):
         bairro: Bairro do endereço.
         cidade: Cidade do endereço.
         estado: Sigla do estado UF.
+        estado_id: ID da localidade estado (opcional, preferido sobre campo texto).
+        cidade_id: ID da localidade cidade (opcional, preferido sobre campo texto).
+        bairro_id: ID da localidade bairro (opcional, preferido sobre campo texto).
         data_inicio: Data de início da associação.
         data_fim: Data de fim da associação.
         criado_em: Timestamp de criação.
@@ -156,6 +171,9 @@ class EnderecoRead(BaseModel):
     bairro: str | None = None
     cidade: str | None = None
     estado: str | None = None
+    estado_id: int | None = None
+    cidade_id: int | None = None
+    bairro_id: int | None = None
     data_inicio: date | None = None
     data_fim: date | None = None
     criado_em: datetime
