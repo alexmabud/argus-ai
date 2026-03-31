@@ -29,7 +29,8 @@ class TestCriarLocalidade:
     async def test_criar_cidade(self, client: AsyncClient, auth_headers: dict):
         """Deve criar cidade vinculada a um estado."""
         estados = (await client.get("/api/v1/localidades?tipo=estado", headers=auth_headers)).json()
-        sp = next(e for e in estados if e["sigla"] == "SP")
+        sp = next((e for e in estados if e["sigla"] == "SP"), None)
+        assert sp is not None, "Estado SP não encontrado — verifique o seed no conftest"
 
         response = await client.post(
             "/api/v1/localidades",
@@ -42,7 +43,8 @@ class TestCriarLocalidade:
     async def test_criar_duplicata_retorna_409(self, client: AsyncClient, auth_headers: dict):
         """Deve retornar 409 ao criar cidade duplicada."""
         estados = (await client.get("/api/v1/localidades?tipo=estado", headers=auth_headers)).json()
-        sp = next(e for e in estados if e["sigla"] == "SP")
+        sp = next((e for e in estados if e["sigla"] == "SP"), None)
+        assert sp is not None, "Estado SP não encontrado — verifique o seed no conftest"
 
         payload = {"nome": "São Paulo", "tipo": "cidade", "parent_id": sp["id"]}
         await client.post("/api/v1/localidades", json=payload, headers=auth_headers)

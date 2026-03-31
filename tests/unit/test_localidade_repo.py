@@ -23,7 +23,8 @@ async def test_autocomplete_cidade(db_session: AsyncSession):
     """Deve retornar cidades do estado filtradas pelo texto."""
     repo = LocalidadeRepository(db_session)
     estados = await repo.listar_estados()
-    sp = next(e for e in estados if e.sigla == "SP")
+    sp = next((e for e in estados if e.sigla == "SP"), None)
+    assert sp is not None, "Estado SP não encontrado — verifique o seed no conftest"
 
     cidade = Localidade(
         nome="sao paulo",
@@ -43,7 +44,8 @@ async def test_autocomplete_retorna_max_10(db_session: AsyncSession):
     """Deve retornar no máximo 10 resultados."""
     repo = LocalidadeRepository(db_session)
     estados = await repo.listar_estados()
-    sp = next(e for e in estados if e.sigla == "SP")
+    sp = next((e for e in estados if e.sigla == "SP"), None)
+    assert sp is not None, "Estado SP não encontrado — verifique o seed no conftest"
 
     for i in range(15):
         db_session.add(
@@ -65,7 +67,8 @@ async def test_buscar_por_nome_e_parent(db_session: AsyncSession):
     """Deve encontrar localidade exata pelo nome normalizado e parent_id."""
     repo = LocalidadeRepository(db_session)
     estados = await repo.listar_estados()
-    rj = next(e for e in estados if e.sigla == "RJ")
+    rj = next((e for e in estados if e.sigla == "RJ"), None)
+    assert rj is not None, "Estado RJ não encontrado — verifique o seed no conftest"
 
     cidade = Localidade(
         nome="rio de janeiro",
