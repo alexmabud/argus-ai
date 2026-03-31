@@ -113,6 +113,7 @@ function app() {
     online: navigator.onLine,
     syncPending: 0,
     navHistory: [],
+    _popstateHandler: null,
 
     /**
      * Inicializa a aplicacao: conectividade, auth, sync, IndexedDB.
@@ -135,8 +136,11 @@ function app() {
       // Escutar logout solicitado por componentes filhos
       window.addEventListener("auth:logout", () => this.logout());
 
-      // Capturar back físico do celular / browser
-      window.addEventListener("popstate", () => this.goBack());
+      // Capturar back físico do celular / browser (evitar registro duplicado)
+      if (!this._popstateHandler) {
+        this._popstateHandler = () => this.goBack();
+        window.addEventListener("popstate", this._popstateHandler);
+      }
 
       // Escutar atualizacao de dados do usuario (perfil/foto)
       window.addEventListener("user:updated", (e) => { this.user = e.detail; });
