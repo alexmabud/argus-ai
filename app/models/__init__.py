@@ -8,6 +8,7 @@ from app.models.base import Base  # noqa: F401
 from app.models.endereco import EnderecoPessoa  # noqa: F401
 from app.models.foto import Foto  # noqa: F401
 from app.models.guarnicao import Guarnicao  # noqa: F401
+from app.models.localidade import Localidade  # noqa: F401
 from app.models.ocorrencia import Ocorrencia  # noqa: F401
 from app.models.pessoa import Pessoa  # noqa: F401
 from app.models.relacionamento import RelacionamentoPessoa  # noqa: F401
