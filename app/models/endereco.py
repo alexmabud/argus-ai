@@ -27,6 +27,9 @@ class EnderecoPessoa(Base, TimestampMixin, SoftDeleteMixin):
         bairro: Bairro do endereço (até 200 chars). Usado para filtros na consulta.
         cidade: Cidade do endereço (até 200 chars). Usado para filtros na consulta.
         estado: Sigla do estado (UF, até 2 chars). Usado para filtros na consulta.
+        estado_id: FK para localidades (estado). Substitui o campo texto estado.
+        cidade_id: FK para localidades (cidade). Substitui o campo texto cidade.
+        bairro_id: FK para localidades (bairro). Substitui o campo texto bairro.
         localizacao: Ponto geográfico POINT(lat, lon) em WGS84 (SRID 4326).
         data_inicio: Data do início da associação (opcional).
         data_fim: Data do fim da associação (opcional).
@@ -46,6 +49,15 @@ class EnderecoPessoa(Base, TimestampMixin, SoftDeleteMixin):
     bairro: Mapped[str | None] = mapped_column(String(200), nullable=True)
     cidade: Mapped[str | None] = mapped_column(String(200), nullable=True)
     estado: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    estado_id: Mapped[int | None] = mapped_column(
+        ForeignKey("localidades.id"), nullable=True, index=True
+    )
+    cidade_id: Mapped[int | None] = mapped_column(
+        ForeignKey("localidades.id"), nullable=True, index=True
+    )
+    bairro_id: Mapped[int | None] = mapped_column(
+        ForeignKey("localidades.id"), nullable=True, index=True
+    )
     guarnicao_id: Mapped[int | None] = mapped_column(
         ForeignKey("guarnicoes.id"), nullable=True, index=True
     )
