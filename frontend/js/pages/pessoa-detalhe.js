@@ -264,24 +264,74 @@ function renderPessoaDetalhe(appState) {
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
                          onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
                 </div>
+                <!-- Estado -->
                 <div>
-                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Bairro</label>
-                  <input type="text" x-model="editEnderecoForm.bairro"
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Estado (UF)</label>
+                  <select x-model="enderecoEstadoId"
+                          @change="enderecoCidadeId=null; enderecoCidadeTexto=''; enderecoBairroId=null; enderecoBairroTexto=''; enderecoCidadeSugestoes=[]; enderecoBairroSugestoes=[];"
+                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;">
+                    <option value="">Selecione o estado...</option>
+                    <template x-for="est in enderecoEstados" :key="est.id">
+                      <option :value="est.id" x-text="est.sigla + ' — ' + est.nome_exibicao"></option>
+                    </template>
+                  </select>
+                </div>
+
+                <!-- Cidade -->
+                <div style="position: relative;">
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Cidade</label>
+                  <input type="text"
+                         x-model="enderecoCidadeTexto"
+                         :disabled="!enderecoEstadoId"
+                         @input.debounce.400ms="buscarCidades()"
+                         @blur.debounce.200ms="enderecoCidadeSugestoes = []"
+                         placeholder="Digite para buscar..."
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
                          onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                  <div style="flex: 2;">
-                    <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Cidade</label>
-                    <input type="text" x-model="editEnderecoForm.cidade"
-                           style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                           onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                  <div x-show="enderecoCidadeSugestoes.length > 0 || enderecoCidadeCadastrarNovo"
+                       style="position: absolute; z-index: 100; width: 100%; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; margin-top: 2px; max-height: 200px; overflow-y: auto;">
+                    <template x-for="cidade in enderecoCidadeSugestoes" :key="cidade.id">
+                      <div @mousedown.prevent="selecionarCidade(cidade)"
+                           style="padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; color: var(--color-text);"
+                           onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                        <span x-text="cidade.nome_exibicao"></span>
+                      </div>
+                    </template>
+                    <div x-show="enderecoCidadeCadastrarNovo"
+                         @mousedown.prevent="cadastrarNovaCidade()"
+                         style="padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; color: var(--color-primary); border-top: 1px solid var(--color-border);"
+                         onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                      + Cadastrar "<span x-text="enderecoCidadeTexto"></span>" como nova cidade
+                    </div>
                   </div>
-                  <div style="flex: 1;">
-                    <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">UF</label>
-                    <input type="text" x-model="editEnderecoForm.estado" maxlength="2"
-                           style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box; text-transform: uppercase;"
-                           onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                </div>
+
+                <!-- Bairro -->
+                <div style="position: relative;">
+                  <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Bairro</label>
+                  <input type="text"
+                         x-model="enderecoBairroTexto"
+                         :disabled="!enderecoCidadeId"
+                         @input.debounce.400ms="buscarBairros()"
+                         @blur.debounce.200ms="enderecoBairroSugestoes = []"
+                         placeholder="Digite para buscar..."
+                         style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
+                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                  <div x-show="enderecoBairroSugestoes.length > 0 || enderecoBairroCadastrarNovo"
+                       style="position: absolute; z-index: 100; width: 100%; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; margin-top: 2px; max-height: 200px; overflow-y: auto;">
+                    <template x-for="bairro in enderecoBairroSugestoes" :key="bairro.id">
+                      <div @mousedown.prevent="selecionarBairro(bairro)"
+                           style="padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; color: var(--color-text);"
+                           onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                        <span x-text="bairro.nome_exibicao"></span>
+                      </div>
+                    </template>
+                    <div x-show="enderecoBairroCadastrarNovo"
+                         @mousedown.prevent="cadastrarNovoBairro()"
+                         style="padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; color: var(--color-primary); border-top: 1px solid var(--color-border);"
+                         onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                      + Cadastrar "<span x-text="enderecoBairroTexto"></span>" como novo bairro
+                    </div>
                   </div>
                 </div>
               </div>
@@ -819,7 +869,18 @@ function pessoaDetalhePage(pessoaId) {
 
     // Edição de endereço
     modalEditarEndereco: false,
-    editEnderecoForm: { id: null, endereco: '', bairro: '', cidade: '', estado: '' },
+    editEnderecoForm: { id: null, endereco: '' },
+    enderecoEstadoId: null,
+    enderecoEstadoNome: '',
+    enderecoCidadeId: null,
+    enderecoCidadeTexto: '',
+    enderecoBairroId: null,
+    enderecoBairroTexto: '',
+    enderecoEstados: [],
+    enderecoCidadeSugestoes: [],
+    enderecoBairroSugestoes: [],
+    enderecoCidadeCadastrarNovo: false,
+    enderecoBairroCadastrarNovo: false,
     salvandoEndereco: false,
     modoEndereco: 'criar',
 
@@ -1156,21 +1217,118 @@ function pessoaDetalhePage(pessoaId) {
 
     // ------- Edição/Criação de Endereço -------
 
+    async carregarEstados() {
+      if (this.enderecoEstados.length > 0) return;
+      try {
+        this.enderecoEstados = await api.get('/localidades?tipo=estado');
+      } catch (e) {
+        console.error('Erro ao carregar estados', e);
+      }
+    },
+
+    async buscarCidades() {
+      const q = this.enderecoCidadeTexto.trim();
+      if (!this.enderecoEstadoId || q.length < 2) {
+        this.enderecoCidadeSugestoes = [];
+        this.enderecoCidadeCadastrarNovo = false;
+        return;
+      }
+      try {
+        const resultado = await api.get(
+          `/localidades?tipo=cidade&parent_id=${this.enderecoEstadoId}&q=${encodeURIComponent(q)}`
+        );
+        this.enderecoCidadeSugestoes = resultado;
+        this.enderecoCidadeCadastrarNovo = resultado.length === 0;
+      } catch (e) {
+        console.error('Erro ao buscar cidades', e);
+      }
+    },
+
+    async buscarBairros() {
+      const q = this.enderecoBairroTexto.trim();
+      if (!this.enderecoCidadeId || q.length < 2) {
+        this.enderecoBairroSugestoes = [];
+        this.enderecoBairroCadastrarNovo = false;
+        return;
+      }
+      try {
+        const resultado = await api.get(
+          `/localidades?tipo=bairro&parent_id=${this.enderecoCidadeId}&q=${encodeURIComponent(q)}`
+        );
+        this.enderecoBairroSugestoes = resultado;
+        this.enderecoBairroCadastrarNovo = resultado.length === 0;
+      } catch (e) {
+        console.error('Erro ao buscar bairros', e);
+      }
+    },
+
+    selecionarCidade(cidade) {
+      this.enderecoCidadeId = cidade.id;
+      this.enderecoCidadeTexto = cidade.nome_exibicao;
+      this.enderecoCidadeSugestoes = [];
+      this.enderecoCidadeCadastrarNovo = false;
+      this.enderecoBairroId = null;
+      this.enderecoBairroTexto = '';
+    },
+
+    selecionarBairro(bairro) {
+      this.enderecoBairroId = bairro.id;
+      this.enderecoBairroTexto = bairro.nome_exibicao;
+      this.enderecoBairroSugestoes = [];
+      this.enderecoBairroCadastrarNovo = false;
+    },
+
+    async cadastrarNovaCidade() {
+      const nome = this.enderecoCidadeTexto.trim();
+      if (!nome || !this.enderecoEstadoId) return;
+      try {
+        const nova = await api.post('/localidades', {
+          nome,
+          tipo: 'cidade',
+          parent_id: parseInt(this.enderecoEstadoId),
+        });
+        this.selecionarCidade(nova);
+      } catch (e) {
+        showToast('Erro ao cadastrar cidade', 'error');
+      }
+    },
+
+    async cadastrarNovoBairro() {
+      const nome = this.enderecoBairroTexto.trim();
+      if (!nome || !this.enderecoCidadeId) return;
+      try {
+        const novo = await api.post('/localidades', {
+          nome,
+          tipo: 'bairro',
+          parent_id: this.enderecoCidadeId,
+        });
+        this.selecionarBairro(novo);
+      } catch (e) {
+        showToast('Erro ao cadastrar bairro', 'error');
+      }
+    },
+
     abrirModalEditarEndereco(end) {
       this.modoEndereco = 'editar';
-      this.editEnderecoForm = {
-        id: end.id,
-        endereco: end.endereco || '',
-        bairro: end.bairro || '',
-        cidade: end.cidade || '',
-        estado: end.estado || '',
-      };
+      this.editEnderecoForm = { id: end.id, endereco: end.endereco || '' };
+      this.enderecoEstadoId = end.estado_id || null;
+      this.enderecoCidadeId = end.cidade_id || null;
+      this.enderecoCidadeTexto = end.cidade || '';
+      this.enderecoBairroId = end.bairro_id || null;
+      this.enderecoBairroTexto = end.bairro || '';
+      this.carregarEstados();
       this.modalEditarEndereco = true;
     },
 
     abrirModalNovoEndereco() {
       this.modoEndereco = 'criar';
-      this.editEnderecoForm = { id: null, endereco: '', bairro: '', cidade: '', estado: '' };
+      this.editEnderecoForm = { id: null, endereco: '' };
+      this.enderecoEstadoId = null;
+      this.enderecoCidadeId = null;
+      this.enderecoCidadeTexto = '';
+      this.enderecoBairroId = null;
+      this.enderecoBairroTexto = '';
+      this.carregarEstados();
       this.modalEditarEndereco = true;
     },
 
@@ -1181,9 +1339,9 @@ function pessoaDetalhePage(pessoaId) {
         const f = this.editEnderecoForm;
         const body = {
           endereco: f.endereco.trim(),
-          bairro: f.bairro.trim() || null,
-          cidade: f.cidade.trim() || null,
-          estado: f.estado.trim().toUpperCase() || null,
+          estado_id: this.enderecoEstadoId ? parseInt(this.enderecoEstadoId) : null,
+          cidade_id: this.enderecoCidadeId || null,
+          bairro_id: this.enderecoBairroId || null,
         };
 
         if (this.modoEndereco === 'editar') {
