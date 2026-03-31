@@ -112,6 +112,7 @@ function app() {
     user: null,
     online: navigator.onLine,
     syncPending: 0,
+    navHistory: [],
 
     /**
      * Inicializa a aplicacao: conectividade, auth, sync, IndexedDB.
@@ -133,6 +134,9 @@ function app() {
 
       // Escutar logout solicitado por componentes filhos
       window.addEventListener("auth:logout", () => this.logout());
+
+      // Capturar back físico do celular / browser
+      window.addEventListener("popstate", () => this.goBack());
 
       // Escutar atualizacao de dados do usuario (perfil/foto)
       window.addEventListener("user:updated", (e) => { this.user = e.detail; });
@@ -177,13 +181,36 @@ function app() {
     /**
      * Navega para uma pagina da aplicacao.
      *
-     * @param {string} page - Nome da pagina destino.
+     * Empurra a pagina atual no stack de historico interno antes de trocar,
+     * permitindo que goBack() retorne a pagina anterior corretamente.
+     *
+     * Args:
+     *     page: Nome da pagina destino.
      */
     navigate(page) {
+      if (this.currentPage && this.currentPage !== page) {
+        this.navHistory.push(this.currentPage);
+      }
       this.currentPage = page;
       this.renderPage(page);
       window.history.pushState({ page }, "", `#${page}`);
       document.body.style.overflow = page === "home" ? "hidden" : "";
+      window.scrollTo(0, 0);
+    },
+
+    /**
+     * Navega para a pagina anterior no historico interno.
+     *
+     * Faz pop do stack navHistory e renderiza a pagina anterior.
+     * Usa replaceState para nao empilhar mais uma entrada no historico do browser.
+     * Fallback para 'home' se o historico estiver vazio.
+     */
+    goBack() {
+      const prev = this.navHistory.pop() || "home";
+      this.currentPage = prev;
+      this.renderPage(prev);
+      window.history.replaceState({ page: prev }, "", `#${prev}`);
+      document.body.style.overflow = prev === "home" ? "hidden" : "";
       window.scrollTo(0, 0);
     },
 
