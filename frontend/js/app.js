@@ -136,7 +136,9 @@ function app() {
       // Escutar logout solicitado por componentes filhos
       window.addEventListener("auth:logout", () => this.logout());
 
-      // Capturar back físico do celular / browser (evitar registro duplicado)
+      // Capturar back físico do celular / browser (evitar registro duplicado).
+      // Nota: popstate dispara tanto para back quanto forward — forward navigation
+      // não é diferenciado intencionalmente (PWA não expõe botão avançar).
       if (!this._popstateHandler) {
         this._popstateHandler = () => this.goBack();
         window.addEventListener("popstate", this._popstateHandler);
