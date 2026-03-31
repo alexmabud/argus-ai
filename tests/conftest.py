@@ -22,6 +22,7 @@ from app.main import create_app
 from app.models.abordagem import Abordagem
 from app.models.base import Base
 from app.models.guarnicao import Guarnicao
+from app.models.localidade import Localidade
 from app.models.ocorrencia import Ocorrencia
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
@@ -59,6 +60,50 @@ async def setup_db(test_engine):
         for table in reversed(Base.metadata.sorted_tables):
             await conn.execute(text(f'DROP TABLE IF EXISTS "{table.name}" CASCADE'))
         await conn.run_sync(Base.metadata.create_all)
+
+    # Seed dos 27 estados (necessário para testes que buscam localidades)
+    session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
+        async with session.begin():
+            estados = [
+                ("acre", "Acre", "AC"),
+                ("alagoas", "Alagoas", "AL"),
+                ("amapa", "Amapá", "AP"),
+                ("amazonas", "Amazonas", "AM"),
+                ("bahia", "Bahia", "BA"),
+                ("ceara", "Ceará", "CE"),
+                ("distrito federal", "Distrito Federal", "DF"),
+                ("espirito santo", "Espírito Santo", "ES"),
+                ("goias", "Goiás", "GO"),
+                ("maranhao", "Maranhão", "MA"),
+                ("mato grosso", "Mato Grosso", "MT"),
+                ("mato grosso do sul", "Mato Grosso do Sul", "MS"),
+                ("minas gerais", "Minas Gerais", "MG"),
+                ("para", "Pará", "PA"),
+                ("paraiba", "Paraíba", "PB"),
+                ("parana", "Paraná", "PR"),
+                ("pernambuco", "Pernambuco", "PE"),
+                ("piaui", "Piauí", "PI"),
+                ("rio de janeiro", "Rio de Janeiro", "RJ"),
+                ("rio grande do norte", "Rio Grande do Norte", "RN"),
+                ("rio grande do sul", "Rio Grande do Sul", "RS"),
+                ("rondonia", "Rondônia", "RO"),
+                ("roraima", "Roraima", "RR"),
+                ("santa catarina", "Santa Catarina", "SC"),
+                ("sao paulo", "São Paulo", "SP"),
+                ("sergipe", "Sergipe", "SE"),
+                ("tocantins", "Tocantins", "TO"),
+            ]
+            for nome, exibicao, sigla in estados:
+                session.add(
+                    Localidade(
+                        nome=nome,
+                        nome_exibicao=exibicao,
+                        tipo="estado",
+                        sigla=sigla,
+                    )
+                )
+
     yield
     async with test_engine.begin() as conn:
         table_names = ", ".join(f'"{t.name}"' for t in reversed(Base.metadata.sorted_tables))
