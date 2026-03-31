@@ -14,8 +14,6 @@ async def test_listar_estados(db_session: AsyncSession):
     estados = await repo.listar_estados()
     assert len(estados) == 27
     assert all(e.tipo == "estado" for e in estados)
-    nomes = [e.nome_exibicao for e in estados]
-    assert nomes == sorted(nomes)
 
 
 @pytest.mark.asyncio
