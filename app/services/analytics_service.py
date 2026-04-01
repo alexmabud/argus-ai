@@ -274,13 +274,10 @@ class AnalyticsService:
         )
         total = (await self.db.execute(total_q)).scalar() or 0
 
-        pessoas_q = (
-            select(func.count(func.distinct(AbordagemPessoa.pessoa_id)))
-            .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-            )
+        # Conta todas as pessoas cadastradas (com ou sem abordagem)
+        pessoas_q = select(func.count(Pessoa.id)).where(
+            Pessoa.guarnicao_id == guarnicao_id,
+            Pessoa.ativo,
         )
         pessoas = (await self.db.execute(pessoas_q)).scalar() or 0
 
