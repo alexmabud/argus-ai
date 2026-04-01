@@ -33,7 +33,7 @@ async def listar_localidades(
     Args:
         tipo: Nível hierárquico — 'estado', 'cidade' ou 'bairro'.
         parent_id: ID da localidade pai (obrigatório para cidade e bairro).
-        q: Texto de busca opcional (mínimo 2 chars quando fornecido).
+        q: Texto de busca opcional (sem mínimo de caracteres).
         db: Sessão do banco de dados.
         _: Usuário autenticado (apenas para proteger o endpoint).
 
