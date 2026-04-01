@@ -71,7 +71,7 @@ function renderAbordagemNova() {
         <div x-show="showNovaPessoa" x-cloak style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <h3 style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--color-text);margin:0;">Cadastrar novo abordado</h3>
-            <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',data_nascimento:'',apelido:'',endereco:'',bairro:'',cidade:'',estado:''}"
+            <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',data_nascimento:'',apelido:'',endereco:''}; anEstadoId=null; anCidadeId=null; anCidadeTexto=''; anBairroId=null; anBairroTexto=''; anCidadeSugestoes=[]; anBairroSugestoes=[];"
                     style="color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;font-family:var(--font-data);font-size:11px;">Cancelar</button>
           </div>
 
@@ -105,29 +105,63 @@ function renderAbordagemNova() {
 
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
             <div>
-              <label class="login-field-label">Bairro</label>
-              <input type="text" list="lista-bairros-pessoa" x-model="novaPessoa.bairro" placeholder="Bairro">
-            </div>
-            <div>
-              <label class="login-field-label">Cidade</label>
-              <input type="text" list="lista-cidades-pessoa" x-model="novaPessoa.cidade" placeholder="Cidade">
-            </div>
-            <div>
               <label class="login-field-label">Estado (UF)</label>
-              <input type="text" list="lista-estados-pessoa" x-model="novaPessoa.estado" placeholder="DF" maxlength="2" style="text-transform:uppercase;">
+              <select x-model="anEstadoId"
+                      @change="anCidadeId=null;anCidadeTexto='';anBairroId=null;anBairroTexto='';anCidadeSugestoes=[];anBairroSugestoes=[];anBuscarCidades()"
+                      style="width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:12px 14px;font-size:13px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
+                <option value="">Selecione...</option>
+                <template x-for="est in anEstados" :key="est.id">
+                  <option :value="est.id" x-text="est.sigla + ' — ' + est.nome_exibicao"></option>
+                </template>
+              </select>
+            </div>
+            <div style="position:relative;">
+              <label class="login-field-label">Cidade</label>
+              <input type="text" x-model="anCidadeTexto" :disabled="!anEstadoId"
+                     @focus="anBuscarCidades()"
+                     @input.debounce.300ms="anBuscarCidades()"
+                     @blur.debounce.200ms="anCidadeSugestoes=[]"
+                     placeholder="Cidade">
+              <div x-show="anCidadeSugestoes.length > 0 || anCidadeCadastrarNovo"
+                   style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
+                <template x-for="cidade in anCidadeSugestoes" :key="cidade.id">
+                  <div @mousedown.prevent="anSelecionarCidade(cidade)"
+                       style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);"
+                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                    <span x-text="cidade.nome_exibicao"></span>
+                  </div>
+                </template>
+                <div x-show="anCidadeCadastrarNovo" @mousedown.prevent="anCadastrarCidade()"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-primary);border-top:1px solid var(--color-border);"
+                     onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                  + Cadastrar "<span x-text="anCidadeTexto"></span>"
+                </div>
+              </div>
+            </div>
+            <div style="position:relative;">
+              <label class="login-field-label">Bairro</label>
+              <input type="text" x-model="anBairroTexto" :disabled="!anCidadeId"
+                     @focus="anBuscarBairros()"
+                     @input.debounce.300ms="anBuscarBairros()"
+                     @blur.debounce.200ms="anBairroSugestoes=[]"
+                     placeholder="Bairro">
+              <div x-show="anBairroSugestoes.length > 0 || anBairroCadastrarNovo"
+                   style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
+                <template x-for="bairro in anBairroSugestoes" :key="bairro.id">
+                  <div @mousedown.prevent="anSelecionarBairro(bairro)"
+                       style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);"
+                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                    <span x-text="bairro.nome_exibicao"></span>
+                  </div>
+                </template>
+                <div x-show="anBairroCadastrarNovo" @mousedown.prevent="anCadastrarBairro()"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-primary);border-top:1px solid var(--color-border);"
+                     onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                  + Cadastrar "<span x-text="anBairroTexto"></span>"
+                </div>
+              </div>
             </div>
           </div>
-
-          <!-- Datalists para autocomplete de localização -->
-          <datalist id="lista-bairros-pessoa">
-            <template x-for="b in localidades.bairros" :key="b"><option :value="b"></option></template>
-          </datalist>
-          <datalist id="lista-cidades-pessoa">
-            <template x-for="c in localidades.cidades" :key="c"><option :value="c"></option></template>
-          </datalist>
-          <datalist id="lista-estados-pessoa">
-            <template x-for="e in localidades.estados" :key="e"><option :value="e"></option></template>
-          </datalist>
 
           <button @click="criarPessoa()" class="btn btn-primary" :disabled="salvandoPessoa || !novaPessoa.nome.trim()">
             <span x-show="!salvandoPessoa">Salvar e adicionar</span>
@@ -481,9 +515,21 @@ function abordagemForm() {
 
     // Cadastro nova pessoa
     showNovaPessoa: false,
-    novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" },
+    novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "" },
     salvandoPessoa: false,
     erroPessoa: null,
+
+    // Cascata endereço — nova pessoa
+    anEstadoId: null,
+    anCidadeId: null,
+    anCidadeTexto: "",
+    anBairroId: null,
+    anBairroTexto: "",
+    anEstados: [],
+    anCidadeSugestoes: [],
+    anBairroSugestoes: [],
+    anCidadeCadastrarNovo: false,
+    anBairroCadastrarNovo: false,
 
     // Cadastro novo veículo
     showNovoVeiculo: false,
@@ -518,6 +564,9 @@ function abordagemForm() {
       } else {
         this.captureGPS();
       }
+
+      // Carregar estados para cascata de endereço
+      try { this.anEstados = await api.get('/localidades?tipo=estado'); } catch { /* silencioso */ }
 
       // Carregar localidades para autocomplete
       try {
@@ -555,12 +604,59 @@ function abordagemForm() {
         const q = e.detail?.query || "";
         // Criar novo objeto para garantir reatividade no Alpine.js
         if (q && /^\d/.test(q)) {
-          this.novaPessoa = { nome: "", cpf: q, data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
+          this.novaPessoa = { nome: "", cpf: q, data_nascimento: "", apelido: "", endereco: "" };
         } else {
-          this.novaPessoa = { nome: q, cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
+          this.novaPessoa = { nome: q, cpf: "", data_nascimento: "", apelido: "", endereco: "" };
         }
         this.showNovaPessoa = true;
       });
+    },
+
+    async anBuscarCidades() {
+      const q = this.anCidadeTexto.trim();
+      if (!this.anEstadoId) { this.anCidadeSugestoes = []; this.anCidadeCadastrarNovo = false; return; }
+      try {
+        const url = q.length >= 1
+          ? `/localidades?tipo=cidade&parent_id=${this.anEstadoId}&q=${encodeURIComponent(q)}`
+          : `/localidades?tipo=cidade&parent_id=${this.anEstadoId}`;
+        const r = await api.get(url);
+        this.anCidadeSugestoes = r;
+        this.anCidadeCadastrarNovo = q.length >= 1 && r.length === 0;
+      } catch (e) { console.error(e); }
+    },
+    async anBuscarBairros() {
+      const q = this.anBairroTexto.trim();
+      if (!this.anCidadeId) { this.anBairroSugestoes = []; this.anBairroCadastrarNovo = false; return; }
+      try {
+        const url = q.length >= 1
+          ? `/localidades?tipo=bairro&parent_id=${this.anCidadeId}&q=${encodeURIComponent(q)}`
+          : `/localidades?tipo=bairro&parent_id=${this.anCidadeId}`;
+        const r = await api.get(url);
+        this.anBairroSugestoes = r;
+        this.anBairroCadastrarNovo = q.length >= 1 && r.length === 0;
+      } catch (e) { console.error(e); }
+    },
+    anSelecionarCidade(cidade) {
+      this.anCidadeId = cidade.id; this.anCidadeTexto = cidade.nome_exibicao;
+      this.anCidadeSugestoes = []; this.anCidadeCadastrarNovo = false;
+      this.anBairroId = null; this.anBairroTexto = '';
+      this.anBuscarBairros();
+    },
+    anSelecionarBairro(bairro) {
+      this.anBairroId = bairro.id; this.anBairroTexto = bairro.nome_exibicao;
+      this.anBairroSugestoes = []; this.anBairroCadastrarNovo = false;
+    },
+    async anCadastrarCidade() {
+      const nome = this.anCidadeTexto.trim();
+      if (!nome || !this.anEstadoId) return;
+      try { this.anSelecionarCidade(await api.post('/localidades', { nome, tipo: 'cidade', parent_id: parseInt(this.anEstadoId) })); }
+      catch (e) { console.error('Erro ao cadastrar cidade', e); }
+    },
+    async anCadastrarBairro() {
+      const nome = this.anBairroTexto.trim();
+      if (!nome || !this.anCidadeId) return;
+      try { this.anSelecionarBairro(await api.post('/localidades', { nome, tipo: 'bairro', parent_id: this.anCidadeId })); }
+      catch (e) { console.error('Erro ao cadastrar bairro', e); }
     },
 
     async criarPessoa() {
@@ -590,12 +686,12 @@ function abordagemForm() {
         const pessoa = await api.post("/pessoas/", pessoaData);
 
         // Criar endereço se preenchido
-        if (this.novaPessoa.endereco.trim() || this.novaPessoa.bairro.trim() || this.novaPessoa.cidade.trim() || this.novaPessoa.estado.trim()) {
+        if (this.novaPessoa.endereco.trim() || this.anEstadoId || this.anCidadeId) {
           await api.post(`/pessoas/${pessoa.id}/enderecos`, {
             endereco: this.novaPessoa.endereco.trim() || "-",
-            bairro: this.novaPessoa.bairro.trim() || null,
-            cidade: this.novaPessoa.cidade.trim() || null,
-            estado: this.novaPessoa.estado.trim().toUpperCase() || null,
+            estado_id: this.anEstadoId ? parseInt(this.anEstadoId) : null,
+            cidade_id: this.anCidadeId || null,
+            bairro_id: this.anBairroId || null,
           });
         }
 
@@ -610,7 +706,9 @@ function abordagemForm() {
         }
 
         // Reset formulário
-        this.novaPessoa = { nome: "", cpf: "", endereco: "", bairro: "", cidade: "", estado: "" };
+        this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "" };
+        this.anEstadoId = null; this.anCidadeId = null; this.anCidadeTexto = "";
+        this.anBairroId = null; this.anBairroTexto = "";
         this.showNovaPessoa = false;
       } catch (err) {
         this.erroPessoa = err.message || "Erro ao cadastrar pessoa.";
@@ -868,7 +966,9 @@ function abordagemForm() {
       this.fotoVeiculoFile = null;
       this.showNovaPessoa = false;
       this.showNovoVeiculo = false;
-      this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
+      this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "" };
+      this.anEstadoId = null; this.anCidadeId = null; this.anCidadeTexto = "";
+      this.anBairroId = null; this.anBairroTexto = "";
       this.novoVeiculo = { placa: "", modelo: "", cor: "", ano: "" };
       this.salvandoEndereco = {};
       this.erroEndereco = {};
