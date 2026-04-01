@@ -15,6 +15,7 @@ from app.core.crypto import decrypt, encrypt, hash_for_search
 from app.core.exceptions import AcessoNegadoError, ConflitoDadosError, NaoEncontradoError
 from app.core.permissions import TenantFilter
 from app.models.endereco import EnderecoPessoa
+from app.models.localidade import Localidade
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.models.vinculo_manual import VinculoManual
@@ -329,12 +330,21 @@ class PessoaService:
         if data.latitude is not None and data.longitude is not None:
             localizacao = f"POINT({data.longitude} {data.latitude})"
 
+        bairro_txt, cidade_txt, estado_txt = await self._resolver_nomes_localidade(
+            data.bairro_id,
+            data.cidade_id,
+            data.estado_id,
+            data.bairro,
+            data.cidade,
+            data.estado,
+        )
+
         endereco = EnderecoPessoa(
             pessoa_id=pessoa_id,
             endereco=data.endereco,
-            bairro=data.bairro,
-            cidade=data.cidade,
-            estado=data.estado,
+            bairro=bairro_txt,
+            cidade=cidade_txt,
+            estado=estado_txt,
             estado_id=data.estado_id,
             cidade_id=data.cidade_id,
             bairro_id=data.bairro_id,
@@ -399,6 +409,28 @@ class PessoaService:
         if lat is not None and lng is not None:
             endereco.localizacao = f"POINT({lng} {lat})"
 
+        # Resolver nomes de texto a partir de IDs de localidade quando fornecidos
+        has_localidade_ids = any(k in update_data for k in ("estado_id", "cidade_id", "bairro_id"))
+        if has_localidade_ids:
+            bairro_txt, cidade_txt, estado_txt = await self._resolver_nomes_localidade(
+                update_data.get("bairro_id", endereco.bairro_id),
+                update_data.get("cidade_id", endereco.cidade_id),
+                update_data.get("estado_id", endereco.estado_id),
+                update_data.get("bairro", endereco.bairro),
+                update_data.get("cidade", endereco.cidade),
+                update_data.get("estado", endereco.estado),
+            )
+            update_data.setdefault("bairro", bairro_txt)
+            update_data.setdefault("cidade", cidade_txt)
+            update_data.setdefault("estado", estado_txt)
+            # Substituir se já presentes com None
+            if update_data.get("bairro") is None and bairro_txt:
+                update_data["bairro"] = bairro_txt
+            if update_data.get("cidade") is None and cidade_txt:
+                update_data["cidade"] = cidade_txt
+            if update_data.get("estado") is None and estado_txt:
+                update_data["estado"] = estado_txt
+
         for field, value in update_data.items():
             setattr(endereco, field, value)
 
@@ -415,6 +447,53 @@ class PessoaService:
         )
 
         return endereco
+
+    async def _resolver_nomes_localidade(
+        self,
+        bairro_id: int | None,
+        cidade_id: int | None,
+        estado_id: int | None,
+        bairro_txt: str | None,
+        cidade_txt: str | None,
+        estado_txt: str | None,
+    ) -> tuple[str | None, str | None, str | None]:
+        """Resolve nomes de texto de localidade a partir dos IDs quando os textos estão ausentes.
+
+        Consulta a tabela de localidades para preencher bairro, cidade e estado
+        em texto quando apenas os IDs FK foram fornecidos (fluxo do novo cadastro
+        com dropdown). Preserva os textos já informados.
+
+        Args:
+            bairro_id: ID da localidade bairro (opcional).
+            cidade_id: ID da localidade cidade (opcional).
+            estado_id: ID da localidade estado (opcional).
+            bairro_txt: Texto do bairro já informado (opcional).
+            cidade_txt: Texto da cidade já informado (opcional).
+            estado_txt: Texto do estado já informado (opcional).
+
+        Returns:
+            Tupla (bairro, cidade, estado) com nomes resolvidos.
+        """
+        ids_needed = [i for i in (bairro_id, cidade_id, estado_id) if i is not None]
+        if not ids_needed:
+            return bairro_txt, cidade_txt, estado_txt
+
+        result = await self.db.execute(select(Localidade).where(Localidade.id.in_(ids_needed)))
+        localidades = {loc.id: loc for loc in result.scalars().all()}
+
+        if bairro_id and not bairro_txt:
+            loc = localidades.get(bairro_id)
+            bairro_txt = loc.nome_exibicao if loc else bairro_txt
+
+        if cidade_id and not cidade_txt:
+            loc = localidades.get(cidade_id)
+            cidade_txt = loc.nome_exibicao if loc else cidade_txt
+
+        if estado_id and not estado_txt:
+            loc = localidades.get(estado_id)
+            estado_txt = (loc.sigla or loc.nome_exibicao) if loc else estado_txt
+
+        return bairro_txt, cidade_txt, estado_txt
 
     @staticmethod
     def mask_cpf(pessoa: Pessoa) -> str | None:
