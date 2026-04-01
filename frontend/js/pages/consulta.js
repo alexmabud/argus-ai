@@ -218,62 +218,62 @@ function renderConsulta() {
             <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e numero">
           </div>
 
-          <div>
-            <label class="login-field-label">Estado (UF)</label>
-            <select x-model="cpEstadoId"
-                    @change="cpCidadeId=null;cpCidadeTexto='';cpBairroId=null;cpBairroTexto='';cpCidadeSugestoes=[];cpBairroSugestoes=[];cpBuscarCidades()"
-                    style="width:100%;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--color-text);font-family:var(--font-body);">
-              <option value="">Selecione o estado...</option>
-              <template x-for="est in cpEstados" :key="est.id">
-                <option :value="est.id" x-text="est.sigla + ' — ' + est.nome_exibicao"></option>
-              </template>
-            </select>
-          </div>
-          <div style="position:relative;">
-            <label class="login-field-label">Cidade</label>
-            <input type="text" x-model="cpCidadeTexto" :disabled="!cpEstadoId"
-                   @focus="cpBuscarCidades()"
-                   @input.debounce.300ms="cpBuscarCidades()"
-                   @blur.debounce.200ms="cpCidadeSugestoes=[]"
-                   placeholder="Digite para buscar..."
-                   style="width:100%;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
-            <div x-show="cpCidadeSugestoes.length > 0 || cpCidadeCadastrarNovo"
-                 style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
-              <template x-for="cidade in cpCidadeSugestoes" :key="cidade.id">
-                <div @mousedown.prevent="cpSelecionarCidade(cidade)"
-                     style="padding:6px 10px;cursor:pointer;font-size:12px;color:var(--color-text);"
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+            <div>
+              <label class="login-field-label">Estado (UF)</label>
+              <select x-model="cpEstadoId"
+                      @change="cpCidadeId=null;cpCidadeTexto='';cpBairroId=null;cpBairroTexto='';cpCidadeSugestoes=[];cpBairroSugestoes=[];cpBuscarCidades()"
+                      style="width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:12px 14px;font-size:13px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
+                <option value="">Selecione...</option>
+                <template x-for="est in cpEstados" :key="est.id">
+                  <option :value="est.id" x-text="est.sigla + ' — ' + est.nome_exibicao"></option>
+                </template>
+              </select>
+            </div>
+            <div style="position:relative;">
+              <label class="login-field-label">Cidade</label>
+              <input type="text" x-model="cpCidadeTexto" :disabled="!cpEstadoId"
+                     @focus="cpBuscarCidades()"
+                     @input.debounce.300ms="cpBuscarCidades()"
+                     @blur.debounce.200ms="cpCidadeSugestoes=[]"
+                     placeholder="Cidade">
+              <div x-show="cpCidadeSugestoes.length > 0 || cpCidadeCadastrarNovo"
+                   style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
+                <template x-for="cidade in cpCidadeSugestoes" :key="cidade.id">
+                  <div @mousedown.prevent="cpSelecionarCidade(cidade)"
+                       style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);"
+                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                    <span x-text="cidade.nome_exibicao"></span>
+                  </div>
+                </template>
+                <div x-show="cpCidadeCadastrarNovo" @mousedown.prevent="cpCadastrarCidade()"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-primary);border-top:1px solid var(--color-border);"
                      onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
-                  <span x-text="cidade.nome_exibicao"></span>
+                  + Cadastrar "<span x-text="cpCidadeTexto"></span>"
                 </div>
-              </template>
-              <div x-show="cpCidadeCadastrarNovo" @mousedown.prevent="cpCadastrarCidade()"
-                   style="padding:6px 10px;cursor:pointer;font-size:12px;color:var(--color-primary);border-top:1px solid var(--color-border);"
-                   onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
-                + Cadastrar "<span x-text="cpCidadeTexto"></span>"
               </div>
             </div>
-          </div>
-          <div style="position:relative;">
-            <label class="login-field-label">Bairro</label>
-            <input type="text" x-model="cpBairroTexto" :disabled="!cpCidadeId"
-                   @focus="cpBuscarBairros()"
-                   @input.debounce.300ms="cpBuscarBairros()"
-                   @blur.debounce.200ms="cpBairroSugestoes=[]"
-                   placeholder="Digite para buscar..."
-                   style="width:100%;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
-            <div x-show="cpBairroSugestoes.length > 0 || cpBairroCadastrarNovo"
-                 style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
-              <template x-for="bairro in cpBairroSugestoes" :key="bairro.id">
-                <div @mousedown.prevent="cpSelecionarBairro(bairro)"
-                     style="padding:6px 10px;cursor:pointer;font-size:12px;color:var(--color-text);"
+            <div style="position:relative;">
+              <label class="login-field-label">Bairro</label>
+              <input type="text" x-model="cpBairroTexto" :disabled="!cpCidadeId"
+                     @focus="cpBuscarBairros()"
+                     @input.debounce.300ms="cpBuscarBairros()"
+                     @blur.debounce.200ms="cpBairroSugestoes=[]"
+                     placeholder="Bairro">
+              <div x-show="cpBairroSugestoes.length > 0 || cpBairroCadastrarNovo"
+                   style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
+                <template x-for="bairro in cpBairroSugestoes" :key="bairro.id">
+                  <div @mousedown.prevent="cpSelecionarBairro(bairro)"
+                       style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);"
+                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                    <span x-text="bairro.nome_exibicao"></span>
+                  </div>
+                </template>
+                <div x-show="cpBairroCadastrarNovo" @mousedown.prevent="cpCadastrarBairro()"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-primary);border-top:1px solid var(--color-border);"
                      onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
-                  <span x-text="bairro.nome_exibicao"></span>
+                  + Cadastrar "<span x-text="cpBairroTexto"></span>"
                 </div>
-              </template>
-              <div x-show="cpBairroCadastrarNovo" @mousedown.prevent="cpCadastrarBairro()"
-                   style="padding:6px 10px;cursor:pointer;font-size:12px;color:var(--color-primary);border-top:1px solid var(--color-border);"
-                   onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
-                + Cadastrar "<span x-text="cpBairroTexto"></span>"
               </div>
             </div>
           </div>
