@@ -59,13 +59,17 @@ function renderDashboard() {
     <div x-data="dashboardPage()" x-init="load()" style="display:flex;flex-direction:column;gap:20px;">
 
       <!-- Header da pagina -->
-      <div>
-        <h2 style="font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--color-text); text-transform: uppercase; letter-spacing: 0.08em;">
-          Analitico
-        </h2>
-        <p style="font-family: var(--font-data); font-size: 12px; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px;">
-          Metricas Operacionais
-        </p>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <h2 style="font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--color-text); text-transform: uppercase; letter-spacing: 0.08em;">
+            Analitico
+          </h2>
+          <p style="font-family: var(--font-data); font-size: 12px; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px;">
+            Metricas Operacionais
+          </p>
+        </div>
+        <p x-show="!loading" style="font-family: var(--font-data); font-size: 12px; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; white-space: nowrap;"
+           x-text="'Pessoas Cadastradas: ' + (total.pessoas ?? 0).toLocaleString('pt-BR')"></p>
       </div>
 
       <!-- Loading -->

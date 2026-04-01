@@ -23,7 +23,7 @@ function renderConsulta() {
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Pessoa</span>
-          <button @click="showCadastroPessoa = !showCadastroPessoa; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '', bairro: '', cidade: '', estado: '' }; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
+          <button @click="showCadastroPessoa = !showCadastroPessoa; if(showCadastroPessoa) cpCarregarEstados(); novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '' }; this.cpEstadoId=null; this.cpCidadeId=null; this.cpCidadeTexto=''; this.cpBairroId=null; this.cpBairroTexto=''; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
                   style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-primary);background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
             + Nova Pessoa
           </button>
@@ -173,7 +173,7 @@ function renderConsulta() {
         <!-- Sem resultados pessoa -->
         <div x-show="searched && !loadingPessoa && buscouPessoa && pessoasTexto.length === 0 && pessoasFoto.length === 0 && !fotoSearchDone">
           <span style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);">Nenhuma pessoa encontrada. </span>
-          <button @click="showCadastroPessoa = true; if (query && !/^\\d/.test(query)) novaPessoa.nome = query; else if (query) novaPessoa.cpf = query"
+          <button @click="showCadastroPessoa = true; cpCarregarEstados(); if (query && !/^\\d/.test(query)) novaPessoa.nome = query; else if (query) novaPessoa.cpf = query"
                   style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-primary);background:transparent;border:none;cursor:pointer;">
             Cadastrar
           </button>
@@ -184,7 +184,7 @@ function renderConsulta() {
              style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-top:4px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text);text-transform:uppercase;letter-spacing:0.06em;">Cadastrar Pessoa</h3>
-            <button @click="showCadastroPessoa = false; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '', bairro: '', cidade: '', estado: '' }; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
+            <button @click="showCadastroPessoa = false; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '' }; this.cpEstadoId=null; this.cpCidadeId=null; this.cpCidadeTexto=''; this.cpBairroId=null; this.cpBairroTexto=''; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
                     style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);background:transparent;border:none;cursor:pointer;">Cancelar</button>
           </div>
 
@@ -218,18 +218,61 @@ function renderConsulta() {
             <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e numero">
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:8px;">
-            <div>
-              <label class="login-field-label">Bairro</label>
-              <input type="text" list="lista-bairros-c" x-model="novaPessoa.bairro" placeholder="Bairro">
+          <div>
+            <label class="login-field-label">Estado (UF)</label>
+            <select x-model="cpEstadoId"
+                    @change="cpCidadeId=null;cpCidadeTexto='';cpBairroId=null;cpBairroTexto='';cpCidadeSugestoes=[];cpBairroSugestoes=[];"
+                    style="width:100%;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--color-text);font-family:var(--font-body);">
+              <option value="">Selecione o estado...</option>
+              <template x-for="est in cpEstados" :key="est.id">
+                <option :value="est.id" x-text="est.sigla + ' — ' + est.nome_exibicao"></option>
+              </template>
+            </select>
+          </div>
+          <div style="position:relative;">
+            <label class="login-field-label">Cidade</label>
+            <input type="text" x-model="cpCidadeTexto" :disabled="!cpEstadoId"
+                   @input.debounce.400ms="cpBuscarCidades()"
+                   @blur.debounce.200ms="cpCidadeSugestoes=[]"
+                   placeholder="Digite para buscar..."
+                   style="width:100%;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
+            <div x-show="cpCidadeSugestoes.length > 0 || cpCidadeCadastrarNovo"
+                 style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
+              <template x-for="cidade in cpCidadeSugestoes" :key="cidade.id">
+                <div @mousedown.prevent="cpSelecionarCidade(cidade)"
+                     style="padding:6px 10px;cursor:pointer;font-size:12px;color:var(--color-text);"
+                     onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                  <span x-text="cidade.nome_exibicao"></span>
+                </div>
+              </template>
+              <div x-show="cpCidadeCadastrarNovo" @mousedown.prevent="cpCadastrarCidade()"
+                   style="padding:6px 10px;cursor:pointer;font-size:12px;color:var(--color-primary);border-top:1px solid var(--color-border);"
+                   onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                + Cadastrar "<span x-text="cpCidadeTexto"></span>"
+              </div>
             </div>
-            <div>
-              <label class="login-field-label">Cidade</label>
-              <input type="text" list="lista-cidades-c" x-model="novaPessoa.cidade" placeholder="Cidade">
-            </div>
-            <div>
-              <label class="login-field-label">UF</label>
-              <input type="text" list="lista-estados-c" x-model="novaPessoa.estado" placeholder="DF" maxlength="2" style="text-transform:uppercase;">
+          </div>
+          <div style="position:relative;">
+            <label class="login-field-label">Bairro</label>
+            <input type="text" x-model="cpBairroTexto" :disabled="!cpCidadeId"
+                   @input.debounce.400ms="cpBuscarBairros()"
+                   @blur.debounce.200ms="cpBairroSugestoes=[]"
+                   placeholder="Digite para buscar..."
+                   style="width:100%;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
+            <div x-show="cpBairroSugestoes.length > 0 || cpBairroCadastrarNovo"
+                 style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
+              <template x-for="bairro in cpBairroSugestoes" :key="bairro.id">
+                <div @mousedown.prevent="cpSelecionarBairro(bairro)"
+                     style="padding:6px 10px;cursor:pointer;font-size:12px;color:var(--color-text);"
+                     onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                  <span x-text="bairro.nome_exibicao"></span>
+                </div>
+              </template>
+              <div x-show="cpBairroCadastrarNovo" @mousedown.prevent="cpCadastrarBairro()"
+                   style="padding:6px 10px;cursor:pointer;font-size:12px;color:var(--color-primary);border-top:1px solid var(--color-border);"
+                   onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                + Cadastrar "<span x-text="cpBairroTexto"></span>"
+              </div>
             </div>
           </div>
 
@@ -630,11 +673,22 @@ function consultaPage() {
 
     // Cadastro nova pessoa
     showCadastroPessoa: false,
-    novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" },
+    novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "" },
     fotoPessoa: null,
     fotoPessoaPreviewUrl: "",
     salvandoPessoa: false,
     erroCadastro: null,
+    // Localidade cascata (cadastro pessoa)
+    cpEstadoId: null,
+    cpCidadeId: null,
+    cpCidadeTexto: "",
+    cpBairroId: null,
+    cpBairroTexto: "",
+    cpEstados: [],
+    cpCidadeSugestoes: [],
+    cpBairroSugestoes: [],
+    cpCidadeCadastrarNovo: false,
+    cpBairroCadastrarNovo: false,
 
     async init() {
       try {
@@ -838,6 +892,54 @@ function consultaPage() {
       }
     },
 
+    async cpCarregarEstados() {
+      if (this.cpEstados.length > 0) return;
+      try { this.cpEstados = await api.get('/localidades?tipo=estado'); } catch (e) { console.error(e); }
+    },
+
+    async cpBuscarCidades() {
+      const q = this.cpCidadeTexto.trim();
+      if (!this.cpEstadoId || q.length < 2) { this.cpCidadeSugestoes = []; this.cpCidadeCadastrarNovo = false; return; }
+      try {
+        const r = await api.get(`/localidades?tipo=cidade&parent_id=${this.cpEstadoId}&q=${encodeURIComponent(q)}`);
+        this.cpCidadeSugestoes = r; this.cpCidadeCadastrarNovo = r.length === 0;
+      } catch (e) { console.error(e); }
+    },
+
+    async cpBuscarBairros() {
+      const q = this.cpBairroTexto.trim();
+      if (!this.cpCidadeId || q.length < 2) { this.cpBairroSugestoes = []; this.cpBairroCadastrarNovo = false; return; }
+      try {
+        const r = await api.get(`/localidades?tipo=bairro&parent_id=${this.cpCidadeId}&q=${encodeURIComponent(q)}`);
+        this.cpBairroSugestoes = r; this.cpBairroCadastrarNovo = r.length === 0;
+      } catch (e) { console.error(e); }
+    },
+
+    cpSelecionarCidade(cidade) {
+      this.cpCidadeId = cidade.id; this.cpCidadeTexto = cidade.nome_exibicao;
+      this.cpCidadeSugestoes = []; this.cpCidadeCadastrarNovo = false;
+      this.cpBairroId = null; this.cpBairroTexto = '';
+    },
+
+    cpSelecionarBairro(bairro) {
+      this.cpBairroId = bairro.id; this.cpBairroTexto = bairro.nome_exibicao;
+      this.cpBairroSugestoes = []; this.cpBairroCadastrarNovo = false;
+    },
+
+    async cpCadastrarCidade() {
+      const nome = this.cpCidadeTexto.trim();
+      if (!nome || !this.cpEstadoId) return;
+      try { this.cpSelecionarCidade(await api.post('/localidades', { nome, tipo: 'cidade', parent_id: parseInt(this.cpEstadoId) })); }
+      catch (e) { showToast('Erro ao cadastrar cidade', 'error'); }
+    },
+
+    async cpCadastrarBairro() {
+      const nome = this.cpBairroTexto.trim();
+      if (!nome || !this.cpCidadeId) return;
+      try { this.cpSelecionarBairro(await api.post('/localidades', { nome, tipo: 'bairro', parent_id: this.cpCidadeId })); }
+      catch (e) { showToast('Erro ao cadastrar bairro', 'error'); }
+    },
+
     async criarPessoa() {
       const nome = this.novaPessoa.nome.trim();
       if (!nome) {
@@ -857,17 +959,14 @@ function consultaPage() {
 
         const pessoa = await api.post("/pessoas/", pessoaData);
 
-        const temEndereco = this.novaPessoa.endereco.trim()
-          || this.novaPessoa.bairro.trim()
-          || this.novaPessoa.cidade.trim()
-          || this.novaPessoa.estado.trim();
+        const temEndereco = this.novaPessoa.endereco.trim() || this.cpEstadoId || this.cpCidadeId;
 
         if (temEndereco) {
           await api.post(`/pessoas/${pessoa.id}/enderecos`, {
             endereco: this.novaPessoa.endereco.trim() || "-",
-            bairro: this.novaPessoa.bairro.trim() || null,
-            cidade: this.novaPessoa.cidade.trim() || null,
-            estado: this.novaPessoa.estado.trim().toUpperCase() || null,
+            estado_id: this.cpEstadoId ? parseInt(this.cpEstadoId) : null,
+            cidade_id: this.cpCidadeId || null,
+            bairro_id: this.cpBairroId || null,
           });
         }
 
@@ -878,7 +977,8 @@ function consultaPage() {
           });
         }
 
-        this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "", bairro: "", cidade: "", estado: "" };
+        this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "" };
+        this.cpEstadoId = null; this.cpCidadeId = null; this.cpCidadeTexto = ""; this.cpBairroId = null; this.cpBairroTexto = "";
         this.fotoPessoa = null;
         this.fotoPessoaPreviewUrl = "";
         this.showCadastroPessoa = false;
