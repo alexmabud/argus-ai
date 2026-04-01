@@ -62,6 +62,7 @@ jobs:
             git pull
 
             echo "══════ Build e deploy ══════"
+            docker compose -f docker-compose.prod.yml rm -f minio-init || true
             docker compose -f docker-compose.prod.yml up -d --build
 
             echo "══════ Aguardando health check ══════"
