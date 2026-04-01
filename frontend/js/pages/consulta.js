@@ -221,7 +221,7 @@ function renderConsulta() {
           <div>
             <label class="login-field-label">Estado (UF)</label>
             <select x-model="cpEstadoId"
-                    @change="cpCidadeId=null;cpCidadeTexto='';cpBairroId=null;cpBairroTexto='';cpCidadeSugestoes=[];cpBairroSugestoes=[];"
+                    @change="cpCidadeId=null;cpCidadeTexto='';cpBairroId=null;cpBairroTexto='';cpCidadeSugestoes=[];cpBairroSugestoes=[];cpBuscarCidades()"
                     style="width:100%;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--color-text);font-family:var(--font-body);">
               <option value="">Selecione o estado...</option>
               <template x-for="est in cpEstados" :key="est.id">
@@ -232,7 +232,8 @@ function renderConsulta() {
           <div style="position:relative;">
             <label class="login-field-label">Cidade</label>
             <input type="text" x-model="cpCidadeTexto" :disabled="!cpEstadoId"
-                   @input.debounce.400ms="cpBuscarCidades()"
+                   @focus="cpBuscarCidades()"
+                   @input.debounce.300ms="cpBuscarCidades()"
                    @blur.debounce.200ms="cpCidadeSugestoes=[]"
                    placeholder="Digite para buscar..."
                    style="width:100%;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
@@ -255,7 +256,8 @@ function renderConsulta() {
           <div style="position:relative;">
             <label class="login-field-label">Bairro</label>
             <input type="text" x-model="cpBairroTexto" :disabled="!cpCidadeId"
-                   @input.debounce.400ms="cpBuscarBairros()"
+                   @focus="cpBuscarBairros()"
+                   @input.debounce.300ms="cpBuscarBairros()"
                    @blur.debounce.200ms="cpBairroSugestoes=[]"
                    placeholder="Digite para buscar..."
                    style="width:100%;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;padding:8px 10px;font-size:12px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
@@ -899,19 +901,27 @@ function consultaPage() {
 
     async cpBuscarCidades() {
       const q = this.cpCidadeTexto.trim();
-      if (!this.cpEstadoId || q.length < 2) { this.cpCidadeSugestoes = []; this.cpCidadeCadastrarNovo = false; return; }
+      if (!this.cpEstadoId) { this.cpCidadeSugestoes = []; this.cpCidadeCadastrarNovo = false; return; }
       try {
-        const r = await api.get(`/localidades?tipo=cidade&parent_id=${this.cpEstadoId}&q=${encodeURIComponent(q)}`);
-        this.cpCidadeSugestoes = r; this.cpCidadeCadastrarNovo = r.length === 0;
+        const url = q.length >= 1
+          ? `/localidades?tipo=cidade&parent_id=${this.cpEstadoId}&q=${encodeURIComponent(q)}`
+          : `/localidades?tipo=cidade&parent_id=${this.cpEstadoId}`;
+        const r = await api.get(url);
+        this.cpCidadeSugestoes = r;
+        this.cpCidadeCadastrarNovo = q.length >= 1 && r.length === 0;
       } catch (e) { console.error(e); }
     },
 
     async cpBuscarBairros() {
       const q = this.cpBairroTexto.trim();
-      if (!this.cpCidadeId || q.length < 2) { this.cpBairroSugestoes = []; this.cpBairroCadastrarNovo = false; return; }
+      if (!this.cpCidadeId) { this.cpBairroSugestoes = []; this.cpBairroCadastrarNovo = false; return; }
       try {
-        const r = await api.get(`/localidades?tipo=bairro&parent_id=${this.cpCidadeId}&q=${encodeURIComponent(q)}`);
-        this.cpBairroSugestoes = r; this.cpBairroCadastrarNovo = r.length === 0;
+        const url = q.length >= 1
+          ? `/localidades?tipo=bairro&parent_id=${this.cpCidadeId}&q=${encodeURIComponent(q)}`
+          : `/localidades?tipo=bairro&parent_id=${this.cpCidadeId}`;
+        const r = await api.get(url);
+        this.cpBairroSugestoes = r;
+        this.cpBairroCadastrarNovo = q.length >= 1 && r.length === 0;
       } catch (e) { console.error(e); }
     },
 
@@ -919,6 +929,7 @@ function consultaPage() {
       this.cpCidadeId = cidade.id; this.cpCidadeTexto = cidade.nome_exibicao;
       this.cpCidadeSugestoes = []; this.cpCidadeCadastrarNovo = false;
       this.cpBairroId = null; this.cpBairroTexto = '';
+      this.cpBuscarBairros();
     },
 
     cpSelecionarBairro(bairro) {
