@@ -20,7 +20,7 @@ router = APIRouter(prefix="/localidades", tags=["Localidades"])
 async def listar_localidades(
     tipo: str = Query(..., pattern="^(estado|cidade|bairro)$"),
     parent_id: int | None = Query(None),
-    q: str | None = Query(None, min_length=2),
+    q: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     _: Usuario = Depends(get_current_user),
 ) -> list[LocalidadeRead]:
@@ -28,7 +28,7 @@ async def listar_localidades(
 
     Para tipo='estado': retorna todos os 27 estados (ignora parent_id e q).
     Para tipo='cidade' ou 'bairro': quando q ausente lista todos os filhos do
-    parent_id (até 200); quando q fornecido filtra por texto (mínimo 2 chars).
+    parent_id (até 200); quando q fornecido filtra por texto (1+ caractere).
 
     Args:
         tipo: Nível hierárquico — 'estado', 'cidade' ou 'bairro'.
