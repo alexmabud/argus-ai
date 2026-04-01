@@ -128,6 +128,7 @@ function app() {
         this.authenticated = false;
         this.user = null;
         this.currentPage = "login";
+        this.$nextTick(() => this.renderLogin());
       });
 
       // Escutar navegacao por evento customizado
