@@ -56,7 +56,7 @@ async def test_autocomplete_retorna_max_10(db_session: AsyncSession):
         )
     await db_session.flush()
 
-    resultados = await repo.autocomplete(tipo="cidade", parent_id=sp.id, q="cidade")
+    resultados = await repo.autocomplete(tipo="cidade", parent_id=sp.id, q="cidade", limit=10)
     assert len(resultados) <= 10
 
 
@@ -80,3 +80,26 @@ async def test_buscar_por_nome_e_parent(db_session: AsyncSession):
     encontrada = await repo.buscar_por_nome_e_parent("rio de janeiro", "cidade", rj.id)
     assert encontrada is not None
     assert encontrada.id == cidade.id
+
+
+@pytest.mark.asyncio
+async def test_autocomplete_sem_q_retorna_todos(db_session: AsyncSession):
+    """Sem q, retorna todos os filhos do parent_id sem filtro de texto."""
+    repo = LocalidadeRepository(db_session)
+    estados = await repo.listar_estados()
+    mg = next((e for e in estados if e.sigla == "MG"), None)
+    assert mg is not None, "Estado MG não encontrado — verifique o seed no conftest"
+
+    for nome in ["alfa", "beta", "gamma"]:
+        db_session.add(
+            Localidade(
+                nome=nome,
+                nome_exibicao=nome.capitalize(),
+                tipo="cidade",
+                parent_id=mg.id,
+            )
+        )
+    await db_session.commit()
+
+    result = await repo.autocomplete(tipo="cidade", parent_id=mg.id, q=None)
+    assert len(result) == 3

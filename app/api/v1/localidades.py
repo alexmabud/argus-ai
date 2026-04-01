@@ -27,12 +27,13 @@ async def listar_localidades(
     """Lista estados ou faz autocomplete de cidades/bairros.
 
     Para tipo='estado': retorna todos os 27 estados (ignora parent_id e q).
-    Para tipo='cidade' ou 'bairro': retorna até 10 resultados filtrados por q.
+    Para tipo='cidade' ou 'bairro': quando q ausente lista todos os filhos do
+    parent_id (até 200); quando q fornecido filtra por texto (mínimo 2 chars).
 
     Args:
         tipo: Nível hierárquico — 'estado', 'cidade' ou 'bairro'.
         parent_id: ID da localidade pai (obrigatório para cidade e bairro).
-        q: Texto de busca (obrigatório para cidade e bairro, mínimo 2 chars).
+        q: Texto de busca opcional (mínimo 2 chars quando fornecido).
         db: Sessão do banco de dados.
         _: Usuário autenticado (apenas para proteger o endpoint).
 
@@ -40,17 +41,17 @@ async def listar_localidades(
         Lista de localidades correspondentes.
 
     Raises:
-        HTTPException 400: Quando parent_id ou q ausentes para cidade/bairro.
+        HTTPException 400: Quando parent_id ausente para cidade/bairro.
     """
     service = LocalidadeService(db)
 
     if tipo == "estado":
         return await service.listar_estados()
 
-    if parent_id is None or q is None:
+    if parent_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="parent_id e q são obrigatórios para cidade e bairro.",
+            detail="parent_id é obrigatório para cidade e bairro.",
         )
 
     return await service.autocomplete(tipo=tipo, parent_id=parent_id, q=q)

@@ -61,19 +61,23 @@ class LocalidadeService:
         self,
         tipo: str,
         parent_id: int,
-        q: str,
+        q: str | None = None,
     ) -> list[Localidade]:
-        """Autocomplete de cidades ou bairros filtrados por texto.
+        """Autocomplete de cidades ou bairros filtrados por texto, ou lista todos.
+
+        Quando q é None ou vazio, retorna todas as localidades filhas do parent_id.
+        Quando q é fornecido, filtra por nome normalizado com ILIKE.
 
         Args:
             tipo: 'cidade' ou 'bairro'.
             parent_id: ID do estado (para cidades) ou cidade (para bairros).
-            q: Texto digitado pelo usuário.
+            q: Texto digitado pelo usuário (opcional).
 
         Returns:
-            Lista de até 10 localidades correspondentes.
+            Lista de localidades correspondentes.
         """
-        return await self.repo.autocomplete(tipo=tipo, parent_id=parent_id, q=_normalizar(q))
+        q_normalizado = _normalizar(q) if q else None
+        return await self.repo.autocomplete(tipo=tipo, parent_id=parent_id, q=q_normalizado)
 
     async def criar(self, data: LocalidadeCreate) -> Localidade:
         """Cria nova cidade ou bairro após validar hierarquia e duplicata.

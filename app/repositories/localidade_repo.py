@@ -42,34 +42,32 @@ class LocalidadeRepository:
         self,
         tipo: str,
         parent_id: int,
-        q: str,
-        limit: int = 10,
+        q: str | None = None,
+        limit: int = 200,
     ) -> list[Localidade]:
-        """Retorna localidades filtradas por texto (autocomplete).
+        """Retorna localidades filtradas por texto ou todas as filhas do parent.
 
-        Busca pelo campo `nome` normalizado com ILIKE para ignorar case.
-        Filtra por tipo e parent_id para garantir hierarquia correta.
+        Quando q é None ou vazio, retorna todos os filhos do parent_id (até limit).
+        Quando q é fornecido, filtra por nome com ILIKE.
 
         Args:
             tipo: Tipo da localidade ('cidade' ou 'bairro').
             parent_id: ID da localidade pai (estado para cidades, cidade para bairros).
-            q: Texto de busca (mínimo 2 chars recomendado).
-            limit: Número máximo de resultados (padrão: 10).
+            q: Texto de busca opcional (sem mínimo de caracteres).
+            limit: Número máximo de resultados (padrão: 200).
 
         Returns:
-            Lista de até `limit` localidades que correspondem ao texto.
+            Lista de localidades ordenadas por nome_exibicao.
         """
-        result = await self.db.execute(
-            select(Localidade)
-            .where(
-                Localidade.tipo == tipo,
-                Localidade.parent_id == parent_id,
-                Localidade.ativo.is_(True),
-                Localidade.nome.ilike(f"%{q}%"),
-            )
-            .order_by(Localidade.nome_exibicao)
-            .limit(limit)
+        query = select(Localidade).where(
+            Localidade.tipo == tipo,
+            Localidade.parent_id == parent_id,
+            Localidade.ativo.is_(True),
         )
+        if q:
+            query = query.where(Localidade.nome.ilike(f"%{q}%"))
+        query = query.order_by(Localidade.nome_exibicao).limit(limit)
+        result = await self.db.execute(query)
         return list(result.scalars().all())
 
     async def buscar_por_nome_e_parent(
