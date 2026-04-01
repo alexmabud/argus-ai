@@ -118,12 +118,12 @@ function renderAbordagemNova() {
             <div style="position:relative;">
               <label class="login-field-label">Cidade</label>
               <input type="text" x-model="anCidadeTexto" :disabled="!anEstadoId"
-                     @focus="anBuscarCidades()"
-                     @input.debounce.300ms="anBuscarCidades()"
+                     @focus="anBuscarCidades($event)"
+                     @input.debounce.300ms="anBuscarCidades($event)"
                      @blur.debounce.200ms="anCidadeSugestoes=[]"
                      placeholder="Cidade">
               <div x-show="anCidadeSugestoes.length > 0 || anCidadeCadastrarNovo"
-                   style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
+                   :style="anCidadeDropdownStyle">
                 <template x-for="cidade in anCidadeSugestoes" :key="cidade.id">
                   <div @mousedown.prevent="anSelecionarCidade(cidade)"
                        style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);"
@@ -141,12 +141,12 @@ function renderAbordagemNova() {
             <div style="position:relative;">
               <label class="login-field-label">Bairro</label>
               <input type="text" x-model="anBairroTexto" :disabled="!anCidadeId"
-                     @focus="anBuscarBairros()"
-                     @input.debounce.300ms="anBuscarBairros()"
+                     @focus="anBuscarBairros($event)"
+                     @input.debounce.300ms="anBuscarBairros($event)"
                      @blur.debounce.200ms="anBairroSugestoes=[]"
                      placeholder="Bairro">
               <div x-show="anBairroSugestoes.length > 0 || anBairroCadastrarNovo"
-                   style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
+                   :style="anBairroDropdownStyle">
                 <template x-for="bairro in anBairroSugestoes" :key="bairro.id">
                   <div @mousedown.prevent="anSelecionarBairro(bairro)"
                        style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);"
@@ -530,6 +530,8 @@ function abordagemForm() {
     anBairroSugestoes: [],
     anCidadeCadastrarNovo: false,
     anBairroCadastrarNovo: false,
+    anCidadeDropdownStyle: "",
+    anBairroDropdownStyle: "",
 
     // Cadastro novo veículo
     showNovoVeiculo: false,
@@ -612,9 +614,14 @@ function abordagemForm() {
       });
     },
 
-    async anBuscarCidades() {
+    anPosicionarDropdown(inputEl) {
+      const r = inputEl.getBoundingClientRect();
+      return `position:fixed;z-index:9999;top:${r.bottom + window.scrollY}px;left:${r.left}px;width:${r.width}px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;`;
+    },
+    async anBuscarCidades(event) {
       const q = this.anCidadeTexto.trim();
       if (!this.anEstadoId) { this.anCidadeSugestoes = []; this.anCidadeCadastrarNovo = false; return; }
+      if (event?.target) this.anCidadeDropdownStyle = this.anPosicionarDropdown(event.target);
       try {
         const url = q.length >= 1
           ? `/localidades?tipo=cidade&parent_id=${this.anEstadoId}&q=${encodeURIComponent(q)}`
@@ -624,9 +631,10 @@ function abordagemForm() {
         this.anCidadeCadastrarNovo = q.length >= 1 && r.length === 0;
       } catch (e) { console.error(e); }
     },
-    async anBuscarBairros() {
+    async anBuscarBairros(event) {
       const q = this.anBairroTexto.trim();
       if (!this.anCidadeId) { this.anBairroSugestoes = []; this.anBairroCadastrarNovo = false; return; }
+      if (event?.target) this.anBairroDropdownStyle = this.anPosicionarDropdown(event.target);
       try {
         const url = q.length >= 1
           ? `/localidades?tipo=bairro&parent_id=${this.anCidadeId}&q=${encodeURIComponent(q)}`
@@ -640,7 +648,11 @@ function abordagemForm() {
       this.anCidadeId = cidade.id; this.anCidadeTexto = cidade.nome_exibicao;
       this.anCidadeSugestoes = []; this.anCidadeCadastrarNovo = false;
       this.anBairroId = null; this.anBairroTexto = '';
-      this.anBuscarBairros();
+      this.$nextTick(() => {
+        const el = this.$el.querySelector('[placeholder="Bairro"]');
+        if (el) this.anBairroDropdownStyle = this.anPosicionarDropdown(el);
+        this.anBuscarBairros();
+      });
     },
     anSelecionarBairro(bairro) {
       this.anBairroId = bairro.id; this.anBairroTexto = bairro.nome_exibicao;
