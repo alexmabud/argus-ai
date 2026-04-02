@@ -5,6 +5,7 @@ via magic bytes) e que uploads grandes não causam OOM (leitura em chunks
 com limite de tamanho antes de carregar tudo na memória).
 """
 
+import asyncio
 from io import BytesIO
 
 from PIL import Image
@@ -21,7 +22,23 @@ except ImportError:
 from fastapi import HTTPException, UploadFile, status
 
 #: Brands ISOBMFF que identificam HEIC/HEIF (não MP4, MOV, M4A, AVIF).
-_HEIC_BRANDS = {b"heic", b"heix", b"hevc", b"hevx", b"mif1", b"msf1", b"MIF1", b"MSF1"}
+_HEIC_BRANDS = {b"heic", b"heix"}
+
+
+def is_heic(file_bytes: bytes) -> bool:
+    """Verifica se os bytes correspondem a uma imagem HEIC/HEIF por magic bytes.
+
+    Usa a assinatura ftyp do container ISO Base Media File Format com
+    validação da brand para distinguir HEIC de outros containers ISOBMFF.
+
+    Args:
+        file_bytes: Bytes do arquivo (mínimo 12 bytes necessário).
+
+    Returns:
+        True se os bytes correspondem a HEIC/HEIF, False caso contrário.
+    """
+    return len(file_bytes) >= 12 and file_bytes[4:8] == b"ftyp" and file_bytes[8:12] in _HEIC_BRANDS
+
 
 #: WebP requer checagem em dois pontos do cabeçalho.
 _WEBP_RIFF = b"RIFF"
@@ -36,7 +53,7 @@ _CHUNK_SIZE = 65_536
 def validar_magic_bytes_imagem(file_bytes: bytes) -> None:
     """Valida que o conteúdo do arquivo corresponde a uma imagem real.
 
-    Verifica magic bytes contra JPEG, PNG e WebP. Previne upload de
+    Verifica magic bytes contra JPEG, PNG, WebP e HEIC/HEIF. Previne upload de
     executáveis disfarçados com content_type spoofado.
 
     Args:
@@ -67,16 +84,16 @@ def validar_magic_bytes_imagem(file_bytes: bytes) -> None:
 
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Conteúdo do arquivo não corresponde a uma imagem válida (JPEG, PNG ou WebP)",
+        detail="Conteúdo do arquivo não corresponde a uma imagem válida (JPEG, PNG, WebP ou HEIC)",
     )
 
 
-def converter_heic_para_jpeg(file_bytes: bytes) -> bytes:
-    """Converte imagem HEIC/HEIF para JPEG.
+async def converter_heic_para_jpeg(file_bytes: bytes) -> bytes:
+    """Converte imagem HEIC/HEIF para JPEG de forma assíncrona.
 
-    Usa pillow-heif para decodificar o container HEIC e re-salva
-    como JPEG com qualidade 90. Chamada apenas quando o arquivo
-    é detectado como HEIC/HEIF.
+    Delega a conversão para uma thread separada via asyncio.to_thread
+    para não bloquear o event loop (imagens HEIC de iPhone podem ter
+    vários MB e a decodificação Pillow é síncrona).
 
     Args:
         file_bytes: Bytes do arquivo HEIC/HEIF.
@@ -94,15 +111,29 @@ def converter_heic_para_jpeg(file_bytes: bytes) -> bytes:
             detail="Formato HEIC não suportado neste servidor",
         )
     try:
-        img = Image.open(BytesIO(file_bytes)).convert("RGB")
-        out = BytesIO()
-        img.save(out, format="JPEG", quality=90)
-        return out.getvalue()
+        return await asyncio.to_thread(_converter_heic_sincrono, file_bytes)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Falha ao converter imagem HEIC",
         ) from exc
+
+
+def _converter_heic_sincrono(file_bytes: bytes) -> bytes:
+    """Executa a conversão HEIC→JPEG de forma síncrona (use via asyncio.to_thread).
+
+    Args:
+        file_bytes: Bytes do arquivo HEIC/HEIF.
+
+    Returns:
+        Bytes JPEG convertidos.
+    """
+    img = Image.open(BytesIO(file_bytes)).convert("RGB")
+    out = BytesIO()
+    img.save(out, format="JPEG", quality=90)
+    return out.getvalue()
 
 
 def validar_magic_bytes_pdf(file_bytes: bytes) -> None:
