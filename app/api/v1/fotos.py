@@ -96,16 +96,6 @@ async def upload_foto(
         201: Foto enviada.
         429: Rate limit (10/min).
     """
-    # Browsers que não reconhecem HEIC (ex: Chrome no Windows) enviam content_type
-    # vazio ou "application/octet-stream". Permitimos passar para validação por
-    # magic bytes, que é a fonte de verdade.
-    content_type_declarado = file.content_type or ""
-    if content_type_declarado and content_type_declarado not in ALLOWED_IMAGE_MIMES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Formato inválido. Permitidos: {', '.join(ALLOWED_IMAGE_MIMES)}",
-        )
-
     # Leitura em chunks (previne OOM) + validação de magic bytes (anti-spoofing)
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
@@ -314,13 +304,6 @@ async def extrair_placa(
     """
     if OCRService is None:
         return OCRPlacaResponse(placa=None, detectada=False)
-
-    ct = file.content_type or ""
-    if ct and ct not in ALLOWED_IMAGE_MIMES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Formato inválido. Permitidos: {', '.join(ALLOWED_IMAGE_MIMES)}",
-        )
 
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
