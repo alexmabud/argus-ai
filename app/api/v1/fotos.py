@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
 from app.core.upload_validation import (
+    converter_heic_para_jpeg,
     ler_upload_com_limite,
     validar_magic_bytes_imagem,
 )
@@ -36,7 +37,7 @@ logger = logging.getLogger("argus")
 #: Tamanho máximo de upload de imagem (10 MB).
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
 #: MIME types permitidos para upload de imagem.
-ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
 
 # Face service é opcional — requer insightface
 try:
@@ -104,12 +105,22 @@ async def upload_foto(
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
 
+    # Converte HEIC/HEIF para JPEG antes de prosseguir
+    original_content_type = file.content_type or "image/jpeg"
+    if original_content_type in {"image/heic", "image/heif"}:
+        file_bytes = converter_heic_para_jpeg(file_bytes)
+        original_content_type = "image/jpeg"
+
+    filename = file.filename or "foto.jpg"
+    if filename.lower().endswith((".heic", ".heif")):
+        filename = filename.rsplit(".", 1)[0] + ".jpg"
+
     service = FotoService(db)
     try:
         foto = await service.upload_foto(
             file_bytes=file_bytes,
-            filename=file.filename or "foto.jpg",
-            content_type=file.content_type or "image/jpeg",
+            filename=filename,
+            content_type=original_content_type,
             pessoa_id=pessoa_id,
             abordagem_id=abordagem_id,
             veiculo_id=veiculo_id,
@@ -307,6 +318,8 @@ async def extrair_placa(
 
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
+    if (file.content_type or "") in {"image/heic", "image/heif"}:
+        file_bytes = converter_heic_para_jpeg(file_bytes)
     ocr = OCRService()
     placa = await ocr.extrair_placa_async(file_bytes)
     return OCRPlacaResponse(placa=placa, detectada=placa is not None)
