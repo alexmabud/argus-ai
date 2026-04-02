@@ -5,6 +5,18 @@ via magic bytes) e que uploads grandes não causam OOM (leitura em chunks
 com limite de tamanho antes de carregar tudo na memória).
 """
 
+from io import BytesIO
+
+from PIL import Image
+
+try:
+    import pillow_heif
+
+    _HEIF_AVAILABLE = True
+except ImportError:
+    pillow_heif = None  # type: ignore[assignment]
+    _HEIF_AVAILABLE = False
+
 from fastapi import HTTPException, UploadFile, status
 
 #: Assinaturas de magic bytes para tipos de arquivo permitidos.
@@ -50,10 +62,49 @@ def validar_magic_bytes_imagem(file_bytes: bytes) -> None:
     if file_bytes[:4] == _WEBP_RIFF and file_bytes[8:12] == _WEBP_MARKER:
         return
 
+    # HEIC/HEIF: bytes 4-7 contêm "ftyp"
+    if len(file_bytes) >= 8 and file_bytes[4:8] == b"ftyp":
+        return
+
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Conteúdo do arquivo não corresponde a uma imagem válida (JPEG, PNG ou WebP)",
     )
+
+
+def converter_heic_para_jpeg(file_bytes: bytes) -> bytes:
+    """Converte imagem HEIC/HEIF para JPEG.
+
+    Usa pillow-heif para decodificar o container HEIC e re-salva
+    como JPEG com qualidade 90. Chamada apenas quando o arquivo
+    é detectado como HEIC/HEIF.
+
+    Args:
+        file_bytes: Bytes do arquivo HEIC/HEIF.
+
+    Returns:
+        Bytes do arquivo convertido em JPEG.
+
+    Raises:
+        HTTPException: 400 se pillow-heif não estiver disponível ou
+            se a conversão falhar.
+    """
+    if not _HEIF_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Formato HEIC não suportado neste servidor",
+        )
+    try:
+        pillow_heif.register_heif_opener()
+        img = Image.open(BytesIO(file_bytes)).convert("RGB")
+        out = BytesIO()
+        img.save(out, format="JPEG", quality=90)
+        return out.getvalue()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Falha ao converter imagem HEIC",
+        ) from exc
 
 
 def validar_magic_bytes_pdf(file_bytes: bytes) -> None:
