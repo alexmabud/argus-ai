@@ -31,7 +31,7 @@ class TestValidarMagicBytesImagem:
         """Deve aceitar magic bytes HEIC (ftyp heic)."""
         from app.core.upload_validation import validar_magic_bytes_imagem
 
-        heic_bytes = b"\x00\x00\x00\x18ftyp heic" + b"\x00" * 10
+        heic_bytes = b"\x00\x00\x00\x18ftypheic" + b"\x00" * 10
         validar_magic_bytes_imagem(heic_bytes)
 
     def test_aceita_heif_mif1(self):
@@ -40,6 +40,24 @@ class TestValidarMagicBytesImagem:
 
         heif_bytes = b"\x00\x00\x00\x18ftypMIF1" + b"\x00" * 10
         validar_magic_bytes_imagem(heif_bytes)
+
+    def test_rejeita_mp4_com_ftyp(self):
+        """Deve rejeitar MP4 mesmo com magic bytes ftyp (não é HEIC)."""
+        from app.core.upload_validation import validar_magic_bytes_imagem
+
+        # MP4 tem ftyp com brand "mp42" ou "isom"
+        mp4_bytes = b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 10
+        with pytest.raises(HTTPException) as exc:
+            validar_magic_bytes_imagem(mp4_bytes)
+        assert exc.value.status_code == 400
+
+    def test_rejeita_arquivo_pequeno(self):
+        """Deve rejeitar arquivo com menos de 12 bytes."""
+        from app.core.upload_validation import validar_magic_bytes_imagem
+
+        with pytest.raises(HTTPException) as exc:
+            validar_magic_bytes_imagem(b"\xff\xd8\xff")
+        assert exc.value.status_code == 400
 
     def test_rejeita_executavel(self):
         """Deve rejeitar arquivo que não é imagem."""
@@ -72,3 +90,18 @@ class TestConverterHeicParaJpeg:
             result = converter_heic_para_jpeg(b"\x00\x00\x00\x18ftyp heic" + b"\x00" * 50)
 
         assert result[:3] == b"\xff\xd8\xff"
+
+    def test_lanca_erro_se_heif_indisponivel(self):
+        """Deve lançar HTTPException 400 se pillow_heif não estiver disponível."""
+        import app.core.upload_validation as mod
+
+        original = mod._HEIF_AVAILABLE
+        try:
+            mod._HEIF_AVAILABLE = False
+            from app.core.upload_validation import converter_heic_para_jpeg
+
+            with pytest.raises(HTTPException) as exc:
+                converter_heic_para_jpeg(b"\x00" * 20)
+            assert exc.value.status_code == 400
+        finally:
+            mod._HEIF_AVAILABLE = original

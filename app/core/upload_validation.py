@@ -12,6 +12,7 @@ from PIL import Image
 try:
     import pillow_heif
 
+    pillow_heif.register_heif_opener()
     _HEIF_AVAILABLE = True
 except ImportError:
     pillow_heif = None  # type: ignore[assignment]
@@ -19,11 +20,9 @@ except ImportError:
 
 from fastapi import HTTPException, UploadFile, status
 
-#: Assinaturas de magic bytes para tipos de arquivo permitidos.
-_IMAGE_MAGIC = {
-    b"\xff\xd8\xff": "image/jpeg",
-    b"\x89PNG": "image/png",
-}
+#: Brands ISOBMFF que identificam HEIC/HEIF (não MP4, MOV, M4A, AVIF).
+_HEIC_BRANDS = {b"heic", b"heix", b"hevc", b"hevx", b"mif1", b"msf1", b"MIF1", b"MSF1"}
+
 #: WebP requer checagem em dois pontos do cabeçalho.
 _WEBP_RIFF = b"RIFF"
 _WEBP_MARKER = b"WEBP"
@@ -62,8 +61,8 @@ def validar_magic_bytes_imagem(file_bytes: bytes) -> None:
     if file_bytes[:4] == _WEBP_RIFF and file_bytes[8:12] == _WEBP_MARKER:
         return
 
-    # HEIC/HEIF: bytes 4-7 contêm "ftyp"
-    if len(file_bytes) >= 8 and file_bytes[4:8] == b"ftyp":
+    # HEIC/HEIF: bytes 4-7 contêm "ftyp" e brand nos bytes 8-11 identifica o formato
+    if len(file_bytes) >= 12 and file_bytes[4:8] == b"ftyp" and file_bytes[8:12] in _HEIC_BRANDS:
         return
 
     raise HTTPException(
@@ -95,7 +94,6 @@ def converter_heic_para_jpeg(file_bytes: bytes) -> bytes:
             detail="Formato HEIC não suportado neste servidor",
         )
     try:
-        pillow_heif.register_heif_opener()
         img = Image.open(BytesIO(file_bytes)).convert("RGB")
         out = BytesIO()
         img.save(out, format="JPEG", quality=90)
