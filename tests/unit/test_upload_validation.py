@@ -34,12 +34,28 @@ class TestValidarMagicBytesImagem:
         heic_bytes = b"\x00\x00\x00\x18ftypheic" + b"\x00" * 10
         validar_magic_bytes_imagem(heic_bytes)
 
-    def test_aceita_heif_mif1(self):
-        """Deve aceitar magic bytes HEIF (ftyp mif1)."""
+    def test_aceita_heic_brand_heix(self):
+        """Deve aceitar magic bytes HEIC com brand heix (variante Apple)."""
         from app.core.upload_validation import validar_magic_bytes_imagem
 
-        heif_bytes = b"\x00\x00\x00\x18ftypMIF1" + b"\x00" * 10
-        validar_magic_bytes_imagem(heif_bytes)
+        heic_bytes = b"\x00\x00\x00\x18ftypheix" + b"\x00" * 10
+        validar_magic_bytes_imagem(heic_bytes)
+
+    def test_rejeita_mif1_brand(self):
+        """Deve rejeitar container genérico ISOBMFF com brand mif1."""
+        from app.core.upload_validation import validar_magic_bytes_imagem
+
+        with pytest.raises(HTTPException) as exc:
+            validar_magic_bytes_imagem(b"\x00\x00\x00\x18ftypMIF1" + b"\x00" * 10)
+        assert exc.value.status_code == 400
+
+    def test_is_heic_detecta_por_magic_bytes(self):
+        """is_heic deve detectar HEIC pelos magic bytes independente do content_type."""
+        from app.core.upload_validation import is_heic
+
+        assert is_heic(b"\x00\x00\x00\x18ftypheic" + b"\x00" * 10) is True
+        assert is_heic(b"\xff\xd8\xff" + b"\x00" * 10) is False
+        assert is_heic(b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 10) is False
 
     def test_rejeita_mp4_com_ftyp(self):
         """Deve rejeitar MP4 mesmo com magic bytes ftyp (não é HEIC)."""
@@ -71,7 +87,8 @@ class TestValidarMagicBytesImagem:
 class TestConverterHeicParaJpeg:
     """Testes para converter_heic_para_jpeg."""
 
-    def test_retorna_jpeg(self):
+    @pytest.mark.asyncio
+    async def test_retorna_jpeg(self):
         """Deve retornar bytes JPEG válidos após conversão."""
         from app.core.upload_validation import converter_heic_para_jpeg
 
@@ -83,15 +100,14 @@ class TestConverterHeicParaJpeg:
 
         fake_img.save.side_effect = fake_save
 
-        with patch("app.core.upload_validation.pillow_heif"), patch(
-            "app.core.upload_validation.Image"
-        ) as mock_pil:
+        with patch("app.core.upload_validation.Image") as mock_pil:
             mock_pil.open.return_value = fake_img
-            result = converter_heic_para_jpeg(b"\x00\x00\x00\x18ftyp heic" + b"\x00" * 50)
+            result = await converter_heic_para_jpeg(b"\x00\x00\x00\x18ftyp heic" + b"\x00" * 50)
 
         assert result[:3] == b"\xff\xd8\xff"
 
-    def test_lanca_erro_se_heif_indisponivel(self):
+    @pytest.mark.asyncio
+    async def test_lanca_erro_se_heif_indisponivel(self):
         """Deve lançar HTTPException 400 se pillow_heif não estiver disponível."""
         import app.core.upload_validation as mod
 
@@ -101,7 +117,7 @@ class TestConverterHeicParaJpeg:
             from app.core.upload_validation import converter_heic_para_jpeg
 
             with pytest.raises(HTTPException) as exc:
-                converter_heic_para_jpeg(b"\x00" * 20)
+                await converter_heic_para_jpeg(b"\x00" * 20)
             assert exc.value.status_code == 400
         finally:
             mod._HEIF_AVAILABLE = original
