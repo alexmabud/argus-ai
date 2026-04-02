@@ -120,6 +120,7 @@ class BaseRepository(Generic[T]):
         for key, value in data.items():
             setattr(obj, key, value)
         await self.db.flush()
+        await self.db.refresh(obj)
         return obj
 
     async def soft_delete(self, obj: T, deleted_by_id: int | None = None) -> T:
