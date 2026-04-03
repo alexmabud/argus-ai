@@ -12,6 +12,7 @@ from app.database.session import get_db
 from app.dependencies import get_current_user, get_current_user_with_guarnicao
 from app.models.usuario import Usuario
 from app.schemas.veiculo import VeiculoCreate, VeiculoRead
+from app.services.audit_service import AuditService
 from app.services.veiculo_service import VeiculoService
 
 router = APIRouter(prefix="/veiculos", tags=["Veículos"])
@@ -85,6 +86,16 @@ async def criar_veiculo(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="CREATE",
+        recurso="veiculo",
+        recurso_id=veiculo.id,
+        detalhes={"placa": data.placa},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
     return VeiculoRead.model_validate(veiculo)
 
 

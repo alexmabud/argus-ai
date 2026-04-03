@@ -17,6 +17,7 @@ from app.database.session import get_db
 from app.dependencies import get_current_user, get_current_user_with_guarnicao
 from app.models.usuario import Usuario
 from app.schemas.ocorrencia import OcorrenciaRead
+from app.services.audit_service import AuditService
 from app.services.ocorrencia_service import OcorrenciaService
 
 logger = logging.getLogger("argus")
@@ -82,6 +83,16 @@ async def criar_ocorrencia(
         usuario_id=user.id,
         guarnicao_id=user.guarnicao_id,
     )
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="CREATE",
+        recurso="ocorrencia",
+        recurso_id=ocorrencia.id,
+        detalhes={"numero": numero_ocorrencia},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
 
     # Enfileirar processamento em background
     try:
