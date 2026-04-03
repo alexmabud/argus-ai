@@ -30,7 +30,7 @@ class TestLLMService:
             with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
                 mock_client.post = AsyncMock(return_value=mock_response)
-                mock_client_cls.return_value = mock_client
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
 
                 result = await service._gerar_anthropic(
                     prompt="teste", system="system", max_tokens=100
@@ -48,7 +48,7 @@ class TestLLMService:
             with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
                 mock_client.post = AsyncMock(side_effect=Exception("Connection error"))
-                mock_client_cls.return_value = mock_client
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
 
                 with pytest.raises(LLMIndisponivelError):
                     await service._gerar_anthropic(prompt="teste", system="system", max_tokens=100)
