@@ -4,14 +4,16 @@ Fornece endpoints restritos a administradores para criar usuários
 com senha de uso único, pausar/excluir acesso e gerar novas senhas.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
+from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.schemas.auth import SenhaGeradaResponse, UsuarioAdminCreate, UsuarioAdminRead
+from app.services.audit_service import AuditService
 from app.services.usuario_admin_service import UsuarioAdminService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -38,7 +40,9 @@ def require_admin(user: Usuario = Depends(get_current_user)) -> Usuario:
 
 
 @router.get("/usuarios", response_model=list[UsuarioAdminRead])
+@limiter.limit("30/minute")
 async def listar_usuarios(
+    request: Request,
     admin: Usuario = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[UsuarioAdminRead]:
@@ -75,7 +79,9 @@ async def listar_usuarios(
 
 
 @router.post("/usuarios", response_model=SenhaGeradaResponse, status_code=201)
+@limiter.limit("10/minute")
 async def criar_usuario(
+    request: Request,
     data: UsuarioAdminCreate,
     admin: Usuario = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
@@ -110,12 +116,23 @@ async def criar_usuario(
         )
     except ConflitoDadosError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=admin.id,
+        acao="CREATE",
+        recurso="usuario",
+        recurso_id=usuario.id,
+        detalhes={"matricula": data.matricula},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()
     return SenhaGeradaResponse(usuario_id=usuario.id, matricula=usuario.matricula, senha=senha)
 
 
 @router.patch("/usuarios/{usuario_id}/pausar", response_model=dict)
+@limiter.limit("10/minute")
 async def pausar_usuario(
+    request: Request,
     usuario_id: int,
     admin: Usuario = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
@@ -146,12 +163,23 @@ async def pausar_usuario(
         await service.pausar_usuario(usuario_id=usuario_id, admin_id=admin.id)
     except NaoEncontradoError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=admin.id,
+        acao="UPDATE",
+        recurso="usuario",
+        recurso_id=usuario_id,
+        detalhes={"acao": "pausar"},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()
     return {"ok": True, "mensagem": "Usuário pausado com sucesso"}
 
 
 @router.post("/usuarios/{usuario_id}/gerar-senha", response_model=SenhaGeradaResponse)
+@limiter.limit("10/minute")
 async def gerar_nova_senha(
+    request: Request,
     usuario_id: int,
     admin: Usuario = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
@@ -179,12 +207,23 @@ async def gerar_nova_senha(
         senha, matricula = await service.gerar_nova_senha(usuario_id=usuario_id, admin_id=admin.id)
     except NaoEncontradoError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=admin.id,
+        acao="UPDATE",
+        recurso="usuario",
+        recurso_id=usuario_id,
+        detalhes={"acao": "gerar_nova_senha"},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()
     return SenhaGeradaResponse(usuario_id=usuario_id, matricula=matricula, senha=senha)
 
 
 @router.delete("/usuarios/{usuario_id}", status_code=204)
+@limiter.limit("10/minute")
 async def excluir_usuario(
+    request: Request,
     usuario_id: int,
     admin: Usuario = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
@@ -209,4 +248,12 @@ async def excluir_usuario(
         await service.excluir_usuario(usuario_id=usuario_id, admin_id=admin.id)
     except NaoEncontradoError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=admin.id,
+        acao="DELETE",
+        recurso="usuario",
+        recurso_id=usuario_id,
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()
