@@ -156,7 +156,9 @@ async def upload_foto(
 
 
 @router.get("/pessoa/{pessoa_id}", response_model=list[FotoRead])
+@limiter.limit("30/minute")
 async def listar_fotos_pessoa(
+    request: Request,
     pessoa_id: int,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
@@ -181,7 +183,9 @@ async def listar_fotos_pessoa(
 
 
 @router.get("/abordagem/{abordagem_id}", response_model=list[FotoRead])
+@limiter.limit("30/minute")
 async def listar_fotos_abordagem(
+    request: Request,
     abordagem_id: int,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),

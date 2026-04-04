@@ -14,6 +14,22 @@ from app.config import settings
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
 
+def _truncar_bcrypt(senha: str) -> str:
+    """Trunca senha para 72 bytes (limite do algoritmo bcrypt).
+
+    O bcrypt ignora bytes além do 72º. Versões >= 4.2 do pacote bcrypt
+    rejeitam senhas maiores com ValueError em vez de truncar
+    silenciosamente. Esta função garante compatibilidade.
+
+    Args:
+        senha: Senha em texto plano.
+
+    Returns:
+        Senha truncada para no máximo 72 bytes UTF-8.
+    """
+    return senha.encode("utf-8")[:72].decode("utf-8", errors="ignore")
+
+
 def hash_senha(senha: str) -> str:
     """Faz hash de uma senha usando bcrypt.
 
@@ -23,8 +39,7 @@ def hash_senha(senha: str) -> str:
     Returns:
         String de hash bcrypt adequada para armazenamento em banco de dados.
     """
-
-    return pwd_context.hash(senha)
+    return pwd_context.hash(_truncar_bcrypt(senha))
 
 
 def verificar_senha(senha: str, hash: str) -> bool:
@@ -40,9 +55,8 @@ def verificar_senha(senha: str, hash: str) -> bool:
     Returns:
         True se a senha bate com o hash, False caso contrário ou se hash inválido.
     """
-
     try:
-        return pwd_context.verify(senha, hash)
+        return pwd_context.verify(_truncar_bcrypt(senha), hash)
     except Exception:
         return False
 

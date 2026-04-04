@@ -19,6 +19,7 @@ router = APIRouter(prefix="/veiculos", tags=["Veículos"])
 
 
 @router.get("/", response_model=list[VeiculoRead])
+@limiter.limit("30/minute")
 async def listar_veiculos(
     request: Request,
     placa: str | None = Query(None, description="Busca parcial por placa"),
@@ -100,7 +101,9 @@ async def criar_veiculo(
 
 
 @router.get("/localidades")
+@limiter.limit("30/minute")
 async def listar_localidades_veiculos(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> dict:
