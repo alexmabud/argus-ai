@@ -45,6 +45,13 @@ class Localidade(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     parent: Mapped["Localidade | None"] = relationship(
-        "Localidade", back_populates="filhos", remote_side=[id]
+        "Localidade",
+        back_populates="filhos",
+        remote_side=[id],
+        lazy="selectin",
     )
-    filhos: Mapped[list["Localidade"]] = relationship("Localidade", back_populates="parent")
+    filhos: Mapped[list["Localidade"]] = relationship(
+        "Localidade",
+        back_populates="parent",
+        lazy="selectin",
+    )

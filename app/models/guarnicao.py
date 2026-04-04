@@ -36,4 +36,5 @@ class Guarnicao(Base, TimestampMixin, SoftDeleteMixin):
         "Usuario",
         back_populates="guarnicao",
         foreign_keys="Usuario.guarnicao_id",
+        lazy="selectin",
     )

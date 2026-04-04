@@ -7,40 +7,11 @@ por similaridade via pgvector.
 
 import asyncio
 import logging
-from urllib.parse import urlparse
 
 from app.services.storage_service import StorageService
+from app.utils.s3 import extrair_key_da_url
 
 logger = logging.getLogger("argus")
-
-
-def _extrair_key_da_url(url: str) -> str:
-    """Extrai chave S3 a partir da URL do arquivo.
-
-    Suporta URLs nos formatos:
-    - ``http://minio:9000/{bucket}/{key}`` (endpoint direto)
-    - ``https://dominio.com/storage/{bucket}/{key}`` (proxy reverso com prefixo)
-
-    A key é extraída localizando o nome do bucket no path e retornando
-    tudo que vem depois dele.
-
-    Args:
-        url: URL completa do arquivo no S3/R2.
-
-    Returns:
-        Chave (path) do arquivo no bucket, sem o nome do bucket.
-    """
-    from app.config import settings
-
-    parsed = urlparse(url)
-    path = parsed.path.lstrip("/")
-    marker = f"{settings.S3_BUCKET}/"
-    idx = path.find(marker)
-    if idx >= 0:
-        return path[idx + len(marker) :]
-    # Fallback: remove primeiro segmento do path (comportamento original)
-    parts = path.split("/", 1)
-    return parts[1] if len(parts) > 1 else parts[0]
 
 
 async def processar_face_task(ctx: dict, foto_id: int) -> dict:
@@ -91,7 +62,7 @@ async def processar_face_task(ctx: dict, foto_id: int) -> dict:
                 return {"status": "já_processada"}
 
             # 2. Download imagem
-            key = _extrair_key_da_url(foto.arquivo_url)
+            key = extrair_key_da_url(foto.arquivo_url)
             image_bytes = await storage.download(key)
 
             # 3. Extrair embedding facial (CPU-bound → thread pool)

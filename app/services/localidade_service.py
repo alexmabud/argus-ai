@@ -7,10 +7,9 @@ e normaliza nomes para busca.
 
 import unicodedata
 
-from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflitoDadosError
+from app.core.exceptions import ConflitoDadosError, NaoEncontradoError, ValidacaoError
 from app.models.localidade import Localidade
 from app.repositories.localidade_repo import LocalidadeRepository
 from app.schemas.localidade import LocalidadeCreate
@@ -93,8 +92,8 @@ class LocalidadeService:
             Localidade criada.
 
         Raises:
-            HTTPException 404: Quando parent_id não existe.
-            HTTPException 400: Quando hierarquia é inválida.
+            NaoEncontradoError: Quando parent_id não existe.
+            ValidacaoError: Quando hierarquia é inválida.
             ConflitoDadosError: Quando já existe localidade com mesmo nome e pai.
         """
         nome_normalizado = _normalizar(data.nome)
@@ -102,22 +101,13 @@ class LocalidadeService:
         # Validar pai
         pai = await self.repo.get(data.parent_id)
         if not pai:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Localidade pai não encontrada.",
-            )
+            raise NaoEncontradoError("Localidade pai")
 
         # Validar hierarquia
         if data.tipo == "cidade" and pai.tipo != "estado":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Uma cidade deve ter um estado como pai.",
-            )
+            raise ValidacaoError("Uma cidade deve ter um estado como pai.")
         if data.tipo == "bairro" and pai.tipo != "cidade":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Um bairro deve ter uma cidade como pai.",
-            )
+            raise ValidacaoError("Um bairro deve ter uma cidade como pai.")
 
         # Verificar duplicata
         existente = await self.repo.buscar_por_nome_e_parent(

@@ -1,12 +1,28 @@
 """Exceções customizadas para tratamento de erros da API.
 
 Define exceções HTTP padronizadas para diferentes cenários de erro:
-404 (não encontrado), 403 (acesso negado), 401 (credenciais inválidas),
-409 (conflito de dados), 503 (serviço indisponível).
+400 (validação de negócio), 404 (não encontrado), 403 (acesso negado),
+401 (credenciais inválidas), 409 (conflito de dados), 503 (serviço indisponível).
 Todas herdam de HTTPException do FastAPI.
 """
 
 from fastapi import HTTPException, status
+
+
+class ValidacaoError(HTTPException):
+    """Exceção para erro de validação de regras de negócio (400).
+
+    Levantada quando dados violam regras de negócio (ex: hierarquia inválida).
+
+    Args:
+        detail: Mensagem de erro customizada.
+    """
+
+    def __init__(self, detail: str = "Dados inválidos"):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail,
+        )
 
 
 class NaoEncontradoError(HTTPException):

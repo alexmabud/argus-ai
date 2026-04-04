@@ -66,6 +66,6 @@ class Foto(Base, TimestampMixin, SoftDeleteMixin):
     embedding_face = mapped_column(Vector(512), nullable=True)
     face_processada: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    pessoa = relationship("Pessoa", back_populates="fotos")
-    abordagem = relationship("Abordagem", back_populates="fotos")
-    veiculo = relationship("Veiculo")
+    pessoa = relationship("Pessoa", back_populates="fotos", lazy="selectin")
+    abordagem = relationship("Abordagem", back_populates="fotos", lazy="selectin")
+    veiculo = relationship("Veiculo", lazy="selectin")

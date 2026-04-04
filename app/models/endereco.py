@@ -65,4 +65,4 @@ class EnderecoPessoa(Base, TimestampMixin, SoftDeleteMixin):
     data_inicio: Mapped[date | None] = mapped_column(Date, nullable=True)
     data_fim: Mapped[date | None] = mapped_column(Date, nullable=True)
 
-    pessoa = relationship("Pessoa", back_populates="enderecos")
+    pessoa = relationship("Pessoa", back_populates="enderecos", lazy="selectin")

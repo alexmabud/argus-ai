@@ -109,8 +109,8 @@ class AbordagemPessoa(Base, SoftDeleteMixin):
     abordagem_id: Mapped[int] = mapped_column(ForeignKey("abordagens.id", ondelete="CASCADE"))
     pessoa_id: Mapped[int] = mapped_column(ForeignKey("pessoas.id", ondelete="CASCADE"))
 
-    abordagem = relationship("Abordagem", back_populates="pessoas")
-    pessoa = relationship("Pessoa", back_populates="abordagens")
+    abordagem = relationship("Abordagem", back_populates="pessoas", lazy="selectin")
+    pessoa = relationship("Pessoa", back_populates="abordagens", lazy="selectin")
 
     __table_args__ = (Index("uq_abordagem_pessoa", "abordagem_id", "pessoa_id", unique=True),)
 
@@ -148,8 +148,8 @@ class AbordagemVeiculo(Base, SoftDeleteMixin):
         ForeignKey("pessoas.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
-    abordagem = relationship("Abordagem", back_populates="veiculos")
-    veiculo = relationship("Veiculo")
-    pessoa = relationship("Pessoa")
+    abordagem = relationship("Abordagem", back_populates="veiculos", lazy="selectin")
+    veiculo = relationship("Veiculo", lazy="selectin")
+    pessoa = relationship("Pessoa", lazy="selectin")
 
     __table_args__ = (Index("uq_abordagem_veiculo", "abordagem_id", "veiculo_id", unique=True),)

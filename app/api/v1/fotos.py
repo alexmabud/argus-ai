@@ -44,13 +44,13 @@ ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/heic", "i
 try:
     from app.services.face_service import FaceService
 except ImportError:
-    FaceService = None
+    FaceService = None  # type: ignore[misc, assignment]
 
 # OCR service é opcional — requer easyocr
 try:
     from app.services.ocr_service import OCRService
 except ImportError:
-    OCRService = None
+    OCRService = None  # type: ignore[misc, assignment]
 
 router = APIRouter(prefix="/fotos", tags=["Fotos"])
 
