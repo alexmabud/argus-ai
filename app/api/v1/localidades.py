@@ -26,7 +26,7 @@ async def listar_localidades(
     q: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     _: Usuario = Depends(get_current_user),
-) -> list[LocalidadeRead]:
+) -> list:
     """Lista estados ou faz autocomplete de cidades/bairros.
 
     Para tipo='estado': retorna todos os 27 estados (ignora parent_id e q).

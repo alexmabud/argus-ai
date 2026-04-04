@@ -78,6 +78,7 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         "VinculoManual",
         foreign_keys="VinculoManual.pessoa_id",
         back_populates="pessoa",
+        lazy="selectin",
     )
 
     __table_args__ = (

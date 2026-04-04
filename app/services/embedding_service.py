@@ -17,7 +17,7 @@ from app.config import settings
 try:
     from sentence_transformers import SentenceTransformer
 except ImportError:
-    SentenceTransformer = None
+    SentenceTransformer = None  # type: ignore[misc, assignment]
 
 logger = logging.getLogger("argus")
 
