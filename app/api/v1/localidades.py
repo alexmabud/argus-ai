@@ -12,6 +12,7 @@ from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.schemas.localidade import LocalidadeCreate, LocalidadeRead
+from app.services.audit_service import AuditService
 from app.services.localidade_service import LocalidadeService
 
 router = APIRouter(prefix="/localidades", tags=["Localidades"])
@@ -66,7 +67,7 @@ async def criar_localidade(
     request: Request,
     data: LocalidadeCreate,
     db: AsyncSession = Depends(get_db),
-    _: Usuario = Depends(get_current_user),
+    user: Usuario = Depends(get_current_user),
 ) -> LocalidadeRead:
     """Cadastra nova cidade ou bairro.
 
@@ -88,6 +89,15 @@ async def criar_localidade(
     """
     service = LocalidadeService(db)
     localidade = await service.criar(data)
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="CREATE",
+        recurso="localidade",
+        recurso_id=localidade.id,
+        detalhes={"nome": data.nome, "tipo": data.tipo},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()
     await db.refresh(localidade)
     return LocalidadeRead.model_validate(localidade)

@@ -20,6 +20,7 @@ from app.schemas.auth import (
     TokenResponse,
     UsuarioRead,
 )
+from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
 from app.services.storage_service import StorageService
 
@@ -104,7 +105,8 @@ async def refresh(
 
 
 @router.get("/me", response_model=UsuarioRead)
-async def me(user: Usuario = Depends(get_current_user)) -> UsuarioRead:
+@limiter.limit("30/minute")
+async def me(request: Request, user: Usuario = Depends(get_current_user)) -> UsuarioRead:
     """Retorna dados do usuário autenticado.
 
     Endpoint protegido que retorna as informações do usuário atualmente
@@ -130,7 +132,9 @@ async def me(user: Usuario = Depends(get_current_user)) -> UsuarioRead:
 
 
 @router.put("/perfil", response_model=UsuarioRead)
+@limiter.limit("10/minute")
 async def atualizar_perfil(
+    request: Request,
     data: PerfilUpdate,
     user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -164,13 +168,23 @@ async def atualizar_perfil(
         user.posto_graduacao = data.posto_graduacao
     if data.foto_url is not None:
         user.foto_url = data.foto_url
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="UPDATE",
+        recurso="perfil",
+        recurso_id=user.id,
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()
     await db.refresh(user)
     return UsuarioRead.model_validate(user)
 
 
 @router.post("/perfil/foto", response_model=dict)
+@limiter.limit("10/minute")
 async def upload_foto_perfil(
+    request: Request,
     foto: UploadFile = File(...),
     user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -199,6 +213,14 @@ async def upload_foto_perfil(
     url = await storage.upload(file_bytes, key, content_type=foto.content_type or "image/jpeg")
 
     user.foto_url = url
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="UPDATE",
+        recurso="perfil_foto",
+        recurso_id=user.id,
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()
     await db.refresh(user)
 
