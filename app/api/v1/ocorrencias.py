@@ -110,6 +110,7 @@ async def criar_ocorrencia(
 
 
 @router.get("/", response_model=list[OcorrenciaRead])
+@limiter.limit("30/minute")
 async def listar_ocorrencias(
     request: Request,
     skip: int = Query(0, ge=0),

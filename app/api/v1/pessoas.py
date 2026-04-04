@@ -99,6 +99,7 @@ async def criar_pessoa(
 
 
 @router.get("/", response_model=list[PessoaRead])
+@limiter.limit("30/minute")
 async def listar_pessoas(
     request: Request,
     nome: str | None = Query(None, description="Busca fuzzy por nome (pg_trgm)"),
@@ -135,7 +136,9 @@ async def listar_pessoas(
 
 
 @router.get("/{pessoa_id}", response_model=PessoaDetail)
+@limiter.limit("30/minute")
 async def detalhe_pessoa(
+    request: Request,
     pessoa_id: int,
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -271,10 +274,21 @@ async def atualizar_pessoa(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="UPDATE",
+        recurso="pessoa",
+        recurso_id=pessoa.id,
+        detalhes={"campos": [k for k, v in data.model_dump(exclude_unset=True).items()]},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
     return _to_pessoa_read(pessoa, service)
 
 
 @router.delete("/{pessoa_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
 async def deletar_pessoa(
     request: Request,
     pessoa_id: int,
@@ -301,6 +315,15 @@ async def deletar_pessoa(
     """
     service = PessoaService(db)
     await service.desativar(pessoa_id, user)
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="DELETE",
+        recurso="pessoa",
+        recurso_id=pessoa_id,
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
 
 
 @router.post(
@@ -308,7 +331,9 @@ async def deletar_pessoa(
     response_model=EnderecoRead,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("10/minute")
 async def adicionar_endereco(
+    request: Request,
     pessoa_id: int,
     data: EnderecoCreate,
     db: AsyncSession = Depends(get_db),
@@ -337,6 +362,16 @@ async def adicionar_endereco(
     """
     service = PessoaService(db)
     endereco = await service.adicionar_endereco(pessoa_id, data, user)
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="CREATE",
+        recurso="endereco",
+        recurso_id=endereco.id,
+        detalhes={"pessoa_id": pessoa_id},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
     return EnderecoRead.model_validate(endereco)
 
 
@@ -387,11 +422,23 @@ async def atualizar_endereco(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="UPDATE",
+        recurso="endereco",
+        recurso_id=endereco_id,
+        detalhes={"pessoa_id": pessoa_id},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
     return EnderecoRead.model_validate(endereco)
 
 
 @router.get("/{pessoa_id}/abordagens", response_model=list[AbordagemDetail])
+@limiter.limit("30/minute")
 async def listar_abordagens_pessoa(
+    request: Request,
     pessoa_id: int,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -517,6 +564,16 @@ async def criar_vinculo_manual(
         user_agent=request.headers.get("user-agent"),
     )
     vinculada = vinculo.pessoa_vinculada
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="CREATE",
+        recurso="vinculo_manual",
+        recurso_id=vinculo.id,
+        detalhes={"pessoa_id": pessoa_id, "pessoa_vinculada_id": data.pessoa_vinculada_id},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
     return VinculoManualRead(
         id=vinculo.id,
         pessoa_vinculada_id=vinculo.pessoa_vinculada_id,
@@ -532,6 +589,7 @@ async def criar_vinculo_manual(
     "/{pessoa_id}/vinculos-manuais/{vinculo_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@limiter.limit("10/minute")
 async def remover_vinculo_manual(
     request: Request,
     pessoa_id: int,
@@ -565,3 +623,13 @@ async def remover_vinculo_manual(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="DELETE",
+        recurso="vinculo_manual",
+        recurso_id=vinculo_id,
+        detalhes={"pessoa_id": pessoa_id},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
