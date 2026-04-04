@@ -103,3 +103,4 @@ class WorkerSettings:
     redis_settings = _parse_redis_settings()
     max_jobs = 5
     job_timeout = 600  # 10 minutos
+    max_tries = 3  # retry automático em caso de falha

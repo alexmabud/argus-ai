@@ -12,12 +12,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY . .
+COPY pyproject.toml setup.cfg* ./
 
 RUN python -m pip install --no-cache-dir --upgrade pip && \
     python -m pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
     python -m pip install --no-cache-dir ".[vision]" && \
     python -m pip uninstall -y triton 2>/dev/null || true
+
+COPY . .
 
 # Criar usuário não-root para execução segura
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
