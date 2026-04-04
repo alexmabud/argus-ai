@@ -171,4 +171,4 @@ class VeiculoRepository(BaseRepository[Veiculo]):
 
         query = query.distinct().offset(skip).limit(limit)
         result = await self.db.execute(query)
-        return list(result.all())
+        return list(result.all())  # type: ignore[arg-type]

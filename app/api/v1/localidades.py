@@ -4,9 +4,10 @@ Expõe endpoints para listar estados, buscar cidades/bairros por texto
 (autocomplete) e cadastrar novas localidades sem duplicatas.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
@@ -17,13 +18,15 @@ router = APIRouter(prefix="/localidades", tags=["Localidades"])
 
 
 @router.get("", response_model=list[LocalidadeRead])
+@limiter.limit("30/minute")
 async def listar_localidades(
+    request: Request,
     tipo: str = Query(..., pattern="^(estado|cidade|bairro)$"),
     parent_id: int | None = Query(None),
     q: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     _: Usuario = Depends(get_current_user),
-) -> list[LocalidadeRead]:
+) -> list:
     """Lista estados ou faz autocomplete de cidades/bairros.
 
     Para tipo='estado': retorna todos os 27 estados (ignora parent_id e q).
@@ -58,7 +61,9 @@ async def listar_localidades(
 
 
 @router.post("", response_model=LocalidadeRead, status_code=201)
+@limiter.limit("10/minute")
 async def criar_localidade(
+    request: Request,
     data: LocalidadeCreate,
     db: AsyncSession = Depends(get_db),
     _: Usuario = Depends(get_current_user),

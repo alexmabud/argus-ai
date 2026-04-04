@@ -17,7 +17,7 @@ from app.config import settings
 try:
     from sentence_transformers import SentenceTransformer
 except ImportError:
-    SentenceTransformer = None
+    SentenceTransformer = None  # type: ignore[misc, assignment]
 
 logger = logging.getLogger("argus")
 
@@ -41,6 +41,7 @@ class EmbeddingService:
 
         Carrega o modelo SentenceTransformers definido em settings.EMBEDDING_MODEL.
         O modelo fica em memória durante todo o ciclo de vida da aplicação.
+        Cria pool de conexão Redis reutilizável para cache.
         """
         if SentenceTransformer is None:
             raise ImportError("sentence-transformers não está instalado")
@@ -48,7 +49,25 @@ class EmbeddingService:
         self.model = SentenceTransformer(settings.EMBEDDING_MODEL)
         self.redis_url = settings.REDIS_URL
         self.cache_ttl = settings.EMBEDDING_CACHE_TTL
+        self._redis: aioredis.Redis | None = None
         logger.info("Modelo de embeddings carregado com sucesso")
+
+    async def _get_redis(self) -> aioredis.Redis | None:
+        """Retorna conexão Redis reutilizável (lazy init).
+
+        Cria pool de conexão na primeira chamada e reutiliza
+        nas chamadas seguintes, evitando overhead de reconexão.
+
+        Returns:
+            Cliente Redis ou None se indisponível.
+        """
+        if self._redis is None:
+            try:
+                self._redis = aioredis.from_url(self.redis_url, decode_responses=True)
+            except Exception:
+                logger.warning("Redis indisponível para cache de embeddings")
+                return None
+        return self._redis
 
     def gerar_embedding(self, texto: str) -> list[float]:
         """Gera embedding de um texto.
@@ -83,8 +102,7 @@ class EmbeddingService:
 
         Verifica cache Redis antes de gerar embedding. Se encontrado,
         retorna do cache. Caso contrário, gera e armazena com TTL
-        configurado. Usa try/finally para garantir que a conexão Redis
-        seja fechada em todos os caminhos (inclusive cache hit).
+        configurado. Usa pool de conexão Redis reutilizável.
 
         Args:
             texto: Texto para gerar embedding.
@@ -94,35 +112,21 @@ class EmbeddingService:
         """
         cache_key = f"emb:{hashlib.md5(texto.encode(), usedforsecurity=False).hexdigest()}"
 
-        redis_client = None
-        cached_value = None
-        try:
-            redis_client = aioredis.from_url(self.redis_url)
-            cached_value = await redis_client.get(cache_key)
-        except Exception:
-            logger.warning("Redis indisponível para cache de embeddings")
-
-        if cached_value:
-            # Cache hit — fechar conexão e retornar
-            if redis_client:
-                try:
-                    await redis_client.aclose()
-                except Exception:
-                    pass
-            return json.loads(cached_value)
+        redis_client = await self._get_redis()
+        if redis_client:
+            try:
+                cached_value = await redis_client.get(cache_key)
+                if cached_value:
+                    return json.loads(cached_value)
+            except Exception:
+                logger.warning("Redis indisponível para cache de embeddings")
 
         embedding = await asyncio.to_thread(self.gerar_embedding, texto)
 
-        try:
-            if redis_client:
+        if redis_client:
+            try:
                 await redis_client.setex(cache_key, self.cache_ttl, json.dumps(embedding))
-        except Exception:
-            logger.warning("Falha ao armazenar embedding no cache Redis")
-        finally:
-            if redis_client:
-                try:
-                    await redis_client.aclose()
-                except Exception:
-                    pass
+            except Exception:
+                logger.warning("Falha ao armazenar embedding no cache Redis")
 
         return embedding

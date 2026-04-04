@@ -45,6 +45,7 @@ class VinculoManual(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         "Pessoa",
         foreign_keys=[pessoa_id],
         back_populates="vinculos_manuais",
+        lazy="selectin",
     )
     # lazy="selectin" é obrigatório: o router acessa .pessoa_vinculada.nome
     # e .foto_principal_url em contexto async — sem selectin causaria MissingGreenlet.

@@ -7,7 +7,6 @@ vetorial para busca semântica via pgvector.
 
 import asyncio
 import logging
-from urllib.parse import urlparse
 
 try:
     import fitz  # PyMuPDF
@@ -16,6 +15,7 @@ except ImportError:
 
 from app.services.storage_service import StorageService
 from app.services.text_utils import chunk_text_semantico
+from app.utils.s3 import extrair_key_da_url
 
 logger = logging.getLogger("argus")
 
@@ -45,36 +45,6 @@ def extrair_texto_pdf(pdf_bytes: bytes) -> str:
             textos.append(texto.strip())
     doc.close()
     return "\n\n".join(textos)
-
-
-def _extrair_key_da_url(url: str) -> str:
-    """Extrai chave S3 a partir da URL do arquivo.
-
-    Suporta tanto URLs relativas novas (``/storage/bucket/key``) quanto
-    URLs absolutas legadas (``http://host:port/bucket/key``).
-
-    Args:
-        url: URL do arquivo no S3/R2 (relativa ou absoluta).
-
-    Returns:
-        Chave (path) do arquivo no bucket, sem o nome do bucket.
-    """
-    from app.config import settings
-
-    # URLs relativas novas: /storage/bucket/key
-    relative_prefix = f"/storage/{settings.S3_BUCKET}/"
-    if url.startswith(relative_prefix):
-        return url[len(relative_prefix) :]
-
-    # URLs absolutas legadas: http://host:port/bucket/key
-    absolute_prefix = f"{settings.s3_public_url}/{settings.S3_BUCKET}/"
-    if url.startswith(absolute_prefix):
-        return url[len(absolute_prefix) :]
-
-    # Fallback para URLs com formato desconhecido: remove primeiro segmento
-    parsed = urlparse(url)
-    parts = parsed.path.lstrip("/").split("/", 1)
-    return parts[1] if len(parts) > 1 else parts[0]
 
 
 async def processar_pdf_task(ctx: dict, ocorrencia_id: int) -> dict:
@@ -124,7 +94,7 @@ async def processar_pdf_task(ctx: dict, ocorrencia_id: int) -> dict:
                 return {"status": "já_processada"}
 
             # 2. Download PDF
-            key = _extrair_key_da_url(ocorrencia.arquivo_pdf_url)
+            key = extrair_key_da_url(ocorrencia.arquivo_pdf_url)
             pdf_bytes = await storage.download(key)
 
             # 3. Extrair texto (CPU-bound → thread pool)

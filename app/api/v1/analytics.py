@@ -6,9 +6,10 @@ resumo diário/mensal/total e séries temporais.
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
@@ -19,7 +20,9 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 
 @router.get("/pessoas-recorrentes")
+@limiter.limit("30/minute")
 async def pessoas_recorrentes(
+    request: Request,
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -39,7 +42,9 @@ async def pessoas_recorrentes(
 
 
 @router.get("/resumo-hoje")
+@limiter.limit("30/minute")
 async def resumo_hoje(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> dict:
@@ -57,7 +62,9 @@ async def resumo_hoje(
 
 
 @router.get("/resumo-mes")
+@limiter.limit("30/minute")
 async def resumo_mes(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> dict:
@@ -75,7 +82,9 @@ async def resumo_mes(
 
 
 @router.get("/resumo-total")
+@limiter.limit("30/minute")
 async def resumo_total(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> dict:
@@ -93,7 +102,9 @@ async def resumo_total(
 
 
 @router.get("/por-dia")
+@limiter.limit("30/minute")
 async def por_dia(
+    request: Request,
     dias: int = Query(30, ge=1, le=365),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -113,7 +124,9 @@ async def por_dia(
 
 
 @router.get("/por-mes")
+@limiter.limit("30/minute")
 async def por_mes(
+    request: Request,
     meses: int = Query(12, ge=1, le=36),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -133,7 +146,9 @@ async def por_mes(
 
 
 @router.get("/dias-com-abordagem")
+@limiter.limit("30/minute")
 async def dias_com_abordagem(
+    request: Request,
     mes: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -155,7 +170,9 @@ async def dias_com_abordagem(
 
 
 @router.get("/abordagens-do-dia")
+@limiter.limit("30/minute")
 async def abordagens_do_dia(
+    request: Request,
     data: date = Query(...),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -185,7 +202,9 @@ async def abordagens_do_dia(
 
 
 @router.get("/pessoas-do-dia")
+@limiter.limit("30/minute")
 async def pessoas_do_dia(
+    request: Request,
     data: date = Query(...),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),

@@ -235,7 +235,7 @@ class PessoaRepository(BaseRepository[Pessoa]):
             .limit(limit)
         )
         result = await self.db.execute(query)
-        return list(result.all())
+        return list(result.all())  # type: ignore[arg-type]
 
     async def get_localidades(self, guarnicao_id: int | None) -> dict:
         """Retorna valores distintos de bairro, cidade e estado cadastrados.
