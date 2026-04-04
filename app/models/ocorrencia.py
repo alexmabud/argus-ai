@@ -55,4 +55,4 @@ class Ocorrencia(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     processada: Mapped[bool] = mapped_column(Boolean, default=False)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), index=True)
 
-    abordagem = relationship("Abordagem", back_populates="ocorrencias")
+    abordagem = relationship("Abordagem", back_populates="ocorrencias", lazy="selectin")

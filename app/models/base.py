@@ -65,7 +65,7 @@ class SoftDeleteMixin:
             ForeignKey(
                 "usuarios.id",
                 use_alter=True,
-                name=f"fk_{self.__tablename__}_desativado_por_id",
+                name=f"fk_{self.__tablename__}_desativado_por_id",  # type: ignore[attr-defined]
             ),
             nullable=True,
         )

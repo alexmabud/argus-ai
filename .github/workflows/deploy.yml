@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 # ══════════════════════════════════════════════════════════════
 # Argus AI — Deploy Pipeline
 # ══════════════════════════════════════════════════════════════
@@ -39,6 +40,7 @@ jobs:
     name: Deploy to VM
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    environment: production
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'

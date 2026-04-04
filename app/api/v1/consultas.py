@@ -6,9 +6,10 @@ resultados em uma resposta unificada. Também expõe endpoint
 de localidades para autocomplete de bairro, cidade e estado.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
@@ -24,7 +25,9 @@ router = APIRouter(prefix="/consultas", tags=["Consultas"])
 
 
 @router.get("/localidades")
+@limiter.limit("30/minute")
 async def listar_localidades(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> dict:
@@ -46,7 +49,9 @@ async def listar_localidades(
 
 
 @router.get("/", response_model=ConsultaUnificadaResponse)
+@limiter.limit("30/minute")
 async def consulta_unificada(
+    request: Request,
     q: str = Query(
         "",
         min_length=0,
@@ -117,7 +122,9 @@ async def consulta_unificada(
 
 
 @router.get("/pessoas-por-veiculo", response_model=list[PessoaComVeiculoRead])
+@limiter.limit("30/minute")
 async def pessoas_por_veiculo(
+    request: Request,
     placa: str | None = Query(None, max_length=20, description="Placa parcial (ILIKE)"),
     modelo: str | None = Query(None, max_length=100, description="Modelo do veículo"),
     cor: str | None = Query(None, max_length=50, description="Cor do veículo (opcional)"),

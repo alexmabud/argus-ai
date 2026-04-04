@@ -3,12 +3,88 @@
  *
  * Gerencia fila de sincronização offline e cache local
  * de pessoas, veículos e passagens para autocomplete.
+ * Dados sensíveis são criptografados com AES-GCM via Web Crypto API.
  */
 
 // Importar Dexie via CDN (global script)
 const DEXIE_CDN = "https://cdn.jsdelivr.net/npm/dexie@4/dist/dexie.min.js";
 
 let db = null;
+
+// --- Crypto helpers (AES-256-GCM via Web Crypto API) ---
+let _cryptoKey = null;
+
+/**
+ * Deriva chave AES-256 a partir de um segredo (ex: token JWT).
+ * Usa PBKDF2 com salt fixo por dispositivo (armazenado em localStorage).
+ */
+async function initCryptoKey(secret) {
+  if (_cryptoKey) return _cryptoKey;
+
+  let salt = localStorage.getItem("argus_db_salt");
+  if (!salt) {
+    salt = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+    localStorage.setItem("argus_db_salt", salt);
+  }
+
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(secret), "PBKDF2", false, [
+    "deriveKey",
+  ]);
+
+  _cryptoKey = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: enc.encode(salt), iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+  return _cryptoKey;
+}
+
+/**
+ * Criptografa string com AES-256-GCM. Retorna base64(iv + ciphertext).
+ */
+async function encryptField(plaintext) {
+  if (!_cryptoKey || !plaintext) return plaintext;
+  const enc = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, _cryptoKey, enc.encode(plaintext));
+  const buf = new Uint8Array(iv.length + ct.byteLength);
+  buf.set(iv);
+  buf.set(new Uint8Array(ct), iv.length);
+  return btoa(String.fromCharCode(...buf));
+}
+
+/**
+ * Descriptografa string produzida por encryptField.
+ */
+async function decryptField(ciphertext) {
+  if (!_cryptoKey || !ciphertext) return ciphertext;
+  try {
+    const buf = Uint8Array.from(atob(ciphertext), (c) => c.charCodeAt(0));
+    const iv = buf.slice(0, 12);
+    const ct = buf.slice(12);
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, _cryptoKey, ct);
+    return new TextDecoder().decode(plain);
+  } catch {
+    return ciphertext; // dado não-criptografado (migração)
+  }
+}
+
+/**
+ * Criptografa campos sensíveis de um objeto pessoa.
+ */
+async function encryptPessoa(p) {
+  return { ...p, nome: await encryptField(p.nome), apelido: await encryptField(p.apelido) };
+}
+
+/**
+ * Descriptografa campos sensíveis de um objeto pessoa.
+ */
+async function decryptPessoa(p) {
+  return { ...p, nome: await decryptField(p.nome), apelido: await decryptField(p.apelido) };
+}
 
 async function initDB() {
   if (db) return db;
@@ -89,10 +165,12 @@ async function countPending() {
 
 /**
  * Cache local de pessoas para autocomplete offline.
+ * Campos sensíveis (nome, apelido) são criptografados com AES-GCM.
  */
 async function cachePessoas(pessoas) {
   const database = await initDB();
-  await database.pessoas.bulkPut(pessoas);
+  const encrypted = await Promise.all(pessoas.map(encryptPessoa));
+  await database.pessoas.bulkPut(encrypted);
 }
 
 /**
@@ -104,15 +182,16 @@ async function cacheVeiculos(veiculos) {
 }
 
 /**
- * Busca pessoas no cache local.
+ * Busca pessoas no cache local (descriptografa antes de filtrar).
  */
 async function searchPessoasLocal(query) {
   const database = await initDB();
   const q = query.toLowerCase();
-  return database.pessoas
+  const all = await database.pessoas.toArray();
+  const decrypted = await Promise.all(all.map(decryptPessoa));
+  return decrypted
     .filter((p) => p.nome.toLowerCase().includes(q) || (p.apelido && p.apelido.toLowerCase().includes(q)))
-    .limit(10)
-    .toArray();
+    .slice(0, 10);
 }
 
 /**

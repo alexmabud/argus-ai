@@ -5,7 +5,8 @@ Valida extração de texto e parsing de URL S3 para chave.
 
 import pytest
 
-from app.tasks.pdf_processor import _extrair_key_da_url, extrair_texto_pdf
+from app.tasks.pdf_processor import extrair_texto_pdf
+from app.utils.s3 import extrair_key_da_url
 
 
 class TestExtrairKeyDaUrl:
@@ -14,13 +15,13 @@ class TestExtrairKeyDaUrl:
     def test_url_com_bucket_e_key(self):
         """Deve extrair chave removendo endpoint e bucket."""
         url = "https://r2.example.com/argus/pdfs/abc123_doc.pdf"
-        key = _extrair_key_da_url(url)
+        key = extrair_key_da_url(url)
         assert key == "pdfs/abc123_doc.pdf"
 
     def test_url_com_path_simples(self):
         """Deve funcionar com URLs de path simples."""
         url = "https://r2.example.com/bucket/file.pdf"
-        key = _extrair_key_da_url(url)
+        key = extrair_key_da_url(url)
         assert key == "file.pdf"
 
     def test_url_producao_com_prefixo_proxy(self, monkeypatch):
@@ -36,7 +37,7 @@ class TestExtrairKeyDaUrl:
         monkeypatch.setattr(settings, "S3_BUCKET", "argus")
 
         url = "https://arguseye.duckdns.org/storage/argus/pdfs/abc123_doc.pdf"
-        key = _extrair_key_da_url(url)
+        key = extrair_key_da_url(url)
         assert key == "pdfs/abc123_doc.pdf"
 
 

@@ -64,11 +64,13 @@ class RelacionamentoPessoa(Base, TimestampMixin, SoftDeleteMixin):
         "Pessoa",
         foreign_keys=[pessoa_id_a],
         back_populates="relacionamentos_como_a",
+        lazy="selectin",
     )
     pessoa_b = relationship(
         "Pessoa",
         foreign_keys=[pessoa_id_b],
         back_populates="relacionamentos_como_b",
+        lazy="selectin",
     )
 
     __table_args__ = (

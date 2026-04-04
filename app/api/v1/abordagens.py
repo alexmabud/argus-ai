@@ -15,6 +15,7 @@ from app.schemas.abordagem import (
     AbordagemRead,
 )
 from app.services.abordagem_service import AbordagemService
+from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/abordagens", tags=["Abordagens"])
 
@@ -56,4 +57,14 @@ async def criar_abordagem(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="CREATE",
+        recurso="abordagem",
+        recurso_id=abordagem.id,
+        detalhes={"origem": data.origem or "online"},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
     return AbordagemRead.model_validate(abordagem)
