@@ -58,7 +58,7 @@ jobs:
           echo "Nenhum .env rastreado pelo git"
 
       - name: TruffleHog secrets detection
-        uses: trufflesecurity/trufflehog@v3.82.13
+        uses: trufflesecurity/trufflehog@v3.94.0
         with:
           extra_args: --only-verified
 
