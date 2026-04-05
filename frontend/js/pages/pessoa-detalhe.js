@@ -862,6 +862,16 @@ function pessoaDetalhePage(pessoaId) {
     novaPessoaForm: { nome: '', cpf: '', apelido: '', data_nascimento: '' },
     _buscaTimer: null,
 
+    calcularIdade(dataNascimento) {
+      if (!dataNascimento) return null;
+      const hoje = new Date();
+      const nasc = new Date(dataNascimento + 'T00:00:00');
+      let idade = hoje.getFullYear() - nasc.getFullYear();
+      const m = hoje.getMonth() - nasc.getMonth();
+      if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+      return idade;
+    },
+
     // Edição de dados pessoais
     modalEditarPessoa: false,
     editPessoaForm: { nome: '', cpf: '', data_nascimento: '', apelido: '', observacoes: '' },
