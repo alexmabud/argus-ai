@@ -862,10 +862,17 @@ function pessoaDetalhePage(pessoaId) {
     novaPessoaForm: { nome: '', cpf: '', apelido: '', data_nascimento: '' },
     _buscaTimer: null,
 
+    /**
+     * Calcula a idade em anos completos a partir da data de nascimento.
+     *
+     * @param {string|null} dataNascimento - Data no formato ISO 'YYYY-MM-DD'.
+     * @returns {number|null} Idade em anos, ou null se a data for inválida ou ausente.
+     */
     calcularIdade(dataNascimento) {
       if (!dataNascimento) return null;
-      const hoje = new Date();
       const nasc = new Date(dataNascimento + 'T00:00:00');
+      if (isNaN(nasc.getTime())) return null;
+      const hoje = new Date();
       let idade = hoje.getFullYear() - nasc.getFullYear();
       const m = hoje.getMonth() - nasc.getMonth();
       if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
