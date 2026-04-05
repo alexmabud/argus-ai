@@ -8,7 +8,7 @@
 
 // Registrar Service Worker (apos limpeza feita no head)
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=4").catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=5").catch(() => {});
 }
 
 /**

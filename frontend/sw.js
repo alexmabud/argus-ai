@@ -1,4 +1,4 @@
-const CACHE_NAME = "argus-v8";
+const CACHE_NAME = "argus-v9";
 const STATIC_ASSETS = [
   "/",
   "/css/app.css",
@@ -51,7 +51,7 @@ self.addEventListener("fetch", (event) => {
         .then((response) => {
           if (request.method === "GET" && response.ok) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone)).catch(() => {});
           }
           return response;
         })
@@ -72,7 +72,7 @@ self.addEventListener("fetch", (event) => {
         .then((response) => {
           if (response.ok) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone)).catch(() => {});
           }
           return response;
         })
