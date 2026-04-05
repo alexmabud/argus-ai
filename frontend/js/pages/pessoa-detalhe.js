@@ -53,7 +53,10 @@ function renderPessoaDetalhe(appState) {
               </div>
               <div>
                 <span style="color: var(--color-text-dim)">Nascimento:</span>
-                <span style="color: var(--color-text-muted); margin-left: 0.25rem;" x-text="pessoa.data_nascimento ? new Date(pessoa.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'"></span>
+                <span style="color: var(--color-text-muted); margin-left: 0.25rem;"
+                      x-text="pessoa.data_nascimento
+                        ? new Date(pessoa.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') + ' (' + calcularIdade(pessoa.data_nascimento) + ' anos)'
+                        : '—'"></span>
               </div>
               <div>
                 <span style="color: var(--color-text-dim)">Abordagens:</span>
