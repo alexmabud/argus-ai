@@ -19,15 +19,19 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script>
-    // Forcar atualizacao do Service Worker e limpar caches antigos
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        regs.forEach(function(r) { r.unregister(); });
-      });
-      caches.keys().then(function(keys) {
-        keys.forEach(function(k) { caches.delete(k); });
-      });
-    }
+    // Suprimir erros de extensoes do Chrome (chrome.runtime messaging)
+    // que aparecem no console mas nao sao erros da aplicacao.
+    window.addEventListener('unhandledrejection', function(e) {
+      var msg = (e.reason && e.reason.message) || String(e.reason || '');
+      if (
+        msg.indexOf('Could not establish connection') !== -1 ||
+        msg.indexOf('Receiving end does not exist') !== -1 ||
+        msg.indexOf('message channel closed') !== -1 ||
+        msg.indexOf('Extension context invalidated') !== -1
+      ) {
+        e.preventDefault();
+      }
+    });
   </script>
 </head>
 <body class="dark" x-data="app()" x-init="init()" :class="{ 'login-active': !authenticated }">

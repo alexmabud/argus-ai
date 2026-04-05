@@ -6,9 +6,9 @@
  * Tema: cyberpunk tatico / high-tech militar.
  */
 
-// Registrar Service Worker (apos limpeza feita no head)
+// Registrar Service Worker
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js?v=5").catch(() => {});
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 
 /**
