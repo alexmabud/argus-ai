@@ -13,6 +13,7 @@ from app.services.localidade_service import LocalidadeService
 async def test_criar_cidade_nova():
     """Deve criar cidade quando não existe duplicata."""
     db = AsyncMock()
+    db.add = MagicMock()
     service = LocalidadeService(db)
     service.repo = AsyncMock()
     service.repo.buscar_por_nome_e_parent = AsyncMock(return_value=None)
