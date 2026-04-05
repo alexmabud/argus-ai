@@ -139,7 +139,25 @@ function renderPessoaDetalhe(appState) {
           <!-- Foto ampliada (modal) -->
           <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
                style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;">
-            <img :src="fotoAmpliada" style="max-width: 100%; max-height: 100%; border-radius: 4px;">
+            <div @click.stop style="display: flex; flex-direction: column; max-width: min(90vw, 480px); width: 100%;">
+              <img :src="fotoAmpliada" @click="fotoAmpliada = null"
+                   style="width: 100%; border-radius: 4px 4px 0 0; display: block; cursor: pointer; object-fit: contain; max-height: 70vh;">
+              <div style="background: rgba(5,10,15,0.95); border-radius: 0 0 4px 4px; padding: 0.75rem;">
+                <p style="font-family: var(--font-display); font-weight: 700; color: var(--color-text); text-transform: uppercase; margin: 0 0 0.375rem 0; font-size: 1rem;" x-text="pessoa?.nome"></p>
+                <p x-show="pessoa?.apelido"
+                   style="font-size: 0.8rem; color: var(--color-secondary); font-family: var(--font-data); margin: 0 0 0.2rem 0;"
+                   x-text="'Vulgo: ' + pessoa?.apelido"></p>
+                <p x-show="pessoa?.data_nascimento"
+                   style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0 0 0.2rem 0;"
+                   x-text="'Nasc: ' + formatarNascimento(pessoa?.data_nascimento, '')"></p>
+                <p x-show="pessoa?.cpf || pessoa?.cpf_masked"
+                   style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0 0 0.2rem 0;"
+                   x-text="'CPF: ' + (pessoa?.cpf || pessoa?.cpf_masked)"></p>
+                <p x-show="pessoa?.enderecos?.length > 0"
+                   style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0;"
+                   x-text="'End: ' + formatEndereco(pessoa?.enderecos?.[0])"></p>
+              </div>
+            </div>
           </div>
 
           <!-- Modal todas as fotos -->
