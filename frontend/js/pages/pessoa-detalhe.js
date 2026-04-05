@@ -55,7 +55,7 @@ function renderPessoaDetalhe(appState) {
                 <span style="color: var(--color-text-dim)">Nascimento:</span>
                 <span style="color: var(--color-text-muted); margin-left: 0.25rem;"
                       x-text="pessoa.data_nascimento
-                        ? new Date(pessoa.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') + ' (' + calcularIdade(pessoa.data_nascimento) + ' anos)'
+                        ? new Date(pessoa.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') + (calcularIdade(pessoa.data_nascimento) !== null ? ' (' + calcularIdade(pessoa.data_nascimento) + ' anos)' : '')
                         : '—'"></span>
               </div>
               <div>
@@ -384,7 +384,7 @@ function renderPessoaDetalhe(appState) {
                    x-text="'CPF: ' + pessoaPreview?.cpf_masked"></p>
                 <p x-show="pessoaPreview?.data_nascimento"
                    style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;"
-                   x-text="'Nascimento: ' + (pessoaPreview?.data_nascimento ? new Date(pessoaPreview.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '')"></p>
+                   x-text="'Nascimento: ' + (pessoaPreview?.data_nascimento ? new Date(pessoaPreview.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') + (calcularIdade(pessoaPreview.data_nascimento) !== null ? ' (' + calcularIdade(pessoaPreview.data_nascimento) + ' anos)' : '') : '')"></p>
               </div>
               <!-- Botão -->
               <div style="padding-top: 0.25rem;">
