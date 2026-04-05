@@ -22,6 +22,7 @@ async def test_criar_usuario_retorna_senha_gerada(mock_db):
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_guarnicao
     mock_db.execute = AsyncMock(return_value=mock_result)
+    mock_db.add = MagicMock()
 
     service = UsuarioAdminService(mock_db)
     service.repo = AsyncMock()

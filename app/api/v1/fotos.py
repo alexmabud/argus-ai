@@ -148,7 +148,7 @@ async def upload_foto(
 
             redis_pool: ArqRedis = await create_pool(WorkerSettings.redis_settings)
             await redis_pool.enqueue_job("processar_face_task", foto.id)
-            await redis_pool.close()
+            await redis_pool.aclose()
         except Exception:
             logger.warning("Worker offline — face da foto %d será processada depois", foto.id)
 
