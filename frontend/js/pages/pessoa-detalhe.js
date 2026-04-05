@@ -54,9 +54,7 @@ function renderPessoaDetalhe(appState) {
               <div>
                 <span style="color: var(--color-text-dim)">Nascimento:</span>
                 <span style="color: var(--color-text-muted); margin-left: 0.25rem;"
-                      x-text="pessoa.data_nascimento
-                        ? new Date(pessoa.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') + (calcularIdade(pessoa.data_nascimento) !== null ? ' (' + calcularIdade(pessoa.data_nascimento) + ' anos)' : '')
-                        : '—'"></span>
+                      x-text="formatarNascimento(pessoa.data_nascimento)"></span>
               </div>
               <div>
                 <span style="color: var(--color-text-dim)">Abordagens:</span>
@@ -384,7 +382,7 @@ function renderPessoaDetalhe(appState) {
                    x-text="'CPF: ' + pessoaPreview?.cpf_masked"></p>
                 <p x-show="pessoaPreview?.data_nascimento"
                    style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;"
-                   x-text="'Nascimento: ' + (pessoaPreview?.data_nascimento ? new Date(pessoaPreview.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') + (calcularIdade(pessoaPreview.data_nascimento) !== null ? ' (' + calcularIdade(pessoaPreview.data_nascimento) + ' anos)' : '') : '')"></p>
+                   x-text="'Nascimento: ' + formatarNascimento(pessoaPreview?.data_nascimento, '')"></p>
               </div>
               <!-- Botão -->
               <div style="padding-top: 0.25rem;">
@@ -880,6 +878,22 @@ function pessoaDetalhePage(pessoaId) {
       const m = hoje.getMonth() - nasc.getMonth();
       if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
       return idade;
+    },
+
+    /**
+     * Formata a data de nascimento com a idade calculada.
+     *
+     * @param {string|null} dataNascimento - Data no formato ISO 'YYYY-MM-DD'.
+     * @param {string} fallback - Valor retornado quando data é ausente (padrão: '—').
+     * @returns {string} Data formatada com idade, ex: "24/10/2007 (18 anos)", ou o fallback.
+     */
+    formatarNascimento(dataNascimento, fallback = '—') {
+      if (!dataNascimento) return fallback;
+      const data = new Date(dataNascimento + 'T00:00:00');
+      if (isNaN(data.getTime())) return fallback;
+      const dataFormatada = data.toLocaleDateString('pt-BR');
+      const idade = this.calcularIdade(dataNascimento);
+      return idade !== null ? `${dataFormatada} (${idade} anos)` : dataFormatada;
     },
 
     // Edição de dados pessoais
