@@ -143,7 +143,8 @@ function renderPessoaDetalhe(appState) {
               <img :src="fotoAmpliada" @click="fotoAmpliada = null"
                    style="width: 100%; border-radius: 4px 4px 0 0; display: block; cursor: pointer; object-fit: contain; max-height: 70vh;">
               <div style="background: rgba(5,10,15,0.95); border-radius: 0 0 4px 4px; padding: 0.75rem;">
-                <p style="font-family: var(--font-display); font-weight: 700; color: var(--color-text); text-transform: uppercase; margin: 0 0 0.375rem 0; font-size: 1rem;" x-text="pessoa?.nome"></p>
+                <p x-show="pessoa?.nome"
+                   style="font-family: var(--font-display); font-weight: 700; color: var(--color-text); text-transform: uppercase; margin: 0 0 0.375rem 0; font-size: 1rem;" x-text="pessoa?.nome"></p>
                 <p x-show="pessoa?.apelido"
                    style="font-size: 0.8rem; color: var(--color-secondary); font-family: var(--font-data); margin: 0 0 0.2rem 0;"
                    x-text="'Vulgo: ' + pessoa?.apelido"></p>
