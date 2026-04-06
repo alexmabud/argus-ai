@@ -29,6 +29,7 @@ from app.schemas.foto import (
     FotoUploadResponse,
     OCRPlacaResponse,
 )
+from app.services.abordagem_service import AbordagemService
 from app.services.audit_service import AuditService
 from app.services.foto_service import FotoService
 from app.services.pessoa_service import PessoaService
@@ -388,6 +389,14 @@ async def upload_midia_abordagem(
         validar_magic_bytes_imagem(file_bytes)
 
     filename = file.filename or "midia"
+
+    # Verificar que a abordagem pertence à guarnição do usuário (anti cross-tenant)
+    if user.guarnicao_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário sem guarnição atribuída",
+        )
+    await AbordagemService(db).buscar_por_id(abordagem_id, user.guarnicao_id)
 
     service = FotoService(db)
     try:

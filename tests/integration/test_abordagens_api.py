@@ -1,6 +1,7 @@
 """Testes de integração dos endpoints de listagem de abordagens."""
 
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.abordagem import Abordagem
 
@@ -72,4 +73,32 @@ class TestDetalheAbordagem:
         response = await client.get("/api/v1/abordagens/99999", headers=auth_headers)
         assert response.status_code == 404
 
-    # TODO: adicionar teste para usuário sem guarnição
+    async def test_listar_retorna_403_sem_guarnicao(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Testa que listagem retorna 403 para usuário sem guarnição.
+
+        Args:
+            client: Cliente HTTP de teste.
+            db_session: Sessão do banco de testes.
+        """
+        from app.core.security import criar_access_token, hash_senha
+        from app.models.usuario import Usuario as UsuarioModel
+
+        # Criar usuário sem guarnição, com session_id para autenticação passar
+        usuario_sem_guarnicao = UsuarioModel(
+            nome="Sem Guarnicao",
+            matricula="0000001",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=None,
+            session_id="session-sem-guarnicao",
+        )
+        db_session.add(usuario_sem_guarnicao)
+        await db_session.flush()
+
+        token = criar_access_token(
+            {"sub": str(usuario_sem_guarnicao.id), "sid": "session-sem-guarnicao"}
+        )
+        headers = {"Authorization": f"Bearer {token}"}
+        response = await client.get("/api/v1/abordagens/", headers=headers)
+        assert response.status_code == 403

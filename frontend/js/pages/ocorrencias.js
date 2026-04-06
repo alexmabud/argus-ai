@@ -15,7 +15,7 @@ function renderOcorrencias() {
           RELATÓRIO DE ABORDAGENS
         </h2>
         <p style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;margin-top:4px;"
-           x-text="loading ? 'CARREGANDO...' : total + ' REGISTROS'">
+           x-text="loading ? 'CARREGANDO...' : total + ' ABORDAGENS'">
         </p>
       </div>
 
