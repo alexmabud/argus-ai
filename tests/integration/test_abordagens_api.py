@@ -36,6 +36,10 @@ class TestListarAbordagens:
         response = await client.get("/api/v1/abordagens/")
         assert response.status_code == 401
 
+
+class TestDetalheAbordagem:
+    """Testes do endpoint GET /abordagens/{abordagem_id}."""
+
     async def test_detalhe_retorna_abordagem_completa(
         self,
         client: AsyncClient,
@@ -67,3 +71,5 @@ class TestListarAbordagens:
         """
         response = await client.get("/api/v1/abordagens/99999", headers=auth_headers)
         assert response.status_code == 404
+
+    # TODO: adicionar teste para usuário sem guarnição
