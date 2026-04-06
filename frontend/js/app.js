@@ -23,6 +23,15 @@ window.addEventListener("unhandledrejection", (event) => {
   }
 });
 
+// Também suprimir via error event (some extensions may trigger this way)
+window.addEventListener("error", (event) => {
+  const msg = (event.message || "").toLowerCase();
+  if (msg.includes("could not establish connection") ||
+      msg.includes("receiving end does not exist")) {
+    return true; // Retorna true para suprimir
+  }
+}, true); // Usa capture phase
+
 /**
  * Formata string de placa veicular inserindo traco automaticamente.
  * Aceita formato antigo (ABC-1234) e Mercosul (ABC1D23).
