@@ -380,6 +380,13 @@ async def upload_midia_abordagem(
         )
 
     file_bytes = await ler_upload_com_limite(file, MAX_MIDIA_SIZE)
+
+    # Valida magic bytes para imagens (anti-spoofing via Content-Type).
+    # Vídeos e PDF não possuem validador de magic bytes implementado.
+    _image_mimes = {"image/jpeg", "image/png", "image/webp"}
+    if content_type in _image_mimes:
+        validar_magic_bytes_imagem(file_bytes)
+
     filename = file.filename or "midia"
 
     service = FotoService(db)
