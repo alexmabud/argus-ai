@@ -12,7 +12,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.schemas.foto import FotoRead
-from app.schemas.pessoa import PessoaRead
+from app.schemas.ocorrencia import OcorrenciaRead
 from app.schemas.veiculo import VeiculoRead
 
 
@@ -106,17 +106,41 @@ class VeiculoAbordagemRead(VeiculoRead):
     pessoa_id: int | None = None
 
 
+class PessoaAbordagemRead(BaseModel):
+    """Pessoa abordada com dados resumidos para exibição em card/detalhe.
+
+    Versão compacta de PessoaRead usada nos cards de abordagem.
+    Evita carregar todos os campos de Pessoa na listagem.
+
+    Attributes:
+        id: Identificador único da pessoa.
+        nome: Nome completo.
+        foto_principal_url: URL da foto de perfil (opcional).
+        apelido: Apelido ou nome de rua (opcional).
+    """
+
+    id: int
+    nome: str
+    foto_principal_url: str | None = None
+    apelido: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class AbordagemDetail(AbordagemRead):
     """Dados detalhados de uma abordagem com todos os relacionamentos.
 
-    Estende AbordagemRead com pessoas, veículos e fotos vinculadas.
+    Estende AbordagemRead com pessoas, veículos, fotos e ocorrências vinculadas.
+    Usado para tela de detalhe e listagem de abordagens do usuário.
 
     Attributes:
-        pessoas: Lista de pessoas abordadas.
+        pessoas: Lista de pessoas abordadas (versão compacta).
         veiculos: Lista de veículos envolvidos com pessoa associada.
-        fotos: Lista de fotos registradas.
+        fotos: Lista de fotos registradas (inclui mídias).
+        ocorrencias: Lista de ocorrências (RAPs) vinculadas.
     """
 
-    pessoas: list[PessoaRead] = []
+    pessoas: list[PessoaAbordagemRead] = []
     veiculos: list[VeiculoAbordagemRead] = []
     fotos: list[FotoRead] = []
+    ocorrencias: list[OcorrenciaRead] = []
