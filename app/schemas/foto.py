@@ -24,6 +24,7 @@ class FotoTipo(StrEnum):
         placa: Foto de placa veicular.
         veiculo: Foto geral do veículo envolvido na abordagem.
         documento: Foto de documento.
+        midia_abordagem: Mídia operacional vinculada a abordagem (foto, vídeo, documento).
     """
 
     rosto = "rosto"
@@ -31,6 +32,7 @@ class FotoTipo(StrEnum):
     placa = "placa"
     veiculo = "veiculo"
     documento = "documento"
+    midia_abordagem = "midia_abordagem"
 
 
 class FotoRead(BaseModel):
