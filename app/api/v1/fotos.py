@@ -39,6 +39,19 @@ logger = logging.getLogger("argus")
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
 #: MIME types permitidos para upload de imagem.
 ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
+#: Tamanho máximo de upload de mídia (200 MB — para vídeos).
+MAX_MIDIA_SIZE = 200 * 1024 * 1024
+#: MIME types permitidos para upload de mídia.
+ALLOWED_MIDIA_MIMES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "video/mp4",
+    "video/quicktime",
+    "video/x-msvideo",
+    "video/webm",
+    "application/pdf",
+}
 
 # Face service é opcional — requer insightface
 try:
@@ -316,3 +329,90 @@ async def extrair_placa(
     ocr = OCRService()
     placa = await ocr.extrair_placa_async(file_bytes)
     return OCRPlacaResponse(placa=placa, detectada=placa is not None)
+
+
+@router.post(
+    "/midias",
+    response_model=FotoUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("20/minute")
+async def upload_midia_abordagem(
+    request: Request,
+    file: UploadFile,
+    abordagem_id: int = Form(..., gt=0),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> FotoUploadResponse:
+    """Faz upload de mídia (foto, vídeo ou PDF) vinculada a uma abordagem.
+
+    Aceita imagens, vídeos (MP4, MOV, AVI, WebM) e PDFs até 200 MB.
+    Usado para registrar autorizações de entrada em residência,
+    vídeos de ocorrência e outros documentos operacionais.
+    O tipo é fixado em FotoTipo.midia_abordagem automaticamente.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        file: Arquivo de mídia (multipart/form-data).
+        abordagem_id: ID da abordagem a vincular (obrigatório, > 0).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        FotoUploadResponse com id, url e tipo="midia_abordagem".
+
+    Raises:
+        HTTPException 400: Formato de arquivo não permitido.
+        HTTPException 500: Erro no storage.
+
+    Status Code:
+        201: Mídia enviada.
+        429: Rate limit (20/min).
+    """
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_MIDIA_MIMES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Formato não permitido: {content_type}. "
+                "Aceitos: imagens, vídeos MP4/MOV/AVI/WebM e PDF."
+            ),
+        )
+
+    file_bytes = await ler_upload_com_limite(file, MAX_MIDIA_SIZE)
+    filename = file.filename or "midia"
+
+    service = FotoService(db)
+    try:
+        foto = await service.upload_foto(
+            file_bytes=file_bytes,
+            filename=filename,
+            content_type=content_type,
+            pessoa_id=None,
+            abordagem_id=abordagem_id,
+            veiculo_id=None,
+            tipo=FotoTipo.midia_abordagem,
+            latitude=None,
+            longitude=None,
+            user_id=user.id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao fazer upload. Verifique o storage e tente novamente.",
+        ) from exc
+
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=user.id,
+        acao="CREATE",
+        recurso="midia_abordagem",
+        recurso_id=foto.id,
+        detalhes={"abordagem_id": abordagem_id, "content_type": content_type},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+
+    return FotoUploadResponse(id=foto.id, arquivo_url=foto.arquivo_url, tipo=foto.tipo)
