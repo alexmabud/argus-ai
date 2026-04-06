@@ -165,3 +165,60 @@ class TestAtualizarAbordagem:
         service = AbordagemService(db_session)
         with pytest.raises(NaoEncontradoError):
             await service.buscar_por_id(99999, guarnicao.id)
+
+
+class TestListarPorUsuario:
+    """Testes de listagem de abordagens por usuário."""
+
+    async def test_listar_retorna_apenas_abordagens_do_usuario(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario
+    ):
+        """Testa que listar retorna apenas abordagens do usuário logado.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário.
+        """
+        service = AbordagemService(db_session)
+        data = AbordagemCreate(
+            data_hora=datetime.now(UTC),
+            endereco_texto="Rua A, 1",
+        )
+        await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+
+        result = await service.listar_por_usuario(
+            usuario_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        assert len(result) == 1
+        assert result[0].usuario_id == usuario.id
+
+    async def test_listar_nao_retorna_abordagens_de_outro_usuario(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario
+    ):
+        """Testa que abordagens de outro usuário não aparecem na listagem.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário.
+        """
+        outro_usuario = Usuario(
+            nome="Outro",
+            matricula="9999999",
+            senha_hash="x",
+            guarnicao_id=guarnicao.id,
+        )
+        db_session.add(outro_usuario)
+        await db_session.flush()
+
+        service = AbordagemService(db_session)
+        data = AbordagemCreate(data_hora=datetime.now(UTC))
+        await service.criar(data=data, user_id=outro_usuario.id, guarnicao_id=guarnicao.id)
+
+        result = await service.listar_por_usuario(
+            usuario_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        assert len(result) == 0

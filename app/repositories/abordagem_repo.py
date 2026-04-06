@@ -97,6 +97,47 @@ class AbordagemRepository(BaseRepository[Abordagem]):
         result = await self.db.execute(query)
         return result.scalars().all()
 
+    async def list_by_usuario(
+        self,
+        usuario_id: int,
+        guarnicao_id: int,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> Sequence[Abordagem]:
+        """Lista abordagens de um usuário específico com eager loading.
+
+        Filtra por usuario_id (minhas abordagens) com tenant guard por
+        guarnicao_id. Carrega pessoas, veículos e ocorrências via selectin.
+
+        Args:
+            usuario_id: ID do oficial autenticado.
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            skip: Registros a pular (paginação).
+            limit: Número máximo de resultados.
+
+        Returns:
+            Sequência de Abordagens com relacionamentos carregados.
+        """
+        query = (
+            select(Abordagem)
+            .options(
+                selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
+                selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
+                selectinload(Abordagem.fotos),
+                selectinload(Abordagem.ocorrencias),
+            )
+            .where(
+                Abordagem.usuario_id == usuario_id,
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo == True,  # noqa: E712
+            )
+            .order_by(Abordagem.data_hora.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().unique().all()
+
     async def search_by_radius(
         self,
         lat: float,
