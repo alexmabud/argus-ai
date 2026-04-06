@@ -242,6 +242,29 @@ class AbordagemService:
         """
         return await self.repo.list_by_guarnicao(guarnicao_id, skip, limit)
 
+    async def listar_por_usuario(
+        self,
+        usuario_id: int,
+        guarnicao_id: int,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> Sequence[Abordagem]:
+        """Lista abordagens do usuário autenticado com paginação.
+
+        Filtra pelo usuário logado (não toda a guarnição), com eager
+        loading de pessoas, veículos, fotos e ocorrências.
+
+        Args:
+            usuario_id: ID do oficial autenticado.
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            skip: Registros a pular (padrão 0).
+            limit: Número máximo de resultados (padrão 20).
+
+        Returns:
+            Sequência de Abordagens com relacionamentos carregados.
+        """
+        return await self.repo.list_by_usuario(usuario_id, guarnicao_id, skip, limit)
+
     async def listar_por_pessoa(
         self,
         pessoa_id: int,
