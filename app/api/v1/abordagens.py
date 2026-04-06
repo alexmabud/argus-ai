@@ -4,7 +4,7 @@ Fornece endpoints para criação e listagem de abordagens em campo,
 incluindo detalhe completo com pessoas, veículos, fotos e ocorrências.
 """
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NaoEncontradoError
@@ -17,7 +17,11 @@ from app.schemas.abordagem import (
     AbordagemCreate,
     AbordagemDetail,
     AbordagemRead,
+    PessoaAbordagemRead,
+    VeiculoAbordagemRead,
 )
+from app.schemas.foto import FotoRead
+from app.schemas.ocorrencia import OcorrenciaRead
 from app.services.abordagem_service import AbordagemService
 from app.services.audit_service import AuditService
 
@@ -102,6 +106,11 @@ async def listar_abordagens(
         200: Lista retornada.
         429: Rate limit (30/min).
     """
+    if user.guarnicao_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário sem guarnição atribuída",
+        )
     service = AbordagemService(db)
     abordagens = await service.listar_por_usuario(
         usuario_id=user.id,
@@ -142,12 +151,15 @@ async def detalhe_abordagem(
         404: Abordagem não encontrada.
         429: Rate limit (60/min).
     """
+    if user.guarnicao_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário sem guarnição atribuída",
+        )
     service = AbordagemService(db)
     try:
         abordagem = await service.buscar_detalhe(abordagem_id, user.guarnicao_id)
     except NaoEncontradoError:
-        from fastapi import HTTPException
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Abordagem não encontrada",
@@ -168,27 +180,27 @@ def _serializar_detalhe(abordagem: Abordagem) -> AbordagemDetail:
     Returns:
         AbordagemDetail serializado com listas populadas.
     """
-    from app.schemas.abordagem import PessoaAbordagemRead, VeiculoAbordagemRead
-    from app.schemas.foto import FotoRead
-    from app.schemas.ocorrencia import OcorrenciaRead
-
     pessoas = [
         PessoaAbordagemRead.model_validate(ap.pessoa)
         for ap in abordagem.pessoas
         if ap.ativo and ap.pessoa
     ]
-    veiculos = []
-    for av in abordagem.veiculos:
-        if av.ativo and av.veiculo:
-            v = VeiculoAbordagemRead.model_validate(av.veiculo)
-            v.pessoa_id = av.pessoa_id
-            veiculos.append(v)
+    veiculos = [
+        VeiculoAbordagemRead(
+            **VeiculoAbordagemRead.model_validate(av.veiculo).model_dump(),
+            pessoa_id=av.pessoa_id,
+        )
+        for av in abordagem.veiculos
+        if av.ativo and av.veiculo
+    ]
     fotos = [FotoRead.model_validate(f) for f in abordagem.fotos if f.ativo]
     ocorrencias = [OcorrenciaRead.model_validate(o) for o in abordagem.ocorrencias if o.ativo]
 
-    detail = AbordagemDetail.model_validate(abordagem)
-    detail.pessoas = pessoas
-    detail.veiculos = veiculos
-    detail.fotos = fotos
-    detail.ocorrencias = ocorrencias
-    return detail
+    base = AbordagemRead.model_validate(abordagem)
+    return AbordagemDetail(
+        **base.model_dump(),
+        pessoas=pessoas,
+        veiculos=veiculos,
+        fotos=fotos,
+        ocorrencias=ocorrencias,
+    )
