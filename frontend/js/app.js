@@ -11,6 +11,18 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 
+// Ignorar erros de extensões do Chrome (chrome.runtime.sendMessage)
+// que tentam se comunicar com isolated worlds.
+// Esses erros não afetam funcionalidade — vêm de extensões externas.
+window.addEventListener("unhandledrejection", (event) => {
+  const msg = event.reason?.message || String(event.reason);
+  if (msg.includes("Could not establish connection") ||
+      msg.includes("Receiving end does not exist") ||
+      msg.includes("Extension context invalidated")) {
+    event.preventDefault();
+  }
+});
+
 /**
  * Formata string de placa veicular inserindo traco automaticamente.
  * Aceita formato antigo (ABC-1234) e Mercosul (ABC1D23).
