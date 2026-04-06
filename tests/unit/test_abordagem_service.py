@@ -193,6 +193,7 @@ class TestListarPorUsuario:
         )
         assert len(result) == 1
         assert result[0].usuario_id == usuario.id
+        assert all(a.usuario_id == usuario.id for a in result)
 
     async def test_listar_nao_retorna_abordagens_de_outro_usuario(
         self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario

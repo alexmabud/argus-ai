@@ -136,7 +136,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
             .limit(limit)
         )
         result = await self.db.execute(query)
-        return result.scalars().unique().all()
+        return result.scalars().all()
 
     async def search_by_radius(
         self,
