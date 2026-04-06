@@ -331,6 +331,11 @@ function abordagemDetalhePage() {
       this.rapErro = null;
       const partes = this.rapData.split('/');
       if (partes.length !== 3) { this.rapErro = 'Data inválida. Use DD/MM/AAAA.'; return; }
+      const [dia, mes, ano] = partes.map(Number);
+      if (!dia || !mes || !ano || dia < 1 || dia > 31 || mes < 1 || mes > 12 || ano < 2000 || ano > 2100) {
+        this.rapErro = 'Data inválida. Verifique dia, mês e ano.';
+        return;
+      }
       const dataIso = partes[2] + '-' + partes[1].padStart(2, '0') + '-' + partes[0].padStart(2, '0');
       this.enviandoRap = true;
       try {
