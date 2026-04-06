@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mockup — Ocorrências (Argus AI)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+    :root {
+      --color-bg:            #050A0F;
+      --color-surface:       #0D1520;
+      --color-surface-hover: #1A2940;
+      --color-border:        #1A2940;
+      --color-border-bright: #243B5C;
+      --color-text:          #E8F4FF;
+      --color-text-muted:    #6B8FA8;
+      --color-text-dim:      #3A5068;
+      --color-primary:       #00D4FF;
+      --color-primary-hover: #00B8E0;
+      --color-primary-glow:  rgba(0, 212, 255, 0.15);
+      --color-success:       #00FF88;
+      --color-danger:        #FF6B00;
+      --color-warning:       #FF6B00;
+      --font-display:  'JetBrains Mono', monospace;
+      --font-body:     'IBM Plex Sans', sans-serif;
+      --font-data:     'Rajdhani', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ---- LAYOUT WRAPPER ---- */
+    .demo-wrapper {
+      display: flex;
+      gap: 40px;
+      padding: 32px;
+      align-items: flex-start;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .demo-label {
+      font-family: var(--font-display);
+      font-size: 10px;
+      color: var(--color-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    /* ---- PHONE FRAME ---- */
+    .phone {
+      width: 375px;
+      height: 780px;
+      background: var(--color-bg);
+      border: 1.5px solid var(--color-border-bright);
+      border-radius: 20px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 0 40px rgba(0,212,255,0.05);
+    }
+
+    /* ---- HEADER ---- */
+    .header {
+      height: 56px;
+      background: rgba(13, 21, 32, 0.95);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .header-back {
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,212,255,0.08);
+      border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 4px;
+      cursor: pointer;
+      color: var(--color-primary);
+    }
+    .header-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-text);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .header-sub {
+      font-family: var(--font-data);
+      font-size: 10px;
+      color: var(--color-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    /* ---- MAIN CONTENT ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scrollbar-width: none;
+    }
+    .main::-webkit-scrollbar { display: none; }
+
+    /* ---- BOTTOM NAV ---- */
+    .bottom-nav {
+      height: 64px;
+      background: rgba(13, 21, 32, 0.95);
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: none;
+      background: none;
+    }
+    .nav-btn svg { color: var(--color-text-dim); }
+    .nav-btn.active svg { color: var(--color-primary); }
+    .nav-label {
+      font-family: var(--font-data);
+      font-size: 9px;
+      color: var(--color-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .nav-btn.active .nav-label { color: var(--color-primary); }
+
+    /* ---- GLASS CARD ---- */
+    .glass-card {
+      background: rgba(13, 21, 32, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-radius: 4px;
+    }
+    .card-led-blue {
+      border-left: 3px solid #00D4FF;
+      box-shadow: -3px 0 10px rgba(0, 212, 255, 0.4);
+    }
+
+    /* ---- SECTION LABEL ---- */
+    .section-label {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--color-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+    }
+
+    /* ---- BADGES ---- */
+    .badge {
+      font-family: var(--font-display);
+      font-size: 9px;
+      padding: 2px 8px;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .badge-rap {
+      background: rgba(0,255,136,0.1);
+      color: var(--color-success);
+      border: 1px solid rgba(0,255,136,0.25);
+    }
+    .badge-sem-rap {
+      background: rgba(255,107,0,0.1);
+      color: var(--color-danger);
+      border: 1px solid rgba(255,107,0,0.25);
+    }
+    .badge-midia {
+      background: rgba(0,212,255,0.08);
+      color: var(--color-primary);
+      border: 1px solid rgba(0,212,255,0.2);
+    }
+
+    /* ---- AVATAR ---- */
+    .avatar {
+      width: 44px; height: 44px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,212,255,0.2);
+      background: var(--color-surface-hover);
+      object-fit: cover;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+    .avatar:hover {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 8px rgba(0,212,255,0.3);
+    }
+    .avatar-sm {
+      width: 36px; height: 36px;
+      font-size: 11px;
+    }
+
+    /* ---- UPLOAD ZONE ---- */
+    .upload-zone {
+      border: 1px dashed rgba(0,212,255,0.25);
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      background: rgba(0,212,255,0.03);
+    }
+    .upload-zone:hover {
+      background: rgba(0,212,255,0.07);
+      border-color: rgba(0,212,255,0.4);
+    }
+    .upload-icon {
+      width: 32px; height: 32px;
+      border-radius: 4px;
+      background: rgba(0,212,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .upload-done {
+      border-color: rgba(0,255,136,0.3);
+      background: rgba(0,255,136,0.04);
+    }
+    .upload-done .upload-icon {
+      background: rgba(0,255,136,0.1);
+    }
+
+    /* ---- MAP PLACEHOLDER ---- */
+    .map-placeholder {
+      width: 100%;
+      height: 100px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .map-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.05) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .map-pin {
+      width: 12px; height: 12px;
+      background: var(--color-primary);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--color-primary);
+      z-index: 1;
+    }
+
+    /* ---- DIVIDER ---- */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: 4px 0;
+    }
+
+    /* ---- SEARCH BAR ---- */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      padding: 8px 12px;
+    }
+    .search-bar input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--color-text);
+      font-family: var(--font-data);
+      font-size: 13px;
+      width: 100%;
+    }
+    .search-bar input::placeholder { color: var(--color-text-dim); }
+
+    /* ---- TELA LISTA ---- */
+
+    .abordagem-card {
+      padding: 12px;
+      cursor: pointer;
+    }
+    .abordagem-card:hover {
+      border-color: rgba(0,212,255,0.3);
+      background: rgba(13,21,32,0.95);
+    }
+    .card-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-avatars {
+      display: flex;
+      gap: -4px;
+    }
+    .card-avatars .avatar {
+      width: 36px; height: 36px; font-size: 11px;
+      margin-right: -8px;
+    }
+    .card-avatars .avatar:last-child { margin-right: 0; }
+
+    .card-info { flex: 1; min-width: 0; }
+    .card-date {
+      font-family: var(--font-display);
+      font-size: 10px;
+      color: var(--color-primary);
+      letter-spacing: 0.08em;
+    }
+    .card-names {
+      font-family: var(--font-data);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-addr {
+      font-family: var(--font-data);
+      font-size: 11px;
+      color: var(--color-text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    /* ---- TELA DETALHE ---- */
+    .detail-block { display: flex; flex-direction: column; gap: 8px; }
+    .detail-pessoas {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pessoa-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .pessoa-chip span {
+      font-family: var(--font-data);
+      font-size: 10px;
+      color: var(--color-text-muted);
+      text-align: center;
+      max-width: 54px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .veiculo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+    }
+    .veiculo-thumb {
+      width: 52px; height: 36px;
+      background: var(--color-surface-hover);
+      border: 1px solid var(--color-border);
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .placa {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-primary);
+      letter-spacing: 0.1em;
+    }
+    .veiculo-model {
+      font-family: var(--font-data);
+      font-size: 11px;
+      color: var(--color-text-muted);
+    }
+    .obs-box {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-left: 2px solid rgba(0,212,255,0.3);
+      border-radius: 4px;
+      padding: 10px 12px;
+      font-family: var(--font-data);
+      font-size: 12px;
+      color: var(--color-text-muted);
+      line-height: 1.5;
+    }
+
+    /* ---- COUNTER ---- */
+    .count-badge {
+      font-family: var(--font-display);
+      font-size: 9px;
+      color: var(--color-text-dim);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 2px;
+      padding: 1px 5px;
+    }
+
+    /* page title area */
+    .page-title { display: flex; flex-direction: column; gap: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="demo-wrapper">
+
+  <!-- ===================== TELA 1: LISTA ===================== -->
+  <div>
+    <div class="demo-label">Tela 1 — Lista de Abordagens (tab "Ocorrência")</div>
+    <div class="phone">
+
+      <!-- Header -->
+      <div class="header">
+        <div class="page-title">
+          <span class="header-title">Abordagens</span>
+          <span class="header-sub">Registros operacionais</span>
+        </div>
+        <!-- contador -->
+        <span style="margin-left:auto;font-family:var(--font-display);font-size:10px;color:var(--color-text-dim);">47 registros</span>
+      </div>
+
+      <!-- Content -->
+      <div class="main">
+
+        <!-- Search -->
+        <div class="search-bar">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-text-dim);flex-shrink:0;">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input placeholder="Buscar por nome, placa, data...">
+        </div>
+
+        <!-- Card 1 — com RAP -->
+        <div class="glass-card card-led-blue abordagem-card">
+          <div class="card-row">
+            <!-- avatares dos abordados -->
+            <div class="card-avatars">
+              <div class="avatar avatar-sm">MA</div>
+              <div class="avatar avatar-sm" style="background:rgba(167,139,250,0.1);color:#A78BFA;">JC</div>
+            </div>
+            <div class="card-info">
+              <div class="card-date">06/04/2026 · 23:47</div>
+              <div class="card-names">MARCOS A. · JEAN C.</div>
+              <div class="card-addr">Setor Comercial Sul, Bloco A</div>
+            </div>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-text-dim);flex-shrink:0;">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+          <div class="card-footer">
+            <span class="badge badge-rap">RAP vinculada</span>
+            <span class="badge badge-midia">2 mídias</span>
+            <span class="count-badge" style="margin-left:auto;">1 veículo</span>
+          </div>
+        </div>
+
+        <!-- Card 2 — sem RAP -->
+        <div class="glass-card abordagem-card" style="border-color:rgba(0,212,255,0.06);">
+          <div class="card-row">
+            <div class="card-avatars">
+              <div class="avatar avatar-sm">RL</div>
+            </div>
+            <div class="card-info">
+              <div class="card-date">05/04/2026 · 14:22</div>
+              <div class="card-names">ROBERTO L.</div>
+              <div class="card-addr">SEPS 712/912 Norte</div>
+            </div>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-text-dim);flex-shrink:0;">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+          <div class="card-footer">
+            <span class="badge badge-sem-rap">Sem RAP</span>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="glass-card abordagem-card" style="border-color:rgba(0,212,255,0.06);">
+          <div class="card-row">
+            <div class="card-avatars">
+              <div class="avatar avatar-sm">TS</div>
+              <div class="avatar avatar-sm" style="background:rgba(0,255,136,0.07);color:var(--color-success);">AP</div>
+              <div class="avatar avatar-sm" style="background:rgba(255,107,0,0.07);color:var(--color-danger);">FN</div>
+            </div>
+            <div class="card-info">
+              <div class="card-date">04/04/2026 · 02:10</div>
+              <div class="card-names">THIAGO S. · ANA P. +1</div>
+              <div class="card-addr">Asa Norte, CLN 315</div>
+            </div>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-text-dim);flex-shrink:0;">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+          <div class="card-footer">
+            <span class="badge badge-rap">RAP vinculada</span>
+            <span class="count-badge" style="margin-left:auto;">2 veículos</span>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="glass-card abordagem-card" style="border-color:rgba(0,212,255,0.06);">
+          <div class="card-row">
+            <div class="card-avatars">
+              <div class="avatar avatar-sm">CM</div>
+            </div>
+            <div class="card-info">
+              <div class="card-date">03/04/2026 · 19:55</div>
+              <div class="card-names">CARLOS M.</div>
+              <div class="card-addr">Cruzeiro Novo, Bloco H</div>
+            </div>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-text-dim);flex-shrink:0;">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+          <div class="card-footer">
+            <span class="badge badge-sem-rap">Sem RAP</span>
+            <span class="badge badge-midia">1 mídia</span>
+          </div>
+        </div>
+
+        <!-- load more hint -->
+        <div style="text-align:center;padding:8px 0;">
+          <span style="font-family:var(--font-display);font-size:10px;color:var(--color-text-dim);">— carregar mais —</span>
+        </div>
+
+      </div>
+
+      <!-- Bottom Nav -->
+      <nav class="bottom-nav">
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          <span class="nav-label">Abordagem</span>
+        </button>
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <span class="nav-label">Consulta</span>
+        </button>
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span class="nav-label">Início</span>
+        </button>
+        <button class="nav-btn active">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span class="nav-label">Ocorrência</span>
+        </button>
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="nav-label">Analítico</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ===================== TELA 2: DETALHE ===================== -->
+  <div>
+    <div class="demo-label">Tela 2 — Detalhe da Abordagem (ao clicar no card)</div>
+    <div class="phone">
+
+      <!-- Header com voltar -->
+      <div class="header">
+        <div class="header-back">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </div>
+        <div class="page-title">
+          <span class="header-title">#4821 · 06/04/2026</span>
+          <span class="header-sub">23:47 · Setor Comercial Sul</span>
+        </div>
+        <span class="badge badge-rap" style="margin-left:auto;">RAP</span>
+      </div>
+
+      <!-- Content -->
+      <div class="main">
+
+        <!-- PESSOAS -->
+        <div class="glass-card card-led-blue" style="padding:12px;">
+          <div class="detail-block">
+            <span class="section-label">Abordados</span>
+            <div class="detail-pessoas">
+              <!-- pessoa 1 -->
+              <div class="pessoa-chip">
+                <div class="avatar" style="width:54px;height:54px;font-size:16px;">MA</div>
+                <span>MARCOS A.</span>
+              </div>
+              <!-- pessoa 2 com foto simulada -->
+              <div class="pessoa-chip">
+                <div class="avatar" style="width:54px;height:54px;background:rgba(167,139,250,0.12);color:#A78BFA;font-size:16px;">JC</div>
+                <span>JEAN C.</span>
+              </div>
+              <!-- tap hint -->
+              <div style="align-self:center;margin-left:4px;">
+                <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);">↑ toque para ver ficha</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VEÍCULO -->
+        <div class="glass-card" style="padding:12px;">
+          <div class="detail-block">
+            <span class="section-label">Veículos</span>
+            <div class="veiculo-row">
+              <div class="veiculo-thumb">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-text-dim);"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+              </div>
+              <div>
+                <div class="placa">ABC-1D23</div>
+                <div class="veiculo-model">Honda Civic · Prata · 2019</div>
+              </div>
+              <span style="margin-left:auto;font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);">1 foto</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- MAPA + ENDEREÇO -->
+        <div class="glass-card" style="padding:12px;">
+          <div class="detail-block">
+            <span class="section-label">Localização</span>
+            <div class="map-placeholder">
+              <div class="map-grid"></div>
+              <div class="map-pin"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-primary);flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">Setor Comercial Sul, Bloco A · Brasília/DF</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- OBSERVAÇÃO -->
+        <div class="glass-card" style="padding:12px;">
+          <div class="detail-block">
+            <span class="section-label">Observação</span>
+            <div class="obs-box">
+              Indivíduos abordados próximos ao terminal de ônibus. Verificado RG e consultado no sistema. Nada de ilícito encontrado. Veículo com emplacamento conferido no DETRAN.
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- UPLOAD RAP -->
+        <div class="glass-card" style="padding:12px;">
+          <div class="detail-block">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span class="section-label">Boletim de Ocorrência (RAP)</span>
+              <span class="badge badge-rap">Vinculado</span>
+            </div>
+            <!-- já tem RAP -->
+            <div class="upload-zone upload-done" style="cursor:default;">
+              <div class="upload-icon">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-success);"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+              </div>
+              <div>
+                <div style="font-family:var(--font-display);font-size:11px;color:var(--color-success);">RAP 2026/004821.pdf</div>
+                <div style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);">Enviado · 06/04/2026 · 2,4 MB</div>
+              </div>
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-text-dim);margin-left:auto;"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- UPLOAD MÍDIAS -->
+        <div class="glass-card" style="padding:12px;">
+          <div class="detail-block">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="section-label">Mídias</span>
+              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);">fotos · vídeos · autorizações</span>
+            </div>
+
+            <!-- mídia existente -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <div style="width:64px;height:64px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-text-dim);"><path d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+                <span style="position:absolute;bottom:2px;right:3px;font-family:var(--font-display);font-size:7px;color:var(--color-primary);">VID</span>
+              </div>
+              <div style="width:64px;height:64px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-text-dim);"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+              <!-- botão add -->
+              <div class="upload-zone" style="width:64px;height:64px;padding:0;justify-content:center;flex-direction:column;gap:2px;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-primary);"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span style="font-family:var(--font-display);font-size:8px;color:var(--color-text-dim);">ADD</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- bottom padding -->
+        <div style="height:8px;"></div>
+
+      </div>
+
+      <!-- Bottom Nav -->
+      <nav class="bottom-nav">
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          <span class="nav-label">Abordagem</span>
+        </button>
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <span class="nav-label">Consulta</span>
+        </button>
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span class="nav-label">Início</span>
+        </button>
+        <button class="nav-btn active">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span class="nav-label">Ocorrência</span>
+        </button>
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="nav-label">Analítico</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ===================== TELA 3: DETALHE SEM RAP ===================== -->
+  <div>
+    <div class="demo-label">Tela 2b — Detalhe sem RAP (upload disponível)</div>
+    <div class="phone">
+
+      <div class="header">
+        <div class="header-back">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </div>
+        <div class="page-title">
+          <span class="header-title">#4820 · 05/04/2026</span>
+          <span class="header-sub">14:22 · SEPS 712/912 Norte</span>
+        </div>
+        <span class="badge badge-sem-rap" style="margin-left:auto;">Sem RAP</span>
+      </div>
+
+      <div class="main">
+
+        <!-- PESSOAS -->
+        <div class="glass-card card-led-blue" style="padding:12px;">
+          <div class="detail-block">
+            <span class="section-label">Abordados</span>
+            <div class="detail-pessoas">
+              <div class="pessoa-chip">
+                <div class="avatar" style="width:54px;height:54px;font-size:16px;">RL</div>
+                <span>ROBERTO L.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MAPA -->
+        <div class="glass-card" style="padding:12px;">
+          <div class="detail-block">
+            <span class="section-label">Localização</span>
+            <div class="map-placeholder">
+              <div class="map-grid"></div>
+              <div class="map-pin"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-primary);flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">SEPS 712/912 Norte · Brasília/DF</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- OBSERVAÇÃO -->
+        <div class="glass-card" style="padding:12px;">
+          <div class="detail-block">
+            <span class="section-label">Observação</span>
+            <div class="obs-box">
+              Abordagem de rotina. Indivíduo em atitude suspeita nas proximidades da escola. Consultado no sistema, sem antecedentes.
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- UPLOAD RAP — sem arquivo ainda -->
+        <div class="glass-card" style="padding:12px;">
+          <div class="detail-block">
+            <span class="section-label">Boletim de Ocorrência (RAP)</span>
+            <div class="upload-zone">
+              <div class="upload-icon">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-primary);"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </div>
+              <div>
+                <div style="font-family:var(--font-display);font-size:11px;color:var(--color-primary);">Anexar PDF da RAP</div>
+                <div style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);">Toque para selecionar o arquivo</div>
+              </div>
+            </div>
+            <!-- campo número -->
+            <div>
+              <div style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Número da RAP</div>
+              <input type="text" placeholder="Ex: RAP 2026/004820"
+                style="width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:8px 10px;color:var(--color-text);font-family:var(--font-data);font-size:13px;outline:none;">
+            </div>
+            <button style="width:100%;padding:10px;background:var(--color-primary);color:var(--color-bg);font-family:var(--font-display);font-size:12px;font-weight:700;border:none;border-radius:4px;cursor:pointer;letter-spacing:0.08em;">
+              ENVIAR OCORRÊNCIA
+            </button>
+          </div>
+        </div>
+
+        <!-- UPLOAD MÍDIAS -->
+        <div class="glass-card" style="padding:12px;">
+          <div class="detail-block">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="section-label">Mídias</span>
+              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);">fotos · vídeos · autorizações</span>
+            </div>
+            <div class="upload-zone" style="flex-direction:column;gap:4px;text-align:center;">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-primary);margin:0 auto;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span style="font-family:var(--font-display);font-size:10px;color:var(--color-primary);">Adicionar mídia</span>
+              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);">Fotos, vídeos ou documentos</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:8px;"></div>
+
+      </div>
+
+      <nav class="bottom-nav">
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          <span class="nav-label">Abordagem</span>
+        </button>
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <span class="nav-label">Consulta</span>
+        </button>
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span class="nav-label">Início</span>
+        </button>
+        <button class="nav-btn active">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span class="nav-label">Ocorrência</span>
+        </button>
+        <button class="nav-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="nav-label">Analítico</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
