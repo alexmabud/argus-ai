@@ -124,11 +124,11 @@
         </div>
       </button>
 
-      <button type="button" aria-label="Navegar para Ocorrência" class="bottom-nav-btn" :class="{ active: currentPage === 'ocorrencia-upload' }" @click="navigate('ocorrencia-upload')">
+      <button type="button" aria-label="Navegar para Relatório de Abordagens" class="bottom-nav-btn" :class="{ active: currentPage === 'ocorrencias' || currentPage === 'abordagem-detalhe' }" @click="navigate('ocorrencias')">
         <div class="nav-pill">
           <div class="nav-indicator"></div>
           <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg>
-          <span class="bottom-nav-label">Ocorrência</span>
+          <span class="bottom-nav-label">Relatórios</span>
         </div>
       </button>
 
@@ -162,7 +162,8 @@
   <script src="/js/pages/abordagem-nova.js?v=9"></script>
   <script src="/js/pages/consulta.js?v=5"></script>
   <script src="/js/pages/pessoa-detalhe.js?v=8"></script>
-  <script src="/js/pages/ocorrencia-upload.js?v=3"></script>
+  <script src="/js/pages/ocorrencias.js?v=1"></script>
+  <script src="/js/pages/abordagem-detalhe.js?v=1"></script>
   <script src="/js/pages/dashboard.js?v=4"></script>
   <script src="/js/pages/admin-usuarios.js?v=3"></script>
   <script src="/js/pages/perfil.js?v=2"></script>
