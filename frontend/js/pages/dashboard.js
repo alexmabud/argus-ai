@@ -69,8 +69,8 @@ function renderDashboard() {
           </p>
         </div>
         <p x-show="!loading" style="font-family: var(--font-data); font-size: 12px; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; white-space: nowrap;">
-          Pessoas Abordadas:
-          <span x-text="(total.pessoas ?? 0).toLocaleString('pt-BR')"
+          Pessoas Cadastradas:
+          <span x-text="(total.pessoas_cadastradas ?? 0).toLocaleString('pt-BR')"
                 style="color: var(--color-success); font-size: 14px; font-weight: 700; text-shadow: 0 0 8px rgba(0,255,136,0.7), 0 0 20px rgba(0,255,136,0.35);"></span>
         </p>
       </div>
