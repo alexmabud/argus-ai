@@ -80,6 +80,8 @@ function renderOcorrencias() {
 
           <!-- Footer badges -->
           <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;">
+            <span style="font-family:var(--font-data);font-size:9px;padding:2px 6px;border-radius:2px;background:rgba(0,212,255,0.06);color:var(--color-text-dim);border:1px solid var(--color-border);"
+                  x-text="'#' + ab.id"></span>
             <template x-if="ab.ocorrencias && ab.ocorrencias.length > 0">
               <span style="font-family:var(--font-display);font-size:9px;padding:2px 8px;border-radius:2px;text-transform:uppercase;letter-spacing:0.08em;background:rgba(0,255,136,0.1);color:var(--color-success);border:1px solid rgba(0,255,136,0.25);">RAP vinculada</span>
             </template>
