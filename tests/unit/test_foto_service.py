@@ -181,3 +181,28 @@ class TestBuscarPorRosto:
         )
 
         assert results[0]["similaridade"] == 0.9877
+
+
+class TestFotoComCompressaoStatus:
+    """Testa que Foto possui campo compressao_status."""
+
+    def test_foto_tem_campo_compressao_status(self):
+        """Foto deve ter atributo compressao_status com default 'na'.
+
+        Verifica existência da coluna no modelo e que o default de INSERT
+        está configurado como 'na' (comportamento SQLAlchemy DeclarativeBase).
+        """
+        from sqlalchemy import inspect as sa_inspect
+
+        from app.models.foto import Foto
+
+        foto = Foto()
+        assert hasattr(foto, "compressao_status")
+
+        # Em DeclarativeBase sem MappedAsDataclass, defaults de coluna
+        # são aplicados no INSERT, não no __init__. Verificamos a configuração.
+        mapper = sa_inspect(Foto)
+        col = mapper.columns["compressao_status"]
+        assert col.default is not None
+        assert col.default.arg == "na"
+        assert col.server_default is not None
