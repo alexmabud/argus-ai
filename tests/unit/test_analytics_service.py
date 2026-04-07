@@ -195,7 +195,7 @@ class TestResumoTotal:
         """Deve retornar totais sem filtro de data."""
         db = AsyncMock()
         mock_result = MagicMock()
-        mock_result.scalar.side_effect = [100, 60]
+        mock_result.scalar.side_effect = [100, 60, 492]
         db.execute = AsyncMock(return_value=mock_result)
         service = AnalyticsService(db)
 
@@ -203,8 +203,10 @@ class TestResumoTotal:
 
         assert "abordagens" in result
         assert "pessoas" in result
+        assert "pessoas_cadastradas" in result
         assert result["abordagens"] == 100
         assert result["pessoas"] == 60
+        assert result["pessoas_cadastradas"] == 492
 
 
 class TestPorDia:
