@@ -168,12 +168,12 @@ class ApiClient {
   delete(path) { return this.request("DELETE", path); }
   uploadForm(path, formData) { return this.request("POST", path, formData); }
 
-  async uploadFile(path, file, extraData = {}) {
+  async uploadFile(path, file, extraData = {}, fieldName = "file") {
     const compressed = typeof compressImage === "function"
       ? await compressImage(file)
       : file;
     const form = new FormData();
-    form.append("file", compressed);
+    form.append(fieldName, compressed);
     for (const [key, value] of Object.entries(extraData)) {
       if (value != null) form.append(key, value);
     }
