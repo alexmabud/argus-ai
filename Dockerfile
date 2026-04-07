@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     tesseract-ocr \
     tesseract-ocr-por \
+    ffmpeg \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
