@@ -610,7 +610,7 @@ function dashboardPage() {
         const dataHoje = `${this.anoHoje}-${String(this.mesHoje).padStart(2,'0')}-${String(this.diaHoje).padStart(2,'0')}`;
         const mesAtual = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}`;
 
-        const [resumoHoje, resumoMes, resumoTotal, porDia, porMes, diasAbordagem, pessoasHoje, recorrentes] =
+        const [resumoHoje, resumoMes, resumoTotal, porDia, porMes, diasAbordagem, pessoasHoje, pontosHoje, recorrentes] =
           await Promise.all([
             api.get('/analytics/resumo-hoje').catch(() => ({})),
             api.get('/analytics/resumo-mes').catch(() => ({})),
@@ -619,6 +619,7 @@ function dashboardPage() {
             api.get('/analytics/por-mes?meses=12').catch(() => []),
             api.get(`/analytics/dias-com-abordagem?mes=${mesAtual}`).catch(() => []),
             api.get(`/analytics/pessoas-do-dia?data=${dataHoje}`).catch(() => []),
+            api.get(`/analytics/abordagens-do-dia?data=${dataHoje}`).catch(() => []),
             api.get('/analytics/pessoas-recorrentes?limit=10').catch(() => []),
           ]);
 
@@ -629,12 +630,16 @@ function dashboardPage() {
         this.porMes = porMes;
         this.diasComAbordagem = diasAbordagem;
         this.pessoasDoDia = pessoasHoje;
+        this.pontosMapaDia = pontosHoje;
         this.recorrentes = recorrentes;
       } catch {
         showToast('Erro ao carregar dashboard', 'error');
       } finally {
         this.loading = false;
         await this.$nextTick();
+        if (this.pontosMapaDia.length > 0) {
+          await this.setupMapaAnaliticoObserver();
+        }
         // Aguarda o browser calcular layout do DOM. x-if insere elementos
         // no nextTick, mas dimensões computadas só existem após o primeiro
         // paint. Dois requestAnimationFrame garantem: 1º = elementos
