@@ -275,7 +275,7 @@ class AnalyticsService:
         total = (await self.db.execute(total_q)).scalar() or 0
 
         # Conta pessoas distintas que foram abordadas ao menos uma vez
-        pessoas_q = (
+        pessoas_abordadas_q = (
             select(func.count(func.distinct(AbordagemPessoa.pessoa_id)))
             .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
             .where(
@@ -283,9 +283,20 @@ class AnalyticsService:
                 Abordagem.ativo,
             )
         )
-        pessoas = (await self.db.execute(pessoas_q)).scalar() or 0
+        pessoas_abordadas = (await self.db.execute(pessoas_abordadas_q)).scalar() or 0
 
-        return {"abordagens": total, "pessoas": pessoas}
+        # Conta todas as pessoas cadastradas na guarnição
+        pessoas_cadastradas_q = select(func.count(Pessoa.id)).where(
+            Pessoa.guarnicao_id == guarnicao_id,
+            Pessoa.ativo,
+        )
+        pessoas_cadastradas = (await self.db.execute(pessoas_cadastradas_q)).scalar() or 0
+
+        return {
+            "abordagens": total,
+            "pessoas": pessoas_abordadas,
+            "pessoas_cadastradas": pessoas_cadastradas,
+        }
 
     async def por_dia(self, guarnicao_id: int, dias: int = 30) -> list[dict]:
         """Retorna série temporal diária de abordagens e pessoas.
