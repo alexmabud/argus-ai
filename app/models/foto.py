@@ -33,6 +33,7 @@ class Foto(Base, TimestampMixin, SoftDeleteMixin):
             tipo "veiculo"/"placa").
         embedding_face: Vetor facial 512-dimensional (pgvector).
         face_processada: Flag indicando se embedding foi extraído.
+        compressao_status: Estado da compressão de vídeo ('na', 'pending', 'done', 'error').
         pessoa: Relacionamento com Pessoa.
         abordagem: Relacionamento com Abordagem.
         veiculo: Relacionamento com Veiculo (opcional).
@@ -65,6 +66,7 @@ class Foto(Base, TimestampMixin, SoftDeleteMixin):
     )
     embedding_face = mapped_column(Vector(512), nullable=True)
     face_processada: Mapped[bool] = mapped_column(Boolean, default=False)
+    compressao_status: Mapped[str] = mapped_column(String(10), default="na", server_default="na")
 
     pessoa = relationship("Pessoa", back_populates="fotos", lazy="selectin")
     abordagem = relationship("Abordagem", back_populates="fotos", lazy="selectin")
