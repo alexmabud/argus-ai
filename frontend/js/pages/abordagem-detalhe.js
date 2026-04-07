@@ -90,7 +90,7 @@ function renderAbordagemDetalhe() {
             <div style="display:flex;flex-direction:column;gap:8px;">
               <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Localização</span>
               <template x-if="ab.latitude && ab.longitude">
-                <div :id="'mapa-ab-' + ab.id" style="width:100%;height:120px;border-radius:4px;border:1px solid var(--color-border);"></div>
+                <div :id="'mapa-ab-' + ab.id" style="width:100%;height:280px;border-radius:4px;border:1px solid var(--color-border);"></div>
               </template>
               <template x-if="!ab.latitude || !ab.longitude">
                 <div style="height:60px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;display:flex;align-items:center;justify-content:center;">
@@ -294,7 +294,7 @@ function abordagemDetalhePage() {
         const div = document.getElementById(divId);
         if (!div) return false;
         if (this._mapa) { this._mapa.remove(); this._mapa = null; }
-        this._mapa = L.map(div, { zoomControl: false, dragging: false, scrollWheelZoom: false })
+        this._mapa = L.map(div, { zoomControl: true, dragging: true, scrollWheelZoom: true })
           .setView([this.ab.latitude, this.ab.longitude], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap'
