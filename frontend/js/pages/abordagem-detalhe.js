@@ -343,7 +343,7 @@ function abordagemDetalhePage() {
           numero_ocorrencia: this.rapNumero,
           abordagem_id: this.ab.id,
           data_ocorrencia: dataIso,
-        });
+        }, 'arquivo_pdf');
         this.ab = { ...this.ab, ocorrencias: [...(this.ab.ocorrencias || []), result] };
         this.rapFile = null;
         this.rapNumero = '';
