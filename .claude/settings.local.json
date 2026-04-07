@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python -c:*)",
-      "WebFetch(domain:github.com)",
-      "Bash(git rm:*)"
-    ]
-  }
-}
