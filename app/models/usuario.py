@@ -48,7 +48,7 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
         nome_guerra: Nome de guerra do agente (ex: "Silva"). Máx 50 chars.
         foto_url: URL pública da foto de perfil no R2 (opcional).
         session_id: UUID da sessão ativa. None = sem sessão. Novo login gera novo UUID.
-        guarnicao_id: ID da guarnição (chave estrangeira).
+        guarnicao_id: ID da guarnição (FK, nullable — sem guarnição = acesso restrito).
         is_admin: Flag indicando permissões administrativas.
         guarnicao: Relacionamento com Guarnicao.
     """
@@ -64,7 +64,7 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     nome_guerra: Mapped[str | None] = mapped_column(String(50), nullable=True)
     foto_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
-    guarnicao_id: Mapped[int] = mapped_column(ForeignKey("guarnicoes.id"), nullable=False)
+    guarnicao_id: Mapped[int | None] = mapped_column(ForeignKey("guarnicoes.id"), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
 
     guarnicao = relationship(
