@@ -213,6 +213,13 @@ function renderAbordagemDetalhe() {
                     <template x-if="!/\\.(mp4|mov|avi|webm)/i.test(f.arquivo_url)">
                       <img :src="f.arquivo_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
                     </template>
+                    <!-- Botão download -->
+                    <a :href="\`/api/v1/fotos/\${f.id}/download\`"
+                       @click.stop
+                       style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.65);border-radius:3px;padding:2px;display:flex;align-items:center;justify-content:center;"
+                       title="Baixar">
+                      <svg width="12" height="12" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    </a>
                   </div>
                 </template>
                 <!-- Botão adicionar -->
