@@ -28,6 +28,9 @@ if TYPE_CHECKING:
 #: Tamanho máximo de upload de imagem (10 MB) — defesa em profundidade na camada service.
 MAX_FOTO_SIZE = 10 * 1024 * 1024
 
+#: Tamanho máximo de upload de mídia (vídeo/PDF) — alinhado com o limite do router.
+MAX_MIDIA_SIZE = 200 * 1024 * 1024
+
 
 class FotoService:
     """Serviço de Foto com upload S3 e registro no banco.
@@ -75,6 +78,7 @@ class FotoService:
         guarnicao_id: int | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        max_size: int = MAX_FOTO_SIZE,
     ) -> Foto:
         """Faz upload de foto para S3 e cria registro no banco.
 
@@ -101,15 +105,18 @@ class FotoService:
             guarnicao_id: ID da guarnição do usuário para isolamento multi-tenant (opcional).
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
+            max_size: Tamanho máximo permitido em bytes (padrão: MAX_FOTO_SIZE = 10 MB).
+                      Para vídeos/PDFs, passar MAX_MIDIA_SIZE (200 MB).
 
         Returns:
             Foto criada com ID atribuído e URL do storage.
 
         Raises:
+            ValueError: Se o arquivo exceder o tamanho máximo permitido.
             Exception: Se falha no upload ao S3/R2.
         """
-        if len(file_bytes) > MAX_FOTO_SIZE:
-            raise ValueError(f"Arquivo excede {MAX_FOTO_SIZE // (1024 * 1024)} MB")
+        if len(file_bytes) > max_size:
+            raise ValueError(f"Arquivo excede {max_size // (1024 * 1024)} MB")
 
         # 1. Upload para S3/R2
         key = self.storage.generate_key("fotos", filename)
