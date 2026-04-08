@@ -439,6 +439,7 @@ async def upload_midia_abordagem(
             guarnicao_id=user.guarnicao_id,
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
+            max_size=MAX_MIDIA_SIZE,
         )
         # Enfileirar compressão de vídeo em background
         if content_type.startswith("video/"):
