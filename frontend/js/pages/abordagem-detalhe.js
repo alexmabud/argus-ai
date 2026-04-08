@@ -142,11 +142,21 @@ function renderAbordagemDetalhe() {
                         <div style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);"
                              x-text="'Data: ' + new Date(oc.data_ocorrencia).toLocaleDateString('pt-BR')"></div>
                       </div>
-                      <a :href="oc.arquivo_pdf_url" target="_blank"
-                         style="color:var(--color-text-dim);display:flex;align-items:center;"
-                         title="Abrir PDF">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                      </a>
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <a :href="oc.arquivo_pdf_url" target="_blank"
+                           style="color:var(--color-text-dim);display:flex;align-items:center;"
+                           title="Abrir PDF">
+                          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        </a>
+                        <a :href="oc.arquivo_pdf_url"
+                           download
+                           @click.stop
+                           style="display:inline-flex;align-items:center;gap:3px;font-family:var(--font-display);font-size:9px;color:var(--color-primary);text-decoration:none;"
+                           title="Baixar PDF">
+                          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                          PDF
+                        </a>
+                      </div>
                     </div>
                   </template>
                 </div>
