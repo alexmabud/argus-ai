@@ -4,8 +4,8 @@ Torna o campo guarnicao_id da tabela usuarios nullable para permitir usuários
 sem guarnição atribuída (ex: admin global). Endpoints que requerem guarnição
 devem verificar e retornar 403 quando o campo for nulo.
 
-Revision ID: a1b2c3d4e5f6
-Revises: f5a6b7c8d9e0
+Revision ID: 3df2fb27cad9
+Revises: 45215d6a95a6
 Create Date: 2026-04-07 00:00:00.000000
 
 """
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "a1b2c3d4e5f6"
-down_revision: str = "f5a6b7c8d9e0"
+revision: str = "3df2fb27cad9"
+down_revision: str = "45215d6a95a6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
