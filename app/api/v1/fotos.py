@@ -414,6 +414,20 @@ async def upload_midia_abordagem(
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
+        # Enfileirar compressão de vídeo em background
+        if content_type.startswith("video/"):
+            foto.compressao_status = "pending"
+            await db.commit()
+            try:
+                from arq.connections import ArqRedis, create_pool
+
+                from app.worker import WorkerSettings
+
+                redis_pool: ArqRedis = await create_pool(WorkerSettings.redis_settings)
+                await redis_pool.enqueue_job("comprimir_video_task", foto.id)
+                await redis_pool.aclose()
+            except Exception:
+                logger.warning("Worker offline — vídeo da foto %d será comprimido depois", foto.id)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
