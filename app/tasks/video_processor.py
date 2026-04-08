@@ -36,7 +36,7 @@ def _e_video(content_type: str) -> bool:
     return content_type in _VIDEO_MIMES
 
 
-def _comprimir_video_sincrono(video_bytes: bytes) -> bytes:
+def _comprimir_video_sincrono(video_bytes: bytes, ext: str = "mp4") -> bytes:
     """Comprime vídeo com ffmpeg: H.264, 720p max, CRF 28, preset fast.
 
     Executa ffmpeg via subprocess síncrono. Usa arquivos temporários para
@@ -44,6 +44,8 @@ def _comprimir_video_sincrono(video_bytes: bytes) -> bytes:
 
     Args:
         video_bytes: Bytes do vídeo original.
+        ext: Extensão do arquivo de entrada para detecção correta do container
+            pelo ffmpeg (padrão: 'mp4').
 
     Returns:
         Bytes do vídeo comprimido em MP4/H.264.
@@ -55,7 +57,7 @@ def _comprimir_video_sincrono(video_bytes: bytes) -> bytes:
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp = Path(tmp_dir)
-        entrada = tmp / "input.mp4"
+        entrada = tmp / f"input.{ext}"
         saida = tmp / "output.mp4"
 
         entrada.write_bytes(video_bytes)
@@ -99,7 +101,7 @@ async def comprimir_video_task(ctx: dict, foto_id: int) -> dict:
 
     Pipeline:
     1. Busca Foto no banco com lock (skip_locked para evitar duplo processamento)
-    2. Download dos bytes do MinIO
+    2. Download dos bytes do MinIO usando a extensão da URL para o input do ffmpeg
     3. Comprime com ffmpeg em thread separada (CPU-bound)
     4. Substitui o arquivo no MinIO (mesma key)
     5. Atualiza compressao_status='done' no banco
@@ -134,17 +136,27 @@ async def comprimir_video_task(ctx: dict, foto_id: int) -> dict:
                 logger.error("Foto %d não encontrada para compressão", foto_id)
                 return {"status": "erro", "motivo": "Foto não encontrada"}
 
-            if foto.compressao_status == "done":
-                logger.info("Foto %d já comprimida, pulando", foto_id)
-                return {"status": "já_comprimida"}
+            if foto.compressao_status in {"done", "processing"}:
+                logger.info("Foto %d já em processamento/comprimida, pulando", foto_id)
+                return {"status": "já_processada"}
+
+            # Marcar como processing antes de baixar (protege contra retry duplo)
+            foto.compressao_status = "processing"
+            await db.commit()
 
             # Download do original
             key = extrair_key_da_url(foto.arquivo_url)
             video_bytes = await storage.download(key)
             tamanho_original = len(video_bytes)
 
+            # Extrair extensão do arquivo para o ffmpeg detectar o container correto
+            url_ext = (
+                foto.arquivo_url.rsplit(".", 1)[-1].lower() if "." in foto.arquivo_url else "mp4"
+            )
+            safe_ext = url_ext if url_ext in {"mp4", "mov", "avi", "webm"} else "mp4"
+
             # Compressão em thread separada (CPU-bound + subprocess)
-            compressed = await asyncio.to_thread(_comprimir_video_sincrono, video_bytes)
+            compressed = await asyncio.to_thread(_comprimir_video_sincrono, video_bytes, safe_ext)
             tamanho_comprimido = len(compressed)
 
             # Substituir no MinIO (mesma key)
