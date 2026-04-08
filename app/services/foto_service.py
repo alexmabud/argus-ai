@@ -72,6 +72,7 @@ class FotoService:
         latitude: float | None,
         longitude: float | None,
         user_id: int,
+        guarnicao_id: int | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> Foto:
@@ -97,6 +98,7 @@ class FotoService:
             latitude: Latitude GPS da captura (opcional).
             longitude: Longitude GPS da captura (opcional).
             user_id: ID do oficial que fez o upload.
+            guarnicao_id: ID da guarnição do usuário para isolamento multi-tenant (opcional).
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
 
@@ -123,6 +125,7 @@ class FotoService:
             pessoa_id=pessoa_id,
             abordagem_id=abordagem_id,
             veiculo_id=veiculo_id,
+            guarnicao_id=guarnicao_id,
             face_processada=False,
         )
         await self.repo.create(foto)
