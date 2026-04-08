@@ -187,7 +187,7 @@ def _serializar_detalhe(abordagem: Abordagem) -> AbordagemDetail:
     ]
     veiculos = [
         VeiculoAbordagemRead(
-            **VeiculoAbordagemRead.model_validate(av.veiculo).model_dump(),
+            **VeiculoAbordagemRead.model_validate(av.veiculo).model_dump(exclude={"pessoa_id"}),
             pessoa_id=av.pessoa_id,
         )
         for av in abordagem.veiculos
