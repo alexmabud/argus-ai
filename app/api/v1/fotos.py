@@ -436,6 +436,7 @@ async def upload_midia_abordagem(
             latitude=None,
             longitude=None,
             user_id=user.id,
+            guarnicao_id=user.guarnicao_id,
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
@@ -520,7 +521,7 @@ async def download_midia(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mídia não encontrada")
 
     # Validar tenant — foto deve pertencer à guarnição do usuário
-    if foto.guarnicao_id is not None and foto.guarnicao_id != user.guarnicao_id:
+    if foto.guarnicao_id != user.guarnicao_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso negado a esta mídia",
