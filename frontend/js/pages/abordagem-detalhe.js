@@ -366,7 +366,7 @@ function abordagemDetalhePage() {
         this.rapNumero = '';
         this.rapData = '';
       } catch (e) {
-        this.rapErro = 'Erro ao enviar RAP. Verifique o arquivo e tente novamente.';
+        this.rapErro = e?.message || 'Erro ao enviar RAP. Verifique o arquivo e tente novamente.';
       } finally {
         this.enviandoRap = false;
       }
