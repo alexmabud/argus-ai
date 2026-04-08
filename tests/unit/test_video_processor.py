@@ -53,22 +53,25 @@ class TestComprimir:
 
         # Criar vídeo de teste válido com ffmpeg
         video_path = tmp_path / "test.mp4"
-        result = subprocess.run(
-            [
-                "ffmpeg",
-                "-f",
-                "lavfi",
-                "-i",
-                "color=c=blue:s=320x240:d=2",
-                "-c:v",
-                "libx264",
-                "-t",
-                "2",
-                str(video_path),
-                "-y",
-            ],
-            capture_output=True,
-        )
+        try:
+            result = subprocess.run(
+                [
+                    "ffmpeg",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "color=c=blue:s=320x240:d=2",
+                    "-c:v",
+                    "libx264",
+                    "-t",
+                    "2",
+                    str(video_path),
+                    "-y",
+                ],
+                capture_output=True,
+            )
+        except FileNotFoundError:
+            pytest.skip("ffmpeg não disponível no ambiente de teste")
         if result.returncode != 0:
             pytest.skip("ffmpeg não disponível no ambiente de teste")
 
