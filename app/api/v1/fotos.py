@@ -6,8 +6,10 @@ por pessoa ou abordagem, busca por similaridade facial
 """
 
 import logging
+import re
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
@@ -33,6 +35,7 @@ from app.services.abordagem_service import AbordagemService
 from app.services.audit_service import AuditService
 from app.services.foto_service import FotoService
 from app.services.pessoa_service import PessoaService
+from app.services.storage_service import StorageService
 
 logger = logging.getLogger("argus")
 
@@ -65,6 +68,28 @@ try:
     from app.services.ocr_service import OCRService
 except ImportError:
     OCRService = None  # type: ignore[misc, assignment]
+
+
+def _sanitizar_filename(filename: str) -> str:
+    """Sanitiza nome de arquivo para uso em Content-Disposition.
+
+    Remove path traversal, substitui espaços por underscore e
+    garante que o resultado não seja vazio.
+
+    Args:
+        filename: Nome original do arquivo.
+
+    Returns:
+        Nome sanitizado seguro para cabeçalho HTTP.
+    """
+    # Remover qualquer componente de path
+    name = filename.replace("\\", "/").split("/")[-1]
+    # Substituir espaços por underscore
+    name = name.replace(" ", "_")
+    # Remover caracteres não seguros (manter alfanuméricos, ponto, hífen, underscore)
+    name = re.sub(r"[^\w.\-]", "", name)
+    return name or "midia"
+
 
 router = APIRouter(prefix="/fotos", tags=["Fotos"])
 
@@ -446,3 +471,96 @@ async def upload_midia_abordagem(
     await db.commit()
 
     return FotoUploadResponse(id=foto.id, arquivo_url=foto.arquivo_url, tipo=foto.tipo)
+
+
+@router.get("/{foto_id}/download")
+@limiter.limit("30/minute")
+async def download_midia(
+    request: Request,
+    foto_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> StreamingResponse:
+    """Faz download forçado de mídia ou PDF vinculado a uma abordagem.
+
+    Busca a Foto no banco, valida que pertence à guarnição do usuário,
+    baixa os bytes do MinIO e retorna com Content-Disposition: attachment
+    para forçar o download no browser em vez de abrir inline.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        foto_id: ID da Foto a baixar.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        StreamingResponse com o arquivo e header de download.
+
+    Raises:
+        HTTPException 404: Foto não encontrada ou deletada.
+        HTTPException 403: Foto não pertence à guarnição do usuário.
+        HTTPException 500: Erro ao baixar do storage.
+
+    Status Code:
+        200: Arquivo retornado com Content-Disposition: attachment.
+        429: Rate limit (30/min).
+    """
+    from sqlalchemy import select
+
+    from app.models.foto import Foto
+    from app.utils.s3 import extrair_key_da_url
+
+    # Buscar foto (respeitando soft delete via ativo=True)
+    result = await db.execute(
+        select(Foto).where(Foto.id == foto_id, Foto.ativo == True)  # noqa: E712
+    )
+    foto = result.scalar_one_or_none()
+
+    if foto is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mídia não encontrada")
+
+    # Validar tenant — foto deve pertencer à guarnição do usuário
+    if foto.guarnicao_id is not None and foto.guarnicao_id != user.guarnicao_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado a esta mídia",
+        )
+
+    # Determinar nome do arquivo a partir da URL armazenada
+    url_filename = foto.arquivo_url.split("/")[-1]
+    safe_filename = _sanitizar_filename(url_filename)
+
+    # Determinar content-type a partir da extensão
+    ext = safe_filename.rsplit(".", 1)[-1].lower() if "." in safe_filename else ""
+    content_type_map = {
+        "mp4": "video/mp4",
+        "mov": "video/quicktime",
+        "avi": "video/x-msvideo",
+        "webm": "video/webm",
+        "pdf": "application/pdf",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "webp": "image/webp",
+    }
+    media_type = content_type_map.get(ext, "application/octet-stream")
+
+    # Download dos bytes do MinIO
+    try:
+        storage = StorageService()
+        key = extrair_key_da_url(foto.arquivo_url)
+        file_bytes = await storage.download(key)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao baixar o arquivo do storage.",
+        ) from exc
+
+    return StreamingResponse(
+        iter([file_bytes]),
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+            "Content-Length": str(len(file_bytes)),
+        },
+    )
