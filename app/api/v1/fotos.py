@@ -43,17 +43,13 @@ logger = logging.getLogger("argus")
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
 #: MIME types permitidos para upload de imagem.
 ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
-#: Tamanho máximo de upload de mídia (200 MB — para vídeos).
-MAX_MIDIA_SIZE = 200 * 1024 * 1024
-#: MIME types permitidos para upload de mídia.
+#: Tamanho máximo de upload de mídia (10 MB — apenas fotos e PDF).
+MAX_MIDIA_SIZE = 10 * 1024 * 1024
+#: MIME types permitidos para upload de mídia (vídeo removido).
 ALLOWED_MIDIA_MIMES = {
     "image/jpeg",
     "image/png",
     "image/webp",
-    "video/mp4",
-    "video/quicktime",
-    "video/x-msvideo",
-    "video/webm",
     "application/pdf",
 }
 
@@ -441,20 +437,6 @@ async def upload_midia_abordagem(
             user_agent=request.headers.get("user-agent"),
             max_size=MAX_MIDIA_SIZE,
         )
-        # Enfileirar compressão de vídeo em background
-        if content_type.startswith("video/"):
-            foto.compressao_status = "pending"
-            await db.commit()
-            try:
-                from arq.connections import ArqRedis, create_pool
-
-                from app.worker import WorkerSettings
-
-                redis_pool: ArqRedis = await create_pool(WorkerSettings.redis_settings)
-                await redis_pool.enqueue_job("comprimir_video_task", foto.id)
-                await redis_pool.aclose()
-            except Exception:
-                logger.warning("Worker offline — vídeo da foto %d será comprimido depois", foto.id)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
