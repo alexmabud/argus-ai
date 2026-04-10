@@ -224,12 +224,11 @@ function renderAbordagemDetalhe() {
                       <img :src="f.arquivo_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
                     </template>
                     <!-- Botão download -->
-                    <a :href="\`/api/v1/fotos/\${f.id}/download\`"
-                       @click.stop
-                       style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.65);border-radius:3px;padding:2px;display:flex;align-items:center;justify-content:center;"
+                    <button @click.stop="downloadMidia(f)"
+                       style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.65);border-radius:3px;padding:2px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;"
                        title="Baixar">
                       <svg width="12" height="12" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    </a>
+                    </button>
                   </div>
                 </template>
                 <!-- Botão adicionar -->
@@ -369,6 +368,25 @@ function abordagemDetalhePage() {
         this.rapErro = e?.message || 'Erro ao enviar RAP. Verifique o arquivo e tente novamente.';
       } finally {
         this.enviandoRap = false;
+      }
+    },
+
+    async downloadMidia(foto) {
+      try {
+        const response = await api.downloadBlob(`/fotos/${foto.id}/download`);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const disposition = response.headers.get('Content-Disposition');
+        const match = disposition && disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';\n]+)["']?/i);
+        a.download = match ? decodeURIComponent(match[1].trim()) : `midia_${foto.id}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        this.midiaErro = 'Erro ao baixar mídia. Tente novamente.';
       }
     },
 
