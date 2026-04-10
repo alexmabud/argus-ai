@@ -214,15 +214,7 @@ function renderAbordagemDetalhe() {
                 <template x-for="f in midiasAbordagem" :key="f.id">
                   <div style="width:64px;height:64px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;overflow:hidden;cursor:pointer;position:relative;"
                        @click="fotoAmpliada = f.arquivo_url">
-                    <template x-if="/\\.(mp4|mov|avi|webm)/i.test(f.arquivo_url)">
-                      <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-text-dim);"><path d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
-                        <span style="font-family:var(--font-display);font-size:7px;color:var(--color-primary);">VID</span>
-                      </div>
-                    </template>
-                    <template x-if="!/\\.(mp4|mov|avi|webm)/i.test(f.arquivo_url)">
-                      <img :src="f.arquivo_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
-                    </template>
+                    <img :src="f.arquivo_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
                     <!-- Botão download -->
                     <button @click.stop="downloadMidia(f)"
                        style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.65);border-radius:3px;padding:2px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;"
@@ -242,7 +234,7 @@ function renderAbordagemDetalhe() {
                     <div style="width:16px;height:16px;border:2px solid var(--color-border);border-top-color:var(--color-primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
                   </template>
                   <span style="font-family:var(--font-display);font-size:8px;color:var(--color-text-dim);" x-show="!enviandoMidia">ADD</span>
-                  <input type="file" accept="image/*,video/*,application/pdf" x-ref="midiaInput" style="display:none;"
+                  <input type="file" accept="image/*,application/pdf" x-ref="midiaInput" style="display:none;"
                          @change="enviarMidia($event.target.files[0])">
                 </div>
               </div>
