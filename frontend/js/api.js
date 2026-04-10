@@ -168,6 +168,28 @@ class ApiClient {
   delete(path) { return this.request("DELETE", path); }
   uploadForm(path, formData) { return this.request("POST", path, formData); }
 
+  async downloadBlob(path) {
+    const url = `${this.baseUrl}${path}`;
+    const headers = {};
+    if (this.token) {
+      headers["Authorization"] = `Bearer ${this.token}`;
+    }
+    let response = await fetch(url, { method: "GET", headers });
+    if (response.status === 401 && this.refreshToken) {
+      const refreshResult = await this._refreshAccessToken();
+      if (refreshResult === "ok") {
+        headers["Authorization"] = `Bearer ${this.token}`;
+        response = await fetch(url, { method: "GET", headers });
+      } else if (refreshResult === "invalid") {
+        this.clearTokens();
+        window.dispatchEvent(new Event("auth:expired"));
+        throw new ApiError(401, "Sessão expirada");
+      }
+    }
+    if (!response.ok) throw new ApiError(response.status, "Erro no download");
+    return response;
+  }
+
   async uploadFile(path, file, extraData = {}, fieldName = "file") {
     const compressed = typeof compressImage === "function"
       ? await compressImage(file)
