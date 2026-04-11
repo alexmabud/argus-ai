@@ -857,15 +857,27 @@ function abordagemForm() {
         stopVoice();
         this.recording = false;
       } else {
-        startVoice(
+        this.erro = null;
+        const started = startVoice(
           (text, isFinal) => {
             if (isFinal) {
               this.observacao += (this.observacao ? " " : "") + text;
             }
           },
-          () => { this.recording = false; }
+          () => { this.recording = false; },
+          (errorType) => {
+            this.recording = false;
+            const msgs = {
+              "not-allowed":    "Permissão de microfone negada. Habilite o microfone nas configurações do navegador.",
+              "no-speech":      "Nenhuma fala detectada. Tente novamente.",
+              "audio-capture":  "Microfone não encontrado. Verifique o hardware.",
+              "network":        "Erro de rede no reconhecimento de voz.",
+              "service-not-allowed": "Serviço de reconhecimento de voz não permitido neste contexto.",
+            };
+            this.erro = msgs[errorType] || `Erro de reconhecimento de voz: ${errorType}`;
+          }
         );
-        this.recording = true;
+        if (started) this.recording = true;
       }
     },
 

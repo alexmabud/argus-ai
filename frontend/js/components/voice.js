@@ -6,7 +6,18 @@
  */
 let _recognition = null;
 
-function startVoice(onResult, onEnd) {
+/**
+ * Inicia reconhecimento de voz e registra resultados e erros via callbacks.
+ *
+ * Args:
+ *     onResult: Chamado com (text, isFinal) a cada resultado de fala.
+ *     onEnd: Chamado quando o reconhecimento encerra (normalmente ou após erro).
+ *     onError: Chamado com (errorType) quando ocorre um erro de reconhecimento.
+ *
+ * Returns:
+ *     true se o reconhecimento foi iniciado, false se não suportado.
+ */
+function startVoice(onResult, onEnd, onError) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) return false;
 
@@ -26,7 +37,9 @@ function startVoice(onResult, onEnd) {
     if (onEnd) onEnd();
   };
 
-  _recognition.onerror = () => {
+  _recognition.onerror = (event) => {
+    console.error("[Voice] Erro de reconhecimento:", event.error);
+    if (onError) onError(event.error);
     if (onEnd) onEnd();
   };
 
