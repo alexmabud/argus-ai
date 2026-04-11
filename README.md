@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/argus-logo.png" alt="Argus AI" width="120" />
+  <img src="frontend/images/argus-eye.webp" alt="Argus AI" width="120" />
 </p>
 
 <h1 align="center">Argus AI</h1>
@@ -200,10 +200,11 @@ argus-ai/
 |   |   +-- router.py          # Agregador de rotas
 |   |   +-- auth.py            # Login, refresh, perfil, foto de perfil
 |   |   +-- pessoas.py         # CRUD pessoas, enderecos, vinculos manuais
-|   |   +-- veiculos.py        # CRUD veiculos, localidades autocomplete
+|   |   +-- veiculos.py        # CRUD veiculos
+|   |   +-- localidades.py     # Autocomplete de bairros, cidades, estados
 |   |   +-- abordagens.py      # Registro de abordagens
 |   |   +-- fotos.py           # Upload de fotos + busca facial
-|   |   +-- consultas.py       # Busca unificada por termo + localidades
+|   |   +-- consultas.py       # Busca unificada por termo
 |   |   +-- ocorrencias.py     # Upload PDF + listagem + busca
 |   |   +-- analytics.py       # Dashboard, metricas, calendario
 |   |   +-- sync.py            # Sincronizacao offline batch
@@ -245,10 +246,11 @@ argus-ai/
 |   |   +-- pages/
 |   |   |   +-- login.js            # Tela de login
 |   |   |   +-- abordagem-nova.js   # Cadastro rapido (< 40s)
+|   |   |   +-- abordagem-detalhe.js # Detalhe de abordagem
 |   |   |   +-- consulta.js         # Busca unificada
 |   |   |   +-- pessoa-detalhe.js   # Detalhe de pessoa + relacionamentos
 |   |   |   +-- dashboard.js        # Dashboard analitico (ApexCharts)
-|   |   |   +-- ocorrencia-upload.js # Upload de BO (PDF)
+|   |   |   +-- ocorrencias.js      # Upload e listagem de BOs (PDF)
 |   |   |   +-- perfil.js           # Edicao de perfil do usuario
 |   |   |   +-- admin-usuarios.js   # Painel admin de usuarios
 |   |   +-- components/
