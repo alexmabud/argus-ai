@@ -95,7 +95,7 @@ async function initDB() {
       const script = document.createElement("script");
       script.src = DEXIE_CDN;
       script.onload = resolve;
-      script.onerror = reject;
+      script.onerror = () => reject(new Error("Falha ao carregar Dexie: CDN indisponível"));
       document.head.appendChild(script);
     });
   }
