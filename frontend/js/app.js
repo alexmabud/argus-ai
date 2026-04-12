@@ -181,7 +181,11 @@ function app() {
       }
 
       // Iniciar IndexedDB
-      await initDB();
+      try {
+        await initDB();
+      } catch (err) {
+        console.warn("[Argus] IndexedDB indisponível:", err.message);
+      }
 
       // Iniciar sync manager
       syncManager.onStatusChange = (status, detail) => {
