@@ -57,7 +57,14 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => {
           if (request.method === "GET") {
-            return caches.match(request);
+            return caches.match(request).then(
+              (cached) =>
+                cached ||
+                new Response(
+                  JSON.stringify({ detail: "Sem conexão. Tente novamente." }),
+                  { status: 503, headers: { "Content-Type": "application/json" } }
+                )
+            );
           }
           return new Response(
             JSON.stringify({ detail: "Sem conexão. Tente novamente." }),
@@ -76,7 +83,11 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(request))
+        .catch(() =>
+          caches
+            .match(request)
+            .then((cached) => cached || new Response("", { status: 503 }))
+        )
     );
   }
 });
