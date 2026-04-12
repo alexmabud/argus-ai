@@ -30,65 +30,45 @@ def upgrade() -> None:
     # 1. audit_logs.detalhes: Text → JSONB
     # Converte dados existentes de texto JSON para JSONB nativo
     op.execute(
-        "ALTER TABLE audit_logs " "ALTER COLUMN detalhes TYPE JSONB " "USING detalhes::jsonb"
+        "ALTER TABLE audit_logs ALTER COLUMN detalhes TYPE JSONB USING detalhes::jsonb"
     )
 
-    # 2. guarnicao_id nullable em fotos e enderecos_pessoa
-    op.add_column(
-        "fotos",
-        sa.Column("guarnicao_id", sa.Integer(), sa.ForeignKey("guarnicoes.id"), nullable=True),
+    # 2. guarnicao_id nullable em fotos e enderecos_pessoa (IF NOT EXISTS para idempotência)
+    op.execute(
+        "ALTER TABLE fotos ADD COLUMN IF NOT EXISTS guarnicao_id INTEGER REFERENCES guarnicoes(id)"
     )
-    op.create_index(op.f("ix_fotos_guarnicao_id"), "fotos", ["guarnicao_id"])
+    op.create_index(op.f("ix_fotos_guarnicao_id"), "fotos", ["guarnicao_id"], if_not_exists=True)
 
-    op.add_column(
-        "enderecos_pessoa",
-        sa.Column("guarnicao_id", sa.Integer(), sa.ForeignKey("guarnicoes.id"), nullable=True),
+    op.execute(
+        "ALTER TABLE enderecos_pessoa ADD COLUMN IF NOT EXISTS guarnicao_id INTEGER REFERENCES guarnicoes(id)"
     )
-    op.create_index(op.f("ix_enderecos_pessoa_guarnicao_id"), "enderecos_pessoa", ["guarnicao_id"])
+    op.create_index(op.f("ix_enderecos_pessoa_guarnicao_id"), "enderecos_pessoa", ["guarnicao_id"], if_not_exists=True)
 
-    # 3. SoftDeleteMixin em abordagem_pessoas
-    op.add_column(
-        "abordagem_pessoas",
-        sa.Column("ativo", sa.Boolean(), server_default="true", nullable=False),
+    # 3. SoftDeleteMixin em abordagem_pessoas (IF NOT EXISTS para idempotência)
+    op.execute(
+        "ALTER TABLE abordagem_pessoas ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT true"
     )
-    op.add_column(
-        "abordagem_pessoas",
-        sa.Column("desativado_em", sa.DateTime(timezone=True), nullable=True),
+    op.execute(
+        "ALTER TABLE abordagem_pessoas ADD COLUMN IF NOT EXISTS desativado_em TIMESTAMPTZ"
     )
-    op.add_column(
-        "abordagem_pessoas",
-        sa.Column(
-            "desativado_por_id",
-            sa.Integer(),
-            sa.ForeignKey(
-                "usuarios.id", name="fk_abordagem_pessoas_desativado_por_id", use_alter=True
-            ),
-            nullable=True,
-        ),
+    op.execute(
+        "ALTER TABLE abordagem_pessoas ADD COLUMN IF NOT EXISTS desativado_por_id INTEGER"
+        " REFERENCES usuarios(id)"
     )
-    op.create_index(op.f("ix_abordagem_pessoas_ativo"), "abordagem_pessoas", ["ativo"])
+    op.create_index(op.f("ix_abordagem_pessoas_ativo"), "abordagem_pessoas", ["ativo"], if_not_exists=True)
 
-    # 4. SoftDeleteMixin em abordagem_veiculos
-    op.add_column(
-        "abordagem_veiculos",
-        sa.Column("ativo", sa.Boolean(), server_default="true", nullable=False),
+    # 4. SoftDeleteMixin em abordagem_veiculos (IF NOT EXISTS para idempotência)
+    op.execute(
+        "ALTER TABLE abordagem_veiculos ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT true"
     )
-    op.add_column(
-        "abordagem_veiculos",
-        sa.Column("desativado_em", sa.DateTime(timezone=True), nullable=True),
+    op.execute(
+        "ALTER TABLE abordagem_veiculos ADD COLUMN IF NOT EXISTS desativado_em TIMESTAMPTZ"
     )
-    op.add_column(
-        "abordagem_veiculos",
-        sa.Column(
-            "desativado_por_id",
-            sa.Integer(),
-            sa.ForeignKey(
-                "usuarios.id", name="fk_abordagem_veiculos_desativado_por_id", use_alter=True
-            ),
-            nullable=True,
-        ),
+    op.execute(
+        "ALTER TABLE abordagem_veiculos ADD COLUMN IF NOT EXISTS desativado_por_id INTEGER"
+        " REFERENCES usuarios(id)"
     )
-    op.create_index(op.f("ix_abordagem_veiculos_ativo"), "abordagem_veiculos", ["ativo"])
+    op.create_index(op.f("ix_abordagem_veiculos_ativo"), "abordagem_veiculos", ["ativo"], if_not_exists=True)
 
 
 def downgrade() -> None:

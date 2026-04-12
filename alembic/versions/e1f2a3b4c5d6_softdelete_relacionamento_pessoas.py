@@ -23,31 +23,34 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Adiciona colunas de soft delete na tabela relacionamento_pessoas."""
-    op.add_column(
-        "relacionamento_pessoas",
-        sa.Column("ativo", sa.Boolean(), nullable=False, server_default="true"),
+    op.execute(
+        "ALTER TABLE relacionamento_pessoas ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT true"
     )
-    op.add_column(
-        "relacionamento_pessoas",
-        sa.Column("desativado_em", sa.DateTime(timezone=True), nullable=True),
+    op.execute(
+        "ALTER TABLE relacionamento_pessoas ADD COLUMN IF NOT EXISTS desativado_em TIMESTAMPTZ"
     )
-    op.add_column(
-        "relacionamento_pessoas",
-        sa.Column("desativado_por_id", sa.Integer(), nullable=True),
+    op.execute(
+        "ALTER TABLE relacionamento_pessoas ADD COLUMN IF NOT EXISTS desativado_por_id INTEGER"
     )
     op.create_index(
         op.f("ix_relacionamento_pessoas_ativo"),
         "relacionamento_pessoas",
         ["ativo"],
         unique=False,
+        if_not_exists=True,
     )
-    op.create_foreign_key(
-        "fk_relacionamento_pessoas_desativado_por_id",
-        "relacionamento_pessoas",
-        "usuarios",
-        ["desativado_por_id"],
-        ["id"],
-        use_alter=True,
+    op.execute(
+        """
+        DO $$ BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'fk_relacionamento_pessoas_desativado_por_id'
+            ) THEN
+                ALTER TABLE relacionamento_pessoas
+                    ADD CONSTRAINT fk_relacionamento_pessoas_desativado_por_id
+                    FOREIGN KEY (desativado_por_id) REFERENCES usuarios(id);
+            END IF;
+        END $$;
+        """
     )
 
 

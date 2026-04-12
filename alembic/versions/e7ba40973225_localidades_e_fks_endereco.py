@@ -51,72 +51,69 @@ ESTADOS = [
 
 def upgrade() -> None:
     """Cria tabela localidades, adiciona FKs em enderecos_pessoa e seed dos 27 estados."""
-    op.create_table(
-        "localidades",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("nome", sa.String(length=200), nullable=False),
-        sa.Column("nome_exibicao", sa.String(length=200), nullable=False),
-        sa.Column("tipo", sa.String(length=10), nullable=False),
-        sa.Column("sigla", sa.String(length=2), nullable=True),
-        sa.Column("parent_id", sa.Integer(), nullable=True),
-        sa.Column("ativo", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("desativado_em", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("desativado_por_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "criado_em", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
-        ),
-        sa.Column(
-            "atualizado_em",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.CheckConstraint("tipo IN ('estado', 'cidade', 'bairro')", name="ck_localidades_tipo"),
-        sa.ForeignKeyConstraint(["parent_id"], ["localidades.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index("ix_localidades_nome", "localidades", ["nome"])
-    op.create_index("ix_localidades_parent_id", "localidades", ["parent_id"])
-    op.create_index("ix_localidades_tipo_parent_nome", "localidades", ["tipo", "parent_id", "nome"])
-
-    # FK columns em enderecos_pessoa
-    op.add_column("enderecos_pessoa", sa.Column("estado_id", sa.Integer(), nullable=True))
-    op.add_column("enderecos_pessoa", sa.Column("cidade_id", sa.Integer(), nullable=True))
-    op.add_column("enderecos_pessoa", sa.Column("bairro_id", sa.Integer(), nullable=True))
-    op.create_foreign_key(
-        "fk_enderecos_estado", "enderecos_pessoa", "localidades", ["estado_id"], ["id"]
-    )
-    op.create_foreign_key(
-        "fk_enderecos_cidade", "enderecos_pessoa", "localidades", ["cidade_id"], ["id"]
-    )
-    op.create_foreign_key(
-        "fk_enderecos_bairro", "enderecos_pessoa", "localidades", ["bairro_id"], ["id"]
+    # Cria tabela localidades se não existir
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS localidades (
+            id SERIAL PRIMARY KEY,
+            nome VARCHAR(200) NOT NULL,
+            nome_exibicao VARCHAR(200) NOT NULL,
+            tipo VARCHAR(10) NOT NULL,
+            sigla VARCHAR(2),
+            parent_id INTEGER REFERENCES localidades(id),
+            ativo BOOLEAN NOT NULL DEFAULT true,
+            desativado_em TIMESTAMPTZ,
+            desativado_por_id INTEGER,
+            criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
+            atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
+            CONSTRAINT ck_localidades_tipo CHECK (tipo IN ('estado', 'cidade', 'bairro'))
+        )
+    """)
+    op.create_index("ix_localidades_nome", "localidades", ["nome"], if_not_exists=True)
+    op.create_index("ix_localidades_parent_id", "localidades", ["parent_id"], if_not_exists=True)
+    op.create_index(
+        "ix_localidades_tipo_parent_nome", "localidades", ["tipo", "parent_id", "nome"],
+        if_not_exists=True,
     )
 
-    # Seed 27 estados
-    localidades_table = sa.table(
-        "localidades",
-        sa.column("nome", sa.String),
-        sa.column("nome_exibicao", sa.String),
-        sa.column("tipo", sa.String),
-        sa.column("sigla", sa.String),
-        sa.column("parent_id", sa.Integer),
-        sa.column("ativo", sa.Boolean),
-    )
-    op.bulk_insert(
-        localidades_table,
-        [
-            {
-                "nome": nome,
-                "nome_exibicao": exibicao,
-                "tipo": "estado",
-                "sigla": sigla,
-                "parent_id": None,
-                "ativo": True,
-            }
-            for nome, exibicao, sigla in ESTADOS
-        ],
-    )
+    # FK columns em enderecos_pessoa (IF NOT EXISTS)
+    op.execute("ALTER TABLE enderecos_pessoa ADD COLUMN IF NOT EXISTS estado_id INTEGER")
+    op.execute("ALTER TABLE enderecos_pessoa ADD COLUMN IF NOT EXISTS cidade_id INTEGER")
+    op.execute("ALTER TABLE enderecos_pessoa ADD COLUMN IF NOT EXISTS bairro_id INTEGER")
+
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_enderecos_estado') THEN
+                ALTER TABLE enderecos_pessoa
+                    ADD CONSTRAINT fk_enderecos_estado FOREIGN KEY (estado_id) REFERENCES localidades(id);
+            END IF;
+        END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_enderecos_cidade') THEN
+                ALTER TABLE enderecos_pessoa
+                    ADD CONSTRAINT fk_enderecos_cidade FOREIGN KEY (cidade_id) REFERENCES localidades(id);
+            END IF;
+        END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_enderecos_bairro') THEN
+                ALTER TABLE enderecos_pessoa
+                    ADD CONSTRAINT fk_enderecos_bairro FOREIGN KEY (bairro_id) REFERENCES localidades(id);
+            END IF;
+        END $$;
+    """)
+
+    # Seed 27 estados (idempotente via ON CONFLICT DO NOTHING na sigla)
+    for nome, exibicao, sigla in ESTADOS:
+        op.execute(
+            sa.text(
+                "INSERT INTO localidades (nome, nome_exibicao, tipo, sigla, parent_id, ativo)"
+                " SELECT :nome, :exibicao, 'estado', :sigla, NULL, true"
+                " WHERE NOT EXISTS (SELECT 1 FROM localidades WHERE sigla = :sigla AND tipo = 'estado')"
+            ).bindparams(nome=nome, exibicao=exibicao, sigla=sigla)
+        )
 
 
 def downgrade() -> None:
