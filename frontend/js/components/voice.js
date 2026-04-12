@@ -26,11 +26,27 @@ function startVoice(onResult, onEnd, onError) {
   _recognition.continuous = true;
   _recognition.interimResults = true;
 
+  let _committedFinal = "";
+
   _recognition.onresult = (event) => {
-    const last = event.results[event.results.length - 1];
-    const text = last[0].transcript;
-    const isFinal = last.isFinal;
-    if (onResult) onResult(text, isFinal);
+    let fullFinal = "";
+    let interim = "";
+
+    for (let i = 0; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        fullFinal += event.results[i][0].transcript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+
+    if (fullFinal !== _committedFinal) {
+      const newText = fullFinal.slice(_committedFinal.length).trim();
+      _committedFinal = fullFinal;
+      if (newText && onResult) onResult(newText, true);
+    } else if (interim && onResult) {
+      onResult(interim.trim(), false);
+    }
   };
 
   _recognition.onend = () => {
