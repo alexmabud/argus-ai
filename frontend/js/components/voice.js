@@ -41,9 +41,8 @@ function startVoice(onResult, onEnd, onError) {
     }
 
     if (fullFinal !== _committedFinal) {
-      const newText = fullFinal.slice(_committedFinal.length).trim();
       _committedFinal = fullFinal;
-      if (newText && onResult) onResult(newText, true);
+      if (_committedFinal && onResult) onResult(_committedFinal.trim(), true);
     } else if (interim && onResult) {
       onResult(interim.trim(), false);
     }

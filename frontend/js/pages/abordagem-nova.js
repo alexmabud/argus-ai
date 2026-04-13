@@ -858,10 +858,13 @@ function abordagemForm() {
         this.recording = false;
       } else {
         this.erro = null;
+        const _voiceBase = this.observacao;
         const started = startVoice(
           (text, isFinal) => {
             if (isFinal) {
-              this.observacao += (this.observacao ? " " : "") + text;
+              this.observacao = _voiceBase
+                ? (_voiceBase + " " + text).trim()
+                : text.trim();
             }
           },
           () => { this.recording = false; },
