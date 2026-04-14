@@ -7,7 +7,7 @@ CPF hash (SHA-256) e carregamento eager de relacionamentos.
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -79,39 +79,46 @@ class PessoaRepository(BaseRepository[Pessoa]):
         skip: int = 0,
         limit: int = 20,
     ) -> Sequence[Pessoa]:
-        """Busca pessoas por substring no nome, ignorando acentos e case.
+        """Busca pessoas por substring no nome ou apelido, ignorando acentos e case.
 
-        Utiliza unaccent + ILIKE para busca parcial. Resultados são
-        ordenados pela posição do match no nome (primeiro nome = prioridade maior).
+        Utiliza unaccent + ILIKE para busca parcial tanto no nome quanto no
+        apelido (vulgo). Resultados são ordenados priorizando match no nome
+        (posição do match) e depois match apenas no apelido.
 
         Args:
-            nome: Termo de busca (nome ou parte do nome).
+            nome: Termo de busca (nome, parte do nome ou apelido/vulgo).
             guarnicao_id: ID da guarnição para filtro multi-tenant.
             skip: Número de registros a pular.
             limit: Número máximo de resultados.
 
         Returns:
-            Sequência de Pessoas ordenadas por posição do match no nome.
+            Sequência de Pessoas ordenadas por relevância do match.
         """
         nome_clean = nome.strip()
         if not nome_clean:
             return []
 
         unaccent_nome = func.unaccent(func.lower(Pessoa.nome))
+        unaccent_apelido = func.unaccent(func.lower(func.coalesce(Pessoa.apelido, "")))
         unaccent_query = func.unaccent(func.lower(nome_clean))
+        like_pattern = "%" + unaccent_query + "%"
 
         query = select(Pessoa).where(
             Pessoa.ativo == True,  # noqa: E712
-            unaccent_nome.like("%" + unaccent_query + "%"),
+            or_(
+                unaccent_nome.like(like_pattern),
+                unaccent_apelido.like(like_pattern),
+            ),
         )
         if guarnicao_id is not None:
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
 
-        query = (
-            query.order_by(func.strpos(unaccent_nome, unaccent_query).asc())
-            .offset(skip)
-            .limit(limit)
+        # Prioriza match no nome; pessoas cujo match é só no apelido vêm depois.
+        ordem_match_nome = case(
+            (unaccent_nome.like(like_pattern), func.strpos(unaccent_nome, unaccent_query)),
+            else_=9999,
         )
+        query = query.order_by(ordem_match_nome.asc(), Pessoa.nome.asc()).offset(skip).limit(limit)
         result = await self.db.execute(query)
         return result.scalars().all()
 
