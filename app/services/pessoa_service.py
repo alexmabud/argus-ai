@@ -93,6 +93,7 @@ class PessoaService:
             cpf_hash=cpf_hash,
             data_nascimento=data.data_nascimento,
             apelido=data.apelido,
+            nome_mae=data.nome_mae,
             observacoes=data.observacoes,
             guarnicao_id=guarnicao_id,
         )
