@@ -23,7 +23,7 @@ function renderConsulta() {
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Pessoa</span>
-          <button @click="showCadastroPessoa = !showCadastroPessoa; if(showCadastroPessoa) cpCarregarEstados(); novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '' }; this.cpEstadoId=null; this.cpCidadeId=null; this.cpCidadeTexto=''; this.cpBairroId=null; this.cpBairroTexto=''; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
+          <button @click="showCadastroPessoa = !showCadastroPessoa; if(showCadastroPessoa) cpCarregarEstados(); novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', nome_mae: '', endereco: '' }; this.cpEstadoId=null; this.cpCidadeId=null; this.cpCidadeTexto=''; this.cpBairroId=null; this.cpBairroTexto=''; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
                   style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-primary);background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
             + Nova Pessoa
           </button>
@@ -108,6 +108,7 @@ function renderConsulta() {
                 <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
                 <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
                 <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
+                <p x-show="p.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mae: ' + p.nome_mae"></p>
               </div>
               <svg width="16" height="16" style="color:var(--color-text-dim);flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
@@ -138,6 +139,7 @@ function renderConsulta() {
                     <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="r.nome || 'Pessoa sem nome'"></p>
                     <p x-show="r.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + r.cpf_masked"></p>
                     <p x-show="r.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + r.apelido"></p>
+                    <p x-show="r.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mae: ' + r.nome_mae"></p>
                     <!-- Barra de confianca -->
                     <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
                       <div style="flex:1;height:4px;background:var(--color-surface-hover);border-radius:2px;overflow:hidden;">
@@ -184,7 +186,7 @@ function renderConsulta() {
              style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-top:4px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text);text-transform:uppercase;letter-spacing:0.06em;">Cadastrar Pessoa</h3>
-            <button @click="showCadastroPessoa = false; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', endereco: '' }; this.cpEstadoId=null; this.cpCidadeId=null; this.cpCidadeTexto=''; this.cpBairroId=null; this.cpBairroTexto=''; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
+            <button @click="showCadastroPessoa = false; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', nome_mae: '', endereco: '' }; this.cpEstadoId=null; this.cpCidadeId=null; this.cpCidadeTexto=''; this.cpBairroId=null; this.cpBairroTexto=''; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
                     style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);background:transparent;border:none;cursor:pointer;">Cancelar</button>
           </div>
 
@@ -211,6 +213,11 @@ function renderConsulta() {
               <label class="login-field-label">Vulgo</label>
               <input type="text" x-model="novaPessoa.apelido" placeholder="Apelido">
             </div>
+          </div>
+
+          <div>
+            <label class="login-field-label">Nome da mae</label>
+            <input type="text" x-model="novaPessoa.nome_mae" placeholder="Nome completo da mae" maxlength="300">
           </div>
 
           <div>
@@ -378,6 +385,7 @@ function renderConsulta() {
                 <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
                 <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
                 <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
+                <p x-show="p.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mae: ' + p.nome_mae"></p>
                 <p x-show="p.endereco_criado_em" style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);"
                    x-text="'Cadastrado em ' + new Date(p.endereco_criado_em).toLocaleDateString('pt-BR')"></p>
               </div>
@@ -461,6 +469,7 @@ function renderConsulta() {
                 <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
                 <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
                 <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
+                <p x-show="p.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mae: ' + p.nome_mae"></p>
                 <p x-show="p.veiculo_info" style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);margin-top:2px;"
                    x-text="'Vinculado via: ' + [p.veiculo_info?.placa, p.veiculo_info?.modelo, p.veiculo_info?.cor, p.veiculo_info?.ano].filter(Boolean).join(' \u00b7 ')">
                 </p>
@@ -675,7 +684,7 @@ function consultaPage() {
 
     // Cadastro nova pessoa
     showCadastroPessoa: false,
-    novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "" },
+    novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" },
     fotoPessoa: null,
     fotoPessoaPreviewUrl: "",
     salvandoPessoa: false,
@@ -967,6 +976,7 @@ function consultaPage() {
         const dataNasc = parseDateBR(this.novaPessoa.data_nascimento);
         if (dataNasc) pessoaData.data_nascimento = dataNasc;
         if (this.novaPessoa.apelido.trim()) pessoaData.apelido = this.novaPessoa.apelido.trim();
+        if (this.novaPessoa.nome_mae.trim()) pessoaData.nome_mae = this.novaPessoa.nome_mae.trim();
 
         const pessoa = await api.post("/pessoas/", pessoaData);
 
@@ -988,7 +998,7 @@ function consultaPage() {
           });
         }
 
-        this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "" };
+        this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
         this.cpEstadoId = null; this.cpCidadeId = null; this.cpCidadeTexto = ""; this.cpBairroId = null; this.cpBairroTexto = "";
         this.fotoPessoa = null;
         this.fotoPessoaPreviewUrl = "";
