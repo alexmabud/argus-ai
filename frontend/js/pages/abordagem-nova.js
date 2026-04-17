@@ -71,7 +71,7 @@ function renderAbordagemNova() {
         <div x-show="showNovaPessoa" x-cloak style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <h3 style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--color-text);margin:0;">Cadastrar novo abordado</h3>
-            <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',data_nascimento:'',apelido:'',endereco:''}; anEstadoId=null; anCidadeId=null; anCidadeTexto=''; anBairroId=null; anBairroTexto=''; anCidadeSugestoes=[]; anBairroSugestoes=[];"
+            <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',data_nascimento:'',apelido:'',nome_mae:'',endereco:''}; anEstadoId=null; anCidadeId=null; anCidadeTexto=''; anBairroId=null; anBairroTexto=''; anCidadeSugestoes=[]; anBairroSugestoes=[];"
                     style="color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;font-family:var(--font-data);font-size:11px;">Cancelar</button>
           </div>
 
@@ -96,6 +96,11 @@ function renderAbordagemNova() {
               <label class="login-field-label">Vulgo</label>
               <input type="text" x-model="novaPessoa.apelido" placeholder="Apelido">
             </div>
+          </div>
+
+          <div>
+            <label class="login-field-label">Nome da mãe</label>
+            <input type="text" x-model="novaPessoa.nome_mae" placeholder="Nome completo da mãe" maxlength="300">
           </div>
 
           <div>
@@ -515,7 +520,7 @@ function abordagemForm() {
 
     // Cadastro nova pessoa
     showNovaPessoa: false,
-    novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "" },
+    novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" },
     salvandoPessoa: false,
     erroPessoa: null,
 
@@ -606,9 +611,9 @@ function abordagemForm() {
         const q = e.detail?.query || "";
         // Criar novo objeto para garantir reatividade no Alpine.js
         if (q && /^\d/.test(q)) {
-          this.novaPessoa = { nome: "", cpf: q, data_nascimento: "", apelido: "", endereco: "" };
+          this.novaPessoa = { nome: "", cpf: q, data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
         } else {
-          this.novaPessoa = { nome: q, cpf: "", data_nascimento: "", apelido: "", endereco: "" };
+          this.novaPessoa = { nome: q, cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
         }
         this.showNovaPessoa = true;
       });
@@ -694,6 +699,9 @@ function abordagemForm() {
         if (this.novaPessoa.apelido.trim()) {
           pessoaData.apelido = this.novaPessoa.apelido.trim();
         }
+        if (this.novaPessoa.nome_mae.trim()) {
+          pessoaData.nome_mae = this.novaPessoa.nome_mae.trim();
+        }
 
         const pessoa = await api.post("/pessoas/", pessoaData);
 
@@ -718,7 +726,7 @@ function abordagemForm() {
         }
 
         // Reset formulário
-        this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "" };
+        this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
         this.anEstadoId = null; this.anCidadeId = null; this.anCidadeTexto = "";
         this.anBairroId = null; this.anBairroTexto = "";
         this.showNovaPessoa = false;
@@ -993,7 +1001,7 @@ function abordagemForm() {
       this.fotoVeiculoFile = null;
       this.showNovaPessoa = false;
       this.showNovoVeiculo = false;
-      this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", endereco: "" };
+      this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
       this.anEstadoId = null; this.anCidadeId = null; this.anCidadeTexto = "";
       this.anBairroId = null; this.anBairroTexto = "";
       this.novoVeiculo = { placa: "", modelo: "", cor: "", ano: "" };
