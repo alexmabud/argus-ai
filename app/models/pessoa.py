@@ -32,6 +32,7 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         cpf_hash: Hash SHA-256 do CPF para buscas (único para evitar duplicatas).
         data_nascimento: Data de nascimento (opcional).
         apelido: Apelido ou "nome de rua" (opcional).
+        nome_mae: Nome da mãe (opcional, busca fuzzy via pg_trgm preparada).
         foto_principal_url: URL da foto de perfil (R2/S3).
         observacoes: Anotações sobre a pessoa.
         guarnicao_id: ID da guarnição (isolamento multi-tenant).
@@ -55,6 +56,7 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     cpf_hash: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     data_nascimento: Mapped[date | None] = mapped_column(Date, nullable=True)
     apelido: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    nome_mae: Mapped[str | None] = mapped_column(String(300), nullable=True, index=True)
     foto_principal_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -87,6 +89,12 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
             "nome",
             postgresql_using="gin",
             postgresql_ops={"nome": "gin_trgm_ops"},
+        ),
+        Index(
+            "idx_pessoa_nome_mae_trgm",
+            "nome_mae",
+            postgresql_using="gin",
+            postgresql_ops={"nome_mae": "gin_trgm_ops"},
         ),
         Index("idx_pessoa_guarnicao", "guarnicao_id"),
     )
