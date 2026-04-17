@@ -22,6 +22,7 @@ class PessoaCreate(BaseModel):
         cpf: CPF em texto plano (será criptografado no serviço). Opcional.
         data_nascimento: Data de nascimento (opcional).
         apelido: Apelido ou "nome de rua" (opcional, até 100 caracteres).
+        nome_mae: Nome da mãe (opcional, até 300 caracteres).
         observacoes: Anotações sobre a pessoa (opcional).
     """
 
@@ -29,6 +30,7 @@ class PessoaCreate(BaseModel):
     cpf: str | None = Field(None, max_length=14)
     data_nascimento: date | None = None
     apelido: str | None = Field(None, max_length=100)
+    nome_mae: str | None = Field(None, max_length=300)
     observacoes: str | None = None
 
 
@@ -42,6 +44,7 @@ class PessoaUpdate(BaseModel):
         cpf: CPF em texto plano (será re-criptografado). Opcional.
         data_nascimento: Data de nascimento atualizada.
         apelido: Apelido atualizado.
+        nome_mae: Nome da mãe (opcional, até 300 caracteres).
         observacoes: Anotações atualizadas.
     """
 
@@ -49,6 +52,7 @@ class PessoaUpdate(BaseModel):
     cpf: str | None = Field(None, max_length=14)
     data_nascimento: date | None = None
     apelido: str | None = Field(None, max_length=100)
+    nome_mae: str | None = Field(None, max_length=300)
     observacoes: str | None = None
 
 
@@ -64,6 +68,7 @@ class PessoaRead(BaseModel):
         cpf_masked: CPF mascarado (ex: "***.***.***-34"). Null se sem CPF.
         data_nascimento: Data de nascimento.
         apelido: Apelido ou "nome de rua".
+        nome_mae: Nome da mãe.
         foto_principal_url: URL da foto de perfil (R2/S3).
         observacoes: Anotações sobre a pessoa.
         guarnicao_id: ID da guarnição.
@@ -76,6 +81,7 @@ class PessoaRead(BaseModel):
     cpf_masked: str | None = None
     data_nascimento: date | None = None
     apelido: str | None = None
+    nome_mae: str | None = None
     foto_principal_url: str | None = None
     observacoes: str | None = None
     guarnicao_id: int
