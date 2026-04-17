@@ -85,6 +85,28 @@ class TestCriarPessoa:
         with pytest.raises(ConflitoDadosError):
             await service.criar(data=data2, user_id=usuario.id, guarnicao_id=guarnicao.id)
 
+    async def test_criar_pessoa_propaga_nome_mae(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario
+    ):
+        """Testa que nome_mae do DTO é propagado para o objeto Pessoa criado.
+
+        Garante que o PessoaService.criar persiste o campo nome_mae quando
+        informado no PessoaCreate, evitando regressão silenciosa.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário.
+        """
+        service = PessoaService(db_session)
+        data = PessoaCreate(nome="Fulano de Tal", nome_mae="Maria das Dores")
+        pessoa = await service.criar(
+            data=data,
+            user_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        assert pessoa.nome_mae == "Maria das Dores"
+
 
 class TestBuscarPessoa:
     """Testes de busca de pessoa."""
