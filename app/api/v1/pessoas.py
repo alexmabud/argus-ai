@@ -715,6 +715,7 @@ async def criar_observacao(
         data,
         user,
         ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
     )
     await db.commit()
     await db.refresh(obs)
@@ -758,6 +759,7 @@ async def atualizar_observacao(
         data,
         user,
         ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
     )
     await db.commit()
     await db.refresh(obs)
@@ -768,7 +770,7 @@ async def atualizar_observacao(
     "/{pessoa_id}/observacoes/{obs_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@limiter.limit("30/minute")
+@limiter.limit("10/minute")
 async def deletar_observacao(
     request: Request,
     pessoa_id: int,
@@ -798,5 +800,6 @@ async def deletar_observacao(
         pessoa_id,
         user,
         ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
     )
     await db.commit()
