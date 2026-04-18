@@ -23,10 +23,16 @@ from app.schemas.pessoa import (
     PessoaUpdate,
     VinculoRead,
 )
+from app.schemas.pessoa_observacao import (
+    PessoaObservacaoCreate,
+    PessoaObservacaoRead,
+    PessoaObservacaoUpdate,
+)
 from app.schemas.veiculo import VeiculoRead
 from app.schemas.vinculo_manual import VinculoManualCreate, VinculoManualRead
 from app.services.abordagem_service import AbordagemService
 from app.services.audit_service import AuditService
+from app.services.pessoa_observacao_service import PessoaObservacaoService
 from app.services.pessoa_service import PessoaService
 
 router = APIRouter(prefix="/pessoas", tags=["Pessoas"])
@@ -630,6 +636,167 @@ async def remover_vinculo_manual(
         recurso="vinculo_manual",
         recurso_id=vinculo_id,
         detalhes={"pessoa_id": pessoa_id},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Observações da Pessoa
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/{pessoa_id}/observacoes",
+    response_model=list[PessoaObservacaoRead],
+)
+@limiter.limit("30/minute")
+async def listar_observacoes(
+    request: Request,
+    pessoa_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[PessoaObservacaoRead]:
+    """Lista observações ativas de uma pessoa, da mais recente para a mais antiga.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista de PessoaObservacaoRead.
+
+    Raises:
+        NaoEncontradoError: Se pessoa não existe.
+        AcessoNegadoError: Se pessoa de outra guarnição.
+    """
+    service = PessoaObservacaoService(db)
+    observacoes = await service.listar(pessoa_id, user)
+    return [PessoaObservacaoRead.model_validate(o) for o in observacoes]
+
+
+@router.post(
+    "/{pessoa_id}/observacoes",
+    response_model=PessoaObservacaoRead,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("30/minute")
+async def criar_observacao(
+    request: Request,
+    pessoa_id: int,
+    data: PessoaObservacaoCreate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> PessoaObservacaoRead:
+    """Cria nova observação vinculada a uma pessoa.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa.
+        data: Dados da observação (texto).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        PessoaObservacaoRead com dados da observação criada.
+
+    Raises:
+        NaoEncontradoError: Se pessoa não existe.
+        AcessoNegadoError: Se pessoa de outra guarnição.
+
+    Status Code:
+        201: Observação criada.
+    """
+    service = PessoaObservacaoService(db)
+    obs = await service.criar(
+        pessoa_id,
+        data,
+        user,
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    await db.refresh(obs)
+    return PessoaObservacaoRead.model_validate(obs)
+
+
+@router.patch(
+    "/{pessoa_id}/observacoes/{obs_id}",
+    response_model=PessoaObservacaoRead,
+)
+@limiter.limit("30/minute")
+async def atualizar_observacao(
+    request: Request,
+    pessoa_id: int,
+    obs_id: int,
+    data: PessoaObservacaoUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> PessoaObservacaoRead:
+    """Atualiza o texto de uma observação existente.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa dona da observação.
+        obs_id: ID da observação.
+        data: Novo texto da observação.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        PessoaObservacaoRead com texto atualizado.
+
+    Raises:
+        NaoEncontradoError: Se observação não existe.
+        AcessoNegadoError: Se observação de outra guarnição.
+    """
+    service = PessoaObservacaoService(db)
+    obs = await service.atualizar(
+        obs_id,
+        pessoa_id,
+        data,
+        user,
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    await db.refresh(obs)
+    return PessoaObservacaoRead.model_validate(obs)
+
+
+@router.delete(
+    "/{pessoa_id}/observacoes/{obs_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@limiter.limit("30/minute")
+async def deletar_observacao(
+    request: Request,
+    pessoa_id: int,
+    obs_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> None:
+    """Soft delete de uma observação.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa dona da observação.
+        obs_id: ID da observação.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Raises:
+        NaoEncontradoError: Se observação não existe.
+        AcessoNegadoError: Se observação de outra guarnição.
+
+    Status Code:
+        204: Observação removida.
+    """
+    service = PessoaObservacaoService(db)
+    await service.deletar(
+        obs_id,
+        pessoa_id,
+        user,
         ip_address=request.client.host if request.client else None,
     )
     await db.commit()
