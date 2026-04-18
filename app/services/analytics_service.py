@@ -8,14 +8,18 @@ Respeita multi-tenancy (guarnicao_id) e soft delete em todas as queries.
 
 import asyncio
 from datetime import UTC, date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import extract, func, select
+from sqlalchemy import cast, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.types import Date as DateType
 
 from app.core.crypto import decrypt
 from app.models.abordagem import Abordagem, AbordagemPessoa
 from app.models.pessoa import Pessoa
 from app.services.storage_service import normalize_storage_url
+
+BRT = ZoneInfo("America/Sao_Paulo")
 
 
 class AnalyticsService:
@@ -111,7 +115,9 @@ class AnalyticsService:
         """
         desde = datetime.now(UTC) - timedelta(days=dias)
 
-        hora = extract("hour", Abordagem.data_hora).label("hora")
+        hora = extract("hour", func.timezone("America/Sao_Paulo", Abordagem.data_hora)).label(
+            "hora"
+        )
         query = (
             select(hora, func.count(Abordagem.id).label("total"))
             .where(
@@ -193,8 +199,8 @@ class AnalyticsService:
         Returns:
             Dicionário com abordagens e pessoas do dia atual.
         """
-        hoje = datetime.now(UTC).date()
-        inicio = datetime(hoje.year, hoje.month, hoje.day, tzinfo=UTC)
+        hoje = datetime.now(BRT).date()
+        inicio = datetime(hoje.year, hoje.month, hoje.day, tzinfo=BRT)
         fim = inicio + timedelta(days=1)
 
         total_q = select(func.count(Abordagem.id)).where(
@@ -228,7 +234,7 @@ class AnalyticsService:
         Returns:
             Dicionário com abordagens e pessoas do mês corrente.
         """
-        agora = datetime.now(UTC)
+        agora = datetime.now(BRT)
         inicio = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         if agora.month == 12:
             fim = inicio.replace(year=agora.year + 1, month=1)
@@ -309,7 +315,9 @@ class AnalyticsService:
             Lista de dicionários com data (YYYY-MM-DD), abordagens e pessoas.
         """
         desde = datetime.now(UTC) - timedelta(days=dias)
-        data_label = func.date(Abordagem.data_hora).label("data")
+        data_label = cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), DateType).label(
+            "data"
+        )
 
         query = (
             select(
@@ -346,15 +354,16 @@ class AnalyticsService:
         Returns:
             Lista de dicionários com mes (YYYY-MM), abordagens e pessoas.
         """
-        agora = datetime.now(UTC)
+        agora = datetime.now(BRT)
         primeiro_mes_atual = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         # Recuar (meses - 1) meses para o início da janela
         total_meses = primeiro_mes_atual.month - (meses - 1)
         ano_inicio = primeiro_mes_atual.year + (total_meses - 1) // 12
         mes_inicio = ((total_meses - 1) % 12) + 1
         desde = primeiro_mes_atual.replace(year=ano_inicio, month=mes_inicio)
-        ano_label = extract("year", Abordagem.data_hora).label("ano")
-        mes_label = extract("month", Abordagem.data_hora).label("mes")
+        _brt_ts = func.timezone("America/Sao_Paulo", Abordagem.data_hora)
+        ano_label = extract("year", _brt_ts).label("ano")
+        mes_label = extract("month", _brt_ts).label("mes")
 
         query = (
             select(
@@ -395,15 +404,16 @@ class AnalyticsService:
             Lista de inteiros representando os dias com abordagem.
         """
         ano, mes_num = int(mes.split("-")[0]), int(mes.split("-")[1])
-        dia_label = extract("day", Abordagem.data_hora).label("dia")
+        _brt_ts = func.timezone("America/Sao_Paulo", Abordagem.data_hora)
+        dia_label = extract("day", _brt_ts).label("dia")
 
         query = (
             select(dia_label)
             .where(
                 Abordagem.guarnicao_id == guarnicao_id,
                 Abordagem.ativo,
-                extract("year", Abordagem.data_hora) == ano,
-                extract("month", Abordagem.data_hora) == mes_num,
+                extract("year", _brt_ts) == ano,
+                extract("month", _brt_ts) == mes_num,
             )
             .distinct()
             .order_by(dia_label)
@@ -436,7 +446,7 @@ class AnalyticsService:
                 Abordagem.guarnicao_id == guarnicao_id,
                 Abordagem.ativo,
                 Pessoa.ativo,
-                func.date(Abordagem.data_hora) == data_obj,
+                cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), DateType) == data_obj,
             )
             .order_by(Pessoa.nome)
             .distinct()
@@ -482,7 +492,7 @@ class AnalyticsService:
             .where(
                 Abordagem.guarnicao_id == guarnicao_id,
                 Abordagem.ativo,
-                func.date(Abordagem.data_hora) == data_obj,
+                cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), DateType) == data_obj,
                 Abordagem.latitude.isnot(None),
                 Abordagem.longitude.isnot(None),
             )
@@ -495,7 +505,7 @@ class AnalyticsService:
             {
                 "lat": float(row[0]),
                 "lng": float(row[1]),
-                "horario": row[2].strftime("%H:%M") if row[2] else "—",
+                "horario": row[2].astimezone(BRT).strftime("%H:%M") if row[2] else "—",
             }
             for row in rows
         ]
