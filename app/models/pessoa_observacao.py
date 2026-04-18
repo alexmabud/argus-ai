@@ -32,4 +32,5 @@ class PessoaObservacao(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     pessoa_id: Mapped[int] = mapped_column(ForeignKey("pessoas.id", ondelete="CASCADE"), index=True)
     texto: Mapped[str] = mapped_column(Text)
 
-    pessoa = relationship("Pessoa", back_populates="observacoes_lista")
+    # lazy="selectin" evita MissingGreenlet em contexto async (padrão VinculoManual)
+    pessoa = relationship("Pessoa", back_populates="observacoes_lista", lazy="selectin")
