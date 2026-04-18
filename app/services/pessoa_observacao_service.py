@@ -85,7 +85,7 @@ class PessoaObservacaoService:
                 PessoaObservacao.pessoa_id == pessoa_id,
                 PessoaObservacao.ativo == True,  # noqa: E712
             )
-            .order_by(PessoaObservacao.criado_em.desc())
+            .order_by(PessoaObservacao.criado_em.desc(), PessoaObservacao.id.desc())
         )
         return list(result.scalars().all())
 
