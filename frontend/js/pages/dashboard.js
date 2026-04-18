@@ -1,9 +1,9 @@
 /**
- * Pagina de dashboard analitico — Argus AI.
+ * Página de dashboard analítico — Argus AI.
  *
- * Cards de resumo por periodo (hoje/mes/total), graficos de linha ApexCharts
- * (por dia e por mes), calendario interativo com pessoas do dia escolhido,
- * e top 10 pessoas recorrentes. Estetica cyberpunk tatica.
+ * Cards de resumo por período (hoje/mês/total), gráficos de linha ApexCharts
+ * (por dia e por mês), calendário interativo com pessoas do dia escolhido,
+ * e top 10 pessoas recorrentes. Estética cyberpunk tática.
  */
 function renderDashboard() {
   return `
@@ -58,14 +58,14 @@ function renderDashboard() {
     </style>
     <div x-data="dashboardPage()" x-init="load()" style="display:flex;flex-direction:column;gap:20px;">
 
-      <!-- Header da pagina -->
+      <!-- Header da página -->
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <h2 style="font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--color-text); text-transform: uppercase; letter-spacing: 0.08em;">
-            Analitico
+            Analítico
           </h2>
           <p style="font-family: var(--font-data); font-size: 12px; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px;">
-            Metricas Operacionais
+            Métricas Operacionais
           </p>
         </div>
         <p x-show="!loading" style="font-family: var(--font-data); font-size: 12px; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; white-space: nowrap;">
@@ -112,7 +112,7 @@ function renderDashboard() {
             <!-- Este Mes -->
             <div class="glass-card" style="padding:16px;border-radius:4px;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                <span style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;">Este Mes</span>
+                <span style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;">Este Mês</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-dim)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -157,7 +157,7 @@ function renderDashboard() {
 
           <div class="glass-card" style="padding:16px;border-radius:4px;">
             <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">
-              Abordagens por Mes
+              Abordagens por Mês
               <span style="color:var(--color-text-dim);font-weight:400;"> // 12 meses</span>
             </h3>
             <div id="chart-por-mes"></div>
@@ -169,7 +169,7 @@ function renderDashboard() {
               Pessoas Abordadas por Dia
             </h3>
 
-            <!-- Navegacao do calendario -->
+            <!-- Navegação do calendário -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <button @click="mesMenos()"
                       style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
@@ -287,7 +287,7 @@ function renderDashboard() {
             </h3>
             <div x-show="recorrentes.length === 0"
                  style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-align:center;padding:16px 0;text-transform:uppercase;letter-spacing:0.08em;">
-              Nenhum dado disponivel.
+              Nenhum dado disponível.
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;">
               <template x-for="(p, i) in recorrentes" :key="p.id">
@@ -320,10 +320,10 @@ function renderDashboard() {
 }
 
 /**
- * Componente Alpine.js do dashboard analitico.
+ * Componente Alpine.js do dashboard analítico.
  *
- * Gerencia estado de resumos, graficos, calendario e pessoas recorrentes.
- * Carrega dados via API e renderiza graficos ApexCharts com tema tatico.
+ * Gerencia estado de resumos, gráficos, calendário e pessoas recorrentes.
+ * Carrega dados via API e renderiza gráficos ApexCharts com tema tático.
  */
 function dashboardPage() {
   const agora = new Date();
@@ -545,7 +545,7 @@ function dashboardPage() {
     },
 
     /**
-     * Renderiza grafico de abordagens por dia com tema tatico.
+     * Renderiza gráfico de abordagens por dia com tema tático.
      */
     renderizarGraficoPorDia() {
       const el = document.querySelector('#chart-por-dia');
@@ -575,7 +575,7 @@ function dashboardPage() {
     },
 
     /**
-     * Renderiza grafico de abordagens por mes com tema tatico.
+     * Renderiza gráfico de abordagens por mês com tema tático.
      */
     renderizarGraficoPorMes() {
       const el = document.querySelector('#chart-por-mes');

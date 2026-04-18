@@ -10,7 +10,7 @@ function renderAdminUsuarios() {
     <div style="padding: 1rem;" x-data="adminUsuariosPage()" x-init="init()">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
         <div>
-          <h2 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; font-size: 1.125rem; text-transform: uppercase; letter-spacing: 0.05em;">GERENCIAR USUARIOS</h2>
+          <h2 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; font-size: 1.125rem; text-transform: uppercase; letter-spacing: 0.05em;">GERENCIAR USUÁRIOS</h2>
           <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem; margin-top: 0.125rem;">Controle de acesso da guarnição</p>
         </div>
         <button @click="mostrarFormCriacao = true" class="btn btn-primary" style="font-size: 0.8125rem; padding: 0.375rem 0.75rem;">

@@ -1,9 +1,9 @@
 /**
- * Aplicacao principal SPA — Argus AI.
+ * Aplicação principal SPA — Argus AI.
  *
  * Router client-side com Alpine.js, gerenciamento de estado
- * global (autenticacao, navegacao, online/offline).
- * Tema: cyberpunk tatico / high-tech militar.
+ * global (autenticação, navegação, online/offline).
+ * Tema: cyberpunk tático / high-tech militar.
  */
 
 // Registrar Service Worker
@@ -33,9 +33,9 @@ window.addEventListener("error", (event) => {
 }, true); // Usa capture phase
 
 /**
- * Formata string de placa veicular inserindo traco automaticamente.
+ * Formata string de placa veicular inserindo traço automaticamente.
  * Aceita formato antigo (ABC-1234) e Mercosul (ABC1D23).
- * Remove caracteres invalidos e converte para maiusculas.
+ * Remove caracteres inválidos e converte para maiúsculas.
  *
  * @param {string} value - Valor bruto do input.
  * @returns {string} Placa formatada (ex: ABC-1234).
@@ -47,8 +47,8 @@ function formatarPlaca(value) {
 }
 
 /**
- * Formata string de CPF inserindo pontos e traco automaticamente.
- * Remove caracteres nao numericos e aplica a mascara 000.000.000-00.
+ * Formata string de CPF inserindo pontos e traço automaticamente.
+ * Remove caracteres não numéricos e aplica a máscara 000.000.000-00.
  *
  * @param {string} value - Valor bruto do input.
  * @returns {string} CPF formatado.
@@ -63,7 +63,7 @@ function formatarCPF(value) {
 
 /**
  * Formata string de data inserindo barras automaticamente (DD/MM/AAAA).
- * Remove caracteres nao numericos e aplica a mascara a medida que o usuario digita.
+ * Remove caracteres não numéricos e aplica a máscara à medida que o usuário digita.
  *
  * @param {string} value - Valor bruto do input.
  * @returns {string} Data formatada (ex: 25/12/1990).
@@ -77,7 +77,7 @@ function formatarData(value) {
 
 /**
  * Converte data no formato DD/MM/AAAA para YYYY-MM-DD (formato ISO para API).
- * Retorna string vazia se o valor estiver incompleto ou invalido.
+ * Retorna string vazia se o valor estiver incompleto ou inválido.
  *
  * @param {string} value - Data no formato DD/MM/AAAA.
  * @returns {string} Data no formato YYYY-MM-DD ou string vazia.
@@ -89,8 +89,8 @@ function parseDateBR(value) {
 }
 
 /**
- * Formata automaticamente como CPF se o valor contiver apenas digitos e separadores de CPF.
- * Usado nos campos de busca por nome/CPF para aplicar mascara em tempo real.
+ * Formata automaticamente como CPF se o valor contiver apenas dígitos e separadores de CPF.
+ * Usado nos campos de busca por nome/CPF para aplicar máscara em tempo real.
  *
  * @param {string} value - Valor digitado.
  * @returns {string} CPF formatado ou valor original sem alteracao.
@@ -102,7 +102,7 @@ function formatarBuscaQuery(value) {
   return value;
 }
 
-// Mapa de abreviacoes de posto/graduacao PM
+// Mapa de abreviações de posto/graduação PM
 const POSTO_ABREV = {
   "Soldado": "SD",
   "Cabo": "CB",
@@ -120,10 +120,10 @@ const POSTO_ABREV = {
 };
 
 /**
- * Componente Alpine.js principal da aplicacao.
+ * Componente Alpine.js principal da aplicação.
  *
- * Gerencia estado global de autenticacao, navegacao entre paginas,
- * conectividade e sincronizacao offline. Atua como router SPA.
+ * Gerencia estado global de autenticação, navegação entre páginas,
+ * conectividade e sincronização offline. Atua como router SPA.
  */
 function app() {
   return {
@@ -137,7 +137,7 @@ function app() {
     _popstateHandler: null,
 
     /**
-     * Inicializa a aplicacao: conectividade, auth, sync, IndexedDB.
+     * Inicializa a aplicação: conectividade, auth, sync, IndexedDB.
      */
     async init() {
       // Monitorar conectividade
@@ -204,20 +204,20 @@ function app() {
     },
 
     /**
-     * Atualiza contagem de itens pendentes de sincronizacao.
+     * Atualiza contagem de itens pendentes de sincronização.
      */
     async _updateSyncCount() {
       this.syncPending = await countPending();
     },
 
     /**
-     * Navega para uma pagina da aplicacao.
+     * Navega para uma página da aplicação.
      *
-     * Empurra a pagina atual no stack de historico interno antes de trocar,
-     * permitindo que goBack() retorne a pagina anterior corretamente.
+     * Empurra a página atual no stack de histórico interno antes de trocar,
+     * permitindo que goBack() retorne a página anterior corretamente.
      *
      * Args:
-     *     page: Nome da pagina destino.
+     *     page: Nome da página destino.
      */
     navigate(page) {
       if (this.currentPage && this.currentPage !== page) {
@@ -231,11 +231,11 @@ function app() {
     },
 
     /**
-     * Navega para a pagina anterior no historico interno.
+     * Navega para a página anterior no histórico interno.
      *
-     * Faz pop do stack navHistory e renderiza a pagina anterior.
-     * Usa replaceState para nao empilhar mais uma entrada no historico do browser.
-     * Fallback para 'home' se o historico estiver vazio.
+     * Faz pop do stack navHistory e renderiza a página anterior.
+     * Usa replaceState para não empilhar mais uma entrada no histórico do browser.
+     * Fallback para 'home' se o histórico estiver vazio.
      */
     goBack() {
       const prev = this.navHistory.pop() || "home";
@@ -249,7 +249,7 @@ function app() {
     /**
      * Renderiza uma pagina no container principal.
      *
-     * @param {string} page - Nome da pagina a renderizar.
+     * @param {string} page - Nome da página a renderizar.
      */
     renderPage(page) {
       const container = document.getElementById("page-content");
@@ -267,7 +267,7 @@ function app() {
     },
 
     /**
-     * Injeta HTML da pagina no container e inicializa Alpine nos novos elementos.
+     * Injeta HTML da página no container e inicializa Alpine nos novos elementos.
      */
     _renderInto(container, page) {
       const renderers = {
@@ -282,8 +282,8 @@ function app() {
         "admin-usuarios": renderAdminUsuarios,
       };
 
-      // Destroi graficos ApexCharts antes de trocar de pagina para evitar
-      // erros de NaN em SVGs orfaos que continuam tentando atualizar.
+      // Destrói gráficos ApexCharts antes de trocar de página para evitar
+      // erros de NaN em SVGs órfãos que continuam tentando atualizar.
       container.querySelectorAll('[x-data]').forEach(el => {
         if (el._x_dataStack) {
           const data = el._x_dataStack[0];
@@ -303,12 +303,12 @@ function app() {
           });
         }
       } else {
-        container.innerHTML = `<p style="color: var(--color-text-muted);">Pagina nao encontrada.</p>`;
+        container.innerHTML = `<p style="color: var(--color-text-muted);">Página não encontrada.</p>`;
       }
     },
 
     /**
-     * Renderiza a pagina de login no container dedicado.
+     * Renderiza a página de login no container dedicado.
      */
     renderLogin() {
       const loginContainer = document.getElementById("page-login");
@@ -323,7 +323,7 @@ function app() {
     },
 
     /**
-     * Callback apos login bem-sucedido.
+     * Callback após login bem-sucedido.
      */
     async onLogin(user) {
       this.authenticated = true;
@@ -347,7 +347,7 @@ function app() {
 /**
  * Escapa caracteres especiais HTML para prevenir XSS.
  *
- * Deve ser aplicada em todo dado de usuario antes de interpolacao em innerHTML.
+ * Deve ser aplicada em todo dado de usuário antes de interpolação em innerHTML.
  *
  * @param {string} str - Valor a escapar.
  * @returns {string} Valor seguro para interpolacao em HTML.
@@ -362,11 +362,11 @@ function escapeHtml(str) {
 }
 
 /**
- * Renderiza a home page com saudacao e acoes rapidas.
+ * Renderiza a home page com saudação e ações rápidas.
  *
- * Cards no estilo glass + HUD tatico: fundo glassmorphism, clip-path no canto
- * inferior direito, scan line no hover, codigo tatico e glow no icone.
- * Animacao de entrada em stagger (60ms por card).
+ * Cards no estilo glass + HUD tático: fundo glassmorphism, clip-path no canto
+ * inferior direito, scan line no hover, código tático e glow no ícone.
+ * Animação de entrada em stagger (60ms por card).
  */
 function renderHomePage(appState) {
   const user = appState.user;
@@ -423,7 +423,7 @@ function renderHomePage(appState) {
           Olá, <span style="color: var(--color-primary);">${saudacao}</span>
         </h2>
         <p style="font-family: var(--font-data); font-size: 13px; color: var(--color-text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em;">
-          Memoria Operacional // Status Ativo
+          Memória Operacional // Status Ativo
         </p>
       </div>
 
@@ -435,11 +435,11 @@ function renderHomePage(appState) {
 }
 
 /**
- * Exibe toast notification temporario.
+ * Exibe toast notification temporário.
  *
- * @param {string} message - Texto da notificacao.
+ * @param {string} message - Texto da notificação.
  * @param {string} type - Tipo: success, error, warning.
- * @param {number} duration - Duracao em ms (padrao 3000).
+ * @param {number} duration - Duração em ms (padrão 3000).
  */
 function showToast(message, type = "success", duration = 3000) {
   const container = document.getElementById("toast-container");

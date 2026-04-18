@@ -1,21 +1,21 @@
 /**
- * Pagina de consulta unificada — Argus AI.
+ * Página de consulta unificada — Argus AI.
  *
- * Secoes independentes: busca de pessoa (nome/CPF ou foto),
- * filtros por endereco e busca por veiculo. Cada secao retorna
- * a ficha do abordado como resultado. Estetica cyberpunk tatica.
+ * Seções independentes: busca de pessoa (nome/CPF ou foto),
+ * filtros por endereço e busca por veículo. Cada seção retorna
+ * a ficha do abordado como resultado. Estética cyberpunk tática.
  */
 function renderConsulta() {
   return `
     <div x-data="consultaPage()" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
 
-      <!-- Header da pagina -->
+      <!-- Header da página -->
       <div>
         <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--color-text);text-transform:uppercase;letter-spacing:0.08em;">
           Consulta Operacional
         </h2>
         <p style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-top:2px;">
-          Busca Integrada // Pessoa / Endereco / Veiculo
+          Busca Integrada // Pessoa / Endereço / Veículo
         </p>
       </div>
 
@@ -108,7 +108,7 @@ function renderConsulta() {
                 <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
                 <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
                 <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
-                <p x-show="p.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mae: ' + p.nome_mae"></p>
+                <p x-show="p.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mãe: ' + p.nome_mae"></p>
               </div>
               <svg width="16" height="16" style="color:var(--color-text-dim);flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
@@ -140,7 +140,7 @@ function renderConsulta() {
                     <p x-show="r.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + r.cpf_masked"></p>
                     <p x-show="r.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + r.apelido"></p>
                     <p x-show="r.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mae: ' + r.nome_mae"></p>
-                    <!-- Barra de confianca -->
+                    <!-- Barra de confiança -->
                     <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
                       <div style="flex:1;height:4px;background:var(--color-surface-hover);border-radius:2px;overflow:hidden;">
                         <div style="height:100%;border-radius:2px;transition:all 300ms;"
@@ -165,11 +165,11 @@ function renderConsulta() {
         <!-- Sem resultados por foto -->
         <p x-show="fotoSearchDone && !loadingPessoa && fotoServicoIndisponivel"
            style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);text-transform:uppercase;letter-spacing:0.05em;">
-          Reconhecimento facial indisponivel neste servidor.
+          Reconhecimento facial indisponível neste servidor.
         </p>
         <p x-show="fotoSearchDone && !loadingPessoa && !fotoServicoIndisponivel && pessoasFoto.length === 0"
            style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.05em;">
-          Nenhuma correspondencia facial encontrada.
+          Nenhuma correspondência facial encontrada.
         </p>
 
         <!-- Sem resultados pessoa -->
@@ -216,13 +216,13 @@ function renderConsulta() {
           </div>
 
           <div>
-            <label class="login-field-label">Nome da mae</label>
-            <input type="text" x-model="novaPessoa.nome_mae" placeholder="Nome completo da mae" maxlength="300">
+            <label class="login-field-label">Nome da mãe</label>
+            <input type="text" x-model="novaPessoa.nome_mae" placeholder="Nome completo da mãe" maxlength="300">
           </div>
 
           <div>
-            <label class="login-field-label">Endereco</label>
-            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e numero">
+            <label class="login-field-label">Endereço</label>
+            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e número">
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
@@ -328,8 +328,8 @@ function renderConsulta() {
       <!-- Filtros por Endereco -->
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
         <div>
-          <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Filtros por Endereco</span>
-          <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Filtre abordados pelo local de residencia cadastrado.</p>
+          <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Filtros por Endereço</span>
+          <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Filtre abordados pelo local de residência cadastrado.</p>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:10px;">
@@ -363,7 +363,7 @@ function renderConsulta() {
         <!-- Resultados por endereco -->
         <div x-show="searchedEndereco && pessoasEndereco.length > 0" style="display:flex;flex-direction:column;gap:6px;">
           <p style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;">
-            Pessoas neste endereco (<span x-text="pessoasEndereco.length"></span>)
+            Pessoas neste endereço (<span x-text="pessoasEndereco.length"></span>)
           </p>
           <template x-for="p in pessoasEndereco.slice(0, 10)" :key="'e-' + p.id">
             <div @click="viewPessoa(p.id)"
@@ -385,7 +385,7 @@ function renderConsulta() {
                 <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
                 <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
                 <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
-                <p x-show="p.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mae: ' + p.nome_mae"></p>
+                <p x-show="p.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mãe: ' + p.nome_mae"></p>
                 <p x-show="p.endereco_criado_em" style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);"
                    x-text="'Cadastrado em ' + new Date(p.endereco_criado_em).toLocaleDateString('pt-BR')"></p>
               </div>
@@ -402,7 +402,7 @@ function renderConsulta() {
 
         <p x-show="searchedEndereco && !loadingEndereco && pessoasEndereco.length === 0"
            style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.05em;">
-          Nenhuma pessoa encontrada neste endereco.
+          Nenhuma pessoa encontrada neste endereço.
         </p>
 
         <div x-show="loadingEndereco" style="display:flex;justify-content:center;padding:8px 0;">
@@ -420,8 +420,8 @@ function renderConsulta() {
       <!-- Buscar por Veiculo -->
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
         <div>
-          <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Buscar por Veiculo</span>
-          <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Encontre o abordado pelo veiculo com que foi visto.</p>
+          <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Buscar por Veículo</span>
+          <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Encontre o abordado pelo veículo com que foi visto.</p>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:10px;">
@@ -435,12 +435,12 @@ function renderConsulta() {
           <div>
             <label class="login-field-label">Modelo</label>
             <input type="text" x-model="filtroModelo" @input="onInputVeiculo()"
-                   placeholder="Modelo do veiculo..." style="padding:12px 14px;">
+                   placeholder="Modelo do veículo..." style="padding:12px 14px;">
           </div>
           <div x-show="filtroModelo.length > 0">
             <label class="login-field-label">Cor <span style="color:var(--color-text-dim);">(opcional)</span></label>
             <input type="text" x-model="filtroCor" @input="onInputVeiculo()"
-                   placeholder="Cor do veiculo..." style="padding:12px 14px;">
+                   placeholder="Cor do veículo..." style="padding:12px 14px;">
           </div>
         </div>
 
@@ -469,7 +469,7 @@ function renderConsulta() {
                 <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
                 <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
                 <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
-                <p x-show="p.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mae: ' + p.nome_mae"></p>
+                <p x-show="p.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mãe: ' + p.nome_mae"></p>
                 <p x-show="p.veiculo_info" style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);margin-top:2px;"
                    x-text="'Vinculado via: ' + [p.veiculo_info?.placa, p.veiculo_info?.modelo, p.veiculo_info?.cor, p.veiculo_info?.ano].filter(Boolean).join(' \u00b7 ')">
                 </p>
@@ -499,7 +499,7 @@ function renderConsulta() {
 
         <p x-show="searchedVeiculo && !loadingVeiculo && pessoasVeiculo.length === 0"
            style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.05em;">
-          Nenhum abordado vinculado a este veiculo.
+          Nenhum abordado vinculado a este veículo.
         </p>
 
         <div x-show="loadingVeiculo" style="display:flex;justify-content:center;padding:8px 0;">
@@ -629,11 +629,11 @@ function renderConsulta() {
 }
 
 /**
- * Componente Alpine.js da pagina de consulta.
+ * Componente Alpine.js da página de consulta.
  *
- * Gerencia estado de busca por texto, foto, endereco e veiculo.
- * Inclui cadastro inline de nova pessoa. Toda logica de busca
- * preservada da versao anterior.
+ * Gerencia estado de busca por texto, foto, endereço e veículo.
+ * Inclui cadastro inline de nova pessoa. Toda lógica de busca
+ * preservada da versão anterior.
  */
 function consultaPage() {
   return {
@@ -807,7 +807,7 @@ function consultaPage() {
         this.pessoasEndereco = r.pessoas || [];
         this.searchedEndereco = true;
       } catch {
-        showToast("Erro no filtro por endereco", "error");
+        showToast("Erro no filtro por endereço", "error");
       } finally {
         this.loadingEndereco = false;
       }
@@ -963,7 +963,7 @@ function consultaPage() {
     async criarPessoa() {
       const nome = this.novaPessoa.nome.trim();
       if (!nome) {
-        this.erroCadastro = "Nome e obrigatorio.";
+        this.erroCadastro = "Nome é obrigatório.";
         return;
       }
 
