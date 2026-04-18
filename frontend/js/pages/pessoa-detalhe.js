@@ -61,9 +61,9 @@ function renderPessoaDetalhe(appState) {
                 <span style="color: var(--color-text-muted); margin-left: 0.25rem;" x-text="pessoa.abordagens_count || 0"></span>
               </div>
             </div>
-            <div x-show="pessoa.nome_mae" style="padding-top: 0.25rem;">
-              <span style="font-size: 0.75rem; color: var(--color-text-dim)">Mãe:</span>
-              <p style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;" x-text="pessoa.nome_mae"></p>
+            <div x-show="pessoa.nome_mae" style="grid-column: span 2;">
+              <span style="color: var(--color-text-dim)">Mãe:</span>
+              <span style="color: var(--color-text-muted); margin-left: 0.25rem;" x-text="pessoa.nome_mae"></span>
             </div>
             <div x-show="pessoa.observacoes" style="padding-top: 0.25rem;">
               <span style="font-size: 0.75rem; color: var(--color-text-dim)">Obs:</span>
@@ -159,8 +159,11 @@ function renderPessoaDetalhe(appState) {
                    style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0 0 0.2rem 0;"
                    x-text="'CPF: ' + (pessoa?.cpf || pessoa?.cpf_masked)"></p>
                 <p x-show="pessoa?.enderecos?.length > 0"
-                   style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0;"
+                   style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0 0 0.2rem 0;"
                    x-text="'End: ' + formatEndereco(pessoa?.enderecos?.[0])"></p>
+                <p x-show="pessoa?.nome_mae"
+                   style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0;"
+                   x-text="'Mãe: ' + pessoa?.nome_mae"></p>
               </div>
             </div>
           </div>
