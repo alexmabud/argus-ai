@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, MultiTenantMixin, SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.models.pessoa_observacao import PessoaObservacao
     from app.models.vinculo_manual import VinculoManual
 
 
@@ -41,6 +42,7 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         fotos: Relacionamento com Fotos.
         relacionamentos_como_a: Relacionamento bidirecional com outras pessoas (A->B).
         relacionamentos_como_b: Relacionamento bidirecional com outras pessoas (B->A).
+        observacoes_lista: Histórico de observações operacionais (PessoaObservacao).
 
     Nota:
         - Soft delete: ativo=True por padrão, desativado_em registra quando.
@@ -81,6 +83,12 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         foreign_keys="VinculoManual.pessoa_id",
         back_populates="pessoa",
         lazy="selectin",
+    )
+    observacoes_lista: Mapped[list[PessoaObservacao]] = relationship(
+        "PessoaObservacao",
+        back_populates="pessoa",
+        lazy="selectin",
+        order_by="PessoaObservacao.criado_em.desc()",
     )
 
     __table_args__ = (
