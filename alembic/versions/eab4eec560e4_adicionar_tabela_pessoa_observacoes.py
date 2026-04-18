@@ -52,16 +52,16 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "ix_pessoa_observacoes_ativo", "pessoa_observacoes", ["ativo"], unique=False
+        op.f("ix_pessoa_observacoes_ativo"), "pessoa_observacoes", ["ativo"], unique=False
     )
     op.create_index(
-        "ix_pessoa_observacoes_guarnicao_id",
+        op.f("ix_pessoa_observacoes_guarnicao_id"),
         "pessoa_observacoes",
         ["guarnicao_id"],
         unique=False,
     )
     op.create_index(
-        "ix_pessoa_observacoes_pessoa_id",
+        op.f("ix_pessoa_observacoes_pessoa_id"),
         "pessoa_observacoes",
         ["pessoa_id"],
         unique=False,
@@ -70,9 +70,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Remove tabela pessoa_observacoes e seus índices."""
-    op.drop_index("ix_pessoa_observacoes_pessoa_id", table_name="pessoa_observacoes")
+    op.drop_index(op.f("ix_pessoa_observacoes_pessoa_id"), table_name="pessoa_observacoes")
     op.drop_index(
-        "ix_pessoa_observacoes_guarnicao_id", table_name="pessoa_observacoes"
+        op.f("ix_pessoa_observacoes_guarnicao_id"), table_name="pessoa_observacoes"
     )
-    op.drop_index("ix_pessoa_observacoes_ativo", table_name="pessoa_observacoes")
+    op.drop_index(op.f("ix_pessoa_observacoes_ativo"), table_name="pessoa_observacoes")
     op.drop_table("pessoa_observacoes")
