@@ -158,12 +158,12 @@ function renderPessoaDetalhe(appState) {
                 <p x-show="pessoa?.cpf || pessoa?.cpf_masked"
                    style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0 0 0.2rem 0;"
                    x-text="'CPF: ' + (pessoa?.cpf || pessoa?.cpf_masked)"></p>
-                <p x-show="pessoa?.enderecos?.length > 0"
-                   style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0 0 0.2rem 0;"
-                   x-text="'End: ' + formatEndereco(pessoa?.enderecos?.[0])"></p>
                 <p x-show="pessoa?.nome_mae"
-                   style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0;"
+                   style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0 0 0.2rem 0;"
                    x-text="'Mãe: ' + pessoa?.nome_mae"></p>
+                <p x-show="pessoa?.enderecos?.length > 0"
+                   style="font-size: 0.8rem; color: var(--color-text-muted); font-family: var(--font-data); margin: 0;"
+                   x-text="'End: ' + formatEndereco(pessoa?.enderecos?.[0])"></p>
               </div>
             </div>
           </div>
