@@ -95,6 +95,7 @@ class PessoaObservacaoService:
         data: PessoaObservacaoCreate,
         user: Usuario,
         ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> PessoaObservacao:
         """Cria nova observação vinculada a uma pessoa.
 
@@ -103,6 +104,7 @@ class PessoaObservacaoService:
             data: Dados da observação (texto).
             user: Usuário autenticado.
             ip_address: IP da requisição (para auditoria).
+            user_agent: User-Agent do cliente (para auditoria).
 
         Returns:
             PessoaObservacao criada.
@@ -125,6 +127,7 @@ class PessoaObservacaoService:
             recurso_id=obs.id,
             detalhes={"pessoa_id": pessoa_id},
             ip_address=ip_address,
+            user_agent=user_agent,
         )
         return obs
 
@@ -135,6 +138,7 @@ class PessoaObservacaoService:
         data: PessoaObservacaoUpdate,
         user: Usuario,
         ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> PessoaObservacao:
         """Atualiza o texto de uma observação existente.
 
@@ -144,6 +148,7 @@ class PessoaObservacaoService:
             data: Novo texto da observação.
             user: Usuário autenticado.
             ip_address: IP da requisição (para auditoria).
+            user_agent: User-Agent do cliente (para auditoria).
 
         Returns:
             PessoaObservacao atualizada.
@@ -161,6 +166,7 @@ class PessoaObservacaoService:
             recurso_id=obs_id,
             detalhes={"pessoa_id": pessoa_id},
             ip_address=ip_address,
+            user_agent=user_agent,
         )
         return obs
 
@@ -170,6 +176,7 @@ class PessoaObservacaoService:
         pessoa_id: int,
         user: Usuario,
         ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> None:
         """Soft delete de uma observação.
 
@@ -178,6 +185,7 @@ class PessoaObservacaoService:
             pessoa_id: ID da pessoa dona da observação.
             user: Usuário autenticado.
             ip_address: IP da requisição (para auditoria).
+            user_agent: User-Agent do cliente (para auditoria).
 
         Raises:
             NaoEncontradoError: Se observação não existe ou não pertence à pessoa.
@@ -192,6 +200,7 @@ class PessoaObservacaoService:
             recurso_id=obs_id,
             detalhes={"pessoa_id": pessoa_id},
             ip_address=ip_address,
+            user_agent=user_agent,
         )
 
     async def _get_obs_verificada(
