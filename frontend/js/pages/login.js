@@ -1,7 +1,7 @@
 /**
- * Pagina de login — Argus AI.
+ * Página de login — Argus AI.
  *
- * Tela de autenticacao com estetica cyberpunk tatica:
+ * Tela de autenticação com estética cyberpunk tática:
  * logo com glow ciano, scan line, campos animados,
  * indicador de status do servidor em tempo real.
  */
@@ -15,7 +15,7 @@ function renderLoginPage(appState) {
         <!-- Logo -->
         <div style="margin-bottom: 40px;">
           <div class="login-logo">ARGUS</div>
-          <div class="login-subtitle">Sistema de Inteligencia Operacional</div>
+          <div class="login-subtitle">Sistema de Inteligência Operacional</div>
         </div>
 
         <!-- Formulario -->
@@ -24,7 +24,7 @@ function renderLoginPage(appState) {
             <label class="login-field-label">ID Operacional</label>
             <input type="text"
                    x-model="matricula"
-                   placeholder="Matricula"
+                   placeholder="Matrícula"
                    required
                    autocomplete="username">
           </div>
@@ -72,10 +72,10 @@ function renderLoginPage(appState) {
 }
 
 /**
- * Componente Alpine.js do formulario de login.
+ * Componente Alpine.js do formulário de login.
  *
- * Gerencia estado de matricula, senha, loading e erro.
- * Delega autenticacao para AuthManager e propaga login
+ * Gerencia estado de matrícula, senha, loading e erro.
+ * Delega autenticação para AuthManager e propaga login
  * para o componente app principal.
  */
 function loginForm() {
@@ -86,14 +86,14 @@ function loginForm() {
     erro: null,
 
     /**
-     * Submete formulario de login.
+     * Submete formulário de login.
      *
      * Valida campos, chama auth.login() e propaga resultado
-     * para o componente principal da aplicacao.
+     * para o componente principal da aplicação.
      */
     async submit() {
       if (!this.matricula || !this.senha) {
-        this.erro = "Preencha matricula e senha.";
+        this.erro = "Preencha matrícula e senha.";
         return;
       }
 
