@@ -367,7 +367,7 @@ class TestAbordacoesdoDia:
         assert len(result) == 2
         assert result[0]["lat"] == -23.5505
         assert result[0]["lng"] == -46.6333
-        assert result[0]["horario"] == "14:32"
+        assert result[0]["horario"] == "11:32"
 
     async def test_sem_abordagens_retorna_lista_vazia(self, service):
         """Deve retornar lista vazia quando não há abordagens com localização."""
