@@ -4,6 +4,8 @@ Gerencia criação, listagem, atualização e soft delete de observações
 vinculadas a pessoas, com verificação de tenant e auditoria.
 """
 
+from __future__ import annotations
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
