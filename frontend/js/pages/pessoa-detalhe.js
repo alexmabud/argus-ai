@@ -413,7 +413,7 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Modal de criar/editar observação -->
-          <div x-show="modalObservacao" x-cloak
+          <div x-show="modalObservacao" x-cloak @click.self="modalObservacao = false"
                style="position: fixed; inset: 0; background: rgba(5,10,15,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem;">
             <div class="glass-card" style="width: 100%; max-width: 480px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; position: relative;">
               <div style="display: flex; align-items: center; justify-content: space-between;">
