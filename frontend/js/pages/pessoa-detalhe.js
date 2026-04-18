@@ -412,6 +412,43 @@ function renderPessoaDetalhe(appState) {
             </div>
           </div>
 
+          <!-- Modal de criar/editar observação -->
+          <div x-show="modalObservacao" x-cloak
+               style="position: fixed; inset: 0; background: rgba(5,10,15,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem;">
+            <div class="glass-card" style="width: 100%; max-width: 480px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; position: relative;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <h3 style="font-family: var(--font-data); font-size: 0.875rem; font-weight: 700; color: var(--color-text); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;"
+                    x-text="obsForm.id ? 'Editar Observação' : 'Nova Observação'"></h3>
+                <button @click="modalObservacao = false"
+                        style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); font-size: 1.25rem; line-height: 1;">×</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-dim); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">
+                  Observação <span style="color: var(--color-danger)">*</span>
+                </label>
+                <textarea x-model="obsForm.texto" rows="4"
+                          placeholder="Digite a observação..."
+                          style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.625rem; color: var(--color-text); font-size: 0.875rem; font-family: var(--font-data); resize: vertical; outline: none;"
+                          @focus="$el.style.borderColor='var(--color-primary)'"
+                          @blur="$el.style.borderColor='var(--color-border)'"></textarea>
+              </div>
+
+              <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button @click="modalObservacao = false"
+                        style="padding: 0.5rem 1rem; background: none; border: 1px solid var(--color-border); border-radius: 4px; color: var(--color-text-dim); cursor: pointer; font-size: 0.8125rem; font-family: var(--font-data);">
+                  Cancelar
+                </button>
+                <button @click="salvarObservacao()" :disabled="salvandoObs || !obsForm.texto.trim()"
+                        style="padding: 0.5rem 1rem; background: var(--color-primary); border: none; border-radius: 4px; color: #000; font-weight: 700; cursor: pointer; font-size: 0.8125rem; font-family: var(--font-data); opacity: 1; transition: opacity 0.15s;"
+                        :style="(salvandoObs || !obsForm.texto.trim()) ? 'opacity: 0.5; cursor: not-allowed;' : ''">
+                  <span x-show="!salvandoObs" x-text="obsForm.id ? 'Salvar' : 'Adicionar'"></span>
+                  <span x-show="salvandoObs">Salvando...</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Modal de cadastro de vínculo manual -->
           <div x-cloak
                @click.self="fecharModalVinculo()"
@@ -727,6 +764,55 @@ function renderPessoaDetalhe(appState) {
             </div>
           </div>
 
+          <!-- Observações da Pessoa -->
+          <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">Observações</h3>
+              <button @click="abrirModalObservacao()"
+                      style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-size: 0.75rem; font-family: var(--font-data); font-weight: 600; letter-spacing: 0.05em; padding: 0; opacity: 0.85; transition: opacity 0.15s;"
+                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+                + Nova Observação
+              </button>
+            </div>
+
+            <!-- Lista de observações -->
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <template x-for="obs in observacoes" :key="obs.id">
+                <div class="card-led-purple" style="position: relative; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                  <!-- Data no canto superior direito + botões de ação -->
+                  <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
+                    <span x-show="obs.criado_em" style="font-size: 10px; color: var(--color-text-dim);"
+                          x-text="new Date(obs.criado_em).toLocaleDateString('pt-BR') + ' ' + new Date(obs.criado_em).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})"></span>
+                    <button @click="abrirModalObservacao(obs)"
+                            style="color: var(--color-text-dim); background: none; border: none; cursor: pointer; padding: 0;"
+                            onmouseover="this.style.color='var(--color-primary)'" onmouseout="this.style.color='var(--color-text-dim)'"
+                            title="Editar observação">
+                      <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
+                      </svg>
+                    </button>
+                    <button @click="deletarObservacao(obs.id)"
+                            style="color: var(--color-text-dim); background: none; border: none; cursor: pointer; padding: 0;"
+                            onmouseover="this.style.color='var(--color-danger)'" onmouseout="this.style.color='var(--color-text-dim)'"
+                            title="Remover observação">
+                      <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <!-- Texto da observação -->
+                  <p style="font-size: 0.8125rem; color: var(--color-text-muted); margin: 0; white-space: pre-wrap;" x-text="obs.texto"></p>
+                </div>
+              </template>
+            </div>
+
+            <!-- Mensagem quando não há observações -->
+            <div x-show="!observacoes.length"
+                 style="font-size: 0.75rem; color: var(--color-text-dim); text-align: center; padding: 0.5rem 0;">
+              Nenhuma observação cadastrada
+            </div>
+          </div>
+
           <!-- Histórico de abordagens -->
           <div x-show="abordagens.length > 0" class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
             <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
@@ -882,6 +968,12 @@ function pessoaDetalhePage(pessoaId) {
     novaPessoaForm: { nome: '', cpf: '', apelido: '', data_nascimento: '' },
     _buscaTimer: null,
 
+    // Observações
+    observacoes: [],
+    modalObservacao: false,
+    obsForm: { id: null, texto: '' },
+    salvandoObs: false,
+
     /**
      * Calcula a idade em anos completos a partir da data de nascimento.
      *
@@ -942,6 +1034,8 @@ function pessoaDetalhePage(pessoaId) {
         // Buscar pessoa com detalhes
         this.pessoa = await api.get(`/pessoas/${pessoaId}`);
         this.vinculosManuais = this.pessoa.vinculos_manuais || [];
+        // Carregar observações da pessoa
+        await this.carregarObservacoes();
 
         // Buscar fotos da pessoa
         try {
@@ -1215,6 +1309,59 @@ function pessoaDetalhePage(pessoaId) {
         this.vinculosManuais = this.vinculosManuais.filter(v => v.id !== vinculoId);
       } catch (err) {
         alert(err.message || 'Erro ao remover vínculo.');
+      }
+    },
+
+    async carregarObservacoes() {
+      try {
+        this.observacoes = await api.get(`/pessoas/${pessoaId}/observacoes`);
+      } catch {
+        this.observacoes = [];
+      }
+    },
+
+    abrirModalObservacao(obs = null) {
+      if (obs) {
+        this.obsForm = { id: obs.id, texto: obs.texto };
+      } else {
+        this.obsForm = { id: null, texto: '' };
+      }
+      this.modalObservacao = true;
+    },
+
+    async salvarObservacao() {
+      if (!this.obsForm.texto.trim()) return;
+      this.salvandoObs = true;
+      try {
+        if (this.obsForm.id) {
+          const atualizada = await api.patch(
+            `/pessoas/${pessoaId}/observacoes/${this.obsForm.id}`,
+            { texto: this.obsForm.texto.trim() }
+          );
+          const idx = this.observacoes.findIndex(o => o.id === this.obsForm.id);
+          if (idx !== -1) this.observacoes[idx] = atualizada;
+        } else {
+          const nova = await api.post(`/pessoas/${pessoaId}/observacoes`, {
+            texto: this.obsForm.texto.trim()
+          });
+          this.observacoes.unshift(nova);
+        }
+        this.modalObservacao = false;
+        this.obsForm = { id: null, texto: '' };
+      } catch (err) {
+        alert(err.message || 'Erro ao salvar observação.');
+      } finally {
+        this.salvandoObs = false;
+      }
+    },
+
+    async deletarObservacao(obsId) {
+      if (!confirm('Remover esta observação?')) return;
+      try {
+        await api.del(`/pessoas/${pessoaId}/observacoes/${obsId}`);
+        this.observacoes = this.observacoes.filter(o => o.id !== obsId);
+      } catch (err) {
+        alert(err.message || 'Erro ao remover observação.');
       }
     },
 
