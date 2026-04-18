@@ -61,6 +61,10 @@ function renderPessoaDetalhe(appState) {
                 <span style="color: var(--color-text-muted); margin-left: 0.25rem;" x-text="pessoa.abordagens_count || 0"></span>
               </div>
             </div>
+            <div x-show="pessoa.nome_mae" style="padding-top: 0.25rem;">
+              <span style="font-size: 0.75rem; color: var(--color-text-dim)">Mãe:</span>
+              <p style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;" x-text="pessoa.nome_mae"></p>
+            </div>
             <div x-show="pessoa.observacoes" style="padding-top: 0.25rem;">
               <span style="font-size: 0.75rem; color: var(--color-text-dim)">Obs:</span>
               <p style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;" x-text="pessoa.observacoes"></p>
