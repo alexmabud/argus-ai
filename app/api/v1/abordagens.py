@@ -87,9 +87,9 @@ async def listar_abordagens(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> list[AbordagemDetail]:
-    """Lista abordagens do usuário autenticado com paginação.
+    """Lista todas as abordagens da guarnição com paginação.
 
-    Retorna apenas as abordagens realizadas pelo próprio usuário,
+    Retorna todas as abordagens da guarnição do usuário autenticado,
     com pessoas, veículos, fotos e ocorrências carregados.
 
     Args:
@@ -104,6 +104,7 @@ async def listar_abordagens(
 
     Status Code:
         200: Lista retornada.
+        403: Usuário sem guarnição.
         429: Rate limit (30/min).
     """
     if user.guarnicao_id is None:
@@ -112,8 +113,7 @@ async def listar_abordagens(
             detail="Usuário sem guarnição atribuída",
         )
     service = AbordagemService(db)
-    abordagens = await service.listar_por_usuario(
-        usuario_id=user.id,
+    abordagens = await service.listar(
         guarnicao_id=user.guarnicao_id,
         skip=skip,
         limit=limit,
