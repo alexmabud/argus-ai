@@ -11,6 +11,7 @@ from app.models.guarnicao import Guarnicao  # noqa: F401
 from app.models.localidade import Localidade  # noqa: F401
 from app.models.ocorrencia import Ocorrencia  # noqa: F401
 from app.models.pessoa import Pessoa  # noqa: F401
+from app.models.pessoa_observacao import PessoaObservacao  # noqa: F401
 from app.models.relacionamento import RelacionamentoPessoa  # noqa: F401
 from app.models.usuario import Usuario  # noqa: F401
 from app.models.veiculo import Veiculo  # noqa: F401
