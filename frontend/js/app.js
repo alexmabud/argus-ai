@@ -357,6 +357,77 @@ function app() {
     },
 
     /**
+     * Verifica se o perfil do usuário está incompleto.
+     *
+     * Retorna false para admins — eles não precisam completar perfil.
+     * Campos obrigatórios: nome, posto_graduacao, nome_guerra.
+     *
+     * @param {object} user - Objeto do usuário autenticado.
+     * @returns {boolean} true se perfil incompleto e usuário não é admin.
+     */
+    _perfilIncompleto(user) {
+      if (!user || user.is_admin) return false;
+      return !user.nome?.trim() || !user.posto_graduacao || !user.nome_guerra?.trim();
+    },
+
+    /**
+     * Exibe modal fullscreen bloqueante para completar perfil.
+     *
+     * Cria overlay dinamicamente e inicializa Alpine no elemento.
+     * Guard contra dupla exibição via id único no DOM.
+     * Fecha automaticamente após salvar com sucesso (via completarPerfilModal).
+     */
+    _mostrarModalCompletarPerfil() {
+      if (document.getElementById("modal-completar-perfil")) return;
+
+      const postoOpts = POSTOS_GRADUACAO.map(
+        (p) => `<option value="${p}">${p}</option>`
+      ).join("");
+
+      const overlay = document.createElement("div");
+      overlay.id = "modal-completar-perfil";
+      overlay.style.cssText =
+        "position:fixed;inset:0;background:rgba(5,10,15,0.92);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;";
+
+      overlay.innerHTML = `
+        <div class="glass-card" style="padding:24px;max-width:400px;width:100%;border:1px solid var(--color-primary);" x-data="completarPerfilModal()">
+          <div style="margin-bottom:20px;">
+            <h3 style="color:var(--color-primary);font-family:var(--font-display);font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">
+              Complete seu perfil
+            </h3>
+            <p style="color:var(--color-text-muted);font-family:var(--font-body);font-size:13px;">
+              Para usar o sistema, preencha seus dados de identificação.
+            </p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label class="login-field-label">Nome completo</label>
+              <input type="text" x-model="nome" placeholder="Seu nome completo" maxlength="200" />
+            </div>
+            <div>
+              <label class="login-field-label">Nome de guerra</label>
+              <input type="text" x-model="nomeGuerra" placeholder="Ex: Silva" maxlength="50" />
+            </div>
+            <div>
+              <label class="login-field-label">Posto / Graduação</label>
+              <select x-model="posto">
+                <option value="">Selecione...</option>
+                ${postoOpts}
+              </select>
+            </div>
+            <button @click="salvar()" :disabled="salvando" class="btn btn-primary" style="width:100%;margin-top:4px;">
+              <span x-show="!salvando">Salvar e continuar</span>
+              <span x-show="salvando">Salvando...</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+      Alpine.initTree(overlay);
+    },
+
+    /**
      * Realiza logout e retorna para tela de login.
      */
     logout() {
