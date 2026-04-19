@@ -370,6 +370,46 @@ function app() {
 }
 
 /**
+ * Componente Alpine.js do formulário de completar perfil.
+ *
+ * Usado pelo modal bloqueante exibido quando usuário comum
+ * abre o sistema com perfil incompleto. Salva via PUT /auth/perfil.
+ */
+function completarPerfilModal() {
+  const user = auth.getUser() || {};
+  return {
+    nome: user.nome || "",
+    nomeGuerra: user.nome_guerra || "",
+    posto: user.posto_graduacao || "",
+    salvando: false,
+
+    async salvar() {
+      if (!this.nome.trim() || !this.nomeGuerra.trim() || !this.posto) {
+        showToast("Preencha todos os campos", "error");
+        return;
+      }
+      this.salvando = true;
+      try {
+        const updated = await api.put("/auth/perfil", {
+          nome: this.nome.trim(),
+          nome_guerra: this.nomeGuerra.trim(),
+          posto_graduacao: this.posto,
+        });
+        auth.user = updated;
+        localStorage.setItem("argus_user", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("user:updated", { detail: updated }));
+        document.getElementById("modal-completar-perfil")?.remove();
+        showToast("Perfil atualizado com sucesso", "success");
+      } catch {
+        showToast("Erro ao salvar perfil", "error");
+      } finally {
+        this.salvando = false;
+      }
+    },
+  };
+}
+
+/**
  * Escapa caracteres especiais HTML para prevenir XSS.
  *
  * Deve ser aplicada em todo dado de usuário antes de interpolação em innerHTML.
