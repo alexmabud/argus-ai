@@ -457,7 +457,7 @@ function app() {
 function completarPerfilModal() {
   const user = auth.getUser() || {};
   return {
-    nome: user.nome || "",
+    nome: (user.nome && user.nome !== user.matricula) ? user.nome : "",
     nomeGuerra: user.nome_guerra || "",
     posto: user.posto_graduacao || "",
     salvando: false,
