@@ -23,10 +23,6 @@ function renderConsulta() {
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Pessoa</span>
-          <button @click="showCadastroPessoa = !showCadastroPessoa; if(showCadastroPessoa) cpCarregarEstados(); novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', nome_mae: '', endereco: '' }; this.cpEstadoId=null; this.cpCidadeId=null; this.cpCidadeTexto=''; this.cpBairroId=null; this.cpBairroTexto=''; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
-                  style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-primary);background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
-            + Nova Pessoa
-          </button>
         </div>
 
         <!-- Campo texto -->
