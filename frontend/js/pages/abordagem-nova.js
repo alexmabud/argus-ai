@@ -59,13 +59,17 @@ function renderAbordagemNova() {
               </span>
             </template>
           </div>
+
+          <!-- Erro CPF inválido (busca) -->
+          <p x-show="cpfErro" x-text="cpfErro"
+             style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);margin-top:4px;"></p>
         </div>
 
         <!-- Formulário inline: cadastrar nova pessoa -->
         <div x-show="showNovaPessoa" x-cloak style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <h3 style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--color-text);margin:0;">Cadastrar novo abordado</h3>
-            <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',data_nascimento:'',apelido:'',nome_mae:'',endereco:''}; anEstadoId=null; anCidadeId=null; anCidadeTexto=''; anBairroId=null; anBairroTexto=''; anCidadeSugestoes=[]; anBairroSugestoes=[];"
+            <button @click="showNovaPessoa = false; novaPessoa = {nome:'',cpf:'',data_nascimento:'',apelido:'',nome_mae:'',endereco:''}; anEstadoId=null; anCidadeId=null; anCidadeTexto=''; anBairroId=null; anBairroTexto=''; anCidadeSugestoes=[]; anBairroSugestoes=[]; cpfCadastroErro = '';"
                     style="color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;font-family:var(--font-data);font-size:11px;">Cancelar</button>
           </div>
 
@@ -76,7 +80,11 @@ function renderAbordagemNova() {
 
           <div>
             <label class="login-field-label">CPF</label>
-            <input type="text" :value="novaPessoa.cpf" @input="novaPessoa.cpf = formatarCPF($event.target.value)" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+            <input type="text" :value="novaPessoa.cpf"
+                   @input="novaPessoa.cpf = formatarCPF($event.target.value); cpfCadastroErro = novaPessoa.cpf.length === 14 && !validarCPF(novaPessoa.cpf) ? 'CPF inválido' : ''"
+                   placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+            <p x-show="cpfCadastroErro" x-text="cpfCadastroErro"
+               style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);margin-top:4px;"></p>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -162,7 +170,7 @@ function renderAbordagemNova() {
             </div>
           </div>
 
-          <button @click="criarPessoa()" class="btn btn-primary" :disabled="salvandoPessoa || !novaPessoa.nome.trim()">
+          <button @click="criarPessoa()" class="btn btn-primary" :disabled="salvandoPessoa || !novaPessoa.nome.trim() || !!cpfCadastroErro">
             <span x-show="!salvandoPessoa">Salvar e adicionar</span>
             <span x-show="salvandoPessoa" style="display:flex;align-items:center;gap:8px;">
               <span class="spinner"></span> Salvando...
@@ -511,6 +519,7 @@ function abordagemForm() {
     novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" },
     salvandoPessoa: false,
     erroPessoa: null,
+    cpfCadastroErro: "",
 
     // Cascata endereço — nova pessoa
     anEstadoId: null,
@@ -715,6 +724,7 @@ function abordagemForm() {
 
         // Reset formulário
         this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
+        this.cpfCadastroErro = "";
         this.anEstadoId = null; this.anCidadeId = null; this.anCidadeTexto = "";
         this.anBairroId = null; this.anBairroTexto = "";
         this.showNovaPessoa = false;
