@@ -28,7 +28,7 @@ function renderConsulta() {
         <!-- Campo texto -->
         <div style="position:relative;">
           <input type="text" :value="query"
-                 @input="query = formatarBuscaQuery($event.target.value); onInput()"
+                 @input="query = formatarBuscaQuery($event.target.value); cpfBuscaErro = query.replace(/\D/g,'').length === 11 && !validarCPF(query) ? 'CPF inválido' : ''; if (!cpfBuscaErro) onInput()"
                  placeholder="NOME COMPLETO OU CPF..."
                  inputmode="text"
                  style="padding-left:40px;">
@@ -36,6 +36,8 @@ function renderConsulta() {
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
           </svg>
         </div>
+        <p x-show="cpfBuscaErro" x-text="cpfBuscaErro"
+           style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);margin-top:4px;"></p>
 
         <!-- Separador -->
         <div style="display:flex;align-items:center;gap:12px;">
@@ -182,7 +184,7 @@ function renderConsulta() {
              style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-top:4px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text);text-transform:uppercase;letter-spacing:0.06em;">Cadastrar Pessoa</h3>
-            <button @click="showCadastroPessoa = false; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', nome_mae: '', endereco: '' }; this.cpEstadoId=null; this.cpCidadeId=null; this.cpCidadeTexto=''; this.cpBairroId=null; this.cpBairroTexto=''; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null"
+            <button @click="showCadastroPessoa = false; novaPessoa = { nome: '', cpf: '', data_nascimento: '', apelido: '', nome_mae: '', endereco: '' }; this.cpEstadoId=null; this.cpCidadeId=null; this.cpCidadeTexto=''; this.cpBairroId=null; this.cpBairroTexto=''; fotoPessoa = null; fotoPessoaPreviewUrl = ''; erroCadastro = null; cpfCadastroErro = ''"
                     style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);background:transparent;border:none;cursor:pointer;">Cancelar</button>
           </div>
 
@@ -194,8 +196,10 @@ function renderConsulta() {
           <div>
             <label class="login-field-label">CPF</label>
             <input type="text" :value="novaPessoa.cpf"
-                   @input="novaPessoa.cpf = formatarCPF($event.target.value)"
+                   @input="novaPessoa.cpf = formatarCPF($event.target.value); cpfCadastroErro = novaPessoa.cpf.length === 14 && !validarCPF(novaPessoa.cpf) ? 'CPF inválido' : ''"
                    placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+            <p x-show="cpfCadastroErro" x-text="cpfCadastroErro"
+               style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);margin-top:4px;"></p>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -298,7 +302,7 @@ function renderConsulta() {
           </div>
 
           <button @click="criarPessoa()" class="btn btn-primary"
-                  :disabled="salvandoPessoa || !novaPessoa.nome.trim()">
+                  :disabled="salvandoPessoa || !novaPessoa.nome.trim() || !!cpfCadastroErro">
             <span x-show="!salvandoPessoa">SALVAR PESSOA</span>
             <span x-show="salvandoPessoa" style="display:flex;align-items:center;justify-content:center;gap:8px;">
               <span class="spinner"></span> SALVANDO...
@@ -685,6 +689,8 @@ function consultaPage() {
     fotoPessoaPreviewUrl: "",
     salvandoPessoa: false,
     erroCadastro: null,
+    cpfBuscaErro: "",
+    cpfCadastroErro: "",
     // Localidade cascata (cadastro pessoa)
     cpEstadoId: null,
     cpCidadeId: null,
@@ -963,6 +969,11 @@ function consultaPage() {
         return;
       }
 
+      if (this.novaPessoa.cpf.trim() && !validarCPF(this.novaPessoa.cpf)) {
+        this.cpfCadastroErro = "CPF inválido";
+        return;
+      }
+
       this.salvandoPessoa = true;
       this.erroCadastro = null;
 
@@ -995,6 +1006,8 @@ function consultaPage() {
         }
 
         this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
+        this.cpfCadastroErro = "";
+        this.cpfBuscaErro = "";
         this.cpEstadoId = null; this.cpCidadeId = null; this.cpCidadeTexto = ""; this.cpBairroId = null; this.cpBairroTexto = "";
         this.fotoPessoa = null;
         this.fotoPessoaPreviewUrl = "";
