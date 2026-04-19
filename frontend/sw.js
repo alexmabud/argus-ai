@@ -1,4 +1,4 @@
-const CACHE_NAME = "argus-v10";
+const CACHE_NAME = "argus-v11";
 const STATIC_ASSETS = [
   "/",
   "/css/app.css",
@@ -87,6 +87,7 @@ self.addEventListener("fetch", (event) => {
           caches
             .match(request)
             .then((cached) => cached || new Response("", { status: 503 }))
+            .catch(() => new Response("", { status: 503 }))
         )
     );
   }
