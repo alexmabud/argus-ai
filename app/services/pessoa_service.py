@@ -249,9 +249,7 @@ class PessoaService:
             return [result] if result else []
 
         if nome:
-            return list(
-                await self.repo.search_by_nome_fuzzy(nome, guarnicao_id, skip=skip, limit=limit)
-            )
+            return list(await self.repo.search_by_nome(nome, guarnicao_id, skip=skip, limit=limit))
 
         return list(await self.repo.get_all(skip=skip, limit=limit, guarnicao_id=guarnicao_id))
 

@@ -38,7 +38,7 @@ class PessoaRepository(BaseRepository[Pessoa]):
         """
         super().__init__(Pessoa, db)
 
-    async def search_by_nome_fuzzy(
+    async def search_by_nome(
         self,
         nome: str,
         guarnicao_id: int | None,
@@ -46,57 +46,21 @@ class PessoaRepository(BaseRepository[Pessoa]):
         skip: int = 0,
         limit: int = 20,
     ) -> Sequence[Pessoa]:
-        """Busca pessoas por nome usando pg_trgm (busca fuzzy).
+        """Busca pessoas por nome, apelido ou similaridade, ignorando acentos e case.
 
-        Utiliza a função similarity() do PostgreSQL para encontrar nomes
-        similares, tolerando erros de digitação e variações.
+        Combina busca por substring (ILIKE) no nome e apelido com busca fuzzy
+        (pg_trgm similarity) para tolerar erros de digitação. Resultados são
+        ordenados por relevância: match no nome > match no apelido > match fuzzy.
 
         Args:
-            nome: Termo de busca (nome ou parte do nome).
+            nome: Termo de busca (nome, apelido ou parte do nome).
             guarnicao_id: ID da guarnição para filtro multi-tenant.
-            threshold: Limite mínimo de similaridade (0.0 a 1.0, padrão 0.3).
+            threshold: Limite mínimo de similaridade fuzzy (0.0 a 1.0, padrão 0.3).
             skip: Número de registros a pular.
             limit: Número máximo de resultados.
 
         Returns:
-            Sequência de Pessoas ordenadas por similaridade decrescente.
-        """
-        nome_norm = func.unaccent(func.lower(Pessoa.nome))
-        query_norm = func.unaccent(func.lower(nome))
-        query = select(Pessoa).where(
-            Pessoa.ativo == True,  # noqa: E712
-            func.similarity(nome_norm, query_norm) > threshold,
-        )
-        if guarnicao_id is not None:
-            query = query.where(Pessoa.guarnicao_id == guarnicao_id)
-
-        query = (
-            query.order_by(func.similarity(nome_norm, query_norm).desc()).offset(skip).limit(limit)
-        )
-        result = await self.db.execute(query)
-        return result.scalars().all()
-
-    async def search_by_nome_contains(
-        self,
-        nome: str,
-        guarnicao_id: int | None,
-        skip: int = 0,
-        limit: int = 20,
-    ) -> Sequence[Pessoa]:
-        """Busca pessoas por substring no nome ou apelido, ignorando acentos e case.
-
-        Utiliza unaccent + ILIKE para busca parcial tanto no nome quanto no
-        apelido (vulgo). Resultados são ordenados priorizando match no nome
-        (posição do match) e depois match apenas no apelido.
-
-        Args:
-            nome: Termo de busca (nome, parte do nome ou apelido/vulgo).
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
-            skip: Número de registros a pular.
-            limit: Número máximo de resultados.
-
-        Returns:
-            Sequência de Pessoas ordenadas por relevância do match.
+            Sequência de Pessoas ordenadas por relevância decrescente.
         """
         nome_clean = nome.strip()
         if not nome_clean:
@@ -107,22 +71,24 @@ class PessoaRepository(BaseRepository[Pessoa]):
         unaccent_query = func.unaccent(func.lower(nome_clean))
         like_pattern = "%" + unaccent_query + "%"
 
+        match_nome = unaccent_nome.like(like_pattern)
+        match_apelido = unaccent_apelido.like(like_pattern)
+        match_fuzzy = func.similarity(unaccent_nome, unaccent_query) > threshold
+
         query = select(Pessoa).where(
             Pessoa.ativo == True,  # noqa: E712
-            or_(
-                unaccent_nome.like(like_pattern),
-                unaccent_apelido.like(like_pattern),
-            ),
+            or_(match_nome, match_apelido, match_fuzzy),
         )
         if guarnicao_id is not None:
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
 
-        # Prioriza match no nome; pessoas cujo match é só no apelido vêm depois.
-        ordem_match_nome = case(
-            (unaccent_nome.like(like_pattern), func.strpos(unaccent_nome, unaccent_query)),
+        # 1 = match no nome (posição), 5000 = só apelido, 9999 = só fuzzy
+        ordem = case(
+            (match_nome, func.strpos(unaccent_nome, unaccent_query)),
+            (match_apelido, 5000),
             else_=9999,
         )
-        query = query.order_by(ordem_match_nome.asc(), Pessoa.nome.asc()).offset(skip).limit(limit)
+        query = query.order_by(ordem.asc(), Pessoa.nome.asc()).offset(skip).limit(limit)
         result = await self.db.execute(query)
         return result.scalars().all()
 
