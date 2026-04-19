@@ -61,14 +61,18 @@ class PessoaRepository(BaseRepository[Pessoa]):
         Returns:
             Sequência de Pessoas ordenadas por similaridade decrescente.
         """
+        nome_norm = func.unaccent(func.lower(Pessoa.nome))
+        query_norm = func.unaccent(func.lower(nome))
         query = select(Pessoa).where(
             Pessoa.ativo == True,  # noqa: E712
-            func.similarity(Pessoa.nome, nome) > threshold,
+            func.similarity(nome_norm, query_norm) > threshold,
         )
         if guarnicao_id is not None:
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
 
-        query = query.order_by(func.similarity(Pessoa.nome, nome).desc()).offset(skip).limit(limit)
+        query = (
+            query.order_by(func.similarity(nome_norm, query_norm).desc()).offset(skip).limit(limit)
+        )
         result = await self.db.execute(query)
         return result.scalars().all()
 
