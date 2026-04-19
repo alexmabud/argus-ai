@@ -680,6 +680,11 @@ function abordagemForm() {
         return;
       }
 
+      if (this.novaPessoa.cpf.trim() && !validarCPF(this.novaPessoa.cpf)) {
+        this.cpfCadastroErro = "CPF inválido";
+        return;
+      }
+
       this.salvandoPessoa = true;
       this.erroPessoa = null;
 
