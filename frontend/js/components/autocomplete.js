@@ -63,8 +63,10 @@ function autocompleteComponent(tipo) {
         return;
       }
       // Filtro local imediato nos resultados já carregados
+      // Busca por CPF não usa filtro local: cpf_masked é mascarado (LGPD) e não contém o CPF completo
       if (this._allResults.length > 0) {
-        this.results = this._filtrarLocalmente();
+        const isCpfSearch = tipo === "pessoa" && this._isCPF(this.query);
+        this.results = isCpfSearch ? this._allResults : this._filtrarLocalmente();
         this.showDropdown = this.results.length > 0;
       }
       this._debounceTimer = setTimeout(() => this.search(), 300);
@@ -91,7 +93,9 @@ function autocompleteComponent(tipo) {
           }
         }
         this._allResults = data || [];
-        this.results = this._filtrarLocalmente();
+        // Busca por CPF não usa filtro local: cpf_masked é mascarado (LGPD) e não contém o CPF completo
+        const isCpfSearch = tipo === "pessoa" && this._isCPF(this.query);
+        this.results = isCpfSearch ? this._allResults : this._filtrarLocalmente();
         this.noResults = this.results.length === 0 && this.query.length >= 2;
         this.showDropdown = this.results.length > 0 || this.noResults;
       } catch {
