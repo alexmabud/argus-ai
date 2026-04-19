@@ -28,7 +28,7 @@ function renderConsulta() {
         <!-- Campo texto -->
         <div style="position:relative;">
           <input type="text" :value="query"
-                 @input="query = formatarBuscaQuery($event.target.value); cpfBuscaErro = query.replace(/\D/g,'').length === 11 && !validarCPF(query) ? 'CPF inválido' : ''; if (cpfBuscaErro) { pessoasTexto = []; searched = false; buscouPessoa = false; } else onInput()"
+                 @input="onInputPessoa($event.target.value)"
                  placeholder="NOME COMPLETO OU CPF..."
                  inputmode="text"
                  style="padding-left:40px;">
@@ -709,6 +709,26 @@ function consultaPage() {
       } catch {
         /* silencioso */
       }
+    },
+
+    _isCPF(value) {
+      return /^\d{3,}[\d.\-]*$/.test(value.trim());
+    },
+
+    onInputPessoa(value) {
+      this.query = formatarBuscaQuery(value);
+      if (this._isCPF(this.query)) {
+        const digits = this.query.replace(/\D/g, "");
+        if (digits.length === 11 && !validarCPF(this.query)) {
+          this.cpfBuscaErro = "CPF inválido";
+          this.pessoasTexto = [];
+          this.searched = false;
+          this.buscouPessoa = false;
+          return;
+        }
+      }
+      this.cpfBuscaErro = "";
+      this.onInput();
     },
 
     onInput() {
