@@ -201,6 +201,9 @@ function app() {
         this.currentPage = "home";
         this.renderPage("home");
         document.body.style.overflow = "hidden";
+        if (this._perfilIncompleto(this.user)) {
+          this.$nextTick(() => this._mostrarModalCompletarPerfil());
+        }
       } else {
         this.$nextTick(() => this.renderLogin());
       }
@@ -354,6 +357,9 @@ function app() {
       this.authenticated = true;
       this.user = user;
       this.navigate("home");
+      if (this._perfilIncompleto(user)) {
+        this.$nextTick(() => this._mostrarModalCompletarPerfil());
+      }
     },
 
     /**
