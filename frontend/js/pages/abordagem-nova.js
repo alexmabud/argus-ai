@@ -61,12 +61,6 @@ function renderAbordagemNova() {
           </div>
         </div>
 
-        <!-- Botão para cadastrar sem buscar -->
-        <button x-show="!showNovaPessoa" @click="showNovaPessoa = true"
-                style="color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;text-align:left;">
-          + Adicionar pessoa não cadastrada
-        </button>
-
         <!-- Formulário inline: cadastrar nova pessoa -->
         <div x-show="showNovaPessoa" x-cloak style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
