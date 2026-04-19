@@ -28,7 +28,7 @@ function renderConsulta() {
         <!-- Campo texto -->
         <div style="position:relative;">
           <input type="text" :value="query"
-                 @input="query = formatarBuscaQuery($event.target.value); cpfBuscaErro = query.replace(/\D/g,'').length === 11 && !validarCPF(query) ? 'CPF inválido' : ''; if (!cpfBuscaErro) onInput()"
+                 @input="query = formatarBuscaQuery($event.target.value); cpfBuscaErro = query.replace(/\D/g,'').length === 11 && !validarCPF(query) ? 'CPF inválido' : ''; if (cpfBuscaErro) { pessoasTexto = []; searched = false; buscouPessoa = false; } else onInput()"
                  placeholder="NOME COMPLETO OU CPF..."
                  inputmode="text"
                  style="padding-left:40px;">
