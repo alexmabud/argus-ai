@@ -373,7 +373,7 @@ function app() {
      */
     _perfilIncompleto(user) {
       if (!user || user.is_admin) return false;
-      return !user.nome?.trim() || !user.posto_graduacao || !user.nome_guerra?.trim();
+      return !user.nome?.trim() || !user.posto_graduacao?.trim() || !user.nome_guerra?.trim();
     },
 
     /**
@@ -386,8 +386,10 @@ function app() {
     _mostrarModalCompletarPerfil() {
       if (document.getElementById("modal-completar-perfil")) return;
 
-      const postoOpts = POSTOS_GRADUACAO.map(
-        (p) => `<option value="${p}">${p}</option>`
+      // Guard: POSTOS_GRADUACAO é definido em perfil.js (carregado antes de app.js).
+      const postos = typeof POSTOS_GRADUACAO !== "undefined" ? POSTOS_GRADUACAO : [];
+      const postoOpts = postos.map(
+        (p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`
       ).join("");
 
       const overlay = document.createElement("div");
@@ -465,6 +467,10 @@ function completarPerfilModal() {
         showToast("Preencha todos os campos", "error");
         return;
       }
+      if (this.nome.trim().length < 2) {
+        showToast("Nome deve ter ao menos 2 caracteres", "error");
+        return;
+      }
       this.salvando = true;
       try {
         const updated = await api.put("/auth/perfil", {
@@ -477,7 +483,8 @@ function completarPerfilModal() {
         window.dispatchEvent(new CustomEvent("user:updated", { detail: updated }));
         document.getElementById("modal-completar-perfil")?.remove();
         showToast("Perfil atualizado com sucesso", "success");
-      } catch {
+      } catch (e) {
+        console.error("[Argus] completarPerfilModal.salvar:", e);
         showToast("Erro ao salvar perfil", "error");
       } finally {
         this.salvando = false;
