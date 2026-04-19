@@ -16,6 +16,7 @@ function autocompleteComponent(tipo) {
     loading: false,
     noResults: false,
     _debounceTimer: null,
+    cpfErro: "",
 
     _isCPF(value) {
       return /^\d{3,}[\d.\-]*$/.test(value.trim());
@@ -42,6 +43,19 @@ function autocompleteComponent(tipo) {
     onInput() {
       clearTimeout(this._debounceTimer);
       this.noResults = false;
+
+      if (tipo === "pessoa" && this._isCPF(this.query)) {
+        const digits = this.query.replace(/\D/g, "");
+        if (digits.length === 11 && !validarCPF(this.query)) {
+          this.cpfErro = "CPF inválido";
+          this.results = [];
+          this._allResults = [];
+          this.showDropdown = false;
+          return;
+        }
+      }
+      this.cpfErro = "";
+
       if (this.query.length < 2) {
         this.results = [];
         this._allResults = [];
