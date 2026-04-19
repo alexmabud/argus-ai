@@ -27,18 +27,22 @@ function renderAdminUsuarios() {
           <div class="glass-card" style="padding: 1rem;">
             <div style="display: flex; align-items: center; gap: 0.75rem;">
               <!-- Avatar -->
-              <div style="width: 40px; height: 40px; border-radius: 4px; background: var(--color-surface-hover); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-primary); font-size: 0.875rem; font-family: var(--font-display); font-weight: 700; overflow: hidden; flex-shrink: 0;">
+              <div style="width: 44px; height: 44px; border-radius: 4px; background: var(--color-surface-hover); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-primary); font-size: 1rem; font-family: var(--font-display); font-weight: 700; overflow: hidden; flex-shrink: 0;">
                 <template x-if="u.foto_url">
                   <img :src="u.foto_url" style="width: 100%; height: 100%; object-fit: cover;" />
                 </template>
                 <template x-if="!u.foto_url">
-                  <span x-text="(u.nome || '?').split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase()"></span>
+                  <span x-text="(u.nome_guerra || u.nome || '?')[0].toUpperCase()"></span>
                 </template>
               </div>
               <!-- Info -->
               <div style="flex: 1; min-width: 0;">
-                <p style="color: var(--color-text); font-family: var(--font-body); font-weight: 500; font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="u.nome"></p>
-                <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;" x-text="u.matricula + (u.posto_graduacao ? ' · ' + u.posto_graduacao : '')"></p>
+                <!-- Destaque: posto + nome de guerra -->
+                <p style="color: var(--color-primary); font-family: var(--font-display); font-weight: 700; font-size: 0.9375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                   x-text="(u.posto_graduacao || 'Sem graduação') + (u.nome_guerra ? ' ' + u.nome_guerra : '')"></p>
+                <!-- Secundário: nome completo · matrícula -->
+                <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                   x-text="(u.nome !== u.matricula ? u.nome + ' · ' : '') + u.matricula"></p>
               </div>
               <!-- Status -->
               <span :style="u.tem_sessao
@@ -131,7 +135,18 @@ function adminUsuariosPage() {
     async carregar() {
       this.carregando = true;
       try {
-        this.usuarios = await api.get("/admin/usuarios");
+        const lista = await api.get("/admin/usuarios");
+        const ordemRank = [
+          "Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento",
+          "Subtenente", "Aspirante", "2º Tenente", "1º Tenente",
+          "Capitão", "Major", "Tenente-Coronel", "Coronel",
+        ];
+        this.usuarios = lista.sort((a, b) => {
+          const rankA = ordemRank.indexOf(a.posto_graduacao ?? "");
+          const rankB = ordemRank.indexOf(b.posto_graduacao ?? "");
+          if (rankB !== rankA) return rankB - rankA;
+          return (parseInt(a.matricula) || 0) - (parseInt(b.matricula) || 0);
+        });
       } catch {
         showToast("Erro ao carregar usuários", "error");
       } finally {
