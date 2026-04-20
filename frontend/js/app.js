@@ -317,6 +317,7 @@ function app() {
           const data = el._x_dataStack[0];
           if (data._chartDia) { try { data._chartDia.destroy(); } catch {} }
           if (data._chartMes) { try { data._chartMes.destroy(); } catch {} }
+          if (data.destroyMapaAnalitico) { try { data.destroyMapaAnalitico(); } catch {} }
         }
       });
 
