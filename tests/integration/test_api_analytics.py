@@ -3,9 +3,13 @@
 Testa endpoints de métricas operacionais do dashboard.
 """
 
+from zoneinfo import ZoneInfo
+
 from httpx import AsyncClient
 
 from app.models.abordagem import Abordagem
+
+_BRT = ZoneInfo("America/Sao_Paulo")
 
 
 class TestPessoasRecorrentes:
@@ -188,7 +192,7 @@ class TestAbordagensDoDia:
             auth_headers: Headers com Bearer token válido.
             abordagem: Fixture de abordagem com coordenadas associada à guarnição.
         """
-        data = abordagem.data_hora.date().isoformat()
+        data = abordagem.data_hora.astimezone(_BRT).date().isoformat()
         resp = await client.get(
             f"/api/v1/analytics/abordagens-do-dia?data={data}",
             headers=auth_headers,
