@@ -535,6 +535,7 @@ function dashboardPage() {
         this._mapaAnaliticoObserver = null;
       }
       if (this.mapaAnaliticoInst) {
+        this.mapaAnaliticoInst.closePopup();
         this.mapaAnaliticoInst.remove();
         this.mapaAnaliticoInst = null;
         this.clusterAnalitico = null;
