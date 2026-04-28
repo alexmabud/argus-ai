@@ -9,6 +9,7 @@ cadastro completo ocorra em < 40 segundos.
 
 import logging
 from collections.abc import Sequence
+from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -241,6 +242,25 @@ class AbordagemService:
             Sequência de Abordagens ordenadas por data_hora decrescente.
         """
         return await self.repo.list_by_guarnicao(guarnicao_id, skip, limit)
+
+    async def listar_por_data(
+        self,
+        guarnicao_id: int,
+        data: date,
+    ) -> Sequence[Abordagem]:
+        """Lista abordagens da guarnição em uma data específica.
+
+        Retorna todos os registros do dia sem paginação, com eager
+        loading completo de pessoas, veículos, fotos e ocorrências.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            data: Data de referência (YYYY-MM-DD).
+
+        Returns:
+            Sequência de Abordagens do dia ordenadas por data_hora decrescente.
+        """
+        return await self.repo.list_by_data(guarnicao_id, data)
 
     async def listar_por_usuario(
         self,
