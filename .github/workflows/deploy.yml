@@ -57,7 +57,7 @@ jobs:
           script: |
             set -e
             echo "══════ Limpando espaço ══════"
-            docker system prune -f
+            docker system prune -af
 
             echo "══════ Atualizando código ══════"
             cd ~/argus-ai
