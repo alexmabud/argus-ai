@@ -223,3 +223,67 @@ class TestListarPorUsuario:
             guarnicao_id=guarnicao.id,
         )
         assert len(result) == 0
+
+
+class TestListarPorData:
+    """Testes de listagem de abordagens filtradas por data."""
+
+    async def test_listar_abordagens_com_filtro_data(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario
+    ):
+        """Retorna apenas abordagens do dia informado.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário.
+        """
+        from datetime import date, timedelta
+
+        from app.models.abordagem import Abordagem
+
+        hoje = datetime.now(UTC)
+        ontem = datetime(hoje.year, hoje.month, hoje.day, 10, 0, tzinfo=UTC) - timedelta(days=1)
+
+        a_hoje = Abordagem(
+            data_hora=datetime(hoje.year, hoje.month, hoje.day, 10, 0, tzinfo=UTC),
+            endereco_texto="Rua Hoje, 1",
+            usuario_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        a_ontem = Abordagem(
+            data_hora=ontem,
+            endereco_texto="Rua Ontem, 2",
+            usuario_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        db_session.add_all([a_hoje, a_ontem])
+        await db_session.flush()
+
+        service = AbordagemService(db_session)
+        result = await service.listar_por_data(
+            guarnicao_id=guarnicao.id,
+            data=date.today(),
+        )
+        assert len(result) == 1
+        assert result[0].endereco_texto == "Rua Hoje, 1"
+
+    async def test_listar_abordagens_data_sem_resultados(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario
+    ):
+        """Retorna lista vazia para dia sem abordagens.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário.
+        """
+        from datetime import date, timedelta
+
+        service = AbordagemService(db_session)
+        data_futura = date.today() + timedelta(days=365)
+        result = await service.listar_por_data(
+            guarnicao_id=guarnicao.id,
+            data=data_futura,
+        )
+        assert result == []

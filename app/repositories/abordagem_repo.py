@@ -5,10 +5,12 @@ carregamento eager de relacionamentos e deduplicação por client_id.
 """
 
 from collections.abc import Sequence
+from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.types import Date
 
 from app.models.abordagem import (
     Abordagem,
@@ -93,6 +95,41 @@ class AbordagemRepository(BaseRepository[Abordagem]):
             .order_by(Abordagem.data_hora.desc())
             .offset(skip)
             .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def list_by_data(
+        self,
+        guarnicao_id: int,
+        data: date,
+    ) -> Sequence[Abordagem]:
+        """Lista abordagens de uma guarnição em uma data específica.
+
+        Filtra pela data de data_hora (cast para Date, sem hora),
+        com eager loading completo de relacionamentos.
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            data: Data de referência (YYYY-MM-DD).
+
+        Returns:
+            Sequência de Abordagens do dia ordenadas por data_hora decrescente.
+        """
+        query = (
+            select(Abordagem)
+            .options(
+                selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
+                selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
+                selectinload(Abordagem.fotos),
+                selectinload(Abordagem.ocorrencias),
+            )
+            .where(
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo == True,  # noqa: E712
+                cast(Abordagem.data_hora, Date) == data,
+            )
+            .order_by(Abordagem.data_hora.desc())
         )
         result = await self.db.execute(query)
         return result.scalars().all()
