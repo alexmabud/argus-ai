@@ -4,6 +4,8 @@ Fornece endpoints para criação e listagem de abordagens em campo,
 incluindo detalhe completo com pessoas, veículos, fotos e ocorrências.
 """
 
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -84,18 +86,22 @@ async def listar_abordagens(
     request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    data: date | None = Query(
+        None, description="Filtrar por data (YYYY-MM-DD). Ignora skip/limit."
+    ),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> list[AbordagemDetail]:
-    """Lista todas as abordagens da guarnição com paginação.
+    """Lista abordagens da guarnição com paginação ou filtro por data.
 
-    Retorna todas as abordagens da guarnição do usuário autenticado,
-    com pessoas, veículos, fotos e ocorrências carregados.
+    Quando `data` é informado, retorna todas as abordagens do dia sem
+    paginação. Sem `data`, retorna lista paginada (comportamento padrão).
 
     Args:
         request: Objeto Request do FastAPI.
-        skip: Registros a pular (padrão 0).
-        limit: Máximo de resultados 1-100 (padrão 20).
+        skip: Registros a pular (ignorado se `data` informado).
+        limit: Máximo de resultados 1-100 (ignorado se `data` informado).
+        data: Data para filtrar abordagens (YYYY-MM-DD), opcional.
         db: Sessão do banco de dados.
         user: Usuário autenticado.
 
@@ -105,6 +111,7 @@ async def listar_abordagens(
     Status Code:
         200: Lista retornada.
         403: Usuário sem guarnição.
+        422: Formato de data inválido.
         429: Rate limit (30/min).
     """
     if user.guarnicao_id is None:
@@ -113,11 +120,17 @@ async def listar_abordagens(
             detail="Usuário sem guarnição atribuída",
         )
     service = AbordagemService(db)
-    abordagens = await service.listar(
-        guarnicao_id=user.guarnicao_id,
-        skip=skip,
-        limit=limit,
-    )
+    if data is not None:
+        abordagens = await service.listar_por_data(
+            guarnicao_id=user.guarnicao_id,
+            data=data,
+        )
+    else:
+        abordagens = await service.listar(
+            guarnicao_id=user.guarnicao_id,
+            skip=skip,
+            limit=limit,
+        )
     return [_serializar_detalhe(a) for a in abordagens]
 
 
