@@ -1,8 +1,9 @@
 /**
- * Página de listagem de abordagens (Relatório de Abordagens) — Argus AI.
+ * Página de Relatório de Abordagens — Argus AI.
  *
- * Lista as abordagens realizadas pelo usuário logado, com filtro local
- * por nome ou placa, badge de RAP vinculada e navegação para detalhe.
+ * Exibe calendário interativo com dias que tiveram abordagens e,
+ * ao selecionar um dia, lista os cards completos das abordagens do dia.
+ * Layout e componente de calendário idênticos à página Analítico.
  */
 
 function renderOcorrencias() {
@@ -28,6 +29,58 @@ function renderOcorrencias() {
           style="background:none;border:none;outline:none;color:var(--color-text);font-family:var(--font-data);font-size:13px;width:100%;">
       </div>
 
+      <!-- Calendário -->
+      <div class="glass-card" style="padding:16px;border-radius:4px;">
+        <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">
+          Abordagens por Dia
+        </h3>
+
+        <!-- Navegação do mês -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <button @click="mesMenos()"
+                  style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
+                  onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.color='var(--color-primary)'"
+                  onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-muted)'"
+          >&#8249;</button>
+          <span style="font-family:var(--font-data);font-size:14px;font-weight:600;color:var(--color-text);" x-text="mesAtualLabel"></span>
+          <button @click="mesMais()"
+                  style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
+                  onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.color='var(--color-primary)'"
+                  onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-muted)'"
+          >&#8250;</button>
+        </div>
+
+        <!-- Header dias da semana -->
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-bottom:2px;">
+          <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">D</span>
+          <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">S</span>
+          <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">T</span>
+          <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">Q</span>
+          <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">Q</span>
+          <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">S</span>
+          <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">S</span>
+        </div>
+
+        <!-- Grid de dias -->
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;">
+          <template x-for="v in primeiroDiaSemana" :key="'v' + v">
+            <div></div>
+          </template>
+          <template x-for="dia in diasDoMes" :key="dia">
+            <button
+              class="cal-day"
+              :class="{
+                'is-selecionado': isDiaSelecionado(dia),
+                'is-hoje': diaEHoje(dia)
+              }"
+              @click="selecionarDia(dia)">
+              <span class="cal-day-num" x-text="dia"></span>
+              <span class="cal-led" x-show="diaTemAbordagem(dia)"></span>
+            </button>
+          </template>
+        </div>
+      </div>
+
       <!-- Loading -->
       <div x-show="loading" style="text-align:center;padding:32px 0;">
         <div style="width:24px;height:24px;border:2px solid var(--color-border);border-top-color:var(--color-primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto;"></div>
@@ -36,10 +89,17 @@ function renderOcorrencias() {
       <!-- Erro -->
       <div x-show="!loading && erro" class="glass-card" style="padding:16px;text-align:center;">
         <p style="font-family:var(--font-data);font-size:13px;color:var(--color-danger);" x-text="erro"></p>
-        <button @click="carregar()" class="btn btn-secondary" style="margin-top:8px;width:auto;padding:6px 16px;">Tentar novamente</button>
+        <button @click="selecionarDia(diaSelecionado)" class="btn btn-secondary" style="margin-top:8px;width:auto;padding:6px 16px;">Tentar novamente</button>
       </div>
 
-      <!-- Lista -->
+      <!-- Vazio -->
+      <div x-show="!loading && !erro && diaSelecionado && abordagensFiltradas.length === 0"
+           style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-align:center;padding:16px 0;text-transform:uppercase;letter-spacing:0.08em;">
+        <span x-show="filtro">Nenhum resultado para "<span x-text="filtro"></span>"</span>
+        <span x-show="!filtro">Nenhuma abordagem neste dia.</span>
+      </div>
+
+      <!-- Lista de abordagens do dia -->
       <template x-for="ab in abordagensFiltradas" :key="ab.id">
         <div class="glass-card" :class="ab.ocorrencias && ab.ocorrencias.length ? 'card-led-blue' : ''"
              style="padding:12px;cursor:pointer;border-radius:4px;"
@@ -100,38 +160,55 @@ function renderOcorrencias() {
         </div>
       </template>
 
-      <!-- Vazio -->
-      <div x-show="!loading && !erro && abordagensFiltradas.length === 0" style="text-align:center;padding:32px 0;">
-        <p style="font-family:var(--font-data);font-size:13px;color:var(--color-text-muted);">
-          <span x-show="filtro">Nenhum resultado para "<span x-text="filtro"></span>"</span>
-          <span x-show="!filtro">Nenhuma abordagem registrada ainda.</span>
-        </p>
-      </div>
-
-      <!-- Carregar mais -->
-      <div x-show="!loading && temMais" style="text-align:center;">
-        <button @click="carregarMais()" :disabled="carregandoMais" class="btn btn-secondary"
-                style="width:auto;padding:8px 24px;font-size:12px;">
-          <span x-show="!carregandoMais">Carregar mais</span>
-          <span x-show="carregandoMais">Carregando...</span>
-        </button>
-      </div>
-
     </div>
   `;
 }
 
+/**
+ * Componente Alpine.js da página de Relatório de Abordagens.
+ *
+ * Gerencia estado do calendário (mês, dia selecionado, dots), carregamento
+ * das abordagens do dia via API e filtro local por nome/placa/endereço.
+ * Calendário com layout idêntico ao da página Analítico.
+ */
 function ocorrenciasPage() {
+  const agora = new Date();
   return {
     abordagens: [],
     filtro: '',
-    loading: true,
-    carregandoMais: false,
+    loading: false,
     erro: null,
-    skip: 0,
-    limit: 20,
-    total: 0,
-    temMais: false,
+
+    // Calendário
+    anoCalendarioAtual: agora.getFullYear(),
+    mesCalendarioAtual: agora.getMonth() + 1,
+    anoHoje: agora.getFullYear(),
+    mesHoje: agora.getMonth() + 1,
+    diaHoje: agora.getDate(),
+    diaSelecionado: agora.getDate(),
+    _anoSelec: agora.getFullYear(),
+    _mesSelec: agora.getMonth() + 1,
+    diasComAbordagem: [],
+
+    get total() {
+      return this.abordagens.length;
+    },
+
+    get mesAtualLabel() {
+      const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                     'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      return `${meses[this.mesCalendarioAtual - 1]} ${this.anoCalendarioAtual}`;
+    },
+
+    get primeiroDiaSemana() {
+      const d = new Date(this.anoCalendarioAtual, this.mesCalendarioAtual - 1, 1);
+      return Array.from({ length: d.getDay() }, (_, i) => i);
+    },
+
+    get diasDoMes() {
+      const total = new Date(this.anoCalendarioAtual, this.mesCalendarioAtual, 0).getDate();
+      return Array.from({ length: total }, (_, i) => i + 1);
+    },
 
     get abordagensFiltradas() {
       if (!this.filtro.trim()) return this.abordagens;
@@ -144,38 +221,80 @@ function ocorrenciasPage() {
       });
     },
 
-    async init() {
-      await this.carregar();
+    diaTemAbordagem(dia) {
+      return this.diasComAbordagem.includes(dia);
     },
 
-    async carregar() {
+    isDiaSelecionado(dia) {
+      return (
+        this.diaSelecionado === dia &&
+        this._mesSelec === this.mesCalendarioAtual &&
+        this._anoSelec === this.anoCalendarioAtual
+      );
+    },
+
+    diaEHoje(dia) {
+      return (
+        dia === this.diaHoje &&
+        this.mesCalendarioAtual === this.mesHoje &&
+        this.anoCalendarioAtual === this.anoHoje
+      );
+    },
+
+    async init() {
+      const dataHoje = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}-${String(this.diaHoje).padStart(2,'0')}`;
+      await Promise.all([
+        this.carregarDiasComAbordagem(),
+        this.carregarAbordagensDoDia(dataHoje),
+      ]);
+    },
+
+    async mesMenos() {
+      if (this.mesCalendarioAtual === 1) {
+        this.mesCalendarioAtual = 12;
+        this.anoCalendarioAtual--;
+      } else {
+        this.mesCalendarioAtual--;
+      }
+      this.diaSelecionado = null;
+      this.abordagens = [];
+      await this.carregarDiasComAbordagem();
+    },
+
+    async mesMais() {
+      if (this.mesCalendarioAtual === 12) {
+        this.mesCalendarioAtual = 1;
+        this.anoCalendarioAtual++;
+      } else {
+        this.mesCalendarioAtual++;
+      }
+      this.diaSelecionado = null;
+      this.abordagens = [];
+      await this.carregarDiasComAbordagem();
+    },
+
+    async selecionarDia(dia) {
+      this.diaSelecionado = dia;
+      this._mesSelec = this.mesCalendarioAtual;
+      this._anoSelec = this.anoCalendarioAtual;
+      const dataStr = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+      await this.carregarAbordagensDoDia(dataStr);
+    },
+
+    async carregarDiasComAbordagem() {
+      const mes = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}`;
+      this.diasComAbordagem = await api.get(`/analytics/dias-com-abordagem?mes=${mes}`).catch(() => []);
+    },
+
+    async carregarAbordagensDoDia(dataStr) {
       this.loading = true;
       this.erro = null;
-      this.skip = 0;
       try {
-        const data = await api.get(`/abordagens/?skip=0&limit=${this.limit}`);
-        this.abordagens = data;
-        this.total = data.length;
-        this.temMais = data.length === this.limit;
+        this.abordagens = await api.get(`/abordagens/?data=${dataStr}`);
       } catch (e) {
         this.erro = 'Erro ao carregar abordagens. Tente novamente.';
       } finally {
         this.loading = false;
-      }
-    },
-
-    async carregarMais() {
-      this.carregandoMais = true;
-      this.skip += this.limit;
-      try {
-        const data = await api.get(`/abordagens/?skip=${this.skip}&limit=${this.limit}`);
-        this.abordagens = [...this.abordagens, ...data];
-        this.total = this.abordagens.length;
-        this.temMais = data.length === this.limit;
-      } catch (e) {
-        this.skip -= this.limit;
-      } finally {
-        this.carregandoMais = false;
       }
     },
 
