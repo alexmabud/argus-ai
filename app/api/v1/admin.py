@@ -19,6 +19,7 @@ from app.schemas.auth import (
     SenhaGeradaResponse,
     UsuarioAdminCreate,
     UsuarioAdminRead,
+    UsuarioMoverEquipe,
 )
 from app.services.audit_service import AuditService
 from app.services.equipe_service import EquipeService
@@ -54,21 +55,25 @@ async def listar_usuarios(
     admin: Usuario = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[UsuarioAdminRead]:
-    """Lista todos os usuários ativos e pausados da guarnição do admin.
+    """Lista todos os usuários ativos do sistema (todas as equipes e sem equipe).
+
+    Retorna todos os usuários, não apenas os da equipe do admin. O frontend
+    agrupa por guarnicao_id (incluindo None = "Sem Equipe").
 
     Args:
+        request: Requisição HTTP.
         admin: Administrador autenticado.
         db: Sessão do banco de dados.
 
     Returns:
-        Lista de usuários com status de sessão.
+        Lista de usuários com status de sessão, ordenada por nome.
 
     Status Code:
         200: Lista retornada com sucesso.
         403: Usuário não é administrador.
     """
     service = UsuarioAdminService(db)
-    usuarios = await service.listar_usuarios(admin.guarnicao_id)
+    usuarios = await service.listar_todos()
     return [
         UsuarioAdminRead(
             id=u.id,
@@ -120,7 +125,7 @@ async def criar_usuario(
         usuario, senha = await service.criar_usuario(
             matricula=data.matricula,
             admin_id=admin.id,
-            guarnicao_id=admin.guarnicao_id,
+            guarnicao_id=data.guarnicao_id,
         )
     except ConflitoDadosError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
@@ -373,3 +378,56 @@ async def toggle_isolamento_equipe(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
     await db.commit()
     return EquipeRead.model_validate(equipe)
+
+
+@router.patch("/usuarios/{usuario_id}/equipe", response_model=UsuarioAdminRead)
+@limiter.limit("10/minute")
+async def mover_usuario_equipe(
+    request: Request,
+    usuario_id: int,
+    data: UsuarioMoverEquipe,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> UsuarioAdminRead:
+    """Move o usuário para outra equipe ou remove de equipe (guarnicao_id=None).
+
+    Args:
+        request: Requisição HTTP.
+        usuario_id: ID do usuário a mover.
+        data: Equipe de destino (guarnicao_id) ou None para remover de equipe.
+        admin: Administrador autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        UsuarioAdminRead com guarnicao_id atualizado.
+
+    Raises:
+        HTTPException: 404 se o usuário não existe.
+
+    Status Code:
+        200: Usuário movido com sucesso.
+        403: Não é administrador.
+        404: Usuário não encontrado.
+    """
+    service = UsuarioAdminService(db)
+    try:
+        usuario = await service.mover_equipe(
+            usuario_id=usuario_id,
+            guarnicao_id_destino=data.guarnicao_id,
+            admin_id=admin.id,
+        )
+    except NaoEncontradoError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
+    await db.commit()
+    return UsuarioAdminRead(
+        id=usuario.id,
+        nome=usuario.nome,
+        matricula=usuario.matricula,
+        posto_graduacao=usuario.posto_graduacao,
+        nome_guerra=usuario.nome_guerra,
+        foto_url=usuario.foto_url,
+        is_admin=usuario.is_admin,
+        ativo=usuario.ativo,
+        tem_sessao=usuario.session_id is not None,
+        guarnicao_id=usuario.guarnicao_id,
+    )

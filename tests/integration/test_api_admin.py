@@ -109,3 +109,115 @@ async def test_gerar_nova_senha(client: AsyncClient, admin_headers, usuario):
     data = response.json()
     assert "senha" in data
     assert len(data["senha"]) >= 8
+
+
+@pytest.mark.asyncio
+async def test_listar_usuarios_inclui_sem_equipe(client: AsyncClient, admin_headers, db_session):
+    """GET /admin/usuarios inclui usuários sem equipe (guarnicao_id=None)."""
+    from app.core.security import hash_senha
+    from app.models.usuario import Usuario
+
+    sem_equipe = Usuario(
+        nome="Sem Equipe",
+        matricula="ZZ001",
+        senha_hash=hash_senha("xxxx"),
+        guarnicao_id=None,
+    )
+    db_session.add(sem_equipe)
+    await db_session.flush()
+
+    response = await client.get("/api/v1/admin/usuarios", headers=admin_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert any(u["id"] == sem_equipe.id and u["guarnicao_id"] is None for u in data)
+
+
+@pytest.mark.asyncio
+async def test_mover_usuario_equipe_atualiza(
+    client: AsyncClient, admin_headers, usuario, db_session
+):
+    """PATCH /admin/usuarios/{id}/equipe move o usuário para outra equipe."""
+    from app.models.guarnicao import Guarnicao
+
+    nova = Guarnicao(nome="GU 77", unidade="7o BPM", codigo="7BPM-GU77")
+    db_session.add(nova)
+    await db_session.flush()
+
+    response = await client.patch(
+        f"/api/v1/admin/usuarios/{usuario.id}/equipe",
+        json={"guarnicao_id": nova.id},
+        headers=admin_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["guarnicao_id"] == nova.id
+
+
+@pytest.mark.asyncio
+async def test_mover_usuario_para_none(client: AsyncClient, admin_headers, usuario):
+    """PATCH /admin/usuarios/{id}/equipe com guarnicao_id=None remove de equipe."""
+    response = await client.patch(
+        f"/api/v1/admin/usuarios/{usuario.id}/equipe",
+        json={"guarnicao_id": None},
+        headers=admin_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["guarnicao_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_mover_usuario_inexistente_404(client: AsyncClient, admin_headers):
+    """PATCH em usuário inexistente retorna 404."""
+    response = await client.patch(
+        "/api/v1/admin/usuarios/999999/equipe",
+        json={"guarnicao_id": None},
+        headers=admin_headers,
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_criar_usuario_com_guarnicao_explicita(
+    client: AsyncClient, admin_headers, db_session
+):
+    """POST /admin/usuarios respeita guarnicao_id no payload."""
+    from sqlalchemy import select
+
+    from app.models.guarnicao import Guarnicao
+    from app.models.usuario import Usuario
+
+    nova = Guarnicao(nome="GU 88", unidade="8o BPM", codigo="8BPM-GU88")
+    db_session.add(nova)
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/v1/admin/usuarios",
+        json={"matricula": "PMNEW01", "guarnicao_id": nova.id},
+        headers=admin_headers,
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["matricula"] == "PMNEW01"
+    res = await db_session.execute(select(Usuario).where(Usuario.id == body["usuario_id"]))
+    u = res.scalar_one()
+    assert u.guarnicao_id == nova.id
+
+
+@pytest.mark.asyncio
+async def test_criar_usuario_sem_equipe(client: AsyncClient, admin_headers, db_session):
+    """POST /admin/usuarios com guarnicao_id=None cria usuário sem equipe."""
+    from sqlalchemy import select
+
+    from app.models.usuario import Usuario
+
+    response = await client.post(
+        "/api/v1/admin/usuarios",
+        json={"matricula": "PMSEM01", "guarnicao_id": None},
+        headers=admin_headers,
+    )
+    assert response.status_code == 201
+    body = response.json()
+    res = await db_session.execute(select(Usuario).where(Usuario.id == body["usuario_id"]))
+    u = res.scalar_one()
+    assert u.guarnicao_id is None
