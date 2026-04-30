@@ -262,6 +262,27 @@ class AbordagemService:
         """
         return await self.repo.list_by_data(guarnicao_id, data)
 
+    async def buscar_por_texto(
+        self,
+        q: str,
+        guarnicao_id: int,
+        limit: int = 100,
+    ) -> Sequence[Abordagem]:
+        """Busca abordagens por texto em todas as datas.
+
+        Pesquisa por nome de pessoa abordada, placa de veículo ou
+        endereço em texto livre, sem restrição de data.
+
+        Args:
+            q: Termo de busca.
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            limit: Número máximo de resultados (padrão 100).
+
+        Returns:
+            Sequência de Abordagens que correspondem ao termo.
+        """
+        return await self.repo.search_by_texto(q, guarnicao_id, limit)
+
     async def listar_por_usuario(
         self,
         usuario_id: int,

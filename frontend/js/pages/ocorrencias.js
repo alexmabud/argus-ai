@@ -25,7 +25,7 @@ function renderOcorrencias() {
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-text-dim);flex-shrink:0;">
           <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
         </svg>
-        <input type="search" x-model="filtro" placeholder="Buscar por nome, placa, endereço..."
+        <input type="search" x-model="filtro" @input="onFiltroInput()" placeholder="Buscar por nome, placa, endereço em todas as datas..."
           style="background:none;border:none;outline:none;color:var(--color-text);font-family:var(--font-data);font-size:13px;width:100%;">
       </div>
 
@@ -93,7 +93,7 @@ function renderOcorrencias() {
       </div>
 
       <!-- Vazio -->
-      <div x-show="!loading && !erro && diaSelecionado && abordagensFiltradas.length === 0"
+      <div x-show="!loading && !erro && (diaSelecionado || filtro) && abordagensFiltradas.length === 0"
            style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-align:center;padding:16px 0;text-transform:uppercase;letter-spacing:0.08em;">
         <span x-show="filtro">Nenhum resultado para "<span x-text="filtro"></span>"</span>
         <span x-show="!filtro">Nenhuma abordagem neste dia.</span>
@@ -178,6 +178,7 @@ function ocorrenciasPage() {
     filtro: '',
     loading: false,
     erro: null,
+    _searchTimeout: null,
 
     // Calendário
     anoCalendarioAtual: agora.getFullYear(),
@@ -211,14 +212,7 @@ function ocorrenciasPage() {
     },
 
     get abordagensFiltradas() {
-      if (!this.filtro.trim()) return this.abordagens;
-      const q = this.filtro.toLowerCase();
-      return this.abordagens.filter(ab => {
-        const nomes = (ab.pessoas || []).map(p => p.nome.toLowerCase()).join(' ');
-        const placas = (ab.veiculos || []).map(v => v.placa.toLowerCase()).join(' ');
-        const end = (ab.endereco_texto || '').toLowerCase();
-        return nomes.includes(q) || placas.includes(q) || end.includes(q);
-      });
+      return this.abordagens;
     },
 
     diaTemAbordagem(dia) {
@@ -284,6 +278,34 @@ function ocorrenciasPage() {
     async carregarDiasComAbordagem() {
       const mes = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}`;
       this.diasComAbordagem = await api.get(`/analytics/dias-com-abordagem?mes=${mes}`).catch(() => []);
+    },
+
+    onFiltroInput() {
+      clearTimeout(this._searchTimeout);
+      const q = this.filtro.trim();
+      if (q.length >= 1) {
+        this._searchTimeout = setTimeout(() => this.buscarPorTexto(q), 400);
+      } else {
+        if (this.diaSelecionado) {
+          const dataStr = `${this._anoSelec}-${String(this._mesSelec).padStart(2,'0')}-${String(this.diaSelecionado).padStart(2,'0')}`;
+          this.carregarAbordagensDoDia(dataStr);
+        } else {
+          this.abordagens = [];
+        }
+      }
+    },
+
+    async buscarPorTexto(q) {
+      this.loading = true;
+      this.erro = null;
+      try {
+        const params = new URLSearchParams({ q });
+        this.abordagens = await api.get(`/abordagens/?${params}`);
+      } catch (e) {
+        this.erro = 'Erro ao buscar abordagens. Tente novamente.';
+      } finally {
+        this.loading = false;
+      }
     },
 
     async carregarAbordagensDoDia(dataStr) {
