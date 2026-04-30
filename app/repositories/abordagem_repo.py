@@ -304,6 +304,120 @@ class AbordagemRepository(BaseRepository[Abordagem]):
         result = await self.db.execute(query)
         return result.scalars().unique().all()
 
+    async def get_detail_global(self, id: int) -> Abordagem | None:
+        """Busca abordagem por ID em todo o sistema (sem filtro de guarnição).
+
+        Usado quando o usuário pertence a equipe sem isolamento_abordagens.
+
+        Args:
+            id: ID da abordagem.
+
+        Returns:
+            Abordagem com relacionamentos ou None.
+        """
+        query = (
+            select(Abordagem)
+            .options(
+                selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
+                selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
+                selectinload(Abordagem.fotos),
+                selectinload(Abordagem.ocorrencias),
+            )
+            .where(Abordagem.id == id, Abordagem.ativo == True)  # noqa: E712
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def list_global(self, skip: int = 0, limit: int = 20) -> Sequence[Abordagem]:
+        """Lista todas as abordagens ativas do sistema sem filtro de guarnição.
+
+        Args:
+            skip: Registros a pular.
+            limit: Número máximo de resultados.
+
+        Returns:
+            Sequência de Abordagens ordenadas por data_hora decrescente.
+        """
+        query = (
+            select(Abordagem)
+            .where(Abordagem.ativo == True)  # noqa: E712
+            .order_by(Abordagem.data_hora.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def list_by_data_global(self, data: date) -> Sequence[Abordagem]:
+        """Lista abordagens de todas as equipes em uma data específica.
+
+        Args:
+            data: Data de referência (YYYY-MM-DD).
+
+        Returns:
+            Sequência de Abordagens do dia ordenadas por data_hora decrescente.
+        """
+        query = (
+            select(Abordagem)
+            .options(
+                selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
+                selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
+                selectinload(Abordagem.fotos),
+                selectinload(Abordagem.ocorrencias),
+            )
+            .where(
+                Abordagem.ativo == True,  # noqa: E712
+                cast(Abordagem.data_hora, Date) == data,
+            )
+            .order_by(Abordagem.data_hora.desc())
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def search_by_texto_global(self, q: str, limit: int = 100) -> Sequence[Abordagem]:
+        """Busca abordagens por texto em todo o sistema (sem filtro de guarnição).
+
+        Args:
+            q: Termo de busca.
+            limit: Número máximo de resultados.
+
+        Returns:
+            Sequência de Abordagens ordenadas por data_hora decrescente.
+        """
+        termo = f"%{q}%"
+        query = (
+            select(Abordagem)
+            .options(
+                selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
+                selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
+                selectinload(Abordagem.fotos),
+                selectinload(Abordagem.ocorrencias),
+            )
+            .outerjoin(
+                AbordagemPessoa,
+                (AbordagemPessoa.abordagem_id == Abordagem.id) & (AbordagemPessoa.ativo == True),  # noqa: E712
+            )
+            .outerjoin(Pessoa, Pessoa.id == AbordagemPessoa.pessoa_id)
+            .outerjoin(
+                AbordagemVeiculo,
+                (AbordagemVeiculo.abordagem_id == Abordagem.id) & (AbordagemVeiculo.ativo == True),  # noqa: E712
+            )
+            .outerjoin(Veiculo, Veiculo.id == AbordagemVeiculo.veiculo_id)
+            .where(
+                Abordagem.ativo == True,  # noqa: E712
+                or_(
+                    Pessoa.nome.ilike(termo),
+                    Veiculo.placa.ilike(termo),
+                    Abordagem.endereco_texto.ilike(termo),
+                ),
+            )
+            .distinct()
+            .order_by(Abordagem.data_hora.desc())
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().unique().all()
+
     async def get_by_client_id(self, client_id: str) -> Abordagem | None:
         """Busca abordagem por client_id para deduplicação offline.
 
