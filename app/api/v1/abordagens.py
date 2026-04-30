@@ -129,22 +129,26 @@ async def listar_abordagens(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário sem guarnição atribuída",
         )
+    isolamento = bool(user.guarnicao and user.guarnicao.isolamento_abordagens)
     service = AbordagemService(db)
     if q is not None:
         abordagens = await service.buscar_por_texto(
             q=q,
             guarnicao_id=user.guarnicao_id,
+            isolamento=isolamento,
         )
     elif data is not None:
         abordagens = await service.listar_por_data(
             guarnicao_id=user.guarnicao_id,
             data=data,
+            isolamento=isolamento,
         )
     else:
         abordagens = await service.listar(
             guarnicao_id=user.guarnicao_id,
             skip=skip,
             limit=limit,
+            isolamento=isolamento,
         )
     return [_serializar_detalhe(a) for a in abordagens]
 
@@ -184,9 +188,12 @@ async def detalhe_abordagem(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário sem guarnição atribuída",
         )
+    isolamento = bool(user.guarnicao and user.guarnicao.isolamento_abordagens)
     service = AbordagemService(db)
     try:
-        abordagem = await service.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        abordagem = await service.buscar_detalhe(
+            abordagem_id, user.guarnicao_id, isolamento=isolamento
+        )
     except NaoEncontradoError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

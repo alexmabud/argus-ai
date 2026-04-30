@@ -201,6 +201,7 @@ class AbordagemService:
         self,
         abordagem_id: int,
         guarnicao_id: int,
+        isolamento: bool = True,
     ) -> Abordagem:
         """Busca abordagem com todos os relacionamentos carregados (eager load).
 
@@ -210,6 +211,7 @@ class AbordagemService:
         Args:
             abordagem_id: Identificador da abordagem.
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+            isolamento: True filtra por guarnicao_id; False busca globalmente.
 
         Returns:
             Abordagem com todos os relacionamentos carregados.
@@ -217,7 +219,10 @@ class AbordagemService:
         Raises:
             NaoEncontradoError: Se abordagem não existe ou não pertence à guarnição.
         """
-        abordagem = await self.repo.get_detail(abordagem_id, guarnicao_id)
+        if isolamento:
+            abordagem = await self.repo.get_detail(abordagem_id, guarnicao_id)
+        else:
+            abordagem = await self.repo.get_detail_global(abordagem_id)
         if not abordagem:
             raise NaoEncontradoError("Abordagem")
         return abordagem
@@ -227,28 +232,33 @@ class AbordagemService:
         guarnicao_id: int,
         skip: int = 0,
         limit: int = 20,
+        isolamento: bool = True,
     ) -> Sequence[Abordagem]:
-        """Lista abordagens da guarnição com paginação.
+        """Lista abordagens com paginação.
 
-        Retorna abordagens ativas ordenadas por data/hora decrescente,
-        filtradas pela guarnição do usuário autenticado.
+        Retorna abordagens ativas ordenadas por data/hora decrescente.
+        Quando isolamento=False, retorna de todas as equipes.
 
         Args:
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            guarnicao_id: ID da guarnição (usado se isolamento=True).
             skip: Número de registros a pular (padrão 0).
             limit: Número máximo de resultados (padrão 20).
+            isolamento: True filtra por guarnicao_id; False retorna global.
 
         Returns:
             Sequência de Abordagens ordenadas por data_hora decrescente.
         """
-        return await self.repo.list_by_guarnicao(guarnicao_id, skip, limit)
+        if isolamento:
+            return await self.repo.list_by_guarnicao(guarnicao_id, skip, limit)
+        return await self.repo.list_global(skip, limit)
 
     async def listar_por_data(
         self,
         guarnicao_id: int,
         data: date,
+        isolamento: bool = True,
     ) -> Sequence[Abordagem]:
-        """Lista abordagens da guarnição em uma data específica.
+        """Lista abordagens em uma data específica.
 
         Retorna todos os registros do dia sem paginação, com eager
         loading completo de pessoas, veículos, fotos e ocorrências.
@@ -256,17 +266,21 @@ class AbordagemService:
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
             data: Data de referência (YYYY-MM-DD).
+            isolamento: True filtra por guarnicao_id; False retorna global.
 
         Returns:
             Sequência de Abordagens do dia ordenadas por data_hora decrescente.
         """
-        return await self.repo.list_by_data(guarnicao_id, data)
+        if isolamento:
+            return await self.repo.list_by_data(guarnicao_id, data)
+        return await self.repo.list_by_data_global(data)
 
     async def buscar_por_texto(
         self,
         q: str,
         guarnicao_id: int,
         limit: int = 100,
+        isolamento: bool = True,
     ) -> Sequence[Abordagem]:
         """Busca abordagens por texto em todas as datas.
 
@@ -277,11 +291,14 @@ class AbordagemService:
             q: Termo de busca.
             guarnicao_id: ID da guarnição para filtro multi-tenant.
             limit: Número máximo de resultados (padrão 100).
+            isolamento: True filtra por guarnicao_id; False busca globalmente.
 
         Returns:
             Sequência de Abordagens que correspondem ao termo.
         """
-        return await self.repo.search_by_texto(q, guarnicao_id, limit)
+        if isolamento:
+            return await self.repo.search_by_texto(q, guarnicao_id, limit)
+        return await self.repo.search_by_texto_global(q, limit)
 
     async def listar_por_usuario(
         self,
