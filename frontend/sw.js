@@ -1,4 +1,4 @@
-const CACHE_NAME = "argus-v11";
+const CACHE_NAME = 'argus-BUILD_HASH';
 const STATIC_ASSETS = [
   "/",
   "/css/app.css",
