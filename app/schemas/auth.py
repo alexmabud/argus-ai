@@ -142,24 +142,67 @@ class UsuarioRead(BaseModel):
 
 
 class GuarnicaoRead(BaseModel):
-    """Dados públicos de uma guarnição.
+    """Dados públicos de uma guarnição (Equipe).
 
-    Representação de leitura (read) de uma guarnição/unidade operacional.
-    Inclui configuração para conversão automática de ORM models.
+    Representação de leitura. A UI exibe como "Equipe" — internamente
+    a entidade chama-se "guarnicao". Inclui o campo isolamento_abordagens
+    para controle por equipe de visibilidade de abordagens.
 
     Attributes:
         id: Identificador único da guarnição.
-        nome: Nome da guarnição (ex: "1º BPM").
-        unidade: Tipo de unidade (ex: "Batalhão").
-        codigo: Código interno da guarnição.
+        nome: Nome da equipe (ex: "3ª Cia - GU 01").
+        unidade: Unidade superior (ex: "3º BPM").
+        codigo: Código interno único.
+        isolamento_abordagens: Se True, membros veem apenas as abordagens
+            da própria equipe. Se False (padrão), veem todas.
     """
 
     id: int
     nome: str
     unidade: str
     codigo: str
+    isolamento_abordagens: bool = False
 
     model_config = {"from_attributes": True}
+
+
+# Alias semântico — Equipe = Guarnicao. UI usa "Equipe", código usa "guarnicao".
+EquipeRead = GuarnicaoRead
+
+
+class EquipeCreate(BaseModel):
+    """Dados para criação de nova equipe (guarnição) pelo admin.
+
+    O código é gerado automaticamente pelo serviço a partir do nome e unidade.
+
+    Attributes:
+        nome: Nome descritivo da equipe (1-200 caracteres).
+        unidade: Unidade superior (1-200 caracteres, ex: "3º BPM").
+    """
+
+    nome: str = Field(..., min_length=1, max_length=200)
+    unidade: str = Field(..., min_length=1, max_length=200)
+
+
+class EquipeIsolamentoUpdate(BaseModel):
+    """Dados para alternar isolamento de abordagens de uma equipe.
+
+    Attributes:
+        isolamento_abordagens: True ativa isolamento, False desativa.
+    """
+
+    isolamento_abordagens: bool
+
+
+class UsuarioMoverEquipe(BaseModel):
+    """Dados para mover usuário entre equipes (ou remover de equipe).
+
+    Attributes:
+        guarnicao_id: ID da equipe de destino. None remove da equipe
+            atual (usuário fica em "Sem Equipe").
+    """
+
+    guarnicao_id: int | None = None
 
 
 class PerfilUpdate(BaseModel):
@@ -202,13 +245,17 @@ class PerfilUpdate(BaseModel):
 class UsuarioAdminCreate(BaseModel):
     """Dados para criação de usuário pelo admin.
 
-    O admin informa apenas a matrícula. O sistema gera a senha automaticamente.
+    O admin informa matrícula e, opcionalmente, a equipe (guarnicao_id).
+    O sistema gera a senha automaticamente.
 
     Attributes:
-        matricula: Matrícula do agente (1 a 50 caracteres, único no sistema).
+        matricula: Matrícula do agente (1-50 caracteres, único no sistema).
+        guarnicao_id: ID da equipe (opcional). None = "Sem Equipe" —
+            admin atribui depois pela aba "Sem Equipe" no painel.
     """
 
     matricula: str = Field(..., min_length=1, max_length=50)
+    guarnicao_id: int | None = Field(None, ge=1)
 
 
 class SenhaGeradaResponse(BaseModel):
@@ -250,7 +297,7 @@ class UsuarioAdminRead(BaseModel):
     is_admin: bool
     ativo: bool
     tem_sessao: bool
-    guarnicao_id: int
+    guarnicao_id: int | None = None
 
     _normalize_foto = field_validator("foto_url", mode="before")(normalize_storage_url)
 
