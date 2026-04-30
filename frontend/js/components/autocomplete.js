@@ -22,16 +22,32 @@ function autocompleteComponent(tipo) {
       return /^\d{3,}[\d.\-]*$/.test(value.trim());
     },
 
+    _normalizar(s) {
+      return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    },
+
+    _tokensOrdenados(haystack, tokens) {
+      let pos = 0;
+      for (const t of tokens) {
+        const idx = haystack.indexOf(t, pos);
+        if (idx === -1) return false;
+        pos = idx + t.length;
+      }
+      return true;
+    },
+
     _filtrarLocalmente() {
-      const q = this.query.toLowerCase();
       if (tipo === "pessoa") {
-        return this._allResults.filter(item =>
-          (item.nome || "").toLowerCase().includes(q) ||
-          (item.apelido || "").toLowerCase().includes(q) ||
-          (item.cpf_masked || "").includes(q)
-        );
+        const tokens = this._normalizar(this.query).split(/\s+/).filter(t => t);
+        return this._allResults.filter(item => {
+          if ((item.cpf_masked || "").includes(this.query)) return true;
+          const nome = this._normalizar(item.nome);
+          const apelido = this._normalizar(item.apelido);
+          return this._tokensOrdenados(nome, tokens) || this._tokensOrdenados(apelido, tokens);
+        });
       }
       if (tipo === "veiculo") {
+        const q = this.query.toLowerCase();
         return this._allResults.filter(item =>
           (item.placa || "").toLowerCase().includes(q) ||
           (item.modelo || "").toLowerCase().includes(q)

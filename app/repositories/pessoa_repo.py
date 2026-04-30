@@ -66,14 +66,24 @@ class PessoaRepository(BaseRepository[Pessoa]):
         if not nome_clean:
             return []
 
+        # Tokens preservam a ordem digitada: "joao silva" → ["joao", "silva"]
+        # O padrão %tok1%tok2% casa nomes onde tok1 aparece ANTES de tok2,
+        # independente do que há no meio ("João Carlos Silva" ✓, "Silva João" ✗).
+        tokens = nome_clean.split()
+
         unaccent_nome = func.unaccent(func.lower(Pessoa.nome))
         unaccent_apelido = func.unaccent(func.lower(func.coalesce(Pessoa.apelido, "")))
-        unaccent_query = func.unaccent(func.lower(nome_clean))
-        like_pattern = "%" + unaccent_query + "%"
+
+        # Monta: '%' || unaccent(lower(tok1)) || '%' || unaccent(lower(tok2)) || '%'
+        like_pattern = "%" + func.unaccent(func.lower(tokens[0])) + "%"
+        for token in tokens[1:]:
+            like_pattern = like_pattern + func.unaccent(func.lower(token)) + "%"
+
+        unaccent_full_query = func.unaccent(func.lower(nome_clean))
 
         match_nome = unaccent_nome.like(like_pattern)
         match_apelido = unaccent_apelido.like(like_pattern)
-        match_fuzzy = func.similarity(unaccent_nome, unaccent_query) > threshold
+        match_fuzzy = func.similarity(unaccent_nome, unaccent_full_query) > threshold
 
         query = select(Pessoa).where(
             Pessoa.ativo == True,  # noqa: E712
@@ -82,9 +92,10 @@ class PessoaRepository(BaseRepository[Pessoa]):
         if guarnicao_id is not None:
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
 
-        # 1 = match no nome (posição), 5000 = só apelido, 9999 = só fuzzy
+        # Ordena pela posição do primeiro token no nome (menor = mais relevante)
+        first_token_expr = func.unaccent(func.lower(tokens[0]))
         ordem = case(
-            (match_nome, func.strpos(unaccent_nome, unaccent_query)),
+            (match_nome, func.strpos(unaccent_nome, first_token_expr)),
             (match_apelido, 5000),
             else_=9999,
         )
