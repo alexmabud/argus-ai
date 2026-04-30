@@ -104,6 +104,10 @@ cmd_update() {
 
     git pull origin main
 
+    log "Versionando Service Worker..."
+    bash "${APP_DIR}/update_sw_version.sh"
+    trap "git checkout frontend/sw.js 2>/dev/null || true" EXIT
+
     log "Rebuilding imagens..."
     docker compose -f "$COMPOSE_FILE" build
 
