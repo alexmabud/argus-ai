@@ -52,9 +52,9 @@ class UsuarioAdminService:
         self.audit = AuditService(db)
 
     async def listar_usuarios(self, guarnicao_id: int) -> list[Usuario]:
-        """Lista todos os usuários ativos e pausados da guarnição.
+        """Lista usuários ativos de uma guarnição específica (legado).
 
-        Retorna usuários com ativo=True. Excluídos (ativo=False) são omitidos.
+        Mantido para compatibilidade. Prefira listar_todos() para o painel admin.
 
         Args:
             guarnicao_id: ID da guarnição para filtrar usuários.
@@ -65,6 +65,22 @@ class UsuarioAdminService:
         result = await self.db.execute(
             select(Usuario)
             .where(Usuario.guarnicao_id == guarnicao_id, Usuario.ativo == True)  # noqa: E712
+            .order_by(Usuario.nome)
+        )
+        return list(result.scalars().all())
+
+    async def listar_todos(self) -> list[Usuario]:
+        """Lista todos os usuários ativos do sistema (todas equipes + sem equipe).
+
+        Usado pelo admin para gerenciar usuários globalmente. O frontend
+        agrupa por guarnicao_id (incluindo None = "Sem Equipe").
+
+        Returns:
+            Lista de Usuario com ativo=True, ordenada por nome.
+        """
+        result = await self.db.execute(
+            select(Usuario)
+            .where(Usuario.ativo == True)  # noqa: E712
             .order_by(Usuario.nome)
         )
         return list(result.scalars().all())
@@ -95,20 +111,6 @@ class UsuarioAdminService:
         existing = await self.repo.get_by_matricula(matricula)
         if existing:
             raise ConflitoDadosError("Matrícula já cadastrada")
-
-        # Garantir guarnição: busca ou cria a padrão se não informada
-        if not guarnicao_id:
-            from app.models.guarnicao import Guarnicao
-
-            result = await self.db.execute(
-                select(Guarnicao).where(Guarnicao.ativo == True).limit(1)  # noqa: E712
-            )
-            guarnicao = result.scalar_one_or_none()
-            if not guarnicao:
-                guarnicao = Guarnicao(nome="Geral", unidade="Geral", codigo="GERAL-001")
-                self.db.add(guarnicao)
-                await self.db.flush()
-            guarnicao_id = guarnicao.id
 
         senha = _gerar_senha()
         usuario = Usuario(
@@ -229,3 +231,43 @@ class UsuarioAdminService:
             recurso_id=usuario_id,
             detalhes={"admin_id": admin_id},
         )
+
+    async def mover_equipe(
+        self,
+        usuario_id: int,
+        guarnicao_id_destino: int | None,
+        admin_id: int,
+    ) -> Usuario:
+        """Move o usuário para outra equipe ou remove da equipe atual.
+
+        Atualiza guarnicao_id do usuário. Destino None coloca o usuário na
+        aba "Sem Equipe" no painel admin, sem invalidar a sessão.
+
+        Args:
+            usuario_id: ID do usuário a mover.
+            guarnicao_id_destino: ID da equipe de destino, ou None para remover.
+            admin_id: ID do admin (para auditoria).
+
+        Returns:
+            Usuario com guarnicao_id atualizado.
+
+        Raises:
+            NaoEncontradoError: Se usuário não existe.
+        """
+        result = await self.db.execute(select(Usuario).where(Usuario.id == usuario_id))
+        usuario = result.scalar_one_or_none()
+        if not usuario:
+            raise NaoEncontradoError("Usuário não encontrado")
+
+        usuario.guarnicao_id = guarnicao_id_destino
+        await self.db.flush()
+
+        await self.audit.log(
+            usuario_id=admin_id,
+            acao="UPDATE",
+            recurso="usuario",
+            recurso_id=usuario_id,
+            detalhes={"acao": "mover_equipe", "guarnicao_id_destino": guarnicao_id_destino},
+        )
+
+        return usuario
