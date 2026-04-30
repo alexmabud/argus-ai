@@ -12,8 +12,16 @@ from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
-from app.schemas.auth import SenhaGeradaResponse, UsuarioAdminCreate, UsuarioAdminRead
+from app.schemas.auth import (
+    EquipeCreate,
+    EquipeIsolamentoUpdate,
+    EquipeRead,
+    SenhaGeradaResponse,
+    UsuarioAdminCreate,
+    UsuarioAdminRead,
+)
 from app.services.audit_service import AuditService
+from app.services.equipe_service import EquipeService
 from app.services.usuario_admin_service import UsuarioAdminService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -257,3 +265,111 @@ async def excluir_usuario(
         ip_address=request.client.host if request.client else None,
     )
     await db.commit()
+
+
+@router.get("/equipes", response_model=list[EquipeRead])
+@limiter.limit("30/minute")
+async def listar_equipes(
+    request: Request,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[EquipeRead]:
+    """Lista todas as equipes ativas para gestão pelo admin.
+
+    Args:
+        request: Requisição HTTP.
+        admin: Administrador autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        Lista de EquipeRead ordenada por nome.
+
+    Status Code:
+        200: Lista retornada com sucesso.
+        403: Não é administrador.
+    """
+    service = EquipeService(db)
+    equipes = await service.listar_equipes()
+    return [EquipeRead.model_validate(e) for e in equipes]
+
+
+@router.post("/equipes", response_model=EquipeRead, status_code=201)
+@limiter.limit("10/minute")
+async def criar_equipe(
+    request: Request,
+    data: EquipeCreate,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> EquipeRead:
+    """Cria nova equipe (guarnição) com código gerado automaticamente.
+
+    Args:
+        request: Requisição HTTP.
+        data: Nome e unidade da equipe.
+        admin: Administrador autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        EquipeRead com ID e código atribuídos.
+
+    Raises:
+        HTTPException: 409 se nome já existe.
+
+    Status Code:
+        201: Equipe criada com sucesso.
+        403: Não é administrador.
+        409: Nome de equipe já cadastrado.
+    """
+    service = EquipeService(db)
+    try:
+        equipe = await service.criar_equipe(nome=data.nome, unidade=data.unidade, admin_id=admin.id)
+    except ConflitoDadosError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
+    await db.commit()
+    return EquipeRead.model_validate(equipe)
+
+
+@router.patch("/equipes/{guarnicao_id}/toggle-isolamento", response_model=EquipeRead)
+@limiter.limit("10/minute")
+async def toggle_isolamento_equipe(
+    request: Request,
+    guarnicao_id: int,
+    data: EquipeIsolamentoUpdate,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> EquipeRead:
+    """Liga ou desliga o isolamento de abordagens para a equipe.
+
+    Quando ativo, membros da equipe veem apenas as abordagens da própria
+    equipe. Quando inativo (padrão), veem todas as abordagens do sistema.
+    Pessoas abordadas permanecem visíveis para todos independentemente.
+
+    Args:
+        request: Requisição HTTP.
+        guarnicao_id: ID da equipe a atualizar.
+        data: Novo valor do toggle.
+        admin: Administrador autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        EquipeRead com o novo valor de isolamento_abordagens.
+
+    Raises:
+        HTTPException: 404 se a equipe não existe ou está inativa.
+
+    Status Code:
+        200: Toggle atualizado com sucesso.
+        403: Não é administrador.
+        404: Equipe não encontrada.
+    """
+    service = EquipeService(db)
+    try:
+        equipe = await service.toggle_isolamento(
+            guarnicao_id=guarnicao_id,
+            valor=data.isolamento_abordagens,
+            admin_id=admin.id,
+        )
+    except NaoEncontradoError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
+    await db.commit()
+    return EquipeRead.model_validate(equipe)
