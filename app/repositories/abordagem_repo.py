@@ -7,7 +7,7 @@ carregamento eager de relacionamentos e deduplicação por client_id.
 from collections.abc import Sequence
 from datetime import date
 
-from sqlalchemy import cast, func, select
+from sqlalchemy import cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.types import Date
@@ -17,6 +17,8 @@ from app.models.abordagem import (
     AbordagemPessoa,
     AbordagemVeiculo,
 )
+from app.models.pessoa import Pessoa
+from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
 
 
@@ -242,6 +244,60 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 Abordagem.guarnicao_id == guarnicao_id,
                 Abordagem.ativo == True,  # noqa: E712
             )
+            .order_by(Abordagem.data_hora.desc())
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().unique().all()
+
+    async def search_by_texto(
+        self,
+        q: str,
+        guarnicao_id: int,
+        limit: int = 100,
+    ) -> Sequence[Abordagem]:
+        """Busca abordagens por texto em nome de pessoa, placa ou endereço.
+
+        Faz outer join com Pessoa e Veiculo para cobrir todos os campos,
+        retornando abordagens de qualquer data que contenham o termo.
+
+        Args:
+            q: Termo de busca (mínimo 1 caractere).
+            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            limit: Número máximo de resultados (padrão 100).
+
+        Returns:
+            Sequência de Abordagens ordenadas por data_hora decrescente.
+        """
+        termo = f"%{q}%"
+        query = (
+            select(Abordagem)
+            .options(
+                selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
+                selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
+                selectinload(Abordagem.fotos),
+                selectinload(Abordagem.ocorrencias),
+            )
+            .outerjoin(
+                AbordagemPessoa,
+                (AbordagemPessoa.abordagem_id == Abordagem.id) & (AbordagemPessoa.ativo == True),  # noqa: E712
+            )
+            .outerjoin(Pessoa, Pessoa.id == AbordagemPessoa.pessoa_id)
+            .outerjoin(
+                AbordagemVeiculo,
+                (AbordagemVeiculo.abordagem_id == Abordagem.id) & (AbordagemVeiculo.ativo == True),  # noqa: E712
+            )
+            .outerjoin(Veiculo, Veiculo.id == AbordagemVeiculo.veiculo_id)
+            .where(
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo == True,  # noqa: E712
+                or_(
+                    Pessoa.nome.ilike(termo),
+                    Veiculo.placa.ilike(termo),
+                    Abordagem.endereco_texto.ilike(termo),
+                ),
+            )
+            .distinct()
             .order_by(Abordagem.data_hora.desc())
             .limit(limit)
         )

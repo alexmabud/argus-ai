@@ -89,19 +89,29 @@ async def listar_abordagens(
     data: date | None = Query(
         None, description="Filtrar por data (YYYY-MM-DD). Ignora skip/limit."
     ),
+    q: str | None = Query(
+        None,
+        min_length=1,
+        max_length=200,
+        description="Busca por nome, placa ou endereço em todas as datas.",
+    ),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> list[AbordagemDetail]:
-    """Lista abordagens da guarnição com paginação ou filtro por data.
+    """Lista abordagens da guarnição com paginação, filtro por data ou busca textual.
 
-    Quando `data` é informado, retorna todas as abordagens do dia sem
-    paginação. Sem `data`, retorna lista paginada (comportamento padrão).
+    Prioridade dos filtros: `q` > `data` > paginação padrão.
+    Quando `q` é informado, busca por nome de pessoa, placa ou endereço
+    em todas as datas, ignorando `data` e `skip`/`limit`.
+    Quando apenas `data` é informado, retorna todas as abordagens do dia.
+    Sem filtros, retorna lista paginada.
 
     Args:
         request: Objeto Request do FastAPI.
-        skip: Registros a pular (ignorado se `data` informado).
-        limit: Máximo de resultados 1-100 (ignorado se `data` informado).
+        skip: Registros a pular (ignorado se `q` ou `data` informados).
+        limit: Máximo de resultados 1-100 (ignorado se `q` ou `data` informados).
         data: Data para filtrar abordagens (YYYY-MM-DD), opcional.
+        q: Termo de busca textual em todas as datas, opcional.
         db: Sessão do banco de dados.
         user: Usuário autenticado.
 
@@ -120,7 +130,12 @@ async def listar_abordagens(
             detail="Usuário sem guarnição atribuída",
         )
     service = AbordagemService(db)
-    if data is not None:
+    if q is not None:
+        abordagens = await service.buscar_por_texto(
+            q=q,
+            guarnicao_id=user.guarnicao_id,
+        )
+    elif data is not None:
         abordagens = await service.listar_por_data(
             guarnicao_id=user.guarnicao_id,
             data=data,
