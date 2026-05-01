@@ -5,10 +5,17 @@ e abordagens através de um único termo de busca.
 Também testa o endpoint de busca de pessoas por veículo.
 """
 
+from datetime import UTC, datetime
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import criar_access_token, hash_senha
+from app.models.abordagem import Abordagem
 from app.models.guarnicao import Guarnicao
+from app.models.pessoa import Pessoa
+from app.models.usuario import Usuario
 
 
 class TestConsultaUnificada:
@@ -170,3 +177,172 @@ class TestPessoasPorVeiculo:
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
+
+
+@pytest.fixture
+async def equipe_c(db_session: AsyncSession) -> Guarnicao:
+    """Equipe C para testes de isolamento de consulta.
+
+    Args:
+        db_session: Sessão do banco de dados.
+
+    Returns:
+        Guarnicao: Guarnição Charlie com isolamento_abordagens=False.
+    """
+    g = Guarnicao(nome="GU Charlie", unidade="3o BPM", codigo="3BPM-GUC")
+    db_session.add(g)
+    await db_session.flush()
+    return g
+
+
+@pytest.fixture
+async def usuario_c(db_session: AsyncSession, equipe_c: Guarnicao) -> Usuario:
+    """Usuário pertencente à equipe C.
+
+    Args:
+        db_session: Sessão do banco de dados.
+        equipe_c: Guarnição Charlie.
+
+    Returns:
+        Usuario: Usuário da equipe C com matrícula CCC001.
+    """
+    u = Usuario(
+        nome="Agente C",
+        matricula="CCC001",
+        senha_hash=hash_senha("senha123"),
+        guarnicao_id=equipe_c.id,
+        session_id="session-c",
+    )
+    db_session.add(u)
+    await db_session.flush()
+    return u
+
+
+@pytest.fixture
+async def headers_c(usuario_c: Usuario) -> dict:
+    """Headers de autenticação do usuário da equipe C.
+
+    Args:
+        usuario_c: Usuário da equipe C.
+
+    Returns:
+        dict: Headers com Authorization Bearer token do usuário C.
+    """
+    token = criar_access_token(
+        {
+            "sub": str(usuario_c.id),
+            "guarnicao_id": usuario_c.guarnicao_id,
+            "sid": usuario_c.session_id,
+        }
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+class TestConsultaIsolamento:
+    """Pessoas são sempre globais; abordagens respeitam o toggle de isolamento."""
+
+    async def test_pessoas_sempre_visiveis_para_outra_equipe(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        headers_c: dict,
+        guarnicao: Guarnicao,
+        usuario: Usuario,
+    ):
+        """Busca de pessoa retorna resultados de outra equipe (pessoas são sempre globais).
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            db_session: Sessão do banco de dados.
+            headers_c: Headers do usuário da equipe C.
+            guarnicao: Equipe A (padrão do conftest).
+            usuario: Usuário da equipe A.
+        """
+        p = Pessoa(nome="Joao Testador Global", guarnicao_id=guarnicao.id)
+        db_session.add(p)
+        await db_session.flush()
+
+        response = await client.get(
+            "/api/v1/consultas/?q=Joao+Testador&tipo=pessoa",
+            headers=headers_c,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        nomes = [pessoa["nome"] for pessoa in data["pessoas"]]
+        assert "Joao Testador Global" in nomes
+
+    async def test_abordagens_toggle_off_ve_global(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        headers_c: dict,
+        guarnicao: Guarnicao,
+        usuario: Usuario,
+        equipe_c: Guarnicao,
+    ):
+        """Busca de abordagem com toggle OFF retorna resultados de outra equipe.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            db_session: Sessão do banco de dados.
+            headers_c: Headers do usuário da equipe C.
+            guarnicao: Equipe A (padrão do conftest).
+            usuario: Usuário da equipe A.
+            equipe_c: Equipe C (toggle OFF por padrão).
+        """
+        a = Abordagem(
+            guarnicao_id=guarnicao.id,
+            usuario_id=usuario.id,
+            data_hora=datetime.now(UTC),
+            endereco_texto="Rua Global Consulta Teste",
+        )
+        db_session.add(a)
+        await db_session.flush()
+
+        assert equipe_c.isolamento_abordagens is False
+        response = await client.get(
+            "/api/v1/consultas/?q=Global+Consulta&tipo=abordagem",
+            headers=headers_c,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["abordagens"]) >= 1
+
+    async def test_abordagens_toggle_on_nao_ve_outra_equipe(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        headers_c: dict,
+        guarnicao: Guarnicao,
+        usuario: Usuario,
+        equipe_c: Guarnicao,
+    ):
+        """Busca de abordagem com toggle ON não retorna resultados de outra equipe.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            db_session: Sessão do banco de dados.
+            headers_c: Headers do usuário da equipe C.
+            guarnicao: Equipe A (padrão do conftest).
+            usuario: Usuário da equipe A.
+            equipe_c: Equipe C (toggle será ativado).
+        """
+        a = Abordagem(
+            guarnicao_id=guarnicao.id,
+            usuario_id=usuario.id,
+            data_hora=datetime.now(UTC),
+            endereco_texto="Rua Isolada Consulta Teste",
+        )
+        db_session.add(a)
+        await db_session.flush()
+
+        equipe_c.isolamento_abordagens = True
+        await db_session.flush()
+
+        response = await client.get(
+            "/api/v1/consultas/?q=Isolada+Consulta&tipo=abordagem",
+            headers=headers_c,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["abordagens"]) == 0
