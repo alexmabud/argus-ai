@@ -238,7 +238,7 @@ class TestListarPorData:
             guarnicao: Fixture de guarnição.
             usuario: Fixture de usuário.
         """
-        from datetime import date, timedelta
+        from datetime import timedelta
 
         from app.models.abordagem import Abordagem
 
@@ -263,7 +263,7 @@ class TestListarPorData:
         service = AbordagemService(db_session)
         result = await service.listar_por_data(
             guarnicao_id=guarnicao.id,
-            data=date.today(),
+            data=datetime.now(UTC).date(),
         )
         assert len(result) == 1
         assert result[0].endereco_texto == "Rua Hoje, 1"
