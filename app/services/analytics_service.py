@@ -4,6 +4,7 @@ Fornece métricas agregadas para o dashboard: resumo por período (hoje, mês, t
 séries temporais diária e mensal, suporte ao calendário (dias com abordagem e
 pessoas do dia), mapa de calor, distribuição horária e pessoas recorrentes.
 Respeita multi-tenancy (guarnicao_id) e soft delete em todas as queries.
+Quando guarnicao_id é None, as queries são globais (todas as equipes).
 """
 
 import asyncio
@@ -41,11 +42,12 @@ class AnalyticsService:
         """
         self.db = db
 
-    async def resumo(self, guarnicao_id: int, dias: int = 30) -> dict:
+    async def resumo(self, guarnicao_id: int | None, dias: int = 30) -> dict:
         """Retorna resumo operacional do período.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
             dias: Número de dias do período (padrão 30).
 
         Returns:
@@ -54,23 +56,19 @@ class AnalyticsService:
         """
         desde = datetime.now(UTC) - timedelta(days=dias)
 
+        base = [Abordagem.ativo, Abordagem.data_hora >= desde]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
+
         # Total abordagens
-        total_q = select(func.count(Abordagem.id)).where(
-            Abordagem.guarnicao_id == guarnicao_id,
-            Abordagem.ativo,
-            Abordagem.data_hora >= desde,
-        )
+        total_q = select(func.count(Abordagem.id)).where(*base)
         total = (await self.db.execute(total_q)).scalar() or 0
 
         # Pessoas distintas
         pessoas_q = (
             select(func.count(func.distinct(AbordagemPessoa.pessoa_id)))
             .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-                Abordagem.data_hora >= desde,
-            )
+            .where(*base)
         )
         pessoas = (await self.db.execute(pessoas_q)).scalar() or 0
 
@@ -81,11 +79,12 @@ class AnalyticsService:
             "media_abordagens_dia": round(total / max(dias, 1), 1),
         }
 
-    async def mapa_calor(self, guarnicao_id: int, dias: int = 30) -> list[dict]:
+    async def mapa_calor(self, guarnicao_id: int | None, dias: int = 30) -> list[dict]:
         """Retorna pontos geográficos para mapa de calor.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
             dias: Número de dias do período (padrão 30).
 
         Returns:
@@ -93,21 +92,25 @@ class AnalyticsService:
         """
         desde = datetime.now(UTC) - timedelta(days=dias)
 
-        query = select(Abordagem.latitude, Abordagem.longitude).where(
-            Abordagem.guarnicao_id == guarnicao_id,
+        base = [
             Abordagem.ativo,
             Abordagem.data_hora >= desde,
             Abordagem.latitude.isnot(None),
             Abordagem.longitude.isnot(None),
-        )
+        ]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
+
+        query = select(Abordagem.latitude, Abordagem.longitude).where(*base)
         result = await self.db.execute(query)
         return [{"lat": float(row[0]), "lon": float(row[1])} for row in result.all()]
 
-    async def horarios_pico(self, guarnicao_id: int, dias: int = 30) -> list[dict]:
+    async def horarios_pico(self, guarnicao_id: int | None, dias: int = 30) -> list[dict]:
         """Retorna distribuição horária das abordagens.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
             dias: Número de dias do período (padrão 30).
 
         Returns:
@@ -118,24 +121,26 @@ class AnalyticsService:
         hora = extract("hour", func.timezone("America/Sao_Paulo", Abordagem.data_hora)).label(
             "hora"
         )
+
+        base = [Abordagem.ativo, Abordagem.data_hora >= desde]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
+
         query = (
             select(hora, func.count(Abordagem.id).label("total"))
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-                Abordagem.data_hora >= desde,
-            )
+            .where(*base)
             .group_by(hora)
             .order_by(hora)
         )
         result = await self.db.execute(query)
         return [{"hora": int(row[0]), "total": int(row[1])} for row in result.all()]
 
-    async def pessoas_recorrentes(self, guarnicao_id: int, limit: int = 20) -> list[dict]:
+    async def pessoas_recorrentes(self, guarnicao_id: int | None, limit: int = 20) -> list[dict]:
         """Retorna pessoas mais abordadas.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
             limit: Número máximo de resultados (padrão 20, máximo 100).
 
         Returns:
@@ -143,6 +148,10 @@ class AnalyticsService:
             ultima_abordagem, cpf e foto_url.
         """
         limit = min(limit, 100)
+
+        base = [Abordagem.ativo, Pessoa.ativo]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
 
         query = (
             select(
@@ -156,11 +165,7 @@ class AnalyticsService:
             )
             .join(AbordagemPessoa, Pessoa.id == AbordagemPessoa.pessoa_id)
             .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-                Pessoa.ativo,
-            )
+            .where(*base)
             .group_by(
                 Pessoa.id,
                 Pessoa.nome,
@@ -190,11 +195,12 @@ class AnalyticsService:
 
         return await asyncio.to_thread(_build_results)
 
-    async def resumo_hoje(self, guarnicao_id: int) -> dict:
+    async def resumo_hoje(self, guarnicao_id: int | None) -> dict:
         """Retorna total de abordagens e pessoas abordadas hoje.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
 
         Returns:
             Dicionário com abordagens e pessoas do dia atual.
@@ -203,33 +209,28 @@ class AnalyticsService:
         inicio = datetime(hoje.year, hoje.month, hoje.day, tzinfo=BRT)
         fim = inicio + timedelta(days=1)
 
-        total_q = select(func.count(Abordagem.id)).where(
-            Abordagem.guarnicao_id == guarnicao_id,
-            Abordagem.ativo,
-            Abordagem.data_hora >= inicio,
-            Abordagem.data_hora < fim,
-        )
+        base = [Abordagem.ativo, Abordagem.data_hora >= inicio, Abordagem.data_hora < fim]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
+
+        total_q = select(func.count(Abordagem.id)).where(*base)
         total = (await self.db.execute(total_q)).scalar() or 0
 
         pessoas_q = (
             select(func.count(func.distinct(AbordagemPessoa.pessoa_id)))
             .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-                Abordagem.data_hora >= inicio,
-                Abordagem.data_hora < fim,
-            )
+            .where(*base)
         )
         pessoas = (await self.db.execute(pessoas_q)).scalar() or 0
 
         return {"abordagens": total, "pessoas": pessoas}
 
-    async def resumo_mes(self, guarnicao_id: int) -> dict:
+    async def resumo_mes(self, guarnicao_id: int | None) -> dict:
         """Retorna total de abordagens e pessoas abordadas no mês atual.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
 
         Returns:
             Dicionário com abordagens e pessoas do mês corrente.
@@ -241,61 +242,53 @@ class AnalyticsService:
         else:
             fim = inicio.replace(month=agora.month + 1)
 
-        total_q = select(func.count(Abordagem.id)).where(
-            Abordagem.guarnicao_id == guarnicao_id,
-            Abordagem.ativo,
-            Abordagem.data_hora >= inicio,
-            Abordagem.data_hora < fim,
-        )
+        base = [Abordagem.ativo, Abordagem.data_hora >= inicio, Abordagem.data_hora < fim]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
+
+        total_q = select(func.count(Abordagem.id)).where(*base)
         total = (await self.db.execute(total_q)).scalar() or 0
 
         pessoas_q = (
             select(func.count(func.distinct(AbordagemPessoa.pessoa_id)))
             .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-                Abordagem.data_hora >= inicio,
-                Abordagem.data_hora < fim,
-            )
+            .where(*base)
         )
         pessoas = (await self.db.execute(pessoas_q)).scalar() or 0
 
         return {"abordagens": total, "pessoas": pessoas}
 
-    async def resumo_total(self, guarnicao_id: int) -> dict:
+    async def resumo_total(self, guarnicao_id: int | None) -> dict:
         """Retorna totais históricos de abordagens e pessoas.
 
         Sem filtro de data — agrega todos os registros ativos da guarnição.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
 
         Returns:
             Dicionário com abordagens e pessoas totais.
         """
-        total_q = select(func.count(Abordagem.id)).where(
-            Abordagem.guarnicao_id == guarnicao_id,
-            Abordagem.ativo,
-        )
+        base_ab = [Abordagem.ativo]
+        if guarnicao_id is not None:
+            base_ab.append(Abordagem.guarnicao_id == guarnicao_id)
+
+        total_q = select(func.count(Abordagem.id)).where(*base_ab)
         total = (await self.db.execute(total_q)).scalar() or 0
 
         # Conta pessoas distintas que foram abordadas ao menos uma vez
         pessoas_abordadas_q = (
             select(func.count(func.distinct(AbordagemPessoa.pessoa_id)))
             .join(Abordagem, AbordagemPessoa.abordagem_id == Abordagem.id)
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-            )
+            .where(*base_ab)
         )
         pessoas_abordadas = (await self.db.execute(pessoas_abordadas_q)).scalar() or 0
 
-        # Conta todas as pessoas cadastradas na guarnição
-        pessoas_cadastradas_q = select(func.count(Pessoa.id)).where(
-            Pessoa.guarnicao_id == guarnicao_id,
-            Pessoa.ativo,
-        )
+        # Conta todas as pessoas cadastradas (com filtro de guarnição se fornecido)
+        pessoas_cadastradas_q = select(func.count(Pessoa.id)).where(Pessoa.ativo)
+        if guarnicao_id is not None:
+            pessoas_cadastradas_q = pessoas_cadastradas_q.where(Pessoa.guarnicao_id == guarnicao_id)
         pessoas_cadastradas = (await self.db.execute(pessoas_cadastradas_q)).scalar() or 0
 
         return {
@@ -304,11 +297,12 @@ class AnalyticsService:
             "pessoas_cadastradas": pessoas_cadastradas,
         }
 
-    async def por_dia(self, guarnicao_id: int, dias: int = 30) -> list[dict]:
+    async def por_dia(self, guarnicao_id: int | None, dias: int = 30) -> list[dict]:
         """Retorna série temporal diária de abordagens e pessoas.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
             dias: Número de dias retroativos (padrão 30).
 
         Returns:
@@ -319,6 +313,10 @@ class AnalyticsService:
             "data"
         )
 
+        base = [Abordagem.ativo, Abordagem.data_hora >= desde]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
+
         query = (
             select(
                 data_label,
@@ -326,11 +324,7 @@ class AnalyticsService:
                 func.count(func.distinct(AbordagemPessoa.pessoa_id)).label("pessoas"),
             )
             .outerjoin(AbordagemPessoa, AbordagemPessoa.abordagem_id == Abordagem.id)
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-                Abordagem.data_hora >= desde,
-            )
+            .where(*base)
             .group_by(data_label)
             .order_by(data_label)
         )
@@ -344,11 +338,12 @@ class AnalyticsService:
             for row in result.all()
         ]
 
-    async def por_mes(self, guarnicao_id: int, meses: int = 12) -> list[dict]:
+    async def por_mes(self, guarnicao_id: int | None, meses: int = 12) -> list[dict]:
         """Retorna série temporal mensal de abordagens e pessoas.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
             meses: Número de meses retroativos (padrão 12).
 
         Returns:
@@ -365,6 +360,10 @@ class AnalyticsService:
         ano_label = extract("year", _brt_ts).label("ano")
         mes_label = extract("month", _brt_ts).label("mes")
 
+        base = [Abordagem.ativo, Abordagem.data_hora >= desde]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
+
         query = (
             select(
                 ano_label,
@@ -373,11 +372,7 @@ class AnalyticsService:
                 func.count(func.distinct(AbordagemPessoa.pessoa_id)).label("pessoas"),
             )
             .outerjoin(AbordagemPessoa, AbordagemPessoa.abordagem_id == Abordagem.id)
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-                Abordagem.data_hora >= desde,
-            )
+            .where(*base)
             .group_by(ano_label, mes_label)
             .order_by(ano_label, mes_label)
         )
@@ -391,13 +386,14 @@ class AnalyticsService:
             for row in result.all()
         ]
 
-    async def dias_com_abordagem(self, guarnicao_id: int, mes: str) -> list[int]:
+    async def dias_com_abordagem(self, guarnicao_id: int | None, mes: str) -> list[int]:
         """Retorna lista de dias do mês que tiveram abordagem.
 
         Usado pelo calendário mini para exibir pontos indicativos.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
             mes: Mês no formato "YYYY-MM" (ex: "2026-03").
 
         Returns:
@@ -407,31 +403,38 @@ class AnalyticsService:
         _brt_ts = func.timezone("America/Sao_Paulo", Abordagem.data_hora)
         dia_label = extract("day", _brt_ts).label("dia")
 
-        query = (
-            select(dia_label)
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-                extract("year", _brt_ts) == ano,
-                extract("month", _brt_ts) == mes_num,
-            )
-            .distinct()
-            .order_by(dia_label)
-        )
+        base = [
+            Abordagem.ativo,
+            extract("year", _brt_ts) == ano,
+            extract("month", _brt_ts) == mes_num,
+        ]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
+
+        query = select(dia_label).where(*base).distinct().order_by(dia_label)
         result = await self.db.execute(query)
         return [int(row[0]) for row in result.all()]
 
-    async def pessoas_do_dia(self, guarnicao_id: int, data: str) -> list[dict]:
+    async def pessoas_do_dia(self, guarnicao_id: int | None, data: str) -> list[dict]:
         """Retorna pessoas abordadas em um dia específico.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
             data: Data no formato "YYYY-MM-DD" (ex: "2026-03-14").
 
         Returns:
             Lista de dicionários com id, nome, cpf e foto_url.
         """
         data_obj = date.fromisoformat(data)
+
+        base = [
+            Abordagem.ativo,
+            Pessoa.ativo,
+            cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), DateType) == data_obj,
+        ]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
 
         query = (
             select(
@@ -442,12 +445,7 @@ class AnalyticsService:
             )
             .join(AbordagemPessoa, AbordagemPessoa.pessoa_id == Pessoa.id)
             .join(Abordagem, Abordagem.id == AbordagemPessoa.abordagem_id)
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-                Pessoa.ativo,
-                cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), DateType) == data_obj,
-            )
+            .where(*base)
             .order_by(Pessoa.nome)
             .distinct()
         )
@@ -467,7 +465,7 @@ class AnalyticsService:
             )
         return pessoas
 
-    async def abordagens_do_dia(self, guarnicao_id: int, data: str) -> list[dict]:
+    async def abordagens_do_dia(self, guarnicao_id: int | None, data: str) -> list[dict]:
         """Retorna pontos geográficos das abordagens de um dia específico.
 
         Retorna apenas abordagens que possuem coordenadas GPS registradas.
@@ -476,6 +474,7 @@ class AnalyticsService:
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
             data: Data no formato "YYYY-MM-DD" (ex: "2026-03-28").
 
         Returns:
@@ -483,19 +482,22 @@ class AnalyticsService:
         """
         data_obj = date.fromisoformat(data)
 
+        base = [
+            Abordagem.ativo,
+            cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), DateType) == data_obj,
+            Abordagem.latitude.isnot(None),
+            Abordagem.longitude.isnot(None),
+        ]
+        if guarnicao_id is not None:
+            base.append(Abordagem.guarnicao_id == guarnicao_id)
+
         query = (
             select(
                 Abordagem.latitude,
                 Abordagem.longitude,
                 Abordagem.data_hora,
             )
-            .where(
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo,
-                cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), DateType) == data_obj,
-                Abordagem.latitude.isnot(None),
-                Abordagem.longitude.isnot(None),
-            )
+            .where(*base)
             .order_by(Abordagem.data_hora)
         )
         result = await self.db.execute(query)
@@ -510,30 +512,43 @@ class AnalyticsService:
             for row in rows
         ]
 
-    async def metricas_rag(self, guarnicao_id: int) -> dict:
+    async def metricas_rag(self, guarnicao_id: int | None) -> dict:
         """Retorna métricas de ocorrências para o módulo RAG.
 
         Conta total de ocorrências e quantas estão indexadas (com embedding).
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
+                None = global (todas as equipes).
 
         Returns:
             Dict com total_ocorrencias e ocorrencias_indexadas.
         """
         from sqlalchemy import text as sql_text
 
-        result_total = await self.db.execute(
-            sql_text("SELECT COUNT(*) FROM ocorrencias WHERE guarnicao_id = :gid AND ativo = true"),
-            {"gid": guarnicao_id},
-        )
-        result_indexadas = await self.db.execute(
-            sql_text(
-                "SELECT COUNT(*) FROM ocorrencias"
-                " WHERE guarnicao_id = :gid AND ativo = true AND embedding IS NOT NULL"
-            ),
-            {"gid": guarnicao_id},
-        )
+        if guarnicao_id is not None:
+            result_total = await self.db.execute(
+                sql_text(
+                    "SELECT COUNT(*) FROM ocorrencias WHERE guarnicao_id = :gid AND ativo = true"
+                ),
+                {"gid": guarnicao_id},
+            )
+            result_indexadas = await self.db.execute(
+                sql_text(
+                    "SELECT COUNT(*) FROM ocorrencias"
+                    " WHERE guarnicao_id = :gid AND ativo = true AND embedding IS NOT NULL"
+                ),
+                {"gid": guarnicao_id},
+            )
+        else:
+            result_total = await self.db.execute(
+                sql_text("SELECT COUNT(*) FROM ocorrencias WHERE ativo = true")
+            )
+            result_indexadas = await self.db.execute(
+                sql_text(
+                    "SELECT COUNT(*) FROM ocorrencias WHERE ativo = true AND embedding IS NOT NULL"
+                )
+            )
         return {
             "total_ocorrencias": result_total.scalar() or 0,
             "ocorrencias_indexadas": result_indexadas.scalar() or 0,
