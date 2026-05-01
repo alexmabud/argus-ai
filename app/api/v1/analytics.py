@@ -16,6 +16,25 @@ from app.models.usuario import Usuario
 from app.services.analytics_service import AnalyticsService
 from app.services.audit_service import AuditService
 
+
+def _guarnicao_filter(user: Usuario) -> int | None:
+    """Retorna guarnicao_id se isolamento ativo, None para acesso global.
+
+    Quando o toggle isolamento_abordagens da equipe está ativado,
+    retorna o guarnicao_id do usuário para filtrar apenas os dados
+    da própria equipe. Quando desativado, retorna None para consulta global.
+
+    Args:
+        user: Usuário autenticado com relacionamento guarnicao carregado.
+
+    Returns:
+        int com guarnicao_id se isolamento ativo, None se global.
+    """
+    if user.guarnicao and user.guarnicao.isolamento_abordagens:
+        return user.guarnicao_id
+    return None
+
+
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 
@@ -38,7 +57,7 @@ async def pessoas_recorrentes(
         Lista com nome, apelido, total_abordagens e ultima_abordagem.
     """
     service = AnalyticsService(db)
-    return await service.pessoas_recorrentes(user.guarnicao_id, limit)
+    return await service.pessoas_recorrentes(_guarnicao_filter(user), limit)
 
 
 @router.get("/resumo-hoje")
@@ -58,7 +77,7 @@ async def resumo_hoje(
         Dicionário com abordagens e pessoas do dia atual.
     """
     service = AnalyticsService(db)
-    return await service.resumo_hoje(user.guarnicao_id)
+    return await service.resumo_hoje(_guarnicao_filter(user))
 
 
 @router.get("/resumo-mes")
@@ -78,7 +97,7 @@ async def resumo_mes(
         Dicionário com abordagens e pessoas do mês corrente.
     """
     service = AnalyticsService(db)
-    return await service.resumo_mes(user.guarnicao_id)
+    return await service.resumo_mes(_guarnicao_filter(user))
 
 
 @router.get("/resumo-total")
@@ -98,7 +117,7 @@ async def resumo_total(
         Dicionário com abordagens e pessoas totais.
     """
     service = AnalyticsService(db)
-    return await service.resumo_total(user.guarnicao_id)
+    return await service.resumo_total(_guarnicao_filter(user))
 
 
 @router.get("/por-dia")
@@ -120,7 +139,7 @@ async def por_dia(
         Lista com data, abordagens e pessoas por dia.
     """
     service = AnalyticsService(db)
-    return await service.por_dia(user.guarnicao_id, dias)
+    return await service.por_dia(_guarnicao_filter(user), dias)
 
 
 @router.get("/por-mes")
@@ -142,7 +161,7 @@ async def por_mes(
         Lista com mes, abordagens e pessoas por mês.
     """
     service = AnalyticsService(db)
-    return await service.por_mes(user.guarnicao_id, meses)
+    return await service.por_mes(_guarnicao_filter(user), meses)
 
 
 @router.get("/dias-com-abordagem")
@@ -166,7 +185,7 @@ async def dias_com_abordagem(
         Lista de inteiros representando os dias com abordagem.
     """
     service = AnalyticsService(db)
-    return await service.dias_com_abordagem(user.guarnicao_id, mes)
+    return await service.dias_com_abordagem(_guarnicao_filter(user), mes)
 
 
 @router.get("/abordagens-do-dia")
@@ -198,7 +217,7 @@ async def abordagens_do_dia(
         detalhes={"data": str(data)},
     )
     service = AnalyticsService(db)
-    return await service.abordagens_do_dia(user.guarnicao_id, str(data))
+    return await service.abordagens_do_dia(_guarnicao_filter(user), str(data))
 
 
 @router.get("/pessoas-do-dia")
@@ -220,4 +239,4 @@ async def pessoas_do_dia(
         Lista com id, nome, cpf e foto_url das pessoas abordadas.
     """
     service = AnalyticsService(db)
-    return await service.pessoas_do_dia(user.guarnicao_id, str(data))
+    return await service.pessoas_do_dia(_guarnicao_filter(user), str(data))
