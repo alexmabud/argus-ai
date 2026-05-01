@@ -24,6 +24,18 @@ from app.services.pessoa_service import PessoaService
 router = APIRouter(prefix="/consultas", tags=["Consultas"])
 
 
+def _isolamento(user: Usuario) -> bool:
+    """Retorna True se o toggle de isolamento da equipe está ativado.
+
+    Args:
+        user: Usuário autenticado com relacionamento guarnicao carregado.
+
+    Returns:
+        True se isolamento_abordagens da equipe está ativo, False caso contrário.
+    """
+    return bool(user.guarnicao and user.guarnicao.isolamento_abordagens)
+
+
 @router.get("/localidades")
 @limiter.limit("30/minute")
 async def listar_localidades(
@@ -45,7 +57,7 @@ async def listar_localidades(
         distintas ordenadas alfabeticamente.
     """
     service = ConsultaService(db)
-    return await service.listar_localidades(guarnicao_id=user.guarnicao_id)
+    return await service.listar_localidades(guarnicao_id=None)
 
 
 @router.get("/", response_model=ConsultaUnificadaResponse)
@@ -116,6 +128,7 @@ async def consulta_unificada(
         skip=skip,
         limit=limit,
         user=user,
+        isolamento=_isolamento(user),
     )
 
     return service.formatar_resultado_busca(resultados)
