@@ -69,6 +69,7 @@ class ConsultaService:
         skip: int = 0,
         limit: int = 20,
         user: Usuario | None = None,
+        isolamento: bool = False,
     ) -> dict:
         """Busca unificada em pessoa, veículo e abordagem.
 
@@ -93,6 +94,8 @@ class ConsultaService:
             skip: Número de registros a pular por entidade (paginação).
             limit: Número máximo de resultados por entidade.
             user: Usuário autenticado (para filtro multi-tenant).
+            isolamento: Se True, filtra abordagens e veículos pela equipe do usuário.
+                Se False (padrão), busca globalmente. Pessoas são sempre globais.
 
         Returns:
             Dicionário com chaves "pessoas", "veiculos", "abordagens",
@@ -100,7 +103,12 @@ class ConsultaService:
             "pessoas_com_endereco" é True quando "pessoas" contém tuplas
             (Pessoa, datetime) — caso de busca por filtro de localidade.
         """
-        guarnicao_id = user.guarnicao_id if user else None
+        # Pessoas são sempre globais (spec do projeto)
+        guarnicao_id_pessoa: int | None = None
+        # Abordagens e veículos respeitam o toggle de isolamento
+        guarnicao_id_abordagem: int | None = (
+            (user.guarnicao_id if user else None) if isolamento else None
+        )
         pessoas = []
         veiculos = []
         abordagens = []
@@ -113,20 +121,20 @@ class ConsultaService:
                     bairro=bairro,
                     cidade=cidade,
                     estado=estado,
-                    guarnicao_id=guarnicao_id,
+                    guarnicao_id=guarnicao_id_pessoa,
                     skip=skip,
                     limit=limit,
                 )
             else:
-                pessoas = await self._buscar_pessoas(q, guarnicao_id, skip, limit)
+                pessoas = await self._buscar_pessoas(q, guarnicao_id_pessoa, skip, limit)
 
         if tipo is None or tipo == "veiculo":
             if not filtro_local:
-                veiculos = await self._buscar_veiculos(q, guarnicao_id, skip, limit)
+                veiculos = await self._buscar_veiculos(q, guarnicao_id_abordagem, skip, limit)
 
         if tipo is None or tipo == "abordagem":
             if not filtro_local:
-                abordagens = await self._buscar_abordagens(q, guarnicao_id, skip, limit)
+                abordagens = await self._buscar_abordagens(q, guarnicao_id_abordagem, skip, limit)
 
         return {
             "pessoas": pessoas,
