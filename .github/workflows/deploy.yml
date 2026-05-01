@@ -71,6 +71,10 @@ jobs:
             docker compose -f docker-compose.prod.yml rm -f minio-init || true
             docker compose -f docker-compose.prod.yml up -d --build
 
+            echo "══════ Rodando migrations ══════"
+            sleep 5
+            docker compose -f docker-compose.prod.yml exec -T api python -m alembic upgrade head
+
             echo "══════ Aguardando health check ══════"
             sleep 10
             if curl -sf http://localhost:80/health > /dev/null; then
