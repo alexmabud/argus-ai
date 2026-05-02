@@ -94,7 +94,7 @@ Antes de usar em produção, faça:
 Se você encontrar uma vulnerabilidade de segurança neste projeto de portfólio:
 
 1. **NÃO abra uma issue pública**
-2. Entre em contato via email: [SEU_EMAIL_AQUI]
+2. Entre em contato via email: alexmabud@gmail.com
 3. Descreva a vulnerabilidade e passos para reproduzir
 4. Aguarde resposta em até 48 horas
 
