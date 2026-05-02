@@ -22,6 +22,7 @@ from app.schemas.abordagem import (
     PessoaAbordagemRead,
     VeiculoAbordagemRead,
 )
+from app.schemas.auth import UsuarioResumoRead
 from app.schemas.foto import FotoRead
 from app.schemas.ocorrencia import OcorrenciaRead
 from app.services.abordagem_service import AbordagemService
@@ -231,6 +232,7 @@ def _serializar_detalhe(abordagem: Abordagem) -> AbordagemDetail:
     fotos = [FotoRead.model_validate(f) for f in abordagem.fotos if f.ativo]
     ocorrencias = [OcorrenciaRead.model_validate(o) for o in abordagem.ocorrencias if o.ativo]
 
+    usuario = UsuarioResumoRead.model_validate(abordagem.usuario) if abordagem.usuario else None
     base = AbordagemRead.model_validate(abordagem)
     return AbordagemDetail(
         **base.model_dump(),
@@ -238,4 +240,5 @@ def _serializar_detalhe(abordagem: Abordagem) -> AbordagemDetail:
         veiculos=veiculos,
         fotos=fotos,
         ocorrencias=ocorrencias,
+        usuario=usuario,
     )

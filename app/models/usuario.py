@@ -54,6 +54,7 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
             a abordagens (retorna 403 nos endpoints).
         is_admin: Flag indicando permissões administrativas.
         guarnicao: Relacionamento com Guarnicao (= Equipe na UI).
+        abordagens: Relacionamento com Abordagem (não carregado por padrão, lazy=noload).
     """
 
     __tablename__ = "usuarios"
@@ -75,4 +76,10 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
         back_populates="membros",
         foreign_keys=[guarnicao_id],
         lazy="selectin",
+    )
+    abordagens = relationship(
+        "Abordagem",
+        back_populates="usuario",
+        lazy="noload",
+        foreign_keys="[Abordagem.usuario_id]",
     )

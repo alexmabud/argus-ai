@@ -74,8 +74,6 @@ class TestAbordagemDetailUsuario:
 
     def test_usuario_field_existe(self):
         """Testa que AbordagemDetail tem o campo usuario."""
-        from app.schemas.auth import UsuarioResumoRead  # noqa: F401
-
         fields = AbordagemDetail.model_fields
         assert "usuario" in fields
         # campo deve ser opcional (None quando usuário não carregado)

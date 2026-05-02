@@ -13,6 +13,7 @@ from app.database.session import get_db
 from app.dependencies import get_current_user, get_current_user_with_guarnicao
 from app.models.usuario import Usuario
 from app.schemas.abordagem import AbordagemDetail, VeiculoAbordagemRead
+from app.schemas.auth import UsuarioResumoRead
 from app.schemas.pessoa import (
     EnderecoCreate,
     EnderecoRead,
@@ -500,6 +501,7 @@ async def listar_abordagens_pessoa(
             )
             for av in ab.veiculos
         ]
+        usuario = UsuarioResumoRead.model_validate(ab.usuario) if ab.usuario else None
         result.append(
             AbordagemDetail(
                 id=ab.id,
@@ -516,7 +518,7 @@ async def listar_abordagens_pessoa(
                 pessoas=pessoas,
                 veiculos=veiculos,
                 fotos=[],
-                passagens=[],
+                usuario=usuario,
             )
         )
     return result

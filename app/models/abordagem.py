@@ -72,7 +72,9 @@ class Abordagem(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     )
     fotos = relationship("Foto", back_populates="abordagem", lazy="selectin")
     ocorrencias = relationship("Ocorrencia", back_populates="abordagem", lazy="selectin")
-    usuario = relationship("Usuario", lazy="selectin", foreign_keys=[usuario_id])
+    usuario = relationship(
+        "Usuario", lazy="selectin", foreign_keys=[usuario_id], back_populates="abordagens"
+    )
 
     __table_args__ = (
         Index("idx_abordagem_guarnicao_data", "guarnicao_id", "data_hora"),
