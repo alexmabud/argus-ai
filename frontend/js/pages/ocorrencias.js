@@ -128,8 +128,13 @@ function renderOcorrencias() {
 
             <!-- Info -->
             <div style="flex:1;min-width:0;">
-              <div style="font-family:var(--font-display);font-size:10px;color:var(--color-primary);letter-spacing:0.08em;"
-                   x-text="formatarDataHora(ab.data_hora)"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-family:var(--font-display);font-size:10px;color:var(--color-primary);letter-spacing:0.08em;"
+                      x-text="formatarDataHora(ab.data_hora)"></span>
+                <span x-show="ab.usuario && ab.usuario.nome_guerra"
+                      style="font-family:var(--font-display);font-size:10px;color:rgba(255,255,255,0.45);letter-spacing:0.06em;"
+                      x-text="(ab.usuario && ab.usuario.posto_graduacao ? ab.usuario.posto_graduacao + ' ' : '') + (ab.usuario && ab.usuario.nome_guerra ? ab.usuario.nome_guerra : '')"></span>
+              </div>
               <div style="font-family:var(--font-data);font-size:13px;font-weight:600;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
                    x-text="nomesPessoas(ab.pessoas) || 'Sem abordados registrados'"></div>
               <div style="font-family:var(--font-data);font-size:11px;color:var(--color-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
