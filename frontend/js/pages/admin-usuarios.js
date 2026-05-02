@@ -222,7 +222,7 @@ function cardUsuario(varName) {
       </div>
       <div style="flex: 1; min-width: 0;">
         <p style="color: var(--color-primary); font-family: var(--font-display); font-weight: 700; font-size: 0.9375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
-           x-text="(${varName}.posto_graduacao || 'Sem graduação') + (${varName}.nome_guerra ? ' ' + ${varName}.nome_guerra : '')"></p>
+           x-text="(POSTO_ABREV[${varName}.posto_graduacao] || ${varName}.posto_graduacao || 'Sem grad.') + (${varName}.nome_guerra ? ' ' + ${varName}.nome_guerra : '')"></p>
         <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
            x-text="(${varName}.nome !== ${varName}.matricula ? ${varName}.nome + ' · ' : '') + ${varName}.matricula"></p>
       </div>
