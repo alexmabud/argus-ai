@@ -269,7 +269,7 @@ class PessoaRepository(BaseRepository[Pessoa]):
 
         return {"bairros": bairros, "cidades": cidades, "estados": estados}
 
-    async def get_detail(self, id: int, guarnicao_id: int) -> Pessoa | None:
+    async def get_detail(self, id: int, guarnicao_id: int | None) -> Pessoa | None:
         """Obtém pessoa com todos os relacionamentos carregados (eager load).
 
         Carrega endereços, fotos e relacionamentos em uma única query
@@ -277,11 +277,16 @@ class PessoaRepository(BaseRepository[Pessoa]):
 
         Args:
             id: Identificador da pessoa.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            guarnicao_id: ID da guarnição para filtro multi-tenant, ou None para
+                acesso global (quando isolamento_abordagens está desativado).
 
         Returns:
             Pessoa com relacionamentos carregados ou None.
         """
+        conditions = [Pessoa.id == id, Pessoa.ativo == True]  # noqa: E712
+        if guarnicao_id is not None:
+            conditions.append(Pessoa.guarnicao_id == guarnicao_id)
+
         query = (
             select(Pessoa)
             .options(
@@ -294,11 +299,7 @@ class PessoaRepository(BaseRepository[Pessoa]):
                     RelacionamentoPessoa.pessoa_a
                 ),
             )
-            .where(
-                Pessoa.id == id,
-                Pessoa.guarnicao_id == guarnicao_id,
-                Pessoa.ativo == True,  # noqa: E712
-            )
+            .where(*conditions)
         )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
