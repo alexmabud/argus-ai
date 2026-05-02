@@ -30,7 +30,7 @@ class AbordagemCreate(BaseModel):
         observacao: Anotações do oficial.
         origem: Origem da criação ("online" ou "offline_sync").
         client_id: ID único do cliente (para deduplicação offline).
-        pessoa_ids: IDs das pessoas abordadas.
+        pessoa_ids: IDs das pessoas abordadas (mínimo 1 obrigatório).
         veiculo_ids: IDs dos veículos envolvidos.
         veiculo_por_pessoa: Mapeamento veiculo_id → pessoa_id (opcional).
     """
@@ -42,7 +42,7 @@ class AbordagemCreate(BaseModel):
     observacao: str | None = None
     origem: str = Field("online", max_length=20)
     client_id: str | None = Field(None, max_length=100)
-    pessoa_ids: list[int] = []
+    pessoa_ids: list[int] = Field(default=[], min_length=1)
     veiculo_ids: list[int] = []
     veiculo_por_pessoa: dict[int, int] = {}
 
