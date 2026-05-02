@@ -112,7 +112,7 @@ function renderAdminUsuarios() {
             </template>
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
               <template x-for="u in usuariosDaEquipe(abaAtiva)" :key="u.id">
-                <div class="glass-card" style="padding: 1rem;" x-data="{ destinoId: '' }">
+                <div class="glass-card" style="padding: 1rem;" x-data="{ destinoId: '', modalMover: false }">
                   ${cardUsuario('u')}
                   <!-- Ações comuns -->
                   <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
@@ -124,23 +124,38 @@ function renderAdminUsuarios() {
                     <button @click="gerarSenha(u)" class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 0.375rem 0.5rem;">
                       Gerar nova senha
                     </button>
+                    <button @click="modalMover = true" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
+                      Mover
+                    </button>
                     <button @click="excluirUsuario(u)"
                             style="font-size: 0.75rem; font-family: var(--font-data); padding: 0.375rem 0.75rem; border-radius: 4px; background: rgba(255,107,0,0.15); color: var(--color-danger); border: 1px solid rgba(255,107,0,0.3); cursor: pointer;">
                       Excluir
                     </button>
                   </div>
-                  <!-- Mover de equipe -->
-                  <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
-                    <select x-model="destinoId" style="flex: 1; padding: 0.375rem 0.5rem; font-size: 0.75rem; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text);">
-                      <option value="">Mover para...</option>
-                      <option value="null">Sem equipe</option>
-                      <template x-for="e in equipes.filter(eq => eq.id !== u.guarnicao_id)" :key="e.id">
-                        <option :value="e.id" x-text="e.nome"></option>
-                      </template>
-                    </select>
-                    <button @click="moverUsuario(u.id, destinoId === 'null' ? null : (destinoId ? parseInt(destinoId) : undefined)); destinoId = ''" :disabled="!destinoId" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
-                      Mover
-                    </button>
+                  <!-- Modal: Mover de equipe -->
+                  <div x-show="modalMover"
+                       @click.self="modalMover = false; destinoId = ''"
+                       style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+                    <div class="glass-card" style="padding: 1.5rem; min-width: 22rem; max-width: 90vw;">
+                      <h4 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 1rem;">Mover policial</h4>
+                      <select x-model="destinoId" style="width: 100%; padding: 0.5rem; font-size: 0.875rem; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text); border-radius: 4px; margin-bottom: 1rem;">
+                        <option value="">Selecionar equipe destino...</option>
+                        <option value="null">Sem equipe</option>
+                        <template x-for="e in equipes.filter(eq => eq.id !== u.guarnicao_id)" :key="e.id">
+                          <option :value="e.id" x-text="e.nome"></option>
+                        </template>
+                      </select>
+                      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button @click="modalMover = false; destinoId = ''" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+                          Cancelar
+                        </button>
+                        <button @click="moverUsuario(u.id, destinoId === 'null' ? null : (destinoId ? parseInt(destinoId) : undefined)); destinoId = ''; modalMover = false"
+                                :disabled="!destinoId"
+                                class="btn btn-primary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+                          Mover
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </template>
