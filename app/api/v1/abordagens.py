@@ -209,12 +209,15 @@ def _serializar_detalhe(abordagem: Abordagem) -> AbordagemDetail:
     Extrai Pessoa dos objetos AbordagemPessoa e Veiculo dos
     AbordagemVeiculo antes de montar o schema de resposta.
     Filtra associações inativas (soft delete).
+    Também popula o campo `usuario` com os dados resumidos do policial
+    que registrou a abordagem (UsuarioResumoRead), quando disponível.
 
     Args:
         abordagem: Objeto Abordagem com relacionamentos carregados via selectinload.
 
     Returns:
-        AbordagemDetail serializado com listas populadas.
+        AbordagemDetail serializado com listas populadas, incluindo
+        pessoas, veículos, fotos, ocorrências e usuário (policial).
     """
     pessoas = [
         PessoaAbordagemRead.model_validate(ap.pessoa)
