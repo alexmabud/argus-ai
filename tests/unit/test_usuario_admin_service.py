@@ -16,17 +16,13 @@ async def test_criar_usuario_retorna_senha_gerada(mock_db):
     """Verifica que criação gera senha aleatória e retorna em plain text."""
     from app.services.usuario_admin_service import UsuarioAdminService
 
-    # Configurar mock para query de guarnição padrão (guarnicao_id não informado)
-    mock_guarnicao = MagicMock()
-    mock_guarnicao.id = 1
+    # nenhum usuário com essa matrícula (ativo ou inativo)
     mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = mock_guarnicao
+    mock_result.scalar_one_or_none.return_value = None
     mock_db.execute = AsyncMock(return_value=mock_result)
     mock_db.add = MagicMock()
 
     service = UsuarioAdminService(mock_db)
-    service.repo = AsyncMock()
-    service.repo.get_by_matricula.return_value = None
     service.audit = AsyncMock()
 
     with patch("app.services.usuario_admin_service.hash_senha", return_value="hash"):
@@ -39,13 +35,17 @@ async def test_criar_usuario_retorna_senha_gerada(mock_db):
 
 @pytest.mark.asyncio
 async def test_criar_usuario_matricula_duplicada_levanta_erro(mock_db):
-    """Verifica que matrícula duplicada levanta ConflitoDadosError."""
+    """Verifica que matrícula duplicada (usuário ativo) levanta ConflitoDadosError."""
     from app.core.exceptions import ConflitoDadosError
     from app.services.usuario_admin_service import UsuarioAdminService
 
+    usuario_ativo = MagicMock()
+    usuario_ativo.ativo = True
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = usuario_ativo
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
     service = UsuarioAdminService(mock_db)
-    service.repo = AsyncMock()
-    service.repo.get_by_matricula.return_value = MagicMock()  # já existe
 
     with pytest.raises(ConflitoDadosError):
         await service.criar_usuario("PM001", admin_id=1)
