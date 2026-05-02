@@ -141,6 +141,25 @@ class UsuarioRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UsuarioResumoRead(BaseModel):
+    """Dados mínimos de usuário para exibição em cards de abordagem.
+
+    Versão compacta de UsuarioRead com apenas os campos necessários
+    para identificar o policial em listas e relatórios.
+
+    Attributes:
+        id: Identificador único do usuário.
+        posto_graduacao: Posto ou graduação abreviado (ex: "SD", "CB", "3SGT").
+        nome_guerra: Nome de guerra do agente (ex: "Silva").
+    """
+
+    id: int
+    posto_graduacao: str | None = None
+    nome_guerra: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class GuarnicaoRead(BaseModel):
     """Dados públicos de uma guarnição (Equipe).
 

@@ -1,7 +1,8 @@
 """Testes unitários dos schemas de Abordagem.
 
 Verifica que FotoTipo.midia_abordagem existe, que AbordagemDetail
-inclui ocorrencias e PessoaAbordagemRead existe.
+inclui ocorrencias, PessoaAbordagemRead existe e UsuarioResumoRead
+tem os campos mínimos para exibição em cards.
 """
 
 from app.schemas.abordagem import AbordagemDetail, PessoaAbordagemRead
@@ -36,3 +37,33 @@ class TestAbordagemDetail:
         assert "nome" in fields
         assert "apelido" in fields
         assert "foto_principal_url" in fields
+
+
+class TestUsuarioResumoRead:
+    """Testes do schema UsuarioResumoRead."""
+
+    def test_campos_existem(self):
+        """Testa que UsuarioResumoRead tem id, posto_graduacao e nome_guerra."""
+        from app.schemas.auth import UsuarioResumoRead
+
+        fields = UsuarioResumoRead.model_fields
+        assert "id" in fields
+        assert "posto_graduacao" in fields
+        assert "nome_guerra" in fields
+
+    def test_serializa_de_dict(self):
+        """Testa que UsuarioResumoRead serializa corretamente."""
+        from app.schemas.auth import UsuarioResumoRead
+
+        schema = UsuarioResumoRead(id=1, posto_graduacao="SD", nome_guerra="Silva")
+        assert schema.id == 1
+        assert schema.posto_graduacao == "SD"
+        assert schema.nome_guerra == "Silva"
+
+    def test_campos_opcionais_aceitam_none(self):
+        """Testa que posto_graduacao e nome_guerra aceitam None."""
+        from app.schemas.auth import UsuarioResumoRead
+
+        schema = UsuarioResumoRead(id=1, posto_graduacao=None, nome_guerra=None)
+        assert schema.posto_graduacao is None
+        assert schema.nome_guerra is None
