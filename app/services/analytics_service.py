@@ -261,7 +261,8 @@ class AnalyticsService:
     async def resumo_total(self, guarnicao_id: int | None) -> dict:
         """Retorna totais históricos de abordagens e pessoas.
 
-        Sem filtro de data — agrega todos os registros ativos da guarnição.
+        Sem filtro de data — agrega todos os registros ativos. Pessoas cadastradas
+        é sempre um total global, independente do filtro de guarnição.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
@@ -285,10 +286,8 @@ class AnalyticsService:
         )
         pessoas_abordadas = (await self.db.execute(pessoas_abordadas_q)).scalar() or 0
 
-        # Conta todas as pessoas cadastradas (com filtro de guarnição se fornecido)
+        # Conta todas as pessoas cadastradas — sempre global, sem filtro de guarnição
         pessoas_cadastradas_q = select(func.count(Pessoa.id)).where(Pessoa.ativo)
-        if guarnicao_id is not None:
-            pessoas_cadastradas_q = pessoas_cadastradas_q.where(Pessoa.guarnicao_id == guarnicao_id)
         pessoas_cadastradas = (await self.db.execute(pessoas_cadastradas_q)).scalar() or 0
 
         return {
