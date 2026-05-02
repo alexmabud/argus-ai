@@ -66,7 +66,7 @@ class TestProcessBatch:
                     "latitude": -22.9,
                     "longitude": -43.1,
                     "observacao": "Teste offline",
-                    "pessoa_ids": [],
+                    "pessoa_ids": [1],
                     "veiculo_ids": [],
                 },
             )
