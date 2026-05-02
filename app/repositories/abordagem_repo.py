@@ -108,8 +108,9 @@ class AbordagemRepository(BaseRepository[Abordagem]):
     ) -> Sequence[Abordagem]:
         """Lista abordagens de uma guarnição em uma data específica.
 
-        Filtra pela data de data_hora (cast para Date, sem hora),
-        com eager loading completo de relacionamentos.
+        Filtra pela data de data_hora convertida para o fuso BRT (America/Sao_Paulo)
+        antes do cast para Date, evitando que abordagens após 21h BRT apareçam
+        no dia seguinte (UTC). Aplica eager loading completo de relacionamentos.
 
         Args:
             guarnicao_id: ID da guarnição para filtro multi-tenant.
@@ -129,7 +130,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
             .where(
                 Abordagem.guarnicao_id == guarnicao_id,
                 Abordagem.ativo == True,  # noqa: E712
-                cast(Abordagem.data_hora, Date) == data,
+                cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), Date) == data,
             )
             .order_by(Abordagem.data_hora.desc())
         )
@@ -367,7 +368,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
             )
             .where(
                 Abordagem.ativo == True,  # noqa: E712
-                cast(Abordagem.data_hora, Date) == data,
+                cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), Date) == data,
             )
             .order_by(Abordagem.data_hora.desc())
         )

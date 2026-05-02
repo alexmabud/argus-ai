@@ -434,7 +434,7 @@ function renderAbordagemNova() {
 
       <!-- 6. Submit -->
       <div style="display:flex;flex-direction:column;gap:12px;padding-top:8px;">
-        <button @click="submit()" class="btn btn-primary" :disabled="submitting">
+        <button @click="submit()" class="btn btn-primary" :disabled="submitting || pessoaIds.length === 0">
           <span x-show="!submitting">Registrar Abordagem</span>
           <span x-show="submitting" style="display:flex;align-items:center;gap:8px;">
             <span class="spinner"></span> Salvando...
@@ -901,6 +901,11 @@ function abordagemForm() {
 
     async submit() {
       if (this.submitting) return;
+
+      if (this.pessoaIds.length === 0) {
+        this.erro = 'Adicione ao menos um abordado antes de registrar.';
+        return;
+      }
 
       // Validar que todo veículo está vinculado a um abordado
       for (const v of this.veiculosSelecionados) {
