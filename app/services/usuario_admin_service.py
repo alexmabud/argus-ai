@@ -108,9 +108,30 @@ class UsuarioAdminService:
         Raises:
             ConflitoDadosError: Se matrícula já cadastrada.
         """
-        existing = await self.db.execute(select(Usuario).where(Usuario.matricula == matricula))
-        if existing.scalar_one_or_none():
-            raise ConflitoDadosError("Matrícula já cadastrada")
+        result = await self.db.execute(select(Usuario).where(Usuario.matricula == matricula))
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            if existing.ativo:
+                raise ConflitoDadosError("Matrícula já cadastrada")
+            # usuário inativo (excluído) — reativa e gera nova senha
+            senha = _gerar_senha()
+            existing.senha_hash = hash_senha(senha)
+            existing.ativo = True
+            existing.session_id = None
+            existing.desativado_em = None
+            existing.desativado_por_id = None
+            if guarnicao_id is not None:
+                existing.guarnicao_id = guarnicao_id
+            await self.db.flush()
+            await self.audit.log(
+                usuario_id=admin_id,
+                acao="UPDATE",
+                recurso="usuario",
+                recurso_id=existing.id,
+                detalhes={"matricula": matricula, "acao": "reativado", "reativado_por": admin_id},
+            )
+            return existing, senha
 
         senha = _gerar_senha()
         usuario = Usuario(
