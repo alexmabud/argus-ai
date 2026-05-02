@@ -468,7 +468,7 @@ async def listar_abordagens_pessoa(
         user: Usuário autenticado.
 
     Returns:
-        Lista de AbordagemDetail com pessoas e veículos.
+        Lista de AbordagemDetail com pessoas, veículos, ocorrências e usuário (policial).
     """
     pessoa_service = PessoaService(db)
     abordagem_service = AbordagemService(db)
@@ -480,6 +480,8 @@ async def listar_abordagens_pessoa(
     for ab in abordagens:
         pessoas = []
         for ap in ab.pessoas:
+            if not ap.ativo or not ap.pessoa:
+                continue
             p = ap.pessoa
             pessoas.append(
                 PessoaRead(
@@ -501,6 +503,7 @@ async def listar_abordagens_pessoa(
                 pessoa_id=av.pessoa_id,
             )
             for av in ab.veiculos
+            if av.ativo and av.veiculo
         ]
         ocorrencias = [OcorrenciaRead.model_validate(oc) for oc in ab.ocorrencias if oc.ativo]
         usuario = UsuarioResumoRead.model_validate(ab.usuario) if ab.usuario else None
@@ -519,7 +522,7 @@ async def listar_abordagens_pessoa(
                 atualizado_em=ab.atualizado_em,
                 pessoas=pessoas,
                 veiculos=veiculos,
-                fotos=[],
+                fotos=[],  # fotos não carregadas neste endpoint (contexto de lista por pessoa)
                 ocorrencias=ocorrencias,
                 usuario=usuario,
             )
