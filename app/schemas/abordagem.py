@@ -11,6 +11,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.auth import UsuarioResumoRead
 from app.schemas.foto import FotoRead
 from app.schemas.ocorrencia import OcorrenciaRead
 from app.schemas.veiculo import VeiculoRead
@@ -130,17 +131,19 @@ class PessoaAbordagemRead(BaseModel):
 class AbordagemDetail(AbordagemRead):
     """Dados detalhados de uma abordagem com todos os relacionamentos.
 
-    Estende AbordagemRead com pessoas, veículos, fotos e ocorrências vinculadas.
-    Usado para tela de detalhe e listagem de abordagens do usuário.
+    Estende AbordagemRead com pessoas, veículos, fotos, ocorrências vinculadas
+    e dados resumidos do policial que realizou a abordagem.
 
     Attributes:
         pessoas: Lista de pessoas abordadas (versão compacta).
         veiculos: Lista de veículos envolvidos com pessoa associada.
         fotos: Lista de fotos registradas (inclui mídias).
         ocorrencias: Lista de ocorrências (RAPs) vinculadas.
+        usuario: Dados resumidos do policial (posto_graduacao, nome_guerra).
     """
 
     pessoas: list[PessoaAbordagemRead] = []
     veiculos: list[VeiculoAbordagemRead] = []
     fotos: list[FotoRead] = []
     ocorrencias: list[OcorrenciaRead] = []
+    usuario: UsuarioResumoRead | None = None

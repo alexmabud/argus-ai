@@ -36,6 +36,7 @@ class Abordagem(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         veiculos: Relacionamento M:N com Veiculo via AbordagemVeiculo.
         fotos: Relacionamento com Foto.
         ocorrencias: Relacionamento com Ocorrencia.
+        usuario: Relacionamento com Usuario (policial que realizou).
 
     Nota:
         - Índice composto (guarnicao_id, data_hora) para filtros temporais.
@@ -71,6 +72,7 @@ class Abordagem(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     )
     fotos = relationship("Foto", back_populates="abordagem", lazy="selectin")
     ocorrencias = relationship("Ocorrencia", back_populates="abordagem", lazy="selectin")
+    usuario = relationship("Usuario", lazy="selectin", foreign_keys=[usuario_id])
 
     __table_args__ = (
         Index("idx_abordagem_guarnicao_data", "guarnicao_id", "data_hora"),

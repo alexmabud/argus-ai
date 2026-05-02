@@ -67,3 +67,17 @@ class TestUsuarioResumoRead:
         schema = UsuarioResumoRead(id=1, posto_graduacao=None, nome_guerra=None)
         assert schema.posto_graduacao is None
         assert schema.nome_guerra is None
+
+
+class TestAbordagemDetailUsuario:
+    """Testes do campo usuario no AbordagemDetail."""
+
+    def test_usuario_field_existe(self):
+        """Testa que AbordagemDetail tem o campo usuario."""
+        from app.schemas.auth import UsuarioResumoRead  # noqa: F401
+
+        fields = AbordagemDetail.model_fields
+        assert "usuario" in fields
+        # campo deve ser opcional (None quando usuário não carregado)
+        field = fields["usuario"]
+        assert field.default is None
