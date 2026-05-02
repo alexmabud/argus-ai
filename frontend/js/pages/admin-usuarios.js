@@ -16,6 +16,11 @@ function renderAdminUsuarios() {
         <div>
           <h2 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; font-size: 1.125rem; text-transform: uppercase; letter-spacing: 0.05em;">GERENCIAR USUÁRIOS</h2>
           <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem; margin-top: 0.125rem;">Equipes e acesso</p>
+          <p x-show="!carregando" style="font-family: var(--font-data); font-size: 12px; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; white-space: nowrap;">
+            Policiais Cadastrados:
+            <span x-text="usuarios.length.toLocaleString('pt-BR')"
+                  style="color: var(--color-success); font-size: 14px; font-weight: 700; text-shadow: 0 0 8px rgba(0,255,136,0.7), 0 0 20px rgba(0,255,136,0.35);"></span>
+          </p>
         </div>
         <button @click="abrirCriarUsuario()" class="btn btn-primary" style="font-size: 0.8125rem; padding: 0.375rem 0.75rem;">
           + Novo usuário
