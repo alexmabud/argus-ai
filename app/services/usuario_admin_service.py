@@ -108,8 +108,8 @@ class UsuarioAdminService:
         Raises:
             ConflitoDadosError: Se matrícula já cadastrada.
         """
-        existing = await self.repo.get_by_matricula(matricula)
-        if existing:
+        existing = await self.db.execute(select(Usuario).where(Usuario.matricula == matricula))
+        if existing.scalar_one_or_none():
             raise ConflitoDadosError("Matrícula já cadastrada")
 
         senha = _gerar_senha()
