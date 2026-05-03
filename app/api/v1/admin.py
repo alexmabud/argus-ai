@@ -395,6 +395,7 @@ async def criar_equipe(
     except ConflitoDadosError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
     await db.commit()
+    await db.refresh(equipe)
     return EquipeRead.model_validate(equipe)
 
 
