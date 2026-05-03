@@ -180,16 +180,17 @@ class TestPessoasPorVeiculo:
 
 
 @pytest.fixture
-async def equipe_c(db_session: AsyncSession) -> Guarnicao:
+async def equipe_c(db_session: AsyncSession, bpm) -> Guarnicao:
     """Equipe C para testes de isolamento de consulta.
 
     Args:
         db_session: Sessão do banco de dados.
+        bpm: BPM pai da equipe.
 
     Returns:
         Guarnicao: Guarnição Charlie com isolamento_abordagens=False.
     """
-    g = Guarnicao(nome="GU Charlie", unidade="3o BPM", codigo="3BPM-GUC")
+    g = Guarnicao(nome="GU Charlie", bpm_id=bpm.id, codigo="3BPM-GUC")
     db_session.add(g)
     await db_session.flush()
     return g

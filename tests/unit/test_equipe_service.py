@@ -17,24 +17,34 @@ async def test_listar_equipes_retorna_todas_ativas(db_session: AsyncSession, gua
 
 
 @pytest.mark.asyncio
-async def test_criar_equipe_gera_codigo(db_session: AsyncSession, usuario):
-    """criar_equipe gera código único automaticamente."""
+async def test_criar_equipe_gera_codigo_com_bpm(db_session: AsyncSession, bpm, usuario):
+    """criar_equipe gera código que inclui nome do BPM."""
     service = EquipeService(db_session)
-    e = await service.criar_equipe(nome="3a Cia - GU 02", unidade="3o BPM", admin_id=usuario.id)
+    e = await service.criar_equipe(nome="3a Cia - GU 02", bpm_id=bpm.id, admin_id=usuario.id)
     assert e.id is not None
     assert e.codigo
     assert e.nome == "3a Cia - GU 02"
+    assert e.bpm_id == bpm.id
     assert e.isolamento_abordagens is False
+    # Código deve conter slug do nome do BPM
+    bpm_slug = "".join(c for c in bpm.nome.upper() if c.isalnum())
+    assert bpm_slug in e.codigo
 
 
 @pytest.mark.asyncio
-async def test_criar_equipe_nome_duplicado_falha(db_session: AsyncSession, guarnicao, usuario):
+async def test_criar_equipe_bpm_inexistente_falha(db_session: AsyncSession, usuario):
+    """criar_equipe com bpm_id inválido lança NaoEncontradoError."""
+    service = EquipeService(db_session)
+    with pytest.raises(NaoEncontradoError):
+        await service.criar_equipe(nome="GU X", bpm_id=999999, admin_id=usuario.id)
+
+
+@pytest.mark.asyncio
+async def test_criar_equipe_nome_duplicado_falha(db_session: AsyncSession, guarnicao, bpm, usuario):
     """criar_equipe rejeita nome duplicado entre ativas."""
     service = EquipeService(db_session)
     with pytest.raises(ConflitoDadosError):
-        await service.criar_equipe(
-            nome=guarnicao.nome, unidade=guarnicao.unidade, admin_id=usuario.id
-        )
+        await service.criar_equipe(nome=guarnicao.nome, bpm_id=bpm.id, admin_id=usuario.id)
 
 
 @pytest.mark.asyncio

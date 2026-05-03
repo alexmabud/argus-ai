@@ -9,7 +9,15 @@ from app.models.usuario import Usuario
 
 @pytest.fixture
 async def admin_eq(db_session, guarnicao):
-    """Admin com sessão ativa para testes de equipes."""
+    """Admin com sessão ativa para testes de equipes.
+
+    Args:
+        db_session: Sessão do banco de dados para o teste.
+        guarnicao: Guarnição de contexto para o admin.
+
+    Returns:
+        Usuario: Admin com sessão ativa.
+    """
     u = Usuario(
         nome="Admin Equipes",
         matricula="ADMEQ001",
@@ -25,7 +33,14 @@ async def admin_eq(db_session, guarnicao):
 
 @pytest.fixture
 async def admin_eq_headers(admin_eq):
-    """Headers de autenticação do admin de equipes."""
+    """Headers de autenticação do admin de equipes.
+
+    Args:
+        admin_eq: Fixture de admin para equipes.
+
+    Returns:
+        dict: Headers com Authorization Bearer token.
+    """
     token = criar_access_token(
         {
             "sub": str(admin_eq.id),
@@ -38,27 +53,30 @@ async def admin_eq_headers(admin_eq):
 
 @pytest.mark.asyncio
 async def test_listar_equipes_retorna_lista(client: AsyncClient, admin_eq_headers, guarnicao):
-    """GET /admin/equipes retorna todas as equipes ativas."""
+    """GET /admin/equipes retorna todas as equipes ativas com bpm aninhado."""
     response = await client.get("/api/v1/admin/equipes", headers=admin_eq_headers)
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
     assert any(e["id"] == guarnicao.id for e in data)
     assert "isolamento_abordagens" in data[0]
+    assert "bpm" in data[0]
+    assert "bpm_id" in data[0]
 
 
 @pytest.mark.asyncio
-async def test_criar_equipe_201(client: AsyncClient, admin_eq_headers):
+async def test_criar_equipe_201(client: AsyncClient, admin_eq_headers, bpm):
     """POST /admin/equipes cria nova equipe e retorna 201."""
     response = await client.post(
         "/api/v1/admin/equipes",
-        json={"nome": "GU 50", "unidade": "5o BPM"},
+        json={"nome": "GU 50", "bpm_id": bpm.id},
         headers=admin_eq_headers,
     )
     assert response.status_code == 201
     data = response.json()
     assert data["nome"] == "GU 50"
-    assert data["unidade"] == "5o BPM"
+    assert data["bpm_id"] == bpm.id
+    assert data["bpm"]["nome"] == bpm.nome
     assert data["codigo"]
     assert data["isolamento_abordagens"] is False
 
@@ -68,18 +86,18 @@ async def test_criar_equipe_nome_duplicado_409(client: AsyncClient, admin_eq_hea
     """POST /admin/equipes rejeita nome duplicado com 409."""
     response = await client.post(
         "/api/v1/admin/equipes",
-        json={"nome": guarnicao.nome, "unidade": guarnicao.unidade},
+        json={"nome": guarnicao.nome, "bpm_id": guarnicao.bpm_id},
         headers=admin_eq_headers,
     )
     assert response.status_code == 409
 
 
 @pytest.mark.asyncio
-async def test_criar_equipe_sem_admin_403(client: AsyncClient, auth_headers):
+async def test_criar_equipe_sem_admin_403(client: AsyncClient, auth_headers, bpm):
     """Usuário comum recebe 403 ao tentar criar equipe."""
     response = await client.post(
         "/api/v1/admin/equipes",
-        json={"nome": "X", "unidade": "Y"},
+        json={"nome": "X", "bpm_id": bpm.id},
         headers=auth_headers,
     )
     assert response.status_code == 403

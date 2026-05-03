@@ -109,7 +109,15 @@ async def get_current_user_with_guarnicao(
         result = await db.execute(select(Guarnicao).where(Guarnicao.ativo == True).limit(1))  # noqa: E712
         guarnicao = result.scalar_one_or_none()
         if not guarnicao:
-            guarnicao = Guarnicao(nome="Geral", unidade="Geral", codigo="GERAL-001")
+            from app.models.bpm import Bpm
+
+            bpm_result = await db.execute(select(Bpm).where(Bpm.ativo == True).limit(1))  # noqa: E712
+            bpm = bpm_result.scalar_one_or_none()
+            if not bpm:
+                bpm = Bpm(nome="Geral")
+                db.add(bpm)
+                await db.flush()
+            guarnicao = Guarnicao(nome="Geral", bpm_id=bpm.id, codigo="GERAL-001")
             db.add(guarnicao)
             await db.flush()
 

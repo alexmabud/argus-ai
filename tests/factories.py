@@ -27,7 +27,7 @@ class GuarnicaoFactory(factory.Factory):
 
     Attributes:
         nome: Nome sequencial da guarnição (ex: "Guarnicao 1").
-        unidade: Unidade sequencial (ex: "Unidade 1").
+        bpm_id: ID do BPM pai (padrão 1).
         codigo: Código sequencial único (ex: "UNI-001").
     """
 
@@ -35,7 +35,7 @@ class GuarnicaoFactory(factory.Factory):
         model = Guarnicao
 
     nome = factory.Sequence(lambda n: f"Guarnicao {n}")
-    unidade = factory.Sequence(lambda n: f"Unidade {n}")
+    bpm_id = 1
     codigo = factory.Sequence(lambda n: f"UNI-{n:03d}")
 
 
