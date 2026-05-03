@@ -13,9 +13,9 @@ from app.models.usuario import Usuario
 
 
 @pytest.fixture
-async def equipe_b(db_session: AsyncSession) -> Guarnicao:
+async def equipe_b(db_session: AsyncSession, bpm) -> Guarnicao:
     """Segunda equipe de teste."""
-    g = Guarnicao(nome="GU B", unidade="2o BPM", codigo="2BPM-GUB")
+    g = Guarnicao(nome="GU B", bpm_id=bpm.id, codigo="2BPM-GUB")
     db_session.add(g)
     await db_session.flush()
     return g
