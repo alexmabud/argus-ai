@@ -310,7 +310,7 @@ async def criar_equipe(
 
     Args:
         request: Requisição HTTP.
-        data: Nome e unidade da equipe.
+        data: Nome e bpm_id da equipe.
         admin: Administrador autenticado.
         db: Sessão do banco de dados.
 
@@ -327,7 +327,7 @@ async def criar_equipe(
     """
     service = EquipeService(db)
     try:
-        equipe = await service.criar_equipe(nome=data.nome, unidade=data.unidade, admin_id=admin.id)
+        equipe = await service.criar_equipe(nome=data.nome, bpm_id=data.bpm_id, admin_id=admin.id)
     except ConflitoDadosError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
     await db.commit()
