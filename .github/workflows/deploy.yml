@@ -56,6 +56,10 @@ jobs:
           command_timeout: 30m
           script: |
             set -e
+            echo "══════ Parando containers para liberar disco ══════"
+            cd ~/argus-ai
+            docker compose -f docker-compose.prod.yml down || true
+
             echo "══════ Limpando espaço ══════"
             docker system prune -af
 
