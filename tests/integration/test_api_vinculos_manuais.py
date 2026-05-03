@@ -216,9 +216,14 @@ class TestVinculoManualCrossTenant:
             guarnicao: Guarnição principal (tenant A).
         """
         # Criar segunda guarnição (tenant B)
+        from app.models.bpm import Bpm
+
+        bpm_b = Bpm(nome="5o BPM Vinculos")
+        db_session.add(bpm_b)
+        await db_session.flush()
         outra_guarnicao = Guarnicao(
             nome="5a Cia - GU 02",
-            unidade="5o BPM",
+            bpm_id=bpm_b.id,
             codigo="5BPM-5CIA-GU02",
         )
         db_session.add(outra_guarnicao)

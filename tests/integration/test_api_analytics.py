@@ -238,16 +238,17 @@ class TestAbordagensDoDia:
 
 
 @pytest.fixture
-async def equipe_b(db_session: AsyncSession) -> Guarnicao:
+async def equipe_b(db_session: AsyncSession, bpm) -> Guarnicao:
     """Segunda equipe sem isolamento (toggle OFF).
 
     Args:
         db_session: Sessão do banco de testes.
+        bpm: BPM pai da equipe.
 
     Returns:
         Guarnicao: Objeto de guarnição com isolamento_abordagens=False.
     """
-    g = Guarnicao(nome="GU Bravo", unidade="2o BPM", codigo="2BPM-GUB")
+    g = Guarnicao(nome="GU Bravo", bpm_id=bpm.id, codigo="2BPM-GUB")
     db_session.add(g)
     await db_session.flush()
     return g

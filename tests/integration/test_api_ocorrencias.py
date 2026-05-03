@@ -203,12 +203,16 @@ class TestBuscarOcorrencias:
             ocorrencia: Fixture de ocorrência da primeira guarnição.
         """
         from app.core.security import hash_senha
+        from app.models.bpm import Bpm
         from app.models.guarnicao import Guarnicao
         from app.models.ocorrencia import Ocorrencia
         from app.models.usuario import Usuario
 
         # Segunda guarnição com ocorrência própria
-        guarnicao2 = Guarnicao(nome="2a Cia - GU 02", unidade="2o BPM", codigo="2BPM-2CIA-GU02")
+        bpm2 = Bpm(nome="2o BPM Ocorrencias")
+        db_session.add(bpm2)
+        await db_session.flush()
+        guarnicao2 = Guarnicao(nome="2a Cia - GU 02", bpm_id=bpm2.id, codigo="2BPM-2CIA-GU02")
         db_session.add(guarnicao2)
         await db_session.flush()
 
