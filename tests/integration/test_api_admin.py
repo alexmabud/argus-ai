@@ -134,12 +134,12 @@ async def test_listar_usuarios_inclui_sem_equipe(client: AsyncClient, admin_head
 
 @pytest.mark.asyncio
 async def test_mover_usuario_equipe_atualiza(
-    client: AsyncClient, admin_headers, usuario, db_session
+    client: AsyncClient, admin_headers, usuario, db_session, bpm
 ):
     """PATCH /admin/usuarios/{id}/equipe move o usuário para outra equipe."""
     from app.models.guarnicao import Guarnicao
 
-    nova = Guarnicao(nome="GU 77", unidade="7o BPM", codigo="7BPM-GU77")
+    nova = Guarnicao(nome="GU 77", bpm_id=bpm.id, codigo="7BPM-GU77")
     db_session.add(nova)
     await db_session.flush()
 
@@ -179,7 +179,7 @@ async def test_mover_usuario_inexistente_404(client: AsyncClient, admin_headers)
 
 @pytest.mark.asyncio
 async def test_criar_usuario_com_guarnicao_explicita(
-    client: AsyncClient, admin_headers, db_session
+    client: AsyncClient, admin_headers, db_session, bpm
 ):
     """POST /admin/usuarios respeita guarnicao_id no payload."""
     from sqlalchemy import select
@@ -187,7 +187,7 @@ async def test_criar_usuario_com_guarnicao_explicita(
     from app.models.guarnicao import Guarnicao
     from app.models.usuario import Usuario
 
-    nova = Guarnicao(nome="GU 88", unidade="8o BPM", codigo="8BPM-GU88")
+    nova = Guarnicao(nome="GU 88", bpm_id=bpm.id, codigo="8BPM-GU88")
     db_session.add(nova)
     await db_session.flush()
 

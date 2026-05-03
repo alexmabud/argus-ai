@@ -10,6 +10,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.usuario import POSTOS_GRADUACAO
+from app.schemas.bpm import BpmRead
 from app.services.storage_service import normalize_storage_url
 
 #: Regex para validação de complexidade de senha.
@@ -164,13 +165,14 @@ class GuarnicaoRead(BaseModel):
     """Dados públicos de uma guarnição (Equipe).
 
     Representação de leitura. A UI exibe como "Equipe" — internamente
-    a entidade chama-se "guarnicao". Inclui o campo isolamento_abordagens
-    para controle por equipe de visibilidade de abordagens.
+    a entidade chama-se "guarnicao". Inclui o BPM pai e o campo
+    isolamento_abordagens para controle de visibilidade de abordagens.
 
     Attributes:
         id: Identificador único da guarnição.
         nome: Nome da equipe (ex: "3ª Cia - GU 01").
-        unidade: Unidade superior (ex: "3º BPM").
+        bpm_id: ID do BPM ao qual pertence.
+        bpm: Dados do BPM pai (carregado via selectin).
         codigo: Código interno único.
         isolamento_abordagens: Se True, membros veem apenas as abordagens
             da própria equipe. Se False (padrão), veem todas.
@@ -178,7 +180,8 @@ class GuarnicaoRead(BaseModel):
 
     id: int
     nome: str
-    unidade: str
+    bpm_id: int
+    bpm: BpmRead
     codigo: str
     isolamento_abordagens: bool = False
 
@@ -192,15 +195,15 @@ EquipeRead = GuarnicaoRead
 class EquipeCreate(BaseModel):
     """Dados para criação de nova equipe (guarnição) pelo admin.
 
-    O código é gerado automaticamente pelo serviço a partir do nome e unidade.
+    O código é gerado automaticamente pelo serviço a partir do nome e BPM.
 
     Attributes:
         nome: Nome descritivo da equipe (1-200 caracteres).
-        unidade: Unidade superior (1-200 caracteres, ex: "3º BPM").
+        bpm_id: ID do BPM ao qual a equipe pertencerá.
     """
 
     nome: str = Field(..., min_length=1, max_length=200)
-    unidade: str = Field(..., min_length=1, max_length=200)
+    bpm_id: int = Field(..., ge=1)
 
 
 class EquipeIsolamentoUpdate(BaseModel):

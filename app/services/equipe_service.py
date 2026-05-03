@@ -13,19 +13,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
+from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.services.audit_service import AuditService
 
 
-def _gerar_codigo(nome: str, unidade: str) -> str:
-    """Gera código alfanumérico a partir de nome e unidade.
+def _gerar_codigo(nome: str, bpm_nome: str) -> str:
+    """Gera código alfanumérico a partir de nome e BPM.
 
     Remove caracteres não alfanuméricos, normaliza para upper-case e trunca
-    em 50 chars. Ex: ("3ª Cia - GU 01", "3º BPM") -> "3BPM-3CIAGU01".
+    em 50 chars. Ex: ("3ª Cia - GU 01", "14º BPM") -> "14BPM-3CIAGU01".
 
     Args:
         nome: Nome da equipe.
-        unidade: Unidade superior.
+        bpm_nome: Nome do BPM pai.
 
     Returns:
         Código alfanumérico em upper-case (máx 50 chars).
@@ -34,7 +35,7 @@ def _gerar_codigo(nome: str, unidade: str) -> str:
     def _slug(s: str) -> str:
         return re.sub(r"[^A-Za-z0-9]", "", s).upper()
 
-    base = f"{_slug(unidade)}-{_slug(nome)}"
+    base = f"{_slug(bpm_nome)}-{_slug(nome)}"
     return base[:50] or "EQUIPE"
 
 
@@ -71,23 +72,35 @@ class EquipeService:
         )
         return list(result.scalars().all())
 
-    async def criar_equipe(self, nome: str, unidade: str, admin_id: int) -> Guarnicao:
+    async def criar_equipe(self, nome: str, bpm_id: int, admin_id: int) -> Guarnicao:
         """Cria nova equipe com código gerado automaticamente.
 
-        Se o código gerado colidir com um existente, adiciona sufixo numérico
-        (-2, -3, …) até encontrar um código único.
+        Busca o BPM pelo ID para gerar o código. Se o código gerado colidir
+        com um existente, adiciona sufixo numérico (-2, -3, ...) até encontrar
+        um código único.
 
         Args:
             nome: Nome descritivo da equipe.
-            unidade: Unidade superior (ex: "3º BPM").
+            bpm_id: ID do BPM ao qual a equipe pertencerá.
             admin_id: ID do admin que está criando (auditoria).
 
         Returns:
             Equipe criada com ID atribuído.
 
         Raises:
+            NaoEncontradoError: Se o BPM não existe ou está inativo.
             ConflitoDadosError: Se já existe equipe ativa com o mesmo nome.
         """
+        bpm_result = await self.db.execute(
+            select(Bpm).where(
+                Bpm.id == bpm_id,
+                Bpm.ativo == True,  # noqa: E712
+            )
+        )
+        bpm = bpm_result.scalar_one_or_none()
+        if not bpm:
+            raise NaoEncontradoError("BPM não encontrado")
+
         existing = await self.db.execute(
             select(Guarnicao).where(
                 Guarnicao.nome == nome,
@@ -97,7 +110,7 @@ class EquipeService:
         if existing.scalar_one_or_none():
             raise ConflitoDadosError("Já existe uma equipe ativa com este nome")
 
-        codigo_base = _gerar_codigo(nome, unidade)
+        codigo_base = _gerar_codigo(nome, bpm.nome)
         codigo = codigo_base
         i = 2
         while True:
@@ -107,7 +120,7 @@ class EquipeService:
             codigo = f"{codigo_base[:48]}-{i}"
             i += 1
 
-        equipe = Guarnicao(nome=nome, unidade=unidade, codigo=codigo)
+        equipe = Guarnicao(nome=nome, bpm_id=bpm_id, codigo=codigo)
         self.db.add(equipe)
         await self.db.flush()
 
@@ -116,7 +129,7 @@ class EquipeService:
             acao="CREATE",
             recurso="guarnicao",
             recurso_id=equipe.id,
-            detalhes={"nome": nome, "unidade": unidade},
+            detalhes={"nome": nome, "bpm_id": bpm_id},
         )
         return equipe
 

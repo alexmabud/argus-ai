@@ -1,9 +1,8 @@
 /**
  * Página de gestão de usuários e equipes — exclusivo para administradores.
  *
- * Organiza usuários em abas por equipe. A aba "Sem Equipe" lista usuários
- * sem guarnicao_id. Cada aba de equipe tem toggle de isolamento de abordagens
- * e permite mover usuários entre equipes. Aba "+ Nova Equipe" cria nova.
+ * Navegação em 2 níveis: BPMs no topo (nível 1), equipes dentro do BPM
+ * ativo (nível 2). A aba "Sem Equipe" (global) lista usuários sem guarnicao_id.
  *
  * Nota: no backend a entidade chama-se "guarnicao". Na UI exibe-se "Equipe".
  */
@@ -27,37 +26,59 @@ function renderAdminUsuarios() {
         </button>
       </div>
 
-      <!-- Abas -->
-      <div x-show="!carregando" style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-bottom: 1rem; border-bottom: 1px solid var(--color-border);">
+      <!-- Nível 1: abas por BPM -->
+      <div x-show="!carregando" style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-bottom: 0.25rem; border-bottom: 1px solid var(--color-border);">
         <button
-          @click="abaAtiva = 'sem-equipe'"
+          @click="abaAtiva = 'sem-equipe'; bpmAtivo = null; equipeAtiva = null"
           :style="abaAtiva === 'sem-equipe' ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
           style="padding: 0.5rem 0.75rem; font-family: var(--font-data); font-size: 0.8125rem; background: transparent; border: 0; cursor: pointer;"
         >
           Sem Equipe (<span x-text="usuariosSemEquipe.length"></span>)
         </button>
-        <template x-for="e in equipes" :key="e.id">
+        <template x-for="b in bpms" :key="b.id">
           <button
-            @click="abaAtiva = e.id"
-            :style="abaAtiva === e.id ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
+            @click="selecionarBpm(b.id)"
+            :style="bpmAtivo === b.id ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
             style="padding: 0.5rem 0.75rem; font-family: var(--font-data); font-size: 0.8125rem; background: transparent; border: 0; cursor: pointer;"
-            x-text="e.nome + ' (' + usuariosDaEquipe(e.id).length + ')'"
+            x-text="b.nome"
           ></button>
         </template>
         <button
-          @click="abaAtiva = 'nova-equipe'"
-          :style="abaAtiva === 'nova-equipe' ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
+          @click="abaAtiva = 'novo-bpm'; bpmAtivo = null; equipeAtiva = null"
+          :style="abaAtiva === 'novo-bpm' ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
           style="padding: 0.5rem 0.75rem; font-family: var(--font-data); font-size: 0.8125rem; background: transparent; border: 0; cursor: pointer;"
         >
-          + Nova Equipe
+          + Novo BPM
         </button>
       </div>
+
+      <!-- Nível 2: abas de equipes dentro do BPM ativo -->
+      <template x-if="bpmAtivo !== null">
+        <div x-show="!carregando" style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-bottom: 1rem; border-bottom: 1px solid rgba(58,80,104,0.4); padding-left: 0.5rem;">
+          <template x-for="e in equipesDoBpm(bpmAtivo)" :key="e.id">
+            <button
+              @click="equipeAtiva = e.id"
+              :style="equipeAtiva === e.id ? 'border-bottom: 2px solid var(--color-secondary); color: var(--color-secondary);' : 'color: var(--color-text-dim);'"
+              style="padding: 0.375rem 0.625rem; font-family: var(--font-data); font-size: 0.75rem; background: transparent; border: 0; cursor: pointer;"
+              x-text="e.nome + ' (' + usuariosDaEquipe(e.id).length + ')'"
+            ></button>
+          </template>
+          <button
+            @click="equipeAtiva = 'nova-equipe'"
+            :style="equipeAtiva === 'nova-equipe' ? 'border-bottom: 2px solid var(--color-secondary); color: var(--color-secondary);' : 'color: var(--color-text-dim);'"
+            style="padding: 0.375rem 0.625rem; font-family: var(--font-data); font-size: 0.75rem; background: transparent; border: 0; cursor: pointer;"
+          >
+            + Nova Equipe
+          </button>
+        </div>
+      </template>
 
       <!-- Loading -->
       <div x-show="carregando" style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.875rem; text-align: center; padding: 2rem 0;">Carregando...</div>
 
-      <!-- Conteúdo das abas -->
+      <!-- Conteúdo -->
       <div x-show="!carregando">
+
         <!-- Aba: Sem Equipe -->
         <template x-if="abaAtiva === 'sem-equipe'">
           <div>
@@ -75,7 +96,7 @@ function renderAdminUsuarios() {
                     <select x-model="destinoId" style="flex: 1; padding: 0.375rem 0.5rem; font-size: 0.75rem; font-family: var(--font-data); background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text);">
                       <option value="">Selecionar equipe...</option>
                       <template x-for="e in equipes" :key="e.id">
-                        <option :value="e.id" x-text="e.nome"></option>
+                        <option :value="e.id" x-text="e.bpm.nome + ' — ' + e.nome"></option>
                       </template>
                     </select>
                     <button @click="moverUsuario(u.id, destinoId ? parseInt(destinoId) : null); destinoId = ''" :disabled="!destinoId" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
@@ -88,99 +109,122 @@ function renderAdminUsuarios() {
           </div>
         </template>
 
-        <!-- Aba: Equipe específica -->
-        <template x-if="abaAtiva !== 'sem-equipe' && abaAtiva !== 'nova-equipe'">
-          <div>
-            <template x-if="equipeAtiva">
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; margin-bottom: 0.75rem;">
-                <div>
-                  <p style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem;" x-text="equipeAtiva.nome"></p>
-                  <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;" x-text="equipeAtiva.unidade"></p>
-                </div>
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                  <span style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;">Ver apenas abordagens da equipe</span>
-                  <input
-                    type="checkbox"
-                    :checked="equipeAtiva.isolamento_abordagens"
-                    @change="alternarIsolamento(equipeAtiva.id, $event.target.checked)"
-                  />
-                </label>
-              </div>
-            </template>
-            <template x-if="usuariosDaEquipe(abaAtiva).length === 0">
-              <p style="color: var(--color-text-muted); padding: 1rem; text-align: center;">Nenhum usuário nesta equipe.</p>
-            </template>
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-              <template x-for="u in usuariosDaEquipe(abaAtiva)" :key="u.id">
-                <div class="glass-card" style="padding: 1rem;" x-data="{ destinoId: '', modalMover: false }">
-                  ${cardUsuario('u')}
-                  <!-- Ações comuns -->
-                  <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                    <button @click="pausarUsuario(u)"
-                            x-show="u.tem_sessao"
-                            style="flex: 1; font-size: 0.75rem; font-family: var(--font-data); padding: 0.375rem 0.5rem; border-radius: 4px; background: rgba(255,165,0,0.15); color: #FFA500; border: 1px solid rgba(255,165,0,0.3); cursor: pointer;">
-                      Pausar acesso
-                    </button>
-                    <button @click="gerarSenha(u)" class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 0.375rem 0.5rem;">
-                      Gerar nova senha
-                    </button>
-                    <button @click="modalMover = true" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
-                      Mover
-                    </button>
-                    <button @click="excluirUsuario(u)"
-                            style="font-size: 0.75rem; font-family: var(--font-data); padding: 0.375rem 0.75rem; border-radius: 4px; background: rgba(255,107,0,0.15); color: var(--color-danger); border: 1px solid rgba(255,107,0,0.3); cursor: pointer;">
-                      Excluir
-                    </button>
-                  </div>
-                  <!-- Modal: Mover de equipe -->
-                  <div x-show="modalMover"
-                       @click.self="modalMover = false; destinoId = ''"
-                       style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000;">
-                    <div class="glass-card" style="padding: 1.5rem; min-width: 22rem; max-width: 90vw;">
-                      <h4 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 1rem;">Mover policial</h4>
-                      <select x-model="destinoId" style="width: 100%; padding: 0.5rem; font-size: 0.875rem; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text); border-radius: 4px; margin-bottom: 1rem;">
-                        <option value="">Selecionar equipe destino...</option>
-                        <option value="null">Sem equipe</option>
-                        <template x-for="e in equipes.filter(eq => eq.id !== u.guarnicao_id)" :key="e.id">
-                          <option :value="e.id" x-text="e.nome"></option>
-                        </template>
-                      </select>
-                      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                        <button @click="modalMover = false; destinoId = ''" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
-                          Cancelar
-                        </button>
-                        <button @click="moverUsuario(u.id, destinoId === 'null' ? null : (destinoId ? parseInt(destinoId) : undefined)); destinoId = ''; modalMover = false"
-                                :disabled="!destinoId"
-                                class="btn btn-primary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
-                          Mover
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </div>
-        </template>
-
-        <!-- Aba: Nova Equipe -->
-        <template x-if="abaAtiva === 'nova-equipe'">
+        <!-- Aba: Novo BPM -->
+        <template x-if="abaAtiva === 'novo-bpm'">
           <div class="glass-card" style="padding: 1.5rem; max-width: 28rem;">
-            <h3 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 1rem;">Nova equipe</h3>
-            <div style="margin-bottom: 0.75rem;">
-              <label class="login-field-label">Nome</label>
-              <input type="text" x-model="novaEquipe.nome" placeholder="Ex: 3ª Cia - GU 01" />
-            </div>
+            <h3 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 1rem;">Novo BPM</h3>
             <div style="margin-bottom: 1rem;">
-              <label class="login-field-label">Unidade</label>
-              <input type="text" x-model="novaEquipe.unidade" placeholder="Ex: 3º BPM" />
+              <label class="login-field-label">Nome</label>
+              <input type="text" x-model="novoBpm.nome" placeholder="Ex: 14º BPM" />
             </div>
-            <button @click="criarEquipe()" :disabled="criandoEquipe || !novaEquipe.nome || !novaEquipe.unidade" class="btn btn-primary" style="width: 100%;">
-              <span x-show="!criandoEquipe">Criar equipe</span>
-              <span x-show="criandoEquipe">Criando...</span>
+            <button @click="criarBpm()" :disabled="criandoBpm || !novoBpm.nome" class="btn btn-primary" style="width: 100%;">
+              <span x-show="!criandoBpm">Criar BPM</span>
+              <span x-show="criandoBpm">Criando...</span>
             </button>
           </div>
         </template>
+
+        <!-- BPM selecionado: conteúdo de equipe -->
+        <template x-if="bpmAtivo !== null">
+          <div>
+
+            <!-- Sem equipe selecionada ainda (BPM sem equipes) -->
+            <template x-if="equipesDoBpm(bpmAtivo).length === 0 && equipeAtiva !== 'nova-equipe'">
+              <p style="color: var(--color-text-muted); padding: 1rem; text-align: center; font-family: var(--font-data); font-size: 0.875rem;">
+                Nenhuma equipe neste BPM. Clique em "+ Nova Equipe" para criar.
+              </p>
+            </template>
+
+            <!-- Nova Equipe dentro do BPM -->
+            <template x-if="equipeAtiva === 'nova-equipe'">
+              <div class="glass-card" style="padding: 1.5rem; max-width: 28rem;">
+                <h3 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 1rem;">Nova equipe</h3>
+                <div style="margin-bottom: 1rem;">
+                  <label class="login-field-label">Nome</label>
+                  <input type="text" x-model="novaEquipe.nome" placeholder="Ex: 3ª Cia - GU 01" />
+                </div>
+                <button @click="criarEquipe()" :disabled="criandoEquipe || !novaEquipe.nome" class="btn btn-primary" style="width: 100%;">
+                  <span x-show="!criandoEquipe">Criar equipe</span>
+                  <span x-show="criandoEquipe">Criando...</span>
+                </button>
+              </div>
+            </template>
+
+            <!-- Equipe específica selecionada -->
+            <template x-if="typeof equipeAtiva === 'number' && equipeAtivaObj">
+              <div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; margin-bottom: 0.75rem;">
+                  <div>
+                    <p style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem;" x-text="equipeAtivaObj.nome"></p>
+                    <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;" x-text="equipeAtivaObj.bpm.nome"></p>
+                  </div>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <span style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;">Ver apenas abordagens da equipe</span>
+                    <input
+                      type="checkbox"
+                      :checked="equipeAtivaObj.isolamento_abordagens"
+                      @change="alternarIsolamento(equipeAtivaObj.id, $event.target.checked)"
+                    />
+                  </label>
+                </div>
+                <template x-if="usuariosDaEquipe(equipeAtiva).length === 0">
+                  <p style="color: var(--color-text-muted); padding: 1rem; text-align: center;">Nenhum usuário nesta equipe.</p>
+                </template>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                  <template x-for="u in usuariosDaEquipe(equipeAtiva)" :key="u.id">
+                    <div class="glass-card" style="padding: 1rem;" x-data="{ destinoId: '', modalMover: false }">
+                      ${cardUsuario('u')}
+                      <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                        <button @click="pausarUsuario(u)"
+                                x-show="u.tem_sessao"
+                                style="flex: 1; font-size: 0.75rem; font-family: var(--font-data); padding: 0.375rem 0.5rem; border-radius: 4px; background: rgba(255,165,0,0.15); color: #FFA500; border: 1px solid rgba(255,165,0,0.3); cursor: pointer;">
+                          Pausar acesso
+                        </button>
+                        <button @click="gerarSenha(u)" class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 0.375rem 0.5rem;">
+                          Gerar nova senha
+                        </button>
+                        <button @click="modalMover = true" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
+                          Mover
+                        </button>
+                        <button @click="excluirUsuario(u)"
+                                style="font-size: 0.75rem; font-family: var(--font-data); padding: 0.375rem 0.75rem; border-radius: 4px; background: rgba(255,107,0,0.15); color: var(--color-danger); border: 1px solid rgba(255,107,0,0.3); cursor: pointer;">
+                          Excluir
+                        </button>
+                      </div>
+                      <!-- Modal: Mover de equipe -->
+                      <div x-show="modalMover"
+                           @click.self="modalMover = false; destinoId = ''"
+                           style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+                        <div class="glass-card" style="padding: 1.5rem; min-width: 22rem; max-width: 90vw;">
+                          <h4 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; margin-bottom: 1rem;">Mover policial</h4>
+                          <select x-model="destinoId" style="width: 100%; padding: 0.5rem; font-size: 0.875rem; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text); border-radius: 4px; margin-bottom: 1rem;">
+                            <option value="">Selecionar equipe destino...</option>
+                            <option value="null">Sem equipe</option>
+                            <template x-for="e in equipes.filter(eq => eq.id !== u.guarnicao_id)" :key="e.id">
+                              <option :value="e.id" x-text="e.bpm.nome + ' — ' + e.nome"></option>
+                            </template>
+                          </select>
+                          <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                            <button @click="modalMover = false; destinoId = ''" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+                              Cancelar
+                            </button>
+                            <button @click="moverUsuario(u.id, destinoId === 'null' ? null : (destinoId ? parseInt(destinoId) : undefined)); destinoId = ''; modalMover = false"
+                                    :disabled="!destinoId"
+                                    class="btn btn-primary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+                              Mover
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+          </div>
+        </template>
+
       </div>
 
       <!-- Modal: Criar usuário -->
@@ -197,7 +241,7 @@ function renderAdminUsuarios() {
             <select x-model="novaEquipeId" style="width: 100%; padding: 0.5rem; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text);">
               <option value="">Sem equipe</option>
               <template x-for="e in equipes" :key="e.id">
-                <option :value="e.id" x-text="e.nome"></option>
+                <option :value="e.id" x-text="e.bpm.nome + ' — ' + e.nome"></option>
               </template>
             </select>
           </div>
@@ -257,14 +301,19 @@ function adminUsuariosPage() {
   return {
     usuarios: [],
     equipes: [],
+    bpms: [],
+    bpmAtivo: null,
+    equipeAtiva: null,
     abaAtiva: "sem-equipe",
     carregando: true,
     mostrarFormCriacao: false,
     novaMatricula: "",
     novaEquipeId: "",
     criando: false,
-    novaEquipe: { nome: "", unidade: "" },
+    novaEquipe: { nome: "" },
     criandoEquipe: false,
+    novoBpm: { nome: "" },
+    criandoBpm: false,
     excluindo: false,
     senhaGerada: null,
 
@@ -275,9 +324,10 @@ function adminUsuariosPage() {
     async carregar() {
       this.carregando = true;
       try {
-        const [usuarios, equipes] = await Promise.all([
+        const [usuarios, equipes, bpms] = await Promise.all([
           api.get("/admin/usuarios"),
           api.get("/admin/equipes"),
+          api.get("/admin/bpms"),
         ]);
         const ordemRank = [
           "Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente",
@@ -290,14 +340,33 @@ function adminUsuariosPage() {
           return (parseInt(a.matricula) || 0) - (parseInt(b.matricula) || 0);
         });
         this.equipes = equipes;
-        if (typeof this.abaAtiva === "number" && !this.equipes.some(e => e.id === this.abaAtiva)) {
+        this.bpms = bpms;
+        // Revalidar estado após reload
+        if (this.bpmAtivo !== null && !this.bpms.some(b => b.id === this.bpmAtivo)) {
+          this.bpmAtivo = null;
+          this.equipeAtiva = null;
           this.abaAtiva = "sem-equipe";
+        }
+        if (typeof this.equipeAtiva === "number" && !this.equipes.some(e => e.id === this.equipeAtiva)) {
+          this.equipeAtiva = null;
         }
       } catch {
         showToast("Erro ao carregar dados", "error");
       } finally {
         this.carregando = false;
       }
+    },
+
+    selecionarBpm(bpmId) {
+      this.bpmAtivo = bpmId;
+      this.abaAtiva = bpmId;
+      // Auto-selecionar primeira equipe do BPM, se existir
+      const primeiraEquipe = this.equipes.find(e => e.bpm_id === bpmId);
+      this.equipeAtiva = primeiraEquipe ? primeiraEquipe.id : null;
+    },
+
+    equipesDoBpm(bpmId) {
+      return this.equipes.filter(e => e.bpm_id === bpmId);
     },
 
     get usuariosSemEquipe() {
@@ -308,13 +377,14 @@ function adminUsuariosPage() {
       return this.usuarios.filter(u => u.guarnicao_id === equipeId);
     },
 
-    get equipeAtiva() {
-      return this.equipes.find(e => e.id === this.abaAtiva) || null;
+    get equipeAtivaObj() {
+      if (typeof this.equipeAtiva !== "number") return null;
+      return this.equipes.find(e => e.id === this.equipeAtiva) || null;
     },
 
     abrirCriarUsuario() {
       this.novaMatricula = "";
-      this.novaEquipeId = typeof this.abaAtiva === "number" ? String(this.abaAtiva) : "";
+      this.novaEquipeId = typeof this.equipeAtiva === "number" ? String(this.equipeAtiva) : "";
       this.mostrarFormCriacao = true;
     },
 
@@ -388,20 +458,35 @@ function adminUsuariosPage() {
     },
 
     async criarEquipe() {
-      if (!this.novaEquipe.nome.trim() || !this.novaEquipe.unidade.trim()) return;
+      if (!this.novaEquipe.nome.trim() || this.bpmAtivo === null) return;
       this.criandoEquipe = true;
       try {
         const equipe = await api.post("/admin/equipes", {
           nome: this.novaEquipe.nome.trim(),
-          unidade: this.novaEquipe.unidade.trim(),
+          bpm_id: this.bpmAtivo,
         });
-        this.novaEquipe = { nome: "", unidade: "" };
+        this.novaEquipe = { nome: "" };
         await this.carregar();
-        this.abaAtiva = equipe.id;
+        this.equipeAtiva = equipe.id;
       } catch (e) {
         showToast(e.message || "Erro ao criar equipe", "error");
       } finally {
         this.criandoEquipe = false;
+      }
+    },
+
+    async criarBpm() {
+      if (!this.novoBpm.nome.trim()) return;
+      this.criandoBpm = true;
+      try {
+        const bpm = await api.post("/admin/bpms", { nome: this.novoBpm.nome.trim() });
+        this.novoBpm = { nome: "" };
+        await this.carregar();
+        this.selecionarBpm(bpm.id);
+      } catch (e) {
+        showToast(e.message || "Erro ao criar BPM", "error");
+      } finally {
+        this.criandoBpm = false;
       }
     },
 

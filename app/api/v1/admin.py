@@ -21,7 +21,9 @@ from app.schemas.auth import (
     UsuarioAdminRead,
     UsuarioMoverEquipe,
 )
+from app.schemas.bpm import BpmCreate, BpmRead
 from app.services.audit_service import AuditService
+from app.services.bpm_service import BpmService
 from app.services.equipe_service import EquipeService
 from app.services.usuario_admin_service import UsuarioAdminService
 
@@ -272,6 +274,68 @@ async def excluir_usuario(
     await db.commit()
 
 
+@router.get("/bpms", response_model=list[BpmRead])
+@limiter.limit("30/minute")
+async def listar_bpms(
+    request: Request,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[BpmRead]:
+    """Lista todos os BPMs ativos.
+
+    Args:
+        request: Requisição HTTP.
+        admin: Administrador autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        Lista de BpmRead ordenada por nome.
+
+    Status Code:
+        200: Lista retornada com sucesso.
+        403: Não é administrador.
+    """
+    service = BpmService(db)
+    bpms = await service.listar_bpms()
+    return [BpmRead.model_validate(b) for b in bpms]
+
+
+@router.post("/bpms", response_model=BpmRead, status_code=201)
+@limiter.limit("10/minute")
+async def criar_bpm(
+    request: Request,
+    data: BpmCreate,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> BpmRead:
+    """Cria novo BPM.
+
+    Args:
+        request: Requisição HTTP.
+        data: Nome do BPM.
+        admin: Administrador autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        BpmRead com ID atribuído.
+
+    Raises:
+        HTTPException: 409 se nome já existe.
+
+    Status Code:
+        201: BPM criado com sucesso.
+        403: Não é administrador.
+        409: Nome de BPM já cadastrado.
+    """
+    service = BpmService(db)
+    try:
+        bpm = await service.criar_bpm(nome=data.nome, admin_id=admin.id)
+    except ConflitoDadosError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
+    await db.commit()
+    return BpmRead.model_validate(bpm)
+
+
 @router.get("/equipes", response_model=list[EquipeRead])
 @limiter.limit("30/minute")
 async def listar_equipes(
@@ -310,7 +374,7 @@ async def criar_equipe(
 
     Args:
         request: Requisição HTTP.
-        data: Nome e unidade da equipe.
+        data: Nome e bpm_id da equipe.
         admin: Administrador autenticado.
         db: Sessão do banco de dados.
 
@@ -327,7 +391,7 @@ async def criar_equipe(
     """
     service = EquipeService(db)
     try:
-        equipe = await service.criar_equipe(nome=data.nome, unidade=data.unidade, admin_id=admin.id)
+        equipe = await service.criar_equipe(nome=data.nome, bpm_id=data.bpm_id, admin_id=admin.id)
     except ConflitoDadosError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
     await db.commit()
