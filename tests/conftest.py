@@ -21,6 +21,7 @@ from app.database.session import get_db
 from app.main import create_app
 from app.models.abordagem import Abordagem
 from app.models.base import Base
+from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.models.localidade import Localidade
 from app.models.ocorrencia import Ocorrencia
@@ -151,21 +152,35 @@ async def client(db_session: AsyncSession):
 
 
 @pytest.fixture
-async def guarnicao(db_session: AsyncSession) -> Guarnicao:
-    """Fixture que cria uma guarnição de teste.
-
-    Insere uma guarnição no banco de dados com valores padrão para uso
-    em testes que requerem contexto de guarnição.
+async def bpm(db_session: AsyncSession) -> Bpm:
+    """Fixture que cria um BPM de teste.
 
     Args:
         db_session: Sessão do banco de testes.
+
+    Returns:
+        Bpm: Objeto BPM com nome "3o BPM".
+    """
+    b = Bpm(nome="3o BPM")
+    db_session.add(b)
+    await db_session.flush()
+    return b
+
+
+@pytest.fixture
+async def guarnicao(db_session: AsyncSession, bpm: Bpm) -> Guarnicao:
+    """Fixture que cria uma guarnição de teste.
+
+    Args:
+        db_session: Sessão do banco de testes.
+        bpm: Fixture de BPM ao qual a guarnição pertence.
 
     Returns:
         Guarnicao: Objeto de guarnição com valores padrão (3a Cia - GU 01).
     """
     g = Guarnicao(
         nome="3a Cia - GU 01",
-        unidade="3o BPM",
+        bpm_id=bpm.id,
         codigo="3BPM-3CIA-GU01",
     )
     db_session.add(g)

@@ -5,6 +5,7 @@ from app.models.abordagem import (  # noqa: F401
 )
 from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.base import Base  # noqa: F401
+from app.models.bpm import Bpm  # noqa: F401
 from app.models.endereco import EnderecoPessoa  # noqa: F401
 from app.models.foto import Foto  # noqa: F401
 from app.models.guarnicao import Guarnicao  # noqa: F401
