@@ -1,3 +1,9 @@
+"""Módulo de modelos ORM do Argus AI.
+
+Re-exporta todos os models SQLAlchemy para facilitar importações
+e garantir que o metadata do Alembic detecte todas as tabelas.
+"""
+
 from app.models.abordagem import (  # noqa: F401
     Abordagem,
     AbordagemPessoa,
