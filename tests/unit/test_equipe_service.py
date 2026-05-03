@@ -17,10 +17,10 @@ async def test_listar_equipes_retorna_todas_ativas(db_session: AsyncSession, gua
 
 
 @pytest.mark.asyncio
-async def test_criar_equipe_gera_codigo(db_session: AsyncSession, usuario):
+async def test_criar_equipe_gera_codigo(db_session: AsyncSession, usuario, bpm):
     """criar_equipe gera código único automaticamente."""
     service = EquipeService(db_session)
-    e = await service.criar_equipe(nome="3a Cia - GU 02", unidade="3o BPM", admin_id=usuario.id)
+    e = await service.criar_equipe(nome="3a Cia - GU 02", bpm_id=bpm.id, admin_id=usuario.id)
     assert e.id is not None
     assert e.codigo
     assert e.nome == "3a Cia - GU 02"
@@ -28,13 +28,11 @@ async def test_criar_equipe_gera_codigo(db_session: AsyncSession, usuario):
 
 
 @pytest.mark.asyncio
-async def test_criar_equipe_nome_duplicado_falha(db_session: AsyncSession, guarnicao, usuario):
+async def test_criar_equipe_nome_duplicado_falha(db_session: AsyncSession, guarnicao, usuario, bpm):
     """criar_equipe rejeita nome duplicado entre ativas."""
     service = EquipeService(db_session)
     with pytest.raises(ConflitoDadosError):
-        await service.criar_equipe(
-            nome=guarnicao.nome, unidade=guarnicao.unidade, admin_id=usuario.id
-        )
+        await service.criar_equipe(nome=guarnicao.nome, bpm_id=bpm.id, admin_id=usuario.id)
 
 
 @pytest.mark.asyncio

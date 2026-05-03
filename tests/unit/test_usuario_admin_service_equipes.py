@@ -11,9 +11,9 @@ from app.services.usuario_admin_service import UsuarioAdminService
 
 
 @pytest.fixture
-async def outra_equipe(db_session: AsyncSession) -> Guarnicao:
+async def outra_equipe(db_session: AsyncSession, bpm) -> Guarnicao:
     """Cria segunda equipe para testes de movimentação."""
-    g = Guarnicao(nome="GU 99", unidade="9o BPM", codigo="9BPM-GU99")
+    g = Guarnicao(nome="GU 99", bpm_id=bpm.id, codigo="9BPM-GU99")
     db_session.add(g)
     await db_session.flush()
     return g
