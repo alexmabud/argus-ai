@@ -1,4 +1,4 @@
-"""Testes dos schemas de Equipe (Guarnicao)."""
+"""Testes dos schemas de Equipe (Guarnicao) e BPM."""
 
 import pytest
 from pydantic import ValidationError
@@ -9,37 +9,60 @@ from app.schemas.auth import (
     UsuarioAdminCreate,
     UsuarioAdminRead,
 )
+from app.schemas.bpm import BpmCreate, BpmRead
+
+
+def test_bpm_create_valida_nome():
+    """BpmCreate exige nome."""
+    b = BpmCreate(nome="14º BPM")
+    assert b.nome == "14º BPM"
+
+
+def test_bpm_create_rejeita_nome_vazio():
+    """BpmCreate rejeita nome vazio."""
+    with pytest.raises(ValidationError):
+        BpmCreate(nome="")
+
+
+def test_bpm_read_campos():
+    """BpmRead expõe id e nome."""
+    b = BpmRead(id=1, nome="14º BPM")
+    assert b.id == 1
+    assert b.nome == "14º BPM"
 
 
 def test_equipe_create_valida_campos():
-    """EquipeCreate exige nome e unidade."""
-    e = EquipeCreate(nome="3a Cia - GU 01", unidade="3o BPM")
+    """EquipeCreate exige nome e bpm_id."""
+    e = EquipeCreate(nome="3a Cia - GU 01", bpm_id=1)
     assert e.nome == "3a Cia - GU 01"
-    assert e.unidade == "3o BPM"
+    assert e.bpm_id == 1
 
 
 def test_equipe_create_rejeita_nome_vazio():
     """EquipeCreate rejeita nome vazio."""
     with pytest.raises(ValidationError):
-        EquipeCreate(nome="", unidade="3o BPM")
+        EquipeCreate(nome="", bpm_id=1)
 
 
-def test_equipe_create_rejeita_unidade_vazia():
-    """EquipeCreate rejeita unidade vazia."""
+def test_equipe_create_rejeita_bpm_id_ausente():
+    """EquipeCreate rejeita bpm_id ausente."""
     with pytest.raises(ValidationError):
-        EquipeCreate(nome="GU 01", unidade="")
+        EquipeCreate(nome="GU 01")
 
 
-def test_equipe_read_inclui_isolamento():
-    """EquipeRead expõe campo isolamento_abordagens."""
+def test_equipe_read_inclui_bpm_e_isolamento():
+    """EquipeRead expõe bpm (objeto aninhado) e isolamento_abordagens."""
+    bpm_obj = BpmRead(id=1, nome="14º BPM")
     e = EquipeRead(
         id=1,
         nome="GU 01",
-        unidade="3o BPM",
-        codigo="3BPM-GU01",
+        bpm_id=1,
+        bpm=bpm_obj,
+        codigo="14BPM-GU01",
         isolamento_abordagens=True,
     )
     assert e.isolamento_abordagens is True
+    assert e.bpm.nome == "14º BPM"
 
 
 def test_usuario_admin_create_aceita_guarnicao_id_opcional():
