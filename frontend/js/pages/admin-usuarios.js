@@ -128,6 +128,20 @@ function renderAdminUsuarios() {
         <template x-if="bpmAtivo !== null">
           <div>
 
+            <!-- Toggle de isolamento por BPM -->
+            <template x-if="bpmAtivoObj">
+              <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(0,0,0,0.15); border-radius: 4px; border: 1px solid var(--color-border);">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                  <span style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;">Ver apenas abordagens do BPM</span>
+                  <input
+                    type="checkbox"
+                    :checked="bpmAtivoObj.isolamento_abordagens"
+                    @change="alternarIsolamentoBpm(bpmAtivoObj.id, $event.target.checked)"
+                  />
+                </label>
+              </div>
+            </template>
+
             <!-- Sem equipe selecionada ainda (BPM sem equipes) -->
             <template x-if="equipesDoBpm(bpmAtivo).length === 0 && equipeAtiva !== 'nova-equipe'">
               <p style="color: var(--color-text-muted); padding: 1rem; text-align: center; font-family: var(--font-data); font-size: 0.875rem;">
@@ -382,6 +396,10 @@ function adminUsuariosPage() {
       return this.equipes.find(e => e.id === this.equipeAtiva) || null;
     },
 
+    get bpmAtivoObj() {
+      return this.bpms.find(b => b.id === this.bpmAtivo) || null;
+    },
+
     abrirCriarUsuario() {
       this.novaMatricula = "";
       this.novaEquipeId = typeof this.equipeAtiva === "number" ? String(this.equipeAtiva) : "";
@@ -499,6 +517,19 @@ function adminUsuariosPage() {
         await this.carregar();
       } catch (e) {
         showToast(e.message || "Erro ao atualizar equipe", "error");
+        await this.carregar();
+      }
+    },
+
+    async alternarIsolamentoBpm(bpmId, valor) {
+      try {
+        await api.patch(`/admin/bpms/${bpmId}/toggle-isolamento`, {
+          isolamento_abordagens: valor,
+        });
+        showToast(valor ? "Isolamento de BPM ativado" : "Isolamento de BPM desativado", "success");
+        await this.carregar();
+      } catch (e) {
+        showToast(e.message || "Erro ao atualizar BPM", "error");
         await this.carregar();
       }
     },
