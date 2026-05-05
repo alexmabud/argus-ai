@@ -9,11 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import decrypt, hash_for_search
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
+from app.core.security import hash_senha
 from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
-from app.schemas.pessoa import PessoaCreate
+from app.schemas.pessoa import EnderecoCreate, PessoaCreate
 from app.services.pessoa_service import PessoaService
 
 
@@ -208,6 +209,87 @@ class TestDesativarPessoa:
         desativada = await service.desativar(pessoa.id, usuario)
         assert desativada.ativo is False
         assert desativada.desativado_em is not None
+
+
+class TestAdminPermissoes:
+    """Testes de permissões de administrador para edição de dados de pessoas."""
+
+    async def test_admin_adiciona_endereco_em_pessoa_de_outra_guarnicao(
+        self,
+        db_session: AsyncSession,
+        guarnicao: Guarnicao,
+        bpm: Bpm,
+    ):
+        """Admin deve poder adicionar endereço a pessoa de qualquer guarnição.
+
+        Usuários com is_admin=True não devem ser bloqueados pelo TenantFilter
+        ao editar dados cadastrais de pessoas de outras guarnições.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Guarnição A (da pessoa).
+            bpm: BPM para criar a guarnição B (do admin).
+        """
+        guarnicao_b = Guarnicao(nome="Cia Admin", bpm_id=bpm.id, codigo="ADM-001")
+        db_session.add(guarnicao_b)
+        await db_session.flush()
+
+        admin = Usuario(
+            nome="Administrador",
+            matricula="ADM-TST-01",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao_b.id,
+            is_admin=True,
+        )
+        db_session.add(admin)
+        await db_session.flush()
+
+        pessoa = Pessoa(nome="Abordado Alvo", guarnicao_id=guarnicao.id)
+        db_session.add(pessoa)
+        await db_session.flush()
+
+        service = PessoaService(db_session)
+        data = EnderecoCreate(endereco="Rua dos Testes, 1", cidade="Brasília", estado="DF")
+        endereco = await service.adicionar_endereco(pessoa.id, data, admin)
+
+        assert endereco.id is not None
+        assert endereco.pessoa_id == pessoa.id
+
+    async def test_admin_edita_dados_de_pessoa_sem_guarnicao(
+        self,
+        db_session: AsyncSession,
+        guarnicao: Guarnicao,
+        bpm: Bpm,
+    ):
+        """Admin deve poder editar pessoa com guarnicao_id=None.
+
+        Pessoas migradas sem guarnicao ficavam inacessíveis para edição.
+        Admins devem poder atualizar qualquer pessoa independente de guarnicao_id.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Guarnição do admin.
+            bpm: BPM (apenas para consistência de fixtures).
+        """
+        admin = Usuario(
+            nome="Admin Global",
+            matricula="ADM-TST-02",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao.id,
+            is_admin=True,
+        )
+        db_session.add(admin)
+        await db_session.flush()
+
+        pessoa = Pessoa(nome="Pessoa Migrada", guarnicao_id=None)
+        db_session.add(pessoa)
+        await db_session.flush()
+
+        service = PessoaService(db_session)
+        data = EnderecoCreate(endereco="Setor Comercial Sul, 10", cidade="Brasília", estado="DF")
+        endereco = await service.adicionar_endereco(pessoa.id, data, admin)
+
+        assert endereco.id is not None
 
 
 class TestMaskCpf:

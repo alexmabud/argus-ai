@@ -586,7 +586,7 @@ class PessoaService:
         vinculada = await self.repo.get(data.pessoa_vinculada_id)
         if not vinculada:
             raise NaoEncontradoError("Pessoa vinculada")
-        if vinculada.guarnicao_id != user.guarnicao_id:
+        if not user.is_admin and vinculada.guarnicao_id != user.guarnicao_id:
             raise AcessoNegadoError("Pessoa vinculada pertence a outra guarnição")
 
         vinculo = VinculoManual(

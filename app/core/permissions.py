@@ -39,8 +39,9 @@ class TenantFilter:
     def check_ownership(resource, user):
         """Verifica se recurso pertence à guarnição do usuário.
 
-        Lança exceção se recurso pertence a outra guarnição. Essencial
-        para proteger endpoints que retornam recursos específicos.
+        Lança exceção se recurso pertence a outra guarnição. Admins
+        (is_admin=True) ignoram esta verificação e podem operar em
+        qualquer guarnição.
 
         Args:
             resource: Objeto de recurso a verificar.
@@ -49,6 +50,8 @@ class TenantFilter:
         Raises:
             AcessoNegadoError: Se recurso pertence a outra guarnição.
         """
+        if getattr(user, "is_admin", False):
+            return
 
         if hasattr(resource, "guarnicao_id") and user.guarnicao_id is not None:
             if resource.guarnicao_id != user.guarnicao_id:
