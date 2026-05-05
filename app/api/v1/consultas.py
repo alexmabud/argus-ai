@@ -24,16 +24,22 @@ from app.services.pessoa_service import PessoaService
 router = APIRouter(prefix="/consultas", tags=["Consultas"])
 
 
-def _isolamento(user: Usuario) -> bool:
-    """Retorna True se o toggle de isolamento da equipe está ativado.
+def _filtros_consulta(user: Usuario) -> tuple[int | None, int | None]:
+    """Retorna (guarnicao_id, bpm_id) para filtro de consultas.
+
+    Prioridade: equipe > BPM > global. Apenas um dos dois será não-None.
 
     Args:
-        user: Usuário autenticado com relacionamento guarnicao carregado.
+        user: Usuário autenticado com guarnicao e bpm carregados.
 
     Returns:
-        True se isolamento_abordagens da equipe está ativo, False caso contrário.
+        Tupla (guarnicao_id, bpm_id). Ambos None = acesso global.
     """
-    return bool(user.guarnicao and user.guarnicao.isolamento_abordagens)
+    if user.guarnicao and user.guarnicao.isolamento_abordagens:
+        return (user.guarnicao_id, None)
+    if user.guarnicao and user.guarnicao.bpm and user.guarnicao.bpm.isolamento_abordagens:
+        return (None, user.guarnicao.bpm_id)
+    return (None, None)
 
 
 @router.get("/localidades")
@@ -118,6 +124,7 @@ async def consulta_unificada(
             ),
         )
 
+    gid, bid = _filtros_consulta(user)
     service = ConsultaService(db)
     resultados = await service.busca_unificada(
         q=q,
@@ -128,7 +135,8 @@ async def consulta_unificada(
         skip=skip,
         limit=limit,
         user=user,
-        isolamento=_isolamento(user),
+        guarnicao_id_filtro=gid,
+        bpm_id_filtro=bid,
     )
 
     return service.formatar_resultado_busca(resultados)
