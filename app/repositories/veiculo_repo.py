@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.abordagem import AbordagemVeiculo
+from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
@@ -57,14 +58,18 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         guarnicao_id: int | None,
         skip: int = 0,
         limit: int = 20,
+        bpm_id: int | None = None,
     ) -> Sequence[Veiculo]:
         """Busca veículos por placa parcial (ILIKE).
+
+        Aplica filtro em cascata: guarnicao_id > bpm_id > global.
 
         Args:
             placa_partial: Parte da placa para busca parcial.
             guarnicao_id: ID da guarnição para filtro multi-tenant.
             skip: Número de registros a pular.
             limit: Número máximo de resultados.
+            bpm_id: ID do BPM para filtro quando guarnicao_id for None.
 
         Returns:
             Sequência de Veículos que contêm a placa parcial.
@@ -76,6 +81,12 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         )
         if guarnicao_id is not None:
             query = query.where(Veiculo.guarnicao_id == guarnicao_id)
+        elif bpm_id is not None:
+            guarnicao_ids = select(Guarnicao.id).where(
+                Guarnicao.bpm_id == bpm_id,
+                Guarnicao.ativo == True,  # noqa: E712
+            )
+            query = query.where(Veiculo.guarnicao_id.in_(guarnicao_ids))
 
         query = query.offset(skip).limit(limit)
         result = await self.db.execute(query)

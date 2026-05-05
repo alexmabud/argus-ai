@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.crypto import hash_for_search
 from app.models.abordagem import Abordagem
 from app.models.foto import Foto
+from app.models.guarnicao import Guarnicao
 from app.models.usuario import Usuario
 from app.repositories.abordagem_repo import AbordagemRepository
 from app.repositories.pessoa_repo import PessoaRepository
@@ -69,14 +70,15 @@ class ConsultaService:
         skip: int = 0,
         limit: int = 20,
         user: Usuario | None = None,
-        isolamento: bool = False,
+        guarnicao_id_filtro: int | None = None,
+        bpm_id_filtro: int | None = None,
     ) -> dict:
         """Busca unificada em pessoa, veículo e abordagem.
 
         Distribui a busca conforme o tipo solicitado ou busca em todas
         as entidades simultaneamente. Aplica filtros multi-tenant via
-        guarnicao_id do usuário autenticado. Suporta filtros adicionais
-        de bairro, cidade e estado para busca de pessoas por endereço.
+        guarnicao_id ou bpm_id em cascata (equipe > BPM > global).
+        Suporta filtros adicionais de bairro, cidade e estado.
 
         Estratégias de busca por entidade:
         - Pessoa: busca fuzzy por nome (pg_trgm) + busca exata por CPF (hash SHA-256)
@@ -94,8 +96,10 @@ class ConsultaService:
             skip: Número de registros a pular por entidade (paginação).
             limit: Número máximo de resultados por entidade.
             user: Usuário autenticado (para filtro multi-tenant).
-            isolamento: Se True, filtra abordagens e veículos pela equipe do usuário.
-                Se False (padrão), busca globalmente. Pessoas são sempre globais.
+            guarnicao_id_filtro: ID da guarnição para filtrar abordagens/veículos.
+                Prevalece sobre bpm_id_filtro quando ambos informados.
+            bpm_id_filtro: ID do BPM para filtrar abordagens/veículos quando
+                guarnicao_id_filtro for None.
 
         Returns:
             Dicionário com chaves "pessoas", "veiculos", "abordagens",
@@ -105,10 +109,8 @@ class ConsultaService:
         """
         # Pessoas são sempre globais (spec do projeto)
         guarnicao_id_pessoa: int | None = None
-        # Abordagens e veículos respeitam o toggle de isolamento
-        guarnicao_id_abordagem: int | None = (
-            (user.guarnicao_id if user else None) if isolamento else None
-        )
+        # Abordagens e veículos respeitam o filtro em cascata
+        guarnicao_id_abordagem: int | None = guarnicao_id_filtro
         pessoas = []
         veiculos = []
         abordagens = []
@@ -130,11 +132,15 @@ class ConsultaService:
 
         if tipo is None or tipo == "veiculo":
             if not filtro_local:
-                veiculos = await self._buscar_veiculos(q, guarnicao_id_abordagem, skip, limit)
+                veiculos = await self._buscar_veiculos(
+                    q, guarnicao_id_abordagem, skip, limit, bpm_id=bpm_id_filtro
+                )
 
         if tipo is None or tipo == "abordagem":
             if not filtro_local:
-                abordagens = await self._buscar_abordagens(q, guarnicao_id_abordagem, skip, limit)
+                abordagens = await self._buscar_abordagens(
+                    q, guarnicao_id_abordagem, skip, limit, bpm_id=bpm_id_filtro
+                )
 
         return {
             "pessoas": pessoas,
@@ -244,23 +250,28 @@ class ConsultaService:
         guarnicao_id: int | None,
         skip: int,
         limit: int,
+        bpm_id: int | None = None,
     ) -> list:
         """Busca veículos por placa parcial (ILIKE).
 
         Normaliza o termo de busca (uppercase, sem traços) e delega
-        para o repositório de veículo com busca parcial.
+        para o repositório de veículo com busca parcial. Quando guarnicao_id
+        for None e bpm_id informado, o repositório filtra por guarnições do BPM.
 
         Args:
             q: Termo de busca (placa parcial ou completa).
             guarnicao_id: ID da guarnição para filtro multi-tenant.
             skip: Número de registros a pular.
             limit: Número máximo de resultados.
+            bpm_id: ID do BPM para filtro quando guarnicao_id for None.
 
         Returns:
             Lista de veículos encontrados.
         """
         return list(
-            await self.veiculo_repo.search_by_placa_partial(q, guarnicao_id, skip=skip, limit=limit)
+            await self.veiculo_repo.search_by_placa_partial(
+                q, guarnicao_id, skip=skip, limit=limit, bpm_id=bpm_id
+            )
         )
 
     async def _buscar_abordagens(
@@ -269,17 +280,19 @@ class ConsultaService:
         guarnicao_id: int | None,
         skip: int,
         limit: int,
+        bpm_id: int | None = None,
     ) -> list:
         """Busca abordagens por endereço texto (ILIKE).
 
         Realiza busca parcial no campo endereco_texto da abordagem,
-        filtrando por guarnição e registros ativos.
+        filtrando por guarnição ou BPM (cascata: equipe > BPM > global).
 
         Args:
             q: Termo de busca (parte do endereço).
             guarnicao_id: ID da guarnição para filtro multi-tenant.
             skip: Número de registros a pular.
             limit: Número máximo de resultados.
+            bpm_id: ID do BPM para filtro quando guarnicao_id for None.
 
         Returns:
             Lista de abordagens encontradas.
@@ -291,6 +304,12 @@ class ConsultaService:
         )
         if guarnicao_id is not None:
             query = query.where(Abordagem.guarnicao_id == guarnicao_id)
+        elif bpm_id is not None:
+            guarnicao_ids = select(Guarnicao.id).where(
+                Guarnicao.bpm_id == bpm_id,
+                Guarnicao.ativo == True,  # noqa: E712
+            )
+            query = query.where(Abordagem.guarnicao_id.in_(guarnicao_ids))
 
         query = query.order_by(Abordagem.data_hora.desc()).offset(skip).limit(limit)
         result = await self.db.execute(query)
