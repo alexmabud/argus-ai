@@ -520,6 +520,8 @@ function abordagemForm() {
     salvandoPessoa: false,
     erroPessoa: null,
     cpfCadastroErro: "",
+    novasPessoas: [],
+    _tempIdCounter: 0,
 
     // Cascata endereço — nova pessoa
     anEstadoId: null,
@@ -582,11 +584,14 @@ function abordagemForm() {
 
       // Escutar seleções de autocomplete
       this.$el.addEventListener("pessoa-selected", (e) => {
-        this.pessoaIds = e.detail.selected.map((s) => s.id);
+        const currentIds = e.detail.selected.map((s) => s.id);
+        this.pessoaIds = currentIds;
         this.pessoasSelecionadas = e.detail.selected;
-        // Buscar endereços das pessoas selecionadas
+        // Remover de novasPessoas qualquer entrada que foi desselecionada
+        this.novasPessoas = this.novasPessoas.filter(p => currentIds.includes(p.id));
+        // Buscar endereços apenas de pessoas já existentes no banco (id > 0)
         for (const p of e.detail.selected) {
-          if (!this.pessoaEnderecos[p.id]) {
+          if (p.id > 0 && !this.pessoaEnderecos[p.id]) {
             this.carregarEnderecos(p.id);
           }
         }
@@ -673,7 +678,7 @@ function abordagemForm() {
       catch (e) { console.error('Erro ao cadastrar bairro', e); }
     },
 
-    async criarPessoa() {
+    criarPessoa() {
       const nome = this.novaPessoa.nome.trim();
       if (!nome) {
         this.erroPessoa = "Nome é obrigatório.";
@@ -685,59 +690,39 @@ function abordagemForm() {
         return;
       }
 
-      this.salvandoPessoa = true;
-      this.erroPessoa = null;
+      this._tempIdCounter--;
+      const tempId = this._tempIdCounter;
 
-      try {
-        // Criar pessoa
-        const pessoaData = { nome };
-        if (this.novaPessoa.cpf.trim()) {
-          pessoaData.cpf = this.novaPessoa.cpf.trim();
-        }
-        const dataNasc = parseDateBR(this.novaPessoa.data_nascimento);
-        if (dataNasc) {
-          pessoaData.data_nascimento = dataNasc;
-        }
-        if (this.novaPessoa.apelido.trim()) {
-          pessoaData.apelido = this.novaPessoa.apelido.trim();
-        }
-        if (this.novaPessoa.nome_mae.trim()) {
-          pessoaData.nome_mae = this.novaPessoa.nome_mae.trim();
-        }
+      const pessoaTemp = {
+        id: tempId,
+        nome,
+        cpf: this.novaPessoa.cpf.trim() || null,
+        data_nascimento: parseDateBR(this.novaPessoa.data_nascimento) || null,
+        apelido: this.novaPessoa.apelido.trim() || null,
+        nome_mae: this.novaPessoa.nome_mae.trim() || null,
+        _endereco: this.novaPessoa.endereco.trim() || null,
+        _estado_id: this.anEstadoId ? parseInt(this.anEstadoId) : null,
+        _cidade_id: this.anCidadeId || null,
+        _bairro_id: this.anBairroId || null,
+      };
 
-        const pessoa = await api.post("/pessoas/", pessoaData);
+      this.novasPessoas.push(pessoaTemp);
+      this.pessoaIds.push(tempId);
+      this.pessoasSelecionadas.push(pessoaTemp);
 
-        // Criar endereço se preenchido
-        if (this.novaPessoa.endereco.trim() || this.anEstadoId || this.anCidadeId) {
-          await api.post(`/pessoas/${pessoa.id}/enderecos`, {
-            endereco: this.novaPessoa.endereco.trim() || "-",
-            estado_id: this.anEstadoId ? parseInt(this.anEstadoId) : null,
-            cidade_id: this.anCidadeId || null,
-            bairro_id: this.anBairroId || null,
-          });
-        }
-
-        // Adicionar à lista de abordados
-        this.pessoaIds.push(pessoa.id);
-        this.pessoasSelecionadas.push(pessoa);
-
-        // Atualizar tags do autocomplete
-        const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
-        if (autocompleteEl?._x_dataStack) {
-          autocompleteEl._x_dataStack[0].selected.push(pessoa);
-        }
-
-        // Reset formulário
-        this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
-        this.cpfCadastroErro = "";
-        this.anEstadoId = null; this.anCidadeId = null; this.anCidadeTexto = "";
-        this.anBairroId = null; this.anBairroTexto = "";
-        this.showNovaPessoa = false;
-      } catch (err) {
-        this.erroPessoa = err.message || "Erro ao cadastrar pessoa.";
-      } finally {
-        this.salvandoPessoa = false;
+      // Adicionar nas tags do autocomplete para exibição
+      const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
+      if (autocompleteEl?._x_dataStack) {
+        autocompleteEl._x_dataStack[0].selected.push(pessoaTemp);
       }
+
+      // Reset formulário
+      this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
+      this.cpfCadastroErro = "";
+      this.anEstadoId = null; this.anCidadeId = null; this.anCidadeTexto = "";
+      this.anBairroId = null; this.anBairroTexto = "";
+      this.showNovaPessoa = false;
+      this.erroPessoa = null;
     },
 
     async carregarEnderecos(pessoaId) {
@@ -921,6 +906,51 @@ function abordagemForm() {
       this.submitting = true;
       this.erro = null;
 
+      // Criar pessoas novas no banco antes de criar a abordagem
+      if (this.novasPessoas.length > 0) {
+        try {
+          for (const p of [...this.novasPessoas]) {
+            const pessoaData = { nome: p.nome };
+            if (p.cpf) pessoaData.cpf = p.cpf;
+            if (p.data_nascimento) pessoaData.data_nascimento = p.data_nascimento;
+            if (p.apelido) pessoaData.apelido = p.apelido;
+            if (p.nome_mae) pessoaData.nome_mae = p.nome_mae;
+
+            const pessoaCriada = await api.post("/pessoas/", pessoaData);
+
+            if (p._endereco || p._estado_id || p._cidade_id) {
+              await api.post(`/pessoas/${pessoaCriada.id}/enderecos`, {
+                endereco: p._endereco || "-",
+                estado_id: p._estado_id,
+                cidade_id: p._cidade_id,
+                bairro_id: p._bairro_id,
+              });
+            }
+
+            // Substituir ID temporário pelo ID real
+            const tempId = p.id;
+            const realId = pessoaCriada.id;
+            this.pessoaIds = this.pessoaIds.map(id => id === tempId ? realId : id);
+
+            // Re-indexar foto do ID temporário para o real
+            if (this.fotosPessoas[tempId]) {
+              this.fotosPessoas = { ...this.fotosPessoas, [realId]: this.fotosPessoas[tempId] };
+              delete this.fotosPessoas[tempId];
+            }
+
+            // Re-indexar veiculoPorPessoa: substituir tempId pelo realId nos valores
+            this.veiculoPorPessoa = Object.fromEntries(
+              Object.entries(this.veiculoPorPessoa).map(([vId, pId]) => [vId, pId === tempId ? realId : pId])
+            );
+          }
+          this.novasPessoas = [];
+        } catch (err) {
+          this.erro = err.message || "Erro ao cadastrar novo abordado.";
+          this.submitting = false;
+          return;
+        }
+      }
+
       // Gerar client_id único para deduplicação (idempotência)
       if (!this.clientId) {
         this.clientId = crypto.randomUUID();
@@ -1009,6 +1039,8 @@ function abordagemForm() {
       this.fotoVeiculoFile = null;
       this.showNovaPessoa = false;
       this.showNovoVeiculo = false;
+      this.novasPessoas = [];
+      this._tempIdCounter = 0;
       this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
       this.anEstadoId = null; this.anCidadeId = null; this.anCidadeTexto = "";
       this.anBairroId = null; this.anBairroTexto = "";
