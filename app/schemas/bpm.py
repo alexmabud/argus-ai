@@ -12,10 +12,13 @@ class BpmRead(BaseModel):
     Attributes:
         id: Identificador único do BPM.
         nome: Nome do batalhão (ex: "14º BPM").
+        isolamento_abordagens: Se True, usuários do BPM veem apenas abordagens
+            do próprio BPM.
     """
 
     id: int
     nome: str
+    isolamento_abordagens: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -28,3 +31,13 @@ class BpmCreate(BaseModel):
     """
 
     nome: str = Field(..., min_length=1, max_length=200)
+
+
+class BpmIsolamentoUpdate(BaseModel):
+    """Dados para alternar isolamento de abordagens de um BPM.
+
+    Attributes:
+        isolamento_abordagens: True ativa isolamento por BPM, False desativa.
+    """
+
+    isolamento_abordagens: bool
