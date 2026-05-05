@@ -326,20 +326,23 @@ class AbordagemService:
     async def listar_por_pessoa(
         self,
         pessoa_id: int,
-        guarnicao_id: int,
+        guarnicao_id: int | None = None,
         limit: int = 50,
     ) -> Sequence[Abordagem]:
         """Lista abordagens de uma pessoa com relacionamentos.
 
+        Abordagens na ficha de uma pessoa são globais — sem filtro de guarnição.
+        guarnicao_id aceito por compatibilidade mas sempre ignorado.
+
         Args:
             pessoa_id: ID da pessoa.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            guarnicao_id: Ignorado. Mantido por compatibilidade de assinatura.
             limit: Número máximo de resultados.
 
         Returns:
             Sequência de Abordagens com pessoas e veículos carregados.
         """
-        return await self.repo.list_by_pessoa(pessoa_id, guarnicao_id, limit)
+        return await self.repo.list_by_pessoa(pessoa_id, None, limit)
 
     async def buscar_por_raio(
         self,

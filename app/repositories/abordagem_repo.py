@@ -220,19 +220,30 @@ class AbordagemRepository(BaseRepository[Abordagem]):
     async def list_by_pessoa(
         self,
         pessoa_id: int,
-        guarnicao_id: int,
+        guarnicao_id: int | None,
         limit: int = 50,
     ) -> Sequence[Abordagem]:
         """Lista abordagens de uma pessoa com relacionamentos carregados.
 
+        Quando guarnicao_id é None, retorna abordagens de todas as guarnições —
+        comportamento correto para a ficha individual da pessoa, onde o isolamento
+        de guarnição não se aplica.
+
         Args:
             pessoa_id: ID da pessoa.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            guarnicao_id: ID da guarnição para filtro, ou None para todas.
             limit: Número máximo de resultados.
 
         Returns:
             Sequência de Abordagens com pessoas e veículos carregados.
         """
+        conditions = [
+            AbordagemPessoa.pessoa_id == pessoa_id,
+            Abordagem.ativo == True,  # noqa: E712
+        ]
+        if guarnicao_id is not None:
+            conditions.append(Abordagem.guarnicao_id == guarnicao_id)
+
         query = (
             select(Abordagem)
             .join(AbordagemPessoa, AbordagemPessoa.abordagem_id == Abordagem.id)
@@ -240,11 +251,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
                 selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
             )
-            .where(
-                AbordagemPessoa.pessoa_id == pessoa_id,
-                Abordagem.guarnicao_id == guarnicao_id,
-                Abordagem.ativo == True,  # noqa: E712
-            )
+            .where(*conditions)
             .order_by(Abordagem.data_hora.desc())
             .limit(limit)
         )
