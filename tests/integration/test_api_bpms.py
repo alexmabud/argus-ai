@@ -95,3 +95,53 @@ async def test_criar_bpm_nome_duplicado_409(client: AsyncClient, admin_bpm_heade
         headers=admin_bpm_headers,
     )
     assert response.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_toggle_isolamento_bpm_ativa_200(client: AsyncClient, admin_bpm_headers, bpm):
+    """PATCH /admin/bpms/{id}/toggle-isolamento com True retorna 200 e campo atualizado."""
+    response = await client.patch(
+        f"/api/v1/admin/bpms/{bpm.id}/toggle-isolamento",
+        json={"isolamento_abordagens": True},
+        headers=admin_bpm_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["isolamento_abordagens"] is True
+
+
+@pytest.mark.asyncio
+async def test_toggle_isolamento_bpm_desativa_200(
+    client: AsyncClient, admin_bpm_headers, bpm, db_session
+):
+    """PATCH /admin/bpms/{id}/toggle-isolamento com False retorna 200 e desativa."""
+    bpm.isolamento_abordagens = True
+    await db_session.flush()
+    response = await client.patch(
+        f"/api/v1/admin/bpms/{bpm.id}/toggle-isolamento",
+        json={"isolamento_abordagens": False},
+        headers=admin_bpm_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["isolamento_abordagens"] is False
+
+
+@pytest.mark.asyncio
+async def test_toggle_isolamento_bpm_sem_admin_403(client: AsyncClient, auth_headers, bpm):
+    """Usuário comum recebe 403 ao tentar alterar isolamento de BPM."""
+    response = await client.patch(
+        f"/api/v1/admin/bpms/{bpm.id}/toggle-isolamento",
+        json={"isolamento_abordagens": True},
+        headers=auth_headers,
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_toggle_isolamento_bpm_nao_encontrado_404(client: AsyncClient, admin_bpm_headers):
+    """PATCH com BPM inexistente retorna 404."""
+    response = await client.patch(
+        "/api/v1/admin/bpms/9999/toggle-isolamento",
+        json={"isolamento_abordagens": True},
+        headers=admin_bpm_headers,
+    )
+    assert response.status_code == 404
