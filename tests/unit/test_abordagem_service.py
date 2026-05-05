@@ -337,3 +337,47 @@ class TestListarPorPessoa:
         # Consulta como usuário da guarnição B — deve ver abordagem da guarnição A
         resultado = await service.listar_por_pessoa(pessoa.id, guarnicao_b.id)
         assert len(resultado) == 1, "Ficha da pessoa deve mostrar abordagens de qualquer guarnição"
+
+
+@pytest.mark.asyncio
+async def test_listar_com_bpm_id_chama_repo_by_bpm(
+    db_session: AsyncSession, bpm, guarnicao, usuario
+):
+    """listar() com guarnicao_id=None e bpm_id definido filtra por BPM."""
+    from datetime import UTC, datetime
+
+    from app.models.abordagem import Abordagem
+
+    a = Abordagem(
+        guarnicao_id=guarnicao.id,
+        usuario_id=usuario.id,
+        data_hora=datetime.now(UTC),
+        endereco_texto="Av Teste",
+    )
+    db_session.add(a)
+    await db_session.flush()
+
+    service = AbordagemService(db_session)
+    result = await service.listar(guarnicao_id=None, bpm_id=bpm.id)
+    assert any(ab.id == a.id for ab in result)
+
+
+@pytest.mark.asyncio
+async def test_listar_sem_filtro_retorna_global(db_session: AsyncSession, guarnicao, usuario):
+    """listar() com guarnicao_id=None e bpm_id=None retorna todas as abordagens."""
+    from datetime import UTC, datetime
+
+    from app.models.abordagem import Abordagem
+
+    a = Abordagem(
+        guarnicao_id=guarnicao.id,
+        usuario_id=usuario.id,
+        data_hora=datetime.now(UTC),
+        endereco_texto="Av Global",
+    )
+    db_session.add(a)
+    await db_session.flush()
+
+    service = AbordagemService(db_session)
+    result = await service.listar(guarnicao_id=None, bpm_id=None)
+    assert any(ab.id == a.id for ab in result)

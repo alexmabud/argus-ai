@@ -200,27 +200,30 @@ class AbordagemService:
     async def buscar_detalhe(
         self,
         abordagem_id: int,
-        guarnicao_id: int,
-        isolamento: bool = True,
+        guarnicao_id: int | None,
+        bpm_id: int | None = None,
     ) -> Abordagem:
         """Busca abordagem com todos os relacionamentos carregados (eager load).
 
         Carrega pessoas, veículos, fotos e ocorrências em uma
         única query usando selectinload. Ideal para tela de detalhe.
+        Prioridade: guarnicao_id > bpm_id > global.
 
         Args:
             abordagem_id: Identificador da abordagem.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
-            isolamento: True filtra por guarnicao_id; False busca globalmente.
+            guarnicao_id: ID da guarnição para filtro por equipe (prevalece).
+            bpm_id: ID do BPM para filtro por BPM (usado se guarnicao_id=None).
 
         Returns:
             Abordagem com todos os relacionamentos carregados.
 
         Raises:
-            NaoEncontradoError: Se abordagem não existe ou não pertence à guarnição.
+            NaoEncontradoError: Se abordagem não existe ou não está no escopo.
         """
-        if isolamento:
+        if guarnicao_id is not None:
             abordagem = await self.repo.get_detail(abordagem_id, guarnicao_id)
+        elif bpm_id is not None:
+            abordagem = await self.repo.get_detail_by_bpm(abordagem_id, bpm_id)
         else:
             abordagem = await self.repo.get_detail_global(abordagem_id)
         if not abordagem:
@@ -229,75 +232,83 @@ class AbordagemService:
 
     async def listar(
         self,
-        guarnicao_id: int,
+        guarnicao_id: int | None,
+        bpm_id: int | None = None,
         skip: int = 0,
         limit: int = 20,
-        isolamento: bool = True,
     ) -> Sequence[Abordagem]:
         """Lista abordagens com paginação.
 
         Retorna abordagens ativas ordenadas por data/hora decrescente.
-        Quando isolamento=False, retorna de todas as equipes.
+        Prioridade: guarnicao_id > bpm_id > global.
 
         Args:
-            guarnicao_id: ID da guarnição (usado se isolamento=True).
+            guarnicao_id: ID da guarnição (filtro por equipe, prevalece).
+            bpm_id: ID do BPM (filtro por BPM, usado se guarnicao_id=None).
             skip: Número de registros a pular (padrão 0).
             limit: Número máximo de resultados (padrão 20).
-            isolamento: True filtra por guarnicao_id; False retorna global.
 
         Returns:
             Sequência de Abordagens ordenadas por data_hora decrescente.
         """
-        if isolamento:
+        if guarnicao_id is not None:
             return await self.repo.list_by_guarnicao(guarnicao_id, skip, limit)
+        if bpm_id is not None:
+            return await self.repo.list_by_bpm(bpm_id, skip, limit)
         return await self.repo.list_global(skip, limit)
 
     async def listar_por_data(
         self,
-        guarnicao_id: int,
+        guarnicao_id: int | None,
         data: date,
-        isolamento: bool = True,
+        bpm_id: int | None = None,
     ) -> Sequence[Abordagem]:
         """Lista abordagens em uma data específica.
 
         Retorna todos os registros do dia sem paginação, com eager
         loading completo de pessoas, veículos, fotos e ocorrências.
+        Prioridade: guarnicao_id > bpm_id > global.
 
         Args:
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            guarnicao_id: ID da guarnição para filtro por equipe (prevalece).
             data: Data de referência (YYYY-MM-DD).
-            isolamento: True filtra por guarnicao_id; False retorna global.
+            bpm_id: ID do BPM (filtro por BPM, usado se guarnicao_id=None).
 
         Returns:
             Sequência de Abordagens do dia ordenadas por data_hora decrescente.
         """
-        if isolamento:
+        if guarnicao_id is not None:
             return await self.repo.list_by_data(guarnicao_id, data)
+        if bpm_id is not None:
+            return await self.repo.list_by_data_by_bpm(bpm_id, data)
         return await self.repo.list_by_data_global(data)
 
     async def buscar_por_texto(
         self,
         q: str,
-        guarnicao_id: int,
+        guarnicao_id: int | None,
+        bpm_id: int | None = None,
         limit: int = 100,
-        isolamento: bool = True,
     ) -> Sequence[Abordagem]:
         """Busca abordagens por texto em todas as datas.
 
         Pesquisa por nome de pessoa abordada, placa de veículo ou
         endereço em texto livre, sem restrição de data.
+        Prioridade: guarnicao_id > bpm_id > global.
 
         Args:
             q: Termo de busca.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            guarnicao_id: ID da guarnição para filtro por equipe (prevalece).
+            bpm_id: ID do BPM (filtro por BPM, usado se guarnicao_id=None).
             limit: Número máximo de resultados (padrão 100).
-            isolamento: True filtra por guarnicao_id; False busca globalmente.
 
         Returns:
             Sequência de Abordagens que correspondem ao termo.
         """
-        if isolamento:
+        if guarnicao_id is not None:
             return await self.repo.search_by_texto(q, guarnicao_id, limit)
+        if bpm_id is not None:
+            return await self.repo.search_by_texto_by_bpm(bpm_id, q, limit)
         return await self.repo.search_by_texto_global(q, limit)
 
     async def listar_por_usuario(
