@@ -27,7 +27,7 @@ function renderAdminUsuarios() {
       </div>
 
       <!-- Nível 1: abas por BPM -->
-      <div x-show="!carregando" style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-bottom: 0.25rem; border-bottom: 1px solid var(--color-border);">
+      <div x-show="!carregando" style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-bottom: 0; border-bottom: 1px solid var(--color-border); background: rgba(0, 212, 255, 0.04); padding: 0 0.5rem;">
         <button
           @click="abaAtiva = 'sem-equipe'; bpmAtivo = null; equipeAtiva = null"
           :style="abaAtiva === 'sem-equipe' ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
@@ -54,18 +54,18 @@ function renderAdminUsuarios() {
 
       <!-- Nível 2: abas de equipes dentro do BPM ativo -->
       <template x-if="bpmAtivo !== null">
-        <div x-show="!carregando" style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-bottom: 1rem; border-bottom: 1px solid rgba(58,80,104,0.4); padding-left: 0.5rem;">
+        <div x-show="!carregando" style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-bottom: 1rem; border-bottom: 1px solid rgba(58,80,104,0.4); background: rgba(26, 41, 64, 0.45); padding: 0.125rem 1rem;">
           <template x-for="e in equipesDoBpm(bpmAtivo)" :key="e.id">
             <button
               @click="equipeAtiva = e.id"
-              :style="equipeAtiva === e.id ? 'border-bottom: 2px solid var(--color-secondary); color: var(--color-secondary);' : 'color: var(--color-text-dim);'"
+              :style="equipeAtiva === e.id ? 'border-bottom: 2px solid #4FC3F7; color: #4FC3F7;' : 'color: var(--color-text-muted);'"
               style="padding: 0.375rem 0.625rem; font-family: var(--font-data); font-size: 0.75rem; background: transparent; border: 0; cursor: pointer;"
               x-text="e.nome + ' (' + usuariosDaEquipe(e.id).length + ')'"
             ></button>
           </template>
           <button
             @click="equipeAtiva = 'nova-equipe'"
-            :style="equipeAtiva === 'nova-equipe' ? 'border-bottom: 2px solid var(--color-secondary); color: var(--color-secondary);' : 'color: var(--color-text-dim);'"
+            :style="equipeAtiva === 'nova-equipe' ? 'border-bottom: 2px solid #4FC3F7; color: #4FC3F7;' : 'color: var(--color-text-muted);'"
             style="padding: 0.375rem 0.625rem; font-family: var(--font-data); font-size: 0.75rem; background: transparent; border: 0; cursor: pointer;"
           >
             + Nova Equipe
