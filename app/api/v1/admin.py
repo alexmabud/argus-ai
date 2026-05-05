@@ -21,7 +21,7 @@ from app.schemas.auth import (
     UsuarioAdminRead,
     UsuarioMoverEquipe,
 )
-from app.schemas.bpm import BpmCreate, BpmRead
+from app.schemas.bpm import BpmCreate, BpmIsolamentoUpdate, BpmRead
 from app.services.audit_service import AuditService
 from app.services.bpm_service import BpmService
 from app.services.equipe_service import EquipeService
@@ -332,6 +332,52 @@ async def criar_bpm(
         bpm = await service.criar_bpm(nome=data.nome, admin_id=admin.id)
     except ConflitoDadosError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.detail)
+    await db.commit()
+    return BpmRead.model_validate(bpm)
+
+
+@router.patch("/bpms/{bpm_id}/toggle-isolamento", response_model=BpmRead)
+@limiter.limit("10/minute")
+async def toggle_isolamento_bpm(
+    request: Request,
+    bpm_id: int,
+    data: BpmIsolamentoUpdate,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> BpmRead:
+    """Liga ou desliga o isolamento de abordagens para o BPM.
+
+    Quando ativo, usuários do BPM veem apenas abordagens registradas
+    por equipes do próprio BPM. O isolamento de equipe prevalece sobre
+    o de BPM quando ambos estiverem ativos.
+
+    Args:
+        request: Requisição HTTP.
+        bpm_id: ID do BPM a atualizar.
+        data: Novo valor do toggle.
+        admin: Administrador autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        BpmRead com o novo valor de isolamento_abordagens.
+
+    Raises:
+        HTTPException: 404 se o BPM não existe ou está inativo.
+
+    Status Code:
+        200: Toggle atualizado com sucesso.
+        403: Não é administrador.
+        404: BPM não encontrado.
+    """
+    service = BpmService(db)
+    try:
+        bpm = await service.toggle_isolamento(
+            bpm_id=bpm_id,
+            valor=data.isolamento_abordagens,
+            admin_id=admin.id,
+        )
+    except NaoEncontradoError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
     await db.commit()
     return BpmRead.model_validate(bpm)
 
