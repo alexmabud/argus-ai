@@ -10,6 +10,8 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NaoEncontradoError
+from app.models.abordagem import Abordagem, AbordagemPessoa
+from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
@@ -287,3 +289,51 @@ class TestListarPorData:
             data=data_futura,
         )
         assert result == []
+
+
+class TestListarPorPessoa:
+    """Testes de listagem de abordagens pela ficha da pessoa."""
+
+    async def test_ficha_pessoa_retorna_abordagem_de_outra_guarnicao(
+        self,
+        db_session: AsyncSession,
+        guarnicao: Guarnicao,
+        usuario: Usuario,
+        bpm: Bpm,
+    ):
+        """Abordagem de qualquer guarnição deve aparecer na ficha da pessoa.
+
+        O isolamento de guarnição não se aplica à ficha individual de uma
+        pessoa — usuários devem ver todas as abordagens dela, independente
+        de qual guarnição registrou.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Guarnição A (do usuário que registrou).
+            usuario: Usuário da guarnição A.
+            bpm: BPM para criar a guarnição B (visualizadora).
+        """
+        guarnicao_b = Guarnicao(nome="Cia Vizinha", bpm_id=bpm.id, codigo="VIZ-001")
+        db_session.add(guarnicao_b)
+        await db_session.flush()
+
+        pessoa = Pessoa(nome="Abordado Teste", guarnicao_id=guarnicao.id)
+        db_session.add(pessoa)
+        await db_session.flush()
+
+        abordagem = Abordagem(
+            data_hora=datetime.now(UTC),
+            endereco_texto="Rua A, 1",
+            usuario_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        db_session.add(abordagem)
+        await db_session.flush()
+
+        db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
+        await db_session.flush()
+
+        service = AbordagemService(db_session)
+        # Consulta como usuário da guarnição B — deve ver abordagem da guarnição A
+        resultado = await service.listar_por_pessoa(pessoa.id, guarnicao_b.id)
+        assert len(resultado) == 1, "Ficha da pessoa deve mostrar abordagens de qualquer guarnição"
