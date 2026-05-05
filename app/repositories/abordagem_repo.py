@@ -17,6 +17,7 @@ from app.models.abordagem import (
     AbordagemPessoa,
     AbordagemVeiculo,
 )
+from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
@@ -425,6 +426,156 @@ class AbordagemRepository(BaseRepository[Abordagem]):
         )
         result = await self.db.execute(query)
         return result.scalars().unique().all()
+
+    async def list_by_bpm(self, bpm_id: int, skip: int = 0, limit: int = 20) -> Sequence[Abordagem]:
+        """Lista abordagens de todas as equipes de um BPM.
+
+        Filtra via JOIN em guarnicoes.bpm_id. Retorna apenas abordagens ativas,
+        ordenadas por data_hora decrescente.
+
+        Args:
+            bpm_id: ID do BPM para filtro.
+            skip: Número de registros a pular.
+            limit: Número máximo de resultados.
+
+        Returns:
+            Sequência de Abordagens do BPM ordenadas por data_hora decrescente.
+        """
+        query = (
+            select(Abordagem)
+            .join(Guarnicao, Guarnicao.id == Abordagem.guarnicao_id)
+            .where(
+                Guarnicao.bpm_id == bpm_id,
+                Guarnicao.ativo == True,  # noqa: E712
+                Abordagem.ativo == True,  # noqa: E712
+            )
+            .order_by(Abordagem.data_hora.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def list_by_data_by_bpm(self, bpm_id: int, data: date) -> Sequence[Abordagem]:
+        """Lista abordagens de todas as equipes de um BPM em uma data específica.
+
+        Filtra pela data em fuso BRT (America/Sao_Paulo) via JOIN em guarnicoes.bpm_id.
+        Carrega relacionamentos via selectin (pessoas, veículos, fotos, ocorrências).
+
+        Args:
+            bpm_id: ID do BPM para filtro.
+            data: Data de referência (YYYY-MM-DD).
+
+        Returns:
+            Sequência de Abordagens do dia no BPM ordenadas por data_hora decrescente.
+        """
+        query = (
+            select(Abordagem)
+            .join(Guarnicao, Guarnicao.id == Abordagem.guarnicao_id)
+            .options(
+                selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
+                selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
+                selectinload(Abordagem.fotos),
+                selectinload(Abordagem.ocorrencias),
+            )
+            .where(
+                Guarnicao.bpm_id == bpm_id,
+                Guarnicao.ativo == True,  # noqa: E712
+                Abordagem.ativo == True,  # noqa: E712
+                cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), Date) == data,
+            )
+            .order_by(Abordagem.data_hora.desc())
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def search_by_texto_by_bpm(
+        self, bpm_id: int, q: str, limit: int = 100
+    ) -> Sequence[Abordagem]:
+        """Busca abordagens por texto dentro de um BPM.
+
+        Pesquisa por nome de pessoa, placa ou endereço. Filtra por bpm_id via
+        subquery para evitar conflito com JOINs de pessoa e veículo.
+
+        Args:
+            bpm_id: ID do BPM para filtro.
+            q: Termo de busca.
+            limit: Número máximo de resultados.
+
+        Returns:
+            Sequência de Abordagens com correspondência no BPM.
+        """
+        termo = f"%{q}%"
+        guarnicao_ids_bpm = select(Guarnicao.id).where(
+            Guarnicao.bpm_id == bpm_id,
+            Guarnicao.ativo == True,  # noqa: E712
+        )
+        query = (
+            select(Abordagem)
+            .options(
+                selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
+                selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
+                selectinload(Abordagem.fotos),
+                selectinload(Abordagem.ocorrencias),
+            )
+            .outerjoin(
+                AbordagemPessoa,
+                (AbordagemPessoa.abordagem_id == Abordagem.id) & (AbordagemPessoa.ativo == True),  # noqa: E712
+            )
+            .outerjoin(Pessoa, Pessoa.id == AbordagemPessoa.pessoa_id)
+            .outerjoin(
+                AbordagemVeiculo,
+                (AbordagemVeiculo.abordagem_id == Abordagem.id) & (AbordagemVeiculo.ativo == True),  # noqa: E712
+            )
+            .outerjoin(Veiculo, Veiculo.id == AbordagemVeiculo.veiculo_id)
+            .where(
+                Abordagem.ativo == True,  # noqa: E712
+                Abordagem.guarnicao_id.in_(guarnicao_ids_bpm),
+                or_(
+                    Pessoa.nome.ilike(termo),
+                    Veiculo.placa.ilike(termo),
+                    Abordagem.endereco_texto.ilike(termo),
+                ),
+            )
+            .distinct()
+            .order_by(Abordagem.data_hora.desc())
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().unique().all()
+
+    async def get_detail_by_bpm(self, abordagem_id: int, bpm_id: int) -> Abordagem | None:
+        """Busca abordagem por ID dentro de um BPM com eager loading.
+
+        Verifica se a abordagem pertence a uma equipe do BPM antes de retornar.
+
+        Args:
+            abordagem_id: ID da abordagem.
+            bpm_id: ID do BPM para validação de acesso.
+
+        Returns:
+            Abordagem com relacionamentos carregados, ou None se não pertence ao BPM.
+        """
+        guarnicao_ids_bpm = select(Guarnicao.id).where(
+            Guarnicao.bpm_id == bpm_id,
+            Guarnicao.ativo == True,  # noqa: E712
+        )
+        query = (
+            select(Abordagem)
+            .options(
+                selectinload(Abordagem.pessoas).selectinload(AbordagemPessoa.pessoa),
+                selectinload(Abordagem.veiculos).selectinload(AbordagemVeiculo.veiculo),
+                selectinload(Abordagem.fotos),
+                selectinload(Abordagem.ocorrencias),
+            )
+            .where(
+                Abordagem.id == abordagem_id,
+                Abordagem.ativo == True,  # noqa: E712
+                Abordagem.guarnicao_id.in_(guarnicao_ids_bpm),
+            )
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
 
     async def get_by_client_id(self, client_id: str) -> Abordagem | None:
         """Busca abordagem por client_id para deduplicação offline.
