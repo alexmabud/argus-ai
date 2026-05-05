@@ -130,8 +130,11 @@ class TestCriarObservacao:
         with pytest.raises(NaoEncontradoError):
             await service.criar(pessoa_id=999, data=data, user=make_user())
 
-    async def test_pessoa_outra_guarnicao(self, service):
-        """Testa que AcessoNegadoError é levantado se pessoa é de outra guarnição.
+    async def test_cria_obs_para_pessoa_de_outra_guarnicao(self, service):
+        """Testa que observação pode ser criada para pessoa de qualquer guarnição.
+
+        Pessoas são entidades globais — qualquer usuário pode registrar
+        observações em qualquer ficha, independente da guarnição.
 
         Args:
             service: PessoaObservacaoService com mocks.
@@ -139,10 +142,13 @@ class TestCriarObservacao:
         user = make_user(guarnicao_id=1)
         pessoa = make_pessoa(id=1, guarnicao_id=99)
         service.pessoa_repo.get = AsyncMock(return_value=pessoa)
+        service.obs_repo.create = AsyncMock(side_effect=lambda obs: obs)
         data = PessoaObservacaoCreate(texto="Observação qualquer")
 
-        with pytest.raises(AcessoNegadoError):
-            await service.criar(pessoa_id=1, data=data, user=user)
+        result = await service.criar(pessoa_id=1, data=data, user=user)
+
+        assert result.pessoa_id == 1
+        assert result.guarnicao_id == 1
 
 
 class TestListarObservacoes:
@@ -181,6 +187,29 @@ class TestListarObservacoes:
 
         with pytest.raises(NaoEncontradoError):
             await service.listar(pessoa_id=999, user=make_user())
+
+    async def test_lista_obs_de_pessoa_sem_guarnicao(self, service, db):
+        """Observações de pessoa com guarnicao_id=None devem ser acessíveis a qualquer usuário.
+
+        Pessoas migradas (guarnicao_id=None) são entidades globais — qualquer
+        guarnição deve poder visualizar suas observações.
+
+        Args:
+            service: PessoaObservacaoService com mocks.
+            db: Sessão mock do banco.
+        """
+        user = make_user(guarnicao_id=1)
+        pessoa = make_pessoa(id=1, guarnicao_id=None)
+        obs = make_obs(id=1, pessoa_id=1)
+        service.pessoa_repo.get = AsyncMock(return_value=pessoa)
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [obs]
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await service.listar(pessoa_id=1, user=user)
+
+        assert len(result) == 1
 
 
 class TestAtualizarObservacao:

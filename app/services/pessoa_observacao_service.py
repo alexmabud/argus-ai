@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AcessoNegadoError, NaoEncontradoError
-from app.core.permissions import TenantFilter
 from app.models.pessoa import Pessoa
 from app.models.pessoa_observacao import PessoaObservacao
 from app.models.usuario import Usuario
@@ -45,7 +44,10 @@ class PessoaObservacaoService:
         self.audit = AuditService(db)
 
     async def _get_pessoa_verificado(self, pessoa_id: int, user: Usuario) -> Pessoa:
-        """Busca pessoa verificando existência e tenant.
+        """Busca pessoa verificando existência.
+
+        Pessoas são entidades globais — qualquer guarnição pode visualizar
+        e registrar observações, garantindo visibilidade completa da ficha.
 
         Args:
             pessoa_id: ID da pessoa.
@@ -56,12 +58,10 @@ class PessoaObservacaoService:
 
         Raises:
             NaoEncontradoError: Se pessoa não existe.
-            AcessoNegadoError: Se pessoa pertence a outra guarnição.
         """
         pessoa = await self.pessoa_repo.get(pessoa_id)
         if not pessoa:
             raise NaoEncontradoError("Pessoa não encontrada.")
-        TenantFilter.check_ownership(pessoa, user)
         return pessoa
 
     async def listar(self, pessoa_id: int, user: Usuario) -> list[PessoaObservacao]:
@@ -76,7 +76,6 @@ class PessoaObservacaoService:
 
         Raises:
             NaoEncontradoError: Se pessoa não existe.
-            AcessoNegadoError: Se pessoa de outra guarnição.
         """
         await self._get_pessoa_verificado(pessoa_id, user)
         result = await self.db.execute(
@@ -111,7 +110,6 @@ class PessoaObservacaoService:
 
         Raises:
             NaoEncontradoError: Se pessoa não existe.
-            AcessoNegadoError: Se pessoa de outra guarnição.
         """
         await self._get_pessoa_verificado(pessoa_id, user)
         obs = PessoaObservacao(
