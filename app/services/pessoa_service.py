@@ -657,7 +657,6 @@ class PessoaService:
         """
         query = select(VinculoManual).where(
             VinculoManual.pessoa_id == pessoa_id,
-            VinculoManual.guarnicao_id == user.guarnicao_id,
             VinculoManual.ativo == True,  # noqa: E712
         )
         result = await self.db.execute(query)

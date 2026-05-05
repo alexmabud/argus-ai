@@ -8,8 +8,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AcessoNegadoError, ConflitoDadosError, NaoEncontradoError
+from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.models.vinculo_manual import VinculoManual
@@ -148,6 +150,61 @@ class TestCriarVinculoManual:
 
         with pytest.raises(ConflitoDadosError):
             await service.criar_vinculo_manual(1, data, user)
+
+
+class TestListarVinculosManuais:
+    """Testes para PessoaService.listar_vinculos_manuais."""
+
+    async def test_lista_vinculo_criado_por_outra_guarnicao(
+        self,
+        db_session: AsyncSession,
+        guarnicao: Guarnicao,
+        bpm,
+        usuario: Usuario,
+    ):
+        """Vínculo criado por guarnição A deve aparecer para usuário de guarnição B.
+
+        A ficha da pessoa é global — vínculos manuais devem ser visíveis
+        independente de qual guarnição os registrou.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Guarnição A (do usuário que registrou o vínculo).
+            bpm: BPM para criar a guarnição B.
+            usuario: Usuário da guarnição A.
+        """
+        pessoa_a = Pessoa(nome="Abordado A", guarnicao_id=guarnicao.id)
+        pessoa_b = Pessoa(nome="Abordado B", guarnicao_id=guarnicao.id)
+        db_session.add_all([pessoa_a, pessoa_b])
+        await db_session.flush()
+
+        vinculo = VinculoManual(
+            pessoa_id=pessoa_a.id,
+            pessoa_vinculada_id=pessoa_b.id,
+            tipo="Irmão",
+            guarnicao_id=guarnicao.id,
+        )
+        db_session.add(vinculo)
+        await db_session.flush()
+
+        guarnicao_b = Guarnicao(nome="Cia B", bpm_id=bpm.id, codigo="CIA-B-VNL")
+        db_session.add(guarnicao_b)
+        await db_session.flush()
+
+        user_b = Usuario(
+            nome="Agente B",
+            matricula="AGT-B-VNL",
+            senha_hash="x",
+            guarnicao_id=guarnicao_b.id,
+        )
+        db_session.add(user_b)
+        await db_session.flush()
+
+        service = PessoaService(db_session)
+        resultado = await service.listar_vinculos_manuais(pessoa_a.id, user_b)
+
+        assert len(resultado) == 1, "Vínculo deve aparecer independente da guarnição do usuário"
+        assert resultado[0].tipo == "Irmão"
 
 
 class TestRemoverVinculoManual:
