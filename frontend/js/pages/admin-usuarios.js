@@ -40,7 +40,7 @@ function renderAdminUsuarios() {
             @click="selecionarBpm(b.id)"
             :style="bpmAtivo === b.id ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
             style="padding: 0.5rem 0.75rem; font-family: var(--font-data); font-size: 0.8125rem; background: transparent; border: 0; cursor: pointer;"
-            x-text="b.nome"
+            x-text="b.nome + ' (' + usuariosDoBpm(b.id).length + ')'"
           ></button>
         </template>
         <button
@@ -130,7 +130,8 @@ function renderAdminUsuarios() {
 
             <!-- Toggle de isolamento por BPM -->
             <template x-if="bpmAtivoObj">
-              <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(0,0,0,0.15); border-radius: 4px; border: 1px solid var(--color-border);">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(0,0,0,0.15); border-radius: 4px; border: 1px solid var(--color-border);">
+                <p style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem; margin: 0;" x-text="bpmAtivoObj.nome"></p>
                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                   <span style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;">Ver apenas abordagens do BPM</span>
                   <input
@@ -389,6 +390,11 @@ function adminUsuariosPage() {
 
     usuariosDaEquipe(equipeId) {
       return this.usuarios.filter(u => u.guarnicao_id === equipeId);
+    },
+
+    usuariosDoBpm(bpmId) {
+      const ids = this.equipesDoBpm(bpmId).map(e => e.id);
+      return this.usuarios.filter(u => ids.includes(u.guarnicao_id));
     },
 
     get equipeAtivaObj() {
