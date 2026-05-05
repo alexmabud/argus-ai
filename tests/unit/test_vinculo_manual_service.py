@@ -19,18 +19,20 @@ from app.schemas.vinculo_manual import VinculoManualCreate
 from app.services.pessoa_service import PessoaService
 
 
-def make_user(guarnicao_id: int = 1) -> Usuario:
+def make_user(guarnicao_id: int = 1, is_admin: bool = False) -> Usuario:
     """Cria usuário mock para testes.
 
     Args:
         guarnicao_id: ID da guarnição do usuário.
+        is_admin: Se o usuário tem permissões administrativas.
 
     Returns:
-        Usuário mock com id e guarnicao_id.
+        Usuário mock com id, guarnicao_id e is_admin.
     """
     u = MagicMock(spec=Usuario)
     u.id = 10
     u.guarnicao_id = guarnicao_id
+    u.is_admin = is_admin
     return u
 
 
