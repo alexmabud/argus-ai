@@ -17,6 +17,7 @@ from sqlalchemy.types import Date as DateType
 
 from app.core.crypto import decrypt
 from app.models.abordagem import Abordagem, AbordagemPessoa
+from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.services.storage_service import normalize_storage_url
 
@@ -42,7 +43,36 @@ class AnalyticsService:
         """
         self.db = db
 
-    async def resumo(self, guarnicao_id: int | None, dias: int = 30) -> dict:
+    def _filtro_base(
+        self,
+        guarnicao_id: int | None,
+        bpm_id: int | None = None,
+    ) -> list:
+        """Retorna condições base de filtro para queries de analytics.
+
+        Prioridade: guarnicao_id > bpm_id > global (sem filtro de escopo).
+
+        Args:
+            guarnicao_id: ID da guarnição para filtro por equipe.
+            bpm_id: ID do BPM para filtro por BPM (subquery IN).
+
+        Returns:
+            Lista de condições SQLAlchemy para uso em .where(*conditions).
+        """
+        conditions: list = [Abordagem.ativo == True]  # noqa: E712
+        if guarnicao_id is not None:
+            conditions.append(Abordagem.guarnicao_id == guarnicao_id)
+        elif bpm_id is not None:
+            guarnicao_ids = select(Guarnicao.id).where(
+                Guarnicao.bpm_id == bpm_id,
+                Guarnicao.ativo == True,  # noqa: E712
+            )
+            conditions.append(Abordagem.guarnicao_id.in_(guarnicao_ids))
+        return conditions
+
+    async def resumo(
+        self, guarnicao_id: int | None, dias: int = 30, bpm_id: int | None = None
+    ) -> dict:
         """Retorna resumo operacional do período.
 
         Args:
@@ -56,9 +86,8 @@ class AnalyticsService:
         """
         desde = datetime.now(UTC) - timedelta(days=dias)
 
-        base = [Abordagem.ativo, Abordagem.data_hora >= desde]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base.append(Abordagem.data_hora >= desde)
 
         # Total abordagens
         total_q = select(func.count(Abordagem.id)).where(*base)
@@ -79,7 +108,9 @@ class AnalyticsService:
             "media_abordagens_dia": round(total / max(dias, 1), 1),
         }
 
-    async def mapa_calor(self, guarnicao_id: int | None, dias: int = 30) -> list[dict]:
+    async def mapa_calor(
+        self, guarnicao_id: int | None, dias: int = 30, bpm_id: int | None = None
+    ) -> list[dict]:
         """Retorna pontos geográficos para mapa de calor.
 
         Args:
@@ -92,20 +123,20 @@ class AnalyticsService:
         """
         desde = datetime.now(UTC) - timedelta(days=dias)
 
-        base = [
-            Abordagem.ativo,
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base += [
             Abordagem.data_hora >= desde,
             Abordagem.latitude.isnot(None),
             Abordagem.longitude.isnot(None),
         ]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
 
         query = select(Abordagem.latitude, Abordagem.longitude).where(*base)
         result = await self.db.execute(query)
         return [{"lat": float(row[0]), "lon": float(row[1])} for row in result.all()]
 
-    async def horarios_pico(self, guarnicao_id: int | None, dias: int = 30) -> list[dict]:
+    async def horarios_pico(
+        self, guarnicao_id: int | None, dias: int = 30, bpm_id: int | None = None
+    ) -> list[dict]:
         """Retorna distribuição horária das abordagens.
 
         Args:
@@ -122,9 +153,8 @@ class AnalyticsService:
             "hora"
         )
 
-        base = [Abordagem.ativo, Abordagem.data_hora >= desde]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base.append(Abordagem.data_hora >= desde)
 
         query = (
             select(hora, func.count(Abordagem.id).label("total"))
@@ -135,7 +165,9 @@ class AnalyticsService:
         result = await self.db.execute(query)
         return [{"hora": int(row[0]), "total": int(row[1])} for row in result.all()]
 
-    async def pessoas_recorrentes(self, guarnicao_id: int | None, limit: int = 20) -> list[dict]:
+    async def pessoas_recorrentes(
+        self, guarnicao_id: int | None, limit: int = 20, bpm_id: int | None = None
+    ) -> list[dict]:
         """Retorna pessoas mais abordadas.
 
         Args:
@@ -149,9 +181,8 @@ class AnalyticsService:
         """
         limit = min(limit, 100)
 
-        base = [Abordagem.ativo, Pessoa.ativo]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base.append(Pessoa.ativo)
 
         query = (
             select(
@@ -195,7 +226,7 @@ class AnalyticsService:
 
         return await asyncio.to_thread(_build_results)
 
-    async def resumo_hoje(self, guarnicao_id: int | None) -> dict:
+    async def resumo_hoje(self, guarnicao_id: int | None, bpm_id: int | None = None) -> dict:
         """Retorna total de abordagens e pessoas abordadas hoje.
 
         Args:
@@ -209,9 +240,8 @@ class AnalyticsService:
         inicio = datetime(hoje.year, hoje.month, hoje.day, tzinfo=BRT)
         fim = inicio + timedelta(days=1)
 
-        base = [Abordagem.ativo, Abordagem.data_hora >= inicio, Abordagem.data_hora < fim]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base += [Abordagem.data_hora >= inicio, Abordagem.data_hora < fim]
 
         total_q = select(func.count(Abordagem.id)).where(*base)
         total = (await self.db.execute(total_q)).scalar() or 0
@@ -225,7 +255,7 @@ class AnalyticsService:
 
         return {"abordagens": total, "pessoas": pessoas}
 
-    async def resumo_mes(self, guarnicao_id: int | None) -> dict:
+    async def resumo_mes(self, guarnicao_id: int | None, bpm_id: int | None = None) -> dict:
         """Retorna total de abordagens e pessoas abordadas no mês atual.
 
         Args:
@@ -242,9 +272,8 @@ class AnalyticsService:
         else:
             fim = inicio.replace(month=agora.month + 1)
 
-        base = [Abordagem.ativo, Abordagem.data_hora >= inicio, Abordagem.data_hora < fim]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base += [Abordagem.data_hora >= inicio, Abordagem.data_hora < fim]
 
         total_q = select(func.count(Abordagem.id)).where(*base)
         total = (await self.db.execute(total_q)).scalar() or 0
@@ -258,7 +287,7 @@ class AnalyticsService:
 
         return {"abordagens": total, "pessoas": pessoas}
 
-    async def resumo_total(self, guarnicao_id: int | None) -> dict:
+    async def resumo_total(self, guarnicao_id: int | None, bpm_id: int | None = None) -> dict:
         """Retorna totais históricos de abordagens e pessoas.
 
         Sem filtro de data — agrega todos os registros ativos. Pessoas cadastradas
@@ -271,9 +300,7 @@ class AnalyticsService:
         Returns:
             Dicionário com abordagens e pessoas totais.
         """
-        base_ab = [Abordagem.ativo]
-        if guarnicao_id is not None:
-            base_ab.append(Abordagem.guarnicao_id == guarnicao_id)
+        base_ab = self._filtro_base(guarnicao_id, bpm_id)
 
         total_q = select(func.count(Abordagem.id)).where(*base_ab)
         total = (await self.db.execute(total_q)).scalar() or 0
@@ -296,7 +323,9 @@ class AnalyticsService:
             "pessoas_cadastradas": pessoas_cadastradas,
         }
 
-    async def por_dia(self, guarnicao_id: int | None, dias: int = 30) -> list[dict]:
+    async def por_dia(
+        self, guarnicao_id: int | None, dias: int = 30, bpm_id: int | None = None
+    ) -> list[dict]:
         """Retorna série temporal diária de abordagens e pessoas.
 
         Args:
@@ -312,9 +341,8 @@ class AnalyticsService:
             "data"
         )
 
-        base = [Abordagem.ativo, Abordagem.data_hora >= desde]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base.append(Abordagem.data_hora >= desde)
 
         query = (
             select(
@@ -337,7 +365,9 @@ class AnalyticsService:
             for row in result.all()
         ]
 
-    async def por_mes(self, guarnicao_id: int | None, meses: int = 12) -> list[dict]:
+    async def por_mes(
+        self, guarnicao_id: int | None, meses: int = 12, bpm_id: int | None = None
+    ) -> list[dict]:
         """Retorna série temporal mensal de abordagens e pessoas.
 
         Args:
@@ -359,9 +389,8 @@ class AnalyticsService:
         ano_label = extract("year", _brt_ts).label("ano")
         mes_label = extract("month", _brt_ts).label("mes")
 
-        base = [Abordagem.ativo, Abordagem.data_hora >= desde]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base.append(Abordagem.data_hora >= desde)
 
         query = (
             select(
@@ -385,7 +414,9 @@ class AnalyticsService:
             for row in result.all()
         ]
 
-    async def dias_com_abordagem(self, guarnicao_id: int | None, mes: str) -> list[int]:
+    async def dias_com_abordagem(
+        self, guarnicao_id: int | None, mes: str, bpm_id: int | None = None
+    ) -> list[int]:
         """Retorna lista de dias do mês que tiveram abordagem.
 
         Usado pelo calendário mini para exibir pontos indicativos.
@@ -402,19 +433,19 @@ class AnalyticsService:
         _brt_ts = func.timezone("America/Sao_Paulo", Abordagem.data_hora)
         dia_label = extract("day", _brt_ts).label("dia")
 
-        base = [
-            Abordagem.ativo,
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base += [
             extract("year", _brt_ts) == ano,
             extract("month", _brt_ts) == mes_num,
         ]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
 
         query = select(dia_label).where(*base).distinct().order_by(dia_label)
         result = await self.db.execute(query)
         return [int(row[0]) for row in result.all()]
 
-    async def pessoas_do_dia(self, guarnicao_id: int | None, data: str) -> list[dict]:
+    async def pessoas_do_dia(
+        self, guarnicao_id: int | None, data: str, bpm_id: int | None = None
+    ) -> list[dict]:
         """Retorna pessoas abordadas em um dia específico.
 
         Args:
@@ -427,13 +458,11 @@ class AnalyticsService:
         """
         data_obj = date.fromisoformat(data)
 
-        base = [
-            Abordagem.ativo,
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base += [
             Pessoa.ativo,
             cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), DateType) == data_obj,
         ]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
 
         query = (
             select(
@@ -464,7 +493,9 @@ class AnalyticsService:
             )
         return pessoas
 
-    async def abordagens_do_dia(self, guarnicao_id: int | None, data: str) -> list[dict]:
+    async def abordagens_do_dia(
+        self, guarnicao_id: int | None, data: str, bpm_id: int | None = None
+    ) -> list[dict]:
         """Retorna pontos geográficos das abordagens de um dia específico.
 
         Retorna apenas abordagens que possuem coordenadas GPS registradas.
@@ -481,14 +512,12 @@ class AnalyticsService:
         """
         data_obj = date.fromisoformat(data)
 
-        base = [
-            Abordagem.ativo,
+        base = self._filtro_base(guarnicao_id, bpm_id)
+        base += [
             cast(func.timezone("America/Sao_Paulo", Abordagem.data_hora), DateType) == data_obj,
             Abordagem.latitude.isnot(None),
             Abordagem.longitude.isnot(None),
         ]
-        if guarnicao_id is not None:
-            base.append(Abordagem.guarnicao_id == guarnicao_id)
 
         query = (
             select(
@@ -511,7 +540,7 @@ class AnalyticsService:
             for row in rows
         ]
 
-    async def metricas_rag(self, guarnicao_id: int | None) -> dict:
+    async def metricas_rag(self, guarnicao_id: int | None, bpm_id: int | None = None) -> dict:
         """Retorna métricas de ocorrências para o módulo RAG.
 
         Conta total de ocorrências e quantas estão indexadas (com embedding).
@@ -538,6 +567,25 @@ class AnalyticsService:
                     " WHERE guarnicao_id = :gid AND ativo = true AND embedding IS NOT NULL"
                 ),
                 {"gid": guarnicao_id},
+            )
+        elif bpm_id is not None:
+            result_total = await self.db.execute(
+                sql_text(
+                    "SELECT COUNT(*) FROM ocorrencias"
+                    " WHERE ativo = true"
+                    " AND guarnicao_id IN ("
+                    "SELECT id FROM guarnicoes WHERE bpm_id = :bid AND ativo = true)"
+                ),
+                {"bid": bpm_id},
+            )
+            result_indexadas = await self.db.execute(
+                sql_text(
+                    "SELECT COUNT(*) FROM ocorrencias"
+                    " WHERE ativo = true AND embedding IS NOT NULL"
+                    " AND guarnicao_id IN ("
+                    "SELECT id FROM guarnicoes WHERE bpm_id = :bid AND ativo = true)"
+                ),
+                {"bid": bpm_id},
             )
         else:
             result_total = await self.db.execute(
