@@ -6,7 +6,7 @@ Implementa listagem e criação de BPMs. Sem dependências FastAPI.
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflitoDadosError
+from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
 from app.models.bpm import Bpm
 from app.services.audit_service import AuditService
 
@@ -75,5 +75,44 @@ class BpmService:
             recurso="bpm",
             recurso_id=bpm.id,
             detalhes={"nome": nome},
+        )
+        return bpm
+
+    async def toggle_isolamento(self, bpm_id: int, valor: bool, admin_id: int) -> Bpm:
+        """Define o valor de isolamento_abordagens do BPM.
+
+        Quando ativo, usuários do BPM veem apenas abordagens do próprio BPM.
+        O isolamento de equipe prevalece se ambos estiverem ativos.
+
+        Args:
+            bpm_id: ID do BPM a atualizar.
+            valor: True ativa o isolamento, False desativa.
+            admin_id: ID do admin que executou a ação (auditoria).
+
+        Returns:
+            BPM atualizado com o novo valor.
+
+        Raises:
+            NaoEncontradoError: Se o BPM não existe ou está inativo.
+        """
+        result = await self.db.execute(
+            select(Bpm).where(
+                Bpm.id == bpm_id,
+                Bpm.ativo == True,  # noqa: E712
+            )
+        )
+        bpm = result.scalar_one_or_none()
+        if not bpm:
+            raise NaoEncontradoError("BPM não encontrado")
+
+        bpm.isolamento_abordagens = valor
+        await self.db.flush()
+
+        await self.audit.log(
+            usuario_id=admin_id,
+            acao="UPDATE",
+            recurso="bpm",
+            recurso_id=bpm.id,
+            detalhes={"acao": "toggle_isolamento", "valor": valor},
         )
         return bpm
