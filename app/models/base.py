@@ -74,12 +74,14 @@ class SoftDeleteMixin:
 class MultiTenantMixin:
     """Mixin para isolamento por guarnição (multi-tenancy).
 
-    Garante que todos os registros estejam associados a uma guarnição,
-    permitindo isolamento de dados entre diferentes unidades operacionais
-    e aplicação de filtros automáticos em queries.
+    Garante que os registros possam estar associados a uma guarnição.
+    O campo é opcional (nullable) pois o isolamento multi-tenancy está
+    desativado no modelo de acesso atual.
 
     Attributes:
-        guarnicao_id: ID da guarnição responsável (chave estrangeira).
+        guarnicao_id: ID da guarnição responsável (chave estrangeira, opcional).
     """
 
-    guarnicao_id: Mapped[int] = mapped_column(ForeignKey("guarnicoes.id"), index=True)
+    guarnicao_id: Mapped[int | None] = mapped_column(
+        ForeignKey("guarnicoes.id"), nullable=True, index=True
+    )
