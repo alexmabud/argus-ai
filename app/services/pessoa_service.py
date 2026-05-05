@@ -175,23 +175,24 @@ class PessoaService:
         return pessoa
 
     async def buscar_por_id(self, pessoa_id: int, user: Usuario) -> Pessoa:
-        """Obtém pessoa por ID com verificação de tenant.
+        """Obtém pessoa por ID.
+
+        Pessoas são cadastros globais — visíveis por qualquer usuário autenticado,
+        independente da guarnição. Isolamento de guarnição aplica-se apenas a abordagens.
 
         Args:
             pessoa_id: ID da pessoa a buscar.
-            user: Usuário autenticado (para verificação de guarnição).
+            user: Usuário autenticado.
 
         Returns:
             Pessoa encontrada.
 
         Raises:
-            NaoEncontradoError: Se pessoa não existe.
-            AcessoNegadoError: Se pessoa pertence a outra guarnição.
+            NaoEncontradoError: Se pessoa não existe ou está inativa.
         """
         pessoa = await self.repo.get(pessoa_id)
         if not pessoa:
             raise NaoEncontradoError("Pessoa")
-        TenantFilter.check_ownership(pessoa, user)
         return pessoa
 
     async def buscar_detalhe(self, pessoa_id: int, user: Usuario) -> Pessoa:
@@ -248,7 +249,8 @@ class PessoaService:
         Returns:
             Lista de pessoas encontradas.
         """
-        guarnicao_id = user.guarnicao_id if user else None
+        # Pessoas são globais — sem filtro de guarnição. Isolamento aplica-se só a abordagens.
+        guarnicao_id = None
         if cpf:
             cpf_hash = hash_for_search(cpf)
             result = await self.repo.get_by_cpf_hash(cpf_hash, guarnicao_id)

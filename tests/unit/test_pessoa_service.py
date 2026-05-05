@@ -1,7 +1,7 @@
 """Testes unitários do PessoaService.
 
 Testa criação com/sem CPF, busca fuzzy, soft delete, verificação de
-unicidade de CPF (hash) e isolamento multi-tenant.
+unicidade de CPF (hash) e visibilidade global de pessoas (sem filtro de guarnição).
 """
 
 import pytest
@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import decrypt, hash_for_search
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
+from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
@@ -138,6 +139,52 @@ class TestBuscarPessoa:
         service = PessoaService(db_session)
         with pytest.raises(NaoEncontradoError):
             await service.buscar_por_id(99999, usuario)
+
+    async def test_buscar_por_id_retorna_pessoa_sem_guarnicao(
+        self, db_session: AsyncSession, usuario: Usuario
+    ):
+        """Pessoa sem guarnicao_id deve ser visível por qualquer usuário.
+
+        Pessoas são cadastros globais — não devem ser bloqueadas pelo
+        TenantFilter mesmo quando guarnicao_id é NULL.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            usuario: Usuário com guarnicao_id definido.
+        """
+        pessoa = Pessoa(nome="Cadastro Global", guarnicao_id=None)
+        db_session.add(pessoa)
+        await db_session.flush()
+
+        service = PessoaService(db_session)
+        encontrada = await service.buscar_por_id(pessoa.id, usuario)
+        assert encontrada.id == pessoa.id
+
+    async def test_buscar_por_nome_retorna_pessoa_de_outra_guarnicao(
+        self, db_session: AsyncSession, usuario: Usuario, bpm: Bpm
+    ):
+        """Busca por nome deve retornar pessoas de qualquer guarnição.
+
+        O isolamento de guarnição não se aplica a pessoas — apenas a abordagens.
+        Um usuário deve encontrar qualquer pessoa cadastrada no sistema.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            usuario: Usuário da guarnição A.
+            bpm: BPM compartilhado para criar a guarnição B.
+        """
+        guarnicao_b = Guarnicao(nome="Outra Cia", bpm_id=bpm.id, codigo="OUTRA-001")
+        db_session.add(guarnicao_b)
+        await db_session.flush()
+
+        pessoa_outra = Pessoa(nome="Fulano de Outra Guarnicao", guarnicao_id=guarnicao_b.id)
+        db_session.add(pessoa_outra)
+        await db_session.flush()
+
+        service = PessoaService(db_session)
+        resultados = await service.buscar(nome="Fulano de Outra", user=usuario)
+        ids = [p.id for p in resultados]
+        assert pessoa_outra.id in ids, "Pessoa de outra guarnição deve aparecer na busca"
 
 
 class TestDesativarPessoa:
