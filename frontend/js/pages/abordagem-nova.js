@@ -26,7 +26,7 @@ function renderAbordagemNova() {
                  placeholder="Buscar por nome ou CPF..." style="width:100%;">
 
           <!-- Dica: adicionar outro abordado -->
-          <div x-show="selected.length > 0" x-cloak
+          <div x-show="pessoasSelecionadas.length > 0" x-cloak
                style="margin-top:8px;padding:8px 12px;border-radius:4px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);display:flex;align-items:flex-start;gap:8px;">
             <span style="color:#f59e0b;font-size:14px;line-height:1.4;flex-shrink:0;">↑</span>
             <span style="font-family:var(--font-data);font-size:12px;color:#f59e0b;line-height:1.4;">Para adicionar outro abordado a essa abordagem, busque o nome ou CPF novamente no campo acima.</span>
