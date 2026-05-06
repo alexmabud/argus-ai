@@ -734,11 +734,12 @@ function abordagemForm() {
       this.pessoaIds.push(tempId);
       this.pessoasSelecionadas.push(pessoaTemp);
 
-      // Adicionar nas tags do autocomplete para exibição
-      const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
-      if (autocompleteEl?._x_dataStack) {
-        autocompleteEl._x_dataStack[0].selected.push(pessoaTemp);
-      }
+      // Adicionar nas tags do autocomplete para exibição (Alpine v3: busca o escopo que tem 'selected')
+      try {
+        const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
+        const acScope = autocompleteEl?._x_dataStack?.find(d => Array.isArray(d?.selected));
+        acScope?.selected.push(pessoaTemp);
+      } catch { /* tag visual opcional — pessoa já está em pessoasSelecionadas */ }
 
       // Reset formulário
       this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
