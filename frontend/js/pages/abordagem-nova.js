@@ -177,6 +177,11 @@ function renderAbordagemNova() {
             </div>
           </div>
 
+          <p x-show="novaPessoa.endereco.trim() && (!anEstadoId || !anCidadeId || !anBairroId)"
+             style="font-family:var(--font-data);font-size:11px;color:var(--color-warning, #f59e0b);margin-top:0;">
+            Ao informar o endereço, selecione também estado, cidade e bairro.
+          </p>
+
           <button @click="criarPessoa()" class="btn btn-primary" :disabled="salvandoPessoa || !novaPessoa.nome.trim() || !!cpfCadastroErro || (novaPessoa.endereco.trim() && (!anEstadoId || !anCidadeId || !anBairroId))">
             <span x-show="!salvandoPessoa">Salvar e adicionar</span>
             <span x-show="salvandoPessoa" style="display:flex;align-items:center;gap:8px;">
