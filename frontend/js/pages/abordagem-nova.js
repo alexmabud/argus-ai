@@ -182,7 +182,7 @@ function renderAbordagemNova() {
             Ao informar o endereço, selecione também estado, cidade e bairro.
           </p>
 
-          <button @click="criarPessoa()" class="btn btn-primary" :disabled="novaPessoa.endereco.trim() && (!anEstadoId || !anCidadeId || !anBairroId)">
+          <button @click="criarPessoa()" class="btn btn-primary" :disabled="!!(novaPessoa.endereco.trim() && (!anEstadoId || !anCidadeId || !anBairroId))">
             <span x-show="!salvandoPessoa">Salvar e adicionar</span>
             <span x-show="salvandoPessoa" style="display:flex;align-items:center;gap:8px;">
               <span class="spinner"></span> Salvando...
