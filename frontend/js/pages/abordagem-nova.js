@@ -27,9 +27,9 @@ function renderAbordagemNova() {
 
           <!-- Dica: adicionar outro abordado -->
           <div x-show="pessoasSelecionadas.length > 0" x-cloak
-               style="margin-top:8px;padding:8px 12px;border-radius:4px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);display:flex;align-items:flex-start;gap:8px;">
-            <span style="color:#f59e0b;font-size:14px;line-height:1.4;flex-shrink:0;">↑</span>
-            <span style="font-family:var(--font-data);font-size:12px;color:#f59e0b;line-height:1.4;">Para adicionar outro abordado a essa abordagem, busque o nome ou CPF novamente no campo acima.</span>
+               style="margin-top:8px;padding:8px 12px;border-radius:4px;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.35);display:flex;align-items:flex-start;gap:8px;">
+            <span style="color:#00ff88;font-size:14px;line-height:1.4;flex-shrink:0;">↑</span>
+            <span style="font-family:var(--font-data);font-size:12px;color:#00ff88;line-height:1.4;">Para adicionar outro abordado a essa abordagem, busque o nome ou CPF novamente no campo acima.</span>
           </div>
 
           <!-- Dropdown resultados -->
@@ -194,9 +194,9 @@ function renderAbordagemNova() {
         <!-- Info e ações por abordado selecionado -->
         <div x-show="pessoasSelecionadas.length > 0" style="border-top:1px solid var(--color-border);padding-top:12px;display:flex;flex-direction:column;gap:12px;">
           <template x-for="p in pessoasSelecionadas" :key="p.id">
-            <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+            <div style="background:rgba(0,212,255,0.07);border:1px solid rgba(0,212,255,0.35);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:8px;">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <span style="font-family:var(--font-body);font-size:14px;color:var(--color-text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="p.nome"></span>
+                <span style="font-family:var(--font-body);font-size:14px;color:var(--color-text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="p.nome"></span>
                 <label :for="'foto-p-' + p.id"
                        style="cursor:pointer;font-family:var(--font-data);font-size:11px;padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;"
                        :style="fotosPessoas[p.id]
@@ -734,11 +734,18 @@ function abordagemForm() {
       this.pessoaIds.push(tempId);
       this.pessoasSelecionadas.push(pessoaTemp);
 
-      // Adicionar nas tags do autocomplete para exibição (Alpine v3: busca o escopo que tem 'selected')
+      // Adicionar nas tags do autocomplete e limpar o campo de busca
       try {
         const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
         const acScope = autocompleteEl?._x_dataStack?.find(d => Array.isArray(d?.selected));
-        acScope?.selected.push(pessoaTemp);
+        if (acScope) {
+          acScope.selected.push(pessoaTemp);
+          acScope.query = "";
+          acScope.showDropdown = false;
+        }
+        // Limpa visualmente o input de busca
+        const inputBusca = autocompleteEl?.querySelector("input[type='text']");
+        if (inputBusca) inputBusca.value = "";
       } catch { /* tag visual opcional — pessoa já está em pessoasSelecionadas */ }
 
       // Reset formulário
