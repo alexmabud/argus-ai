@@ -737,13 +737,14 @@ function abordagemForm() {
       // Adicionar nas tags do autocomplete e limpar o campo de busca
       try {
         const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
-        const acScope = autocompleteEl?._x_dataStack?.find(d => Array.isArray(d?.selected));
-        if (acScope) {
-          acScope.selected.push(pessoaTemp);
-          acScope.query = "";
-          acScope.showDropdown = false;
+        if (autocompleteEl && window.Alpine) {
+          const acData = window.Alpine.$data(autocompleteEl);
+          if (acData) {
+            acData.selected.push(pessoaTemp);
+            acData.query = "";
+            acData.showDropdown = false;
+          }
         }
-        // Limpa visualmente o input de busca
         const inputBusca = autocompleteEl?.querySelector("input[type='text']");
         if (inputBusca) inputBusca.value = "";
       } catch { /* tag visual opcional — pessoa já está em pessoasSelecionadas */ }
