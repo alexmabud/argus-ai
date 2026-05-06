@@ -18,16 +18,6 @@ function autocompleteComponent(tipo) {
     _debounceTimer: null,
     cpfErro: "",
 
-    init() {
-      this.$el.addEventListener('limpar', () => {
-        this.query = '';
-        this.results = [];
-        this._allResults = [];
-        this.showDropdown = false;
-        this.noResults = false;
-      });
-    },
-
     _isCPF(value) {
       return /^\d{3,}[\d.\-]*$/.test(value.trim());
     },
