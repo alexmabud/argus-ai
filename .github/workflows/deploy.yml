@@ -67,9 +67,9 @@ jobs:
             cd ~/argus-ai
             git pull
 
-            echo "══════ Versionando Service Worker ══════"
+            echo "══════ Versionando Service Worker e cache-bust do index.html ══════"
             bash ./update_sw_version.sh
-            trap 'git checkout frontend/sw.js 2>/dev/null || true' EXIT
+            trap 'git checkout frontend/sw.js frontend/index.html 2>/dev/null || true' EXIT
 
             echo "══════ Build e deploy ══════"
             docker compose -f docker-compose.prod.yml rm -f minio-init || true
