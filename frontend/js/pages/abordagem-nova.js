@@ -19,7 +19,9 @@ function renderAbordagemNova() {
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;position:relative;z-index:10;">
         <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Pessoas abordadas</span>
 
-        <div x-data="autocompleteComponent('pessoa')" style="position:relative;">
+        <div x-data="autocompleteComponent('pessoa')"
+             x-effect="if (_limparBusca > 0) { query = ''; results = []; _allResults = []; showDropdown = false; noResults = false; }"
+             style="position:relative;">
           <input type="text" :value="query"
                  @input="query = formatarBuscaQuery($event.target.value); onInput()"
                  @focus="showDropdown = results.length > 0 || noResults"
@@ -526,6 +528,9 @@ function abordagemForm() {
     recording: false,
     voiceSupported: typeof webkitSpeechRecognition !== "undefined" || typeof SpeechRecognition !== "undefined",
 
+    // Contador para forçar limpeza do autocomplete de pessoa via x-effect
+    _limparBusca: 0,
+
     // Cadastro nova pessoa
     showNovaPessoa: false,
     novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" },
@@ -734,16 +739,18 @@ function abordagemForm() {
       this.pessoaIds.push(tempId);
       this.pessoasSelecionadas.push(pessoaTemp);
 
-      // Adicionar nas tags do autocomplete e limpar o campo de busca
-      // O evento 'limpar' é tratado internamente pelo autocompleteComponent com reatividade própria
-      const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
-      if (autocompleteEl) {
-        try {
-          const acData = window.Alpine?.$data(autocompleteEl);
+      // Adicionar nas tags do autocomplete (visual opcional)
+      try {
+        const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
+        if (autocompleteEl && window.Alpine) {
+          const acData = window.Alpine.$data(autocompleteEl);
           if (acData) acData.selected.push(pessoaTemp);
-        } catch { /* tag visual opcional — pessoa já está em pessoasSelecionadas */ }
-        autocompleteEl.dispatchEvent(new CustomEvent('limpar'));
-      }
+        }
+      } catch { /* tag visual opcional — pessoa já está em pessoasSelecionadas */ }
+
+      // Incrementar dispara o x-effect no div do autocomplete, que limpa query/results
+      // dentro do próprio sistema reativo do Alpine — única forma garantida de funcionar
+      this._limparBusca++;
 
       // Reset formulário
       this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
@@ -1070,6 +1077,7 @@ function abordagemForm() {
       this.showNovoVeiculo = false;
       this.novasPessoas = [];
       this._tempIdCounter = 0;
+      this._limparBusca = 0;
       this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
       this.anEstadoId = null; this.anCidadeId = null; this.anCidadeTexto = "";
       this.anBairroId = null; this.anBairroTexto = "";
