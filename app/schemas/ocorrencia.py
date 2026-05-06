@@ -69,7 +69,7 @@ class OcorrenciaRead(BaseModel):
         return [n.strip() for n in str(v).split("|") if n.strip()]
 
     usuario_id: int
-    guarnicao_id: int
+    guarnicao_id: int | None = None
     criado_em: datetime
     atualizado_em: datetime
 

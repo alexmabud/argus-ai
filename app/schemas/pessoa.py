@@ -71,7 +71,7 @@ class PessoaRead(BaseModel):
         nome_mae: Nome da mãe.
         foto_principal_url: URL da foto de perfil (R2/S3).
         observacoes: Anotações sobre a pessoa.
-        guarnicao_id: ID da guarnição.
+        guarnicao_id: ID da guarnição (legado, pode ser nulo).
         criado_em: Timestamp de criação.
         atualizado_em: Timestamp de última atualização.
     """
@@ -84,7 +84,7 @@ class PessoaRead(BaseModel):
     nome_mae: str | None = None
     foto_principal_url: str | None = None
     observacoes: str | None = None
-    guarnicao_id: int
+    guarnicao_id: int | None = None
     criado_em: datetime
     atualizado_em: datetime
 

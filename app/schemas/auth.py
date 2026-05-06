@@ -131,7 +131,7 @@ class UsuarioRead(BaseModel):
     matricula: str
     email: str | None = None
     is_admin: bool
-    guarnicao_id: int
+    guarnicao_id: int | None = None
     posto_graduacao: str | None = None
     nome_guerra: str | None = None
     foto_url: str | None = None

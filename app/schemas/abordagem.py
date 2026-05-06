@@ -86,7 +86,7 @@ class AbordagemRead(BaseModel):
     endereco_texto: str | None = None
     observacao: str | None = None
     usuario_id: int
-    guarnicao_id: int
+    guarnicao_id: int | None = None
     origem: str
     criado_em: datetime
     atualizado_em: datetime
