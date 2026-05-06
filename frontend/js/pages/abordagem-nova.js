@@ -734,20 +734,30 @@ function abordagemForm() {
       this.pessoaIds.push(tempId);
       this.pessoasSelecionadas.push(pessoaTemp);
 
-      // Adicionar nas tags do autocomplete e limpar o campo de busca
+      // Adicionar nas tags do autocomplete (visual opcional)
       try {
         const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
         if (autocompleteEl && window.Alpine) {
           const acData = window.Alpine.$data(autocompleteEl);
+          if (acData) acData.selected.push(pessoaTemp);
+        }
+      } catch { /* tag visual opcional — pessoa já está em pessoasSelecionadas */ }
+
+      // Limpar campo de busca sempre, independente do push acima
+      this.$nextTick(() => {
+        const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
+        if (autocompleteEl) {
+          const acData = window.Alpine?.$data(autocompleteEl);
           if (acData) {
-            acData.selected.push(pessoaTemp);
             acData.query = "";
             acData.showDropdown = false;
+            acData.noResults = false;
+            acData.results = [];
           }
+          const inputBusca = autocompleteEl.querySelector("input[type='text']");
+          if (inputBusca) inputBusca.value = "";
         }
-        const inputBusca = autocompleteEl?.querySelector("input[type='text']");
-        if (inputBusca) inputBusca.value = "";
-      } catch { /* tag visual opcional — pessoa já está em pessoasSelecionadas */ }
+      });
 
       // Reset formulário
       this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
