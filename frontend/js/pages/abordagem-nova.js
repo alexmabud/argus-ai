@@ -25,6 +25,13 @@ function renderAbordagemNova() {
                  @focus="showDropdown = results.length > 0 || noResults"
                  placeholder="Buscar por nome ou CPF..." style="width:100%;">
 
+          <!-- Dica: adicionar outro abordado -->
+          <div x-show="selected.length > 0" x-cloak
+               style="margin-top:8px;padding:8px 12px;border-radius:4px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);display:flex;align-items:flex-start;gap:8px;">
+            <span style="color:#f59e0b;font-size:14px;line-height:1.4;flex-shrink:0;">↑</span>
+            <span style="font-family:var(--font-data);font-size:12px;color:#f59e0b;line-height:1.4;">Para adicionar outro abordado a essa abordagem, busque o nome ou CPF novamente no campo acima.</span>
+          </div>
+
           <!-- Dropdown resultados -->
           <div x-show="showDropdown" x-cloak @click.outside="showDropdown = false"
                style="position:absolute;z-index:20;width:100%;margin-top:4px;max-height:14rem;overflow-y:auto;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
@@ -170,7 +177,7 @@ function renderAbordagemNova() {
             </div>
           </div>
 
-          <button @click="criarPessoa()" class="btn btn-primary" :disabled="salvandoPessoa || !novaPessoa.nome.trim() || !!cpfCadastroErro">
+          <button @click="criarPessoa()" class="btn btn-primary" :disabled="salvandoPessoa || !novaPessoa.nome.trim() || !!cpfCadastroErro || (novaPessoa.endereco.trim() && (!anEstadoId || !anCidadeId || !anBairroId))">
             <span x-show="!salvandoPessoa">Salvar e adicionar</span>
             <span x-show="salvandoPessoa" style="display:flex;align-items:center;gap:8px;">
               <span class="spinner"></span> Salvando...
@@ -687,6 +694,11 @@ function abordagemForm() {
 
       if (this.novaPessoa.cpf.trim() && !validarCPF(this.novaPessoa.cpf)) {
         this.cpfCadastroErro = "CPF inválido";
+        return;
+      }
+
+      if (this.novaPessoa.endereco.trim() && (!this.anEstadoId || !this.anCidadeId || !this.anBairroId)) {
+        this.erroPessoa = "Ao informar o endereço, selecione também estado, cidade e bairro.";
         return;
       }
 
