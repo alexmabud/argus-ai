@@ -734,30 +734,16 @@ function abordagemForm() {
       this.pessoaIds.push(tempId);
       this.pessoasSelecionadas.push(pessoaTemp);
 
-      // Adicionar nas tags do autocomplete (visual opcional)
-      try {
-        const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
-        if (autocompleteEl && window.Alpine) {
-          const acData = window.Alpine.$data(autocompleteEl);
-          if (acData) acData.selected.push(pessoaTemp);
-        }
-      } catch { /* tag visual opcional — pessoa já está em pessoasSelecionadas */ }
-
-      // Limpar campo de busca sempre, independente do push acima
-      this.$nextTick(() => {
-        const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
-        if (autocompleteEl) {
+      // Adicionar nas tags do autocomplete e limpar o campo de busca
+      // O evento 'limpar' é tratado internamente pelo autocompleteComponent com reatividade própria
+      const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
+      if (autocompleteEl) {
+        try {
           const acData = window.Alpine?.$data(autocompleteEl);
-          if (acData) {
-            acData.query = "";
-            acData.showDropdown = false;
-            acData.noResults = false;
-            acData.results = [];
-          }
-          const inputBusca = autocompleteEl.querySelector("input[type='text']");
-          if (inputBusca) inputBusca.value = "";
-        }
-      });
+          if (acData) acData.selected.push(pessoaTemp);
+        } catch { /* tag visual opcional — pessoa já está em pessoasSelecionadas */ }
+        autocompleteEl.dispatchEvent(new CustomEvent('limpar'));
+      }
 
       // Reset formulário
       this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
