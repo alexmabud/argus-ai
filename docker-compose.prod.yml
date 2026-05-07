@@ -93,7 +93,7 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "arq"]
+      test: ["CMD", "sh", "-c", "grep -q arq /proc/1/cmdline"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -123,7 +123,7 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "arq"]
+      test: ["CMD", "sh", "-c", "grep -q arq /proc/1/cmdline"]
       interval: 30s
       timeout: 5s
       retries: 3
