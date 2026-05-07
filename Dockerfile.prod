@@ -6,7 +6,7 @@ FROM python:3.11-slim-bookworm AS builder
 
 WORKDIR /build
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -28,8 +28,8 @@ LABEL description="Argus AI - Sistema de apoio operacional com IA"
 
 WORKDIR /app
 
-# Deps do sistema (runtime only)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Deps do sistema (runtime only) + upgrade para corrigir CVEs do OS
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get install -y --no-install-recommends \
     libpq5 \
     libgl1 \
     libglib2.0-0 \
