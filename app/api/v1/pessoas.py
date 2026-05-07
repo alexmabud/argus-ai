@@ -41,18 +41,19 @@ router = APIRouter(prefix="/pessoas", tags=["Pessoas"])
 
 
 def _to_pessoa_read(pessoa, service: PessoaService) -> PessoaRead:
-    """Converte model Pessoa para schema PessoaRead com CPF mascarado.
+    """Converte model Pessoa para schema PessoaRead com CPF completo e mascarado.
 
     Args:
         pessoa: Instância de Pessoa do banco.
-        service: Instância de PessoaService para mascarar CPF.
+        service: Instância de PessoaService para descriptografar/mascarar CPF.
 
     Returns:
-        PessoaRead com cpf_masked preenchido.
+        PessoaRead com cpf e cpf_masked preenchidos.
     """
     return PessoaRead(
         id=pessoa.id,
         nome=pessoa.nome,
+        cpf=service.decrypt_cpf(pessoa),
         cpf_masked=service.mask_cpf(pessoa),
         data_nascimento=pessoa.data_nascimento,
         apelido=pessoa.apelido,
@@ -487,6 +488,7 @@ async def listar_abordagens_pessoa(
                 PessoaRead(
                     id=p.id,
                     nome=p.nome,
+                    cpf=pessoa_service.decrypt_cpf(p),
                     cpf_masked=pessoa_service.mask_cpf(p),
                     data_nascimento=p.data_nascimento,
                     apelido=p.apelido,
