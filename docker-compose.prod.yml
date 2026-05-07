@@ -189,10 +189,10 @@ services:
       while true; do
         now=\$$(date +%s);
         midnight=\$$((now - now % 86400));
-        target=\$$((midnight + 25200));
+        target=\$$((midnight + 36000));
         if [ \$$now -ge \$$target ]; then target=\$$((target + 86400)); fi;
         sleep_secs=\$$((target - now));
-        echo \"[\$$(date)] Próximo backup em \$$((sleep_secs / 3600))h\$$((sleep_secs % 3600 / 60))m (às 07:00 UTC).\";
+        echo \"[\$$(date)] Próximo backup em \$$((sleep_secs / 3600))h\$$((sleep_secs % 3600 / 60))m (às 07:00 BRT / 10:00 UTC).\";
         sleep \$$sleep_secs;
         echo \"[\$$(date)] Iniciando backup...\";
         pg_dump -Fc > /backups/argus_\$$(date +%Y%m%d_%H%M%S).dump;
