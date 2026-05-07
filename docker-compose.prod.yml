@@ -69,7 +69,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 40s
+      start_period: 60s
     depends_on:
       db:
         condition: service_healthy
@@ -92,6 +92,12 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "arq"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     volumes:
       - insightface_models:/app/.insightface
     depends_on:
@@ -116,6 +122,12 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "arq"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     volumes:
       - insightface_models:/app/.insightface
     depends_on:
