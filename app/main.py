@@ -11,7 +11,7 @@ import traceback
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -24,6 +24,8 @@ from app.core.logging_config import setup_logging
 from app.core.middleware import AuditMiddleware, LoggingMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.database.session import engine
+from app.dependencies import get_current_user
+from app.models.usuario import Usuario
 
 logger = logging.getLogger("argus")
 
@@ -126,16 +128,22 @@ def create_app() -> FastAPI:
     # Em produção o Caddy intercepta /storage/* antes de chegar aqui,
     # mas em dev (sem Caddy) o FastAPI faz o proxy.
     @app.get("/storage/{path:path}")
-    async def storage_proxy(path: str, request: Request) -> Response:
+    async def storage_proxy(
+        path: str,
+        request: Request,
+        _: Usuario = Depends(get_current_user),
+    ) -> Response:
         """Proxy reverso para arquivos no storage S3/MinIO.
 
         Repassa a requisição para o endpoint S3 configurado, permitindo
         que URLs relativas (/storage/bucket/key) funcionem em qualquer
-        ambiente sem mixed-content.
+        ambiente sem mixed-content. Requer autenticação JWT válida para
+        impedir acesso público a fotos e documentos sensíveis.
 
         Args:
             path: Caminho do arquivo no storage (bucket/key).
             request: Request HTTP original.
+            _: Usuário autenticado (validação JWT — não utilizado no corpo).
 
         Returns:
             Response com o conteúdo do arquivo e headers preservados.
@@ -148,7 +156,7 @@ def create_app() -> FastAPI:
             status_code=upstream.status_code,
             headers={
                 "Content-Type": upstream.headers.get("Content-Type", "application/octet-stream"),
-                "Cache-Control": "public, max-age=86400",
+                "Cache-Control": "private, max-age=3600",
             },
         )
 
