@@ -148,9 +148,9 @@ function renderAbordagemNova() {
                   </div>
                 </template>
                 <div x-show="anCidadeCadastrarNovo" @mousedown.prevent="anCadastrarCidade()"
-                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-primary);border-top:1px solid var(--color-border);"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;font-weight:600;color:#f59e0b;border-top:1px solid var(--color-border);display:flex;align-items:center;gap:6px;"
                      onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
-                  + Cadastrar "<span x-text="anCidadeTexto"></span>"
+                  <span style="font-size:15px;line-height:1;">+</span> Cadastrar "<span x-text="anCidadeTexto"></span>"
                 </div>
               </div>
             </div>
@@ -171,9 +171,9 @@ function renderAbordagemNova() {
                   </div>
                 </template>
                 <div x-show="anBairroCadastrarNovo" @mousedown.prevent="anCadastrarBairro()"
-                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-primary);border-top:1px solid var(--color-border);"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;font-weight:600;color:#f59e0b;border-top:1px solid var(--color-border);display:flex;align-items:center;gap:6px;"
                      onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
-                  + Cadastrar "<span x-text="anBairroTexto"></span>"
+                  <span style="font-size:15px;line-height:1;">+</span> Cadastrar "<span x-text="anBairroTexto"></span>"
                 </div>
               </div>
             </div>
@@ -663,9 +663,8 @@ function abordagemForm() {
       });
     },
 
-    anPosicionarDropdown(inputEl) {
-      const r = inputEl.getBoundingClientRect();
-      return `position:fixed;z-index:9999;top:${r.bottom + window.scrollY}px;left:${r.left}px;width:${r.width}px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;`;
+    anPosicionarDropdown(_inputEl) {
+      return `position:absolute;z-index:9999;top:100%;left:0;right:0;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;`;
     },
     async anBuscarCidades(event) {
       const q = this.anCidadeTexto.trim();
