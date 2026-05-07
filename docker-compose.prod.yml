@@ -187,7 +187,16 @@ services:
     entrypoint: >
       /bin/sh -c "
       while true; do
-        sleep 86400;
+        H=\$$(date +%H); M=\$$(date +%M); S=\$$(date +%S);
+        elapsed=\$$((H * 3600 + M * 60 + S));
+        target=25200;
+        if [ \$$elapsed -lt \$$target ]; then
+          sleep_secs=\$$((target - elapsed));
+        else
+          sleep_secs=\$$((86400 - elapsed + target));
+        fi;
+        echo \"[\$$(date)] Próximo backup em \$$((sleep_secs / 3600))h\$$((sleep_secs % 3600 / 60))m (às 07:00 UTC).\";
+        sleep \$$sleep_secs;
         echo \"[\$$(date)] Iniciando backup...\";
         pg_dump -Fc > /backups/argus_\$$(date +%Y%m%d_%H%M%S).dump;
         echo \"[\$$(date)] Backup concluído.\";
