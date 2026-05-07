@@ -59,12 +59,13 @@ class PessoaUpdate(BaseModel):
 class PessoaRead(BaseModel):
     """Dados públicos de uma pessoa (leitura).
 
-    CPF nunca é retornado em texto plano. Apenas os últimos 2 dígitos
-    são exibidos no campo cpf_masked para conformidade LGPD.
+    CPF descriptografado é retornado em texto plano para uso operacional
+    por agentes autorizados. cpf_masked mantido para retrocompatibilidade.
 
     Attributes:
         id: Identificador único da pessoa.
         nome: Nome completo.
+        cpf: CPF completo descriptografado (ex: "123.456.789-09"). Null se sem CPF.
         cpf_masked: CPF mascarado (ex: "***.***.***-34"). Null se sem CPF.
         data_nascimento: Data de nascimento.
         apelido: Apelido ou "nome de rua".
@@ -78,6 +79,7 @@ class PessoaRead(BaseModel):
 
     id: int
     nome: str
+    cpf: str | None = None
     cpf_masked: str | None = None
     data_nascimento: date | None = None
     apelido: str | None = None

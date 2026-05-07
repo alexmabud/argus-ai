@@ -44,7 +44,7 @@ function renderAbordagemNova() {
                       style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);"
                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
                 <span x-text="getLabel(item)"></span>
-                <span x-show="item.cpf_masked" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);margin-left:8px;" x-text="item.cpf_masked"></span>
+                <span x-show="item.cpf || item.cpf_masked" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);margin-left:8px;" x-text="item.cpf || item.cpf_masked"></span>
               </button>
             </template>
 
@@ -212,9 +212,9 @@ function renderAbordagemNova() {
               </div>
 
               <!-- CPF -->
-              <div x-show="p.cpf_masked || p.cpf" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">
+              <div x-show="p.cpf || p.cpf_masked" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">
                 <span style="color:var(--color-text-dim);">CPF:</span>
-                <span x-text="p.cpf_masked || p.cpf"></span>
+                <span x-text="p.cpf || p.cpf_masked"></span>
               </div>
 
               <!-- DN + idade -->
