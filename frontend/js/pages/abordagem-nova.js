@@ -211,6 +211,24 @@ function renderAbordagemNova() {
                        @change="fotosPessoas = {...fotosPessoas, [p.id]: $event.target.files[0]}">
               </div>
 
+              <!-- CPF -->
+              <div x-show="p.cpf_masked || p.cpf" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">
+                <span style="color:var(--color-text-dim);">CPF:</span>
+                <span x-text="p.cpf_masked || p.cpf"></span>
+              </div>
+
+              <!-- DN + idade -->
+              <div x-show="p.data_nascimento" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">
+                <span style="color:var(--color-text-dim);">DN:</span>
+                <span x-text="formatarDataBR(p.data_nascimento) + ' · ' + calcularIdade(p.data_nascimento) + ' anos'"></span>
+              </div>
+
+              <!-- Nome da mãe -->
+              <div x-show="p.nome_mae" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">
+                <span style="color:var(--color-text-dim);">Mãe:</span>
+                <span x-text="p.nome_mae"></span>
+              </div>
+
               <!-- Endereço atual (se houver) -->
               <div x-show="pessoaEnderecos[p.id]?.length > 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">
                 <span style="color:var(--color-text-dim);">Endereço atual:</span>
@@ -804,6 +822,22 @@ function abordagemForm() {
       if (!end) return "";
       const parts = [end.endereco, end.bairro, end.cidade, end.estado].filter(Boolean);
       return parts.join(", ");
+    },
+
+    formatarDataBR(isoDate) {
+      if (!isoDate) return "";
+      const [y, m, d] = isoDate.split("-");
+      return `${d}/${m}/${y}`;
+    },
+
+    calcularIdade(isoDate) {
+      if (!isoDate) return "";
+      const hoje = new Date();
+      const nasc = new Date(isoDate + "T00:00:00");
+      let idade = hoje.getFullYear() - nasc.getFullYear();
+      const m = hoje.getMonth() - nasc.getMonth();
+      if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+      return idade;
     },
 
     async criarVeiculo() {
