@@ -9,6 +9,17 @@ services:
       dockerfile: docker/db.Dockerfile
       network: host
     restart: always
+    command: >
+      postgres
+      -c shared_buffers=2GB
+      -c effective_cache_size=18GB
+      -c work_mem=32MB
+      -c maintenance_work_mem=256MB
+      -c max_connections=100
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=32MB
+      -c random_page_cost=1.2
+      -c effective_io_concurrency=100
     environment:
       POSTGRES_USER: ${DB_USER:-argus}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -68,6 +79,30 @@ services:
         condition: service_completed_successfully
 
   worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      network: host
+    restart: always
+    command: python -m arq app.worker.WorkerSettings
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
+    volumes:
+      - insightface_models:/app/.insightface
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  worker-2:
     build:
       context: .
       dockerfile: Dockerfile.prod
@@ -152,9 +187,7 @@ services:
     entrypoint: >
       /bin/sh -c "
       while true; do
-        sleep_until=\$$(date -d 'tomorrow 03:00' +%s 2>/dev/null || date -v+1d -v3H -v0M -v0S +%s);
-        now=\$$(date +%s);
-        sleep \$$((sleep_until - now));
+        sleep 86400;
         echo \"[\$$(date)] Iniciando backup...\";
         pg_dump -Fc > /backups/argus_\$$(date +%Y%m%d_%H%M%S).dump;
         echo \"[\$$(date)] Backup concluído.\";
