@@ -129,6 +129,7 @@ class SyncService:
             veiculo_ids=dados.get("veiculo_ids", []),
             passagens=[],
         )
+        assert user.guarnicao_id is not None
         await service.criar(
             data=data,
             user_id=user.id,
@@ -152,6 +153,7 @@ class SyncService:
             apelido=dados.get("apelido"),
             observacoes=dados.get("observacoes"),
         )
+        assert user.guarnicao_id is not None
         await service.criar(
             data=data,
             user_id=user.id,
@@ -176,6 +178,7 @@ class SyncService:
             tipo=dados.get("tipo"),
             observacoes=dados.get("observacoes"),
         )
+        assert user.guarnicao_id is not None
         await service.criar(
             data=data,
             user_id=user.id,
