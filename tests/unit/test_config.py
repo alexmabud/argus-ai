@@ -27,6 +27,7 @@ class TestS3PublicUrl:
                 "S3_ENDPOINT": "http://minio:9000",
                 "S3_ACCESS_KEY": "minioadmin",
                 "S3_SECRET_KEY": "minioadmin",
+                "TESTING": "1",
             },
             clear=True,
         ):
@@ -49,6 +50,7 @@ class TestS3PublicUrl:
                 "S3_ACCESS_KEY": "minioadmin",
                 "S3_SECRET_KEY": "minioadmin",
                 "S3_PUBLIC_URL": "http://localhost:9000",
+                "TESTING": "1",
             },
             clear=True,
         ):
@@ -71,6 +73,7 @@ class TestS3PublicUrl:
                 "S3_ACCESS_KEY": "minioadmin",
                 "S3_SECRET_KEY": "minioadmin",
                 "S3_PUBLIC_URL": "http://localhost:9000",
+                "TESTING": "1",
             },
             clear=True,
         ):
