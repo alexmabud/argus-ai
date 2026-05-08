@@ -133,28 +133,36 @@ class Settings(BaseSettings):
     # LGPD
     DATA_RETENTION_DAYS: int = 1825  # 5 anos
 
+    # Flag setada pelo CI para distinguir ambiente de teste de produção real.
+    # Quando TESTING=1, o validator de CORS_ORIGINS é pulado.
+    TESTING: bool = False
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @model_validator(mode="after")
     def _validar_producao(self) -> "Settings":
         """Garante que origens de dev não vazem para produção.
 
-        Quando DEBUG=False, recusa CORS_ORIGINS contendo localhost/127.0.0.1
-        e CORS_ORIGINS contendo coringa "*". Falha rápido no startup em vez
+        Quando DEBUG=False (e TESTING=False), recusa CORS_ORIGINS contendo
+        localhost/127.0.0.1 ou coringa "*". Falha rápido no startup em vez
         de servir tráfego com configuração insegura.
+
+        TESTING=1 desativa a checagem para que CI/pytest possam carregar
+        Settings com defaults sem precisar setar CORS_ORIGINS.
         """
-        if not self.DEBUG:
-            origens_dev = [o for o in self.CORS_ORIGINS if "localhost" in o or "127.0.0.1" in o]
-            if origens_dev:
-                raise ValueError(
-                    "CORS_ORIGINS contém origens de dev em produção (DEBUG=False): "
-                    f"{origens_dev}. Configure CORS_ORIGINS apenas com o domínio público."
-                )
-            if "*" in self.CORS_ORIGINS:
-                raise ValueError(
-                    "CORS_ORIGINS=['*'] não é permitido em produção. "
-                    "Liste explicitamente os domínios autorizados."
-                )
+        if self.DEBUG or self.TESTING:
+            return self
+        origens_dev = [o for o in self.CORS_ORIGINS if "localhost" in o or "127.0.0.1" in o]
+        if origens_dev:
+            raise ValueError(
+                "CORS_ORIGINS contém origens de dev em produção (DEBUG=False): "
+                f"{origens_dev}. Configure CORS_ORIGINS apenas com o domínio público."
+            )
+        if "*" in self.CORS_ORIGINS:
+            raise ValueError(
+                "CORS_ORIGINS=['*'] não é permitido em produção. "
+                "Liste explicitamente os domínios autorizados."
+            )
         return self
 
 
