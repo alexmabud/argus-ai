@@ -14,6 +14,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth_cookie import ACCESS_TOKEN_COOKIE
 from app.core.security import decodificar_token
 from app.database.session import get_db
 from app.models.usuario import Usuario
@@ -21,7 +22,9 @@ from app.models.usuario import Usuario
 logger = logging.getLogger("argus")
 
 #: Esquema de segurança HTTP Bearer para extrair token do header Authorization.
-security = HTTPBearer()
+#: auto_error=False permite que requests sem header caiam no fallback de cookie
+#: (necessário para <img src="/storage/..."> que não envia header customizado).
+security = HTTPBearer(auto_error=False)
 
 #: Locks para evitar race condition no lazy load de serviços pesados.
 _face_service_lock = asyncio.Lock()
@@ -29,10 +32,17 @@ _embedding_service_lock = asyncio.Lock()
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> Usuario:
-    """Extrai e valida usuário autenticado do token JWT Bearer.
+    """Extrai e valida usuário autenticado do token JWT Bearer ou cookie.
+
+    Aceita o token via duas fontes, nesta ordem:
+    1. Header ``Authorization: Bearer <token>`` (chamadas via fetch/XHR).
+    2. Cookie HTTPOnly ``argus_access_token`` (chamadas de browser via
+       ``<img src>``, ``<video>``, ``<a download>``, etc., que não
+       conseguem injetar headers customizados).
 
     Além de validar assinatura e expiração do JWT, verifica o session_id:
     o claim 'sid' do token deve corresponder ao session_id no banco.
@@ -40,7 +50,9 @@ async def get_current_user(
     Usuários com session_id=None (pausados ou sem login) são sempre rejeitados.
 
     Args:
+        request: Request FastAPI usado para ler o cookie de fallback.
         credentials: Credencial Bearer extraída do header Authorization.
+            None se o header não foi enviado.
         db: Sessão do banco de dados para buscar usuário.
 
     Returns:
@@ -50,7 +62,14 @@ async def get_current_user(
         HTTPException: 401 se token inválido, expirado, usuário inativo
             ou session_id não confere.
     """
-    payload = decodificar_token(credentials.credentials)
+    token = credentials.credentials if credentials else request.cookies.get(ACCESS_TOKEN_COOKIE)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Não autenticado",
+        )
+
+    payload = decodificar_token(token)
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

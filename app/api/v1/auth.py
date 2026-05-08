@@ -5,9 +5,10 @@ de dados do usuário autenticado. Implementa rate limiting para proteção
 contra abuso.
 """
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth_cookie import clear_access_cookie, set_access_cookie
 from app.core.rate_limit import limiter
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_imagem
 from app.database.session import get_db
@@ -31,6 +32,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 @limiter.limit("10/minute")
 async def login(
     request: Request,
+    response: Response,
     data: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
@@ -62,18 +64,23 @@ async def login(
         para requisições subsequentes.
     """
     service = AuthService(db)
-    return await service.login(
+    tokens = await service.login(
         data.matricula,
         data.senha,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+    # Cookie HTTPOnly permite que <img src="/storage/..."> autentique
+    # automaticamente, mantendo o token oculto de XSS.
+    set_access_cookie(response, tokens.access_token)
+    return tokens
 
 
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit("30/minute")
 async def refresh(
     request: Request,
+    response: Response,
     data: RefreshRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
@@ -101,7 +108,27 @@ async def refresh(
         429: Muitas requisições no período (rate limit: 30/minuto).
     """
     service = AuthService(db)
-    return await service.refresh(data.refresh_token)
+    tokens = await service.refresh(data.refresh_token)
+    set_access_cookie(response, tokens.access_token)
+    return tokens
+
+
+@router.post("/logout", status_code=204)
+@limiter.limit("30/minute")
+async def logout(request: Request, response: Response) -> None:
+    """Encerra a sessão limpando o cookie HTTPOnly.
+
+    Não exige autenticação — limpar cookie expirado/inválido também
+    é válido. Frontend deve descartar tokens do localStorage em paralelo.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        response: Resposta usada para emitir o Set-Cookie de remoção.
+
+    Status Code:
+        204: Sessão encerrada (sem corpo).
+    """
+    clear_access_cookie(response)
 
 
 @router.get("/me", response_model=UsuarioRead)
