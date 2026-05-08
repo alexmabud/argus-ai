@@ -1,8 +1,9 @@
-"""Middlewares de logging, auditoria e segurança para requisições HTTP.
+"""Middlewares de logging e segurança para requisições HTTP.
 
-Intercepta todas as requisições HTTP para registrar logs de acesso,
-adicionar headers de segurança (defense-in-depth) e preparar
-infraestrutura para auditoria.
+Intercepta todas as requisições HTTP para registrar logs de acesso e
+adicionar headers de segurança (defense-in-depth). Auditoria é feita
+explicitamente em cada endpoint via AuditService — não há middleware
+genérico de auditoria para evitar logs ruidosos sem contexto de recurso.
 """
 
 import logging
@@ -10,6 +11,8 @@ import time
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+
+from app.config import settings
 
 logger = logging.getLogger("argus")
 
@@ -37,6 +40,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(self), microphone=(self)"
+        # Em dev liberamos http://localhost:9000 para servir fotos do MinIO
+        # diretamente; em prod o storage passa pela API (mesmo origin).
+        img_extra = " http://localhost:9000" if settings.DEBUG else ""
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
@@ -46,7 +52,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "https://fonts.googleapis.com https://unpkg.com; "
             "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
             "img-src 'self' data: blob: "
-            "https://*.tile.openstreetmap.org https://unpkg.com http://localhost:9000; "
+            f"https://*.tile.openstreetmap.org https://unpkg.com{img_extra}; "
             "connect-src 'self' "
             "https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com "
             "https://nominatim.openstreetmap.org https://fonts.googleapis.com "
@@ -84,26 +90,4 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response.status_code,
             elapsed,
         )
-        return response
-
-
-class AuditMiddleware(BaseHTTPMiddleware):
-    """Middleware para auditoria de requisições (placeholder para fase futura).
-
-    Atualmente apenas passa requisição adiante. Será expandido para registrar
-    detalhes de auditoria como usuário, endpoint, payload, timestamp, etc.
-    """
-
-    async def dispatch(self, request: Request, call_next):
-        """Processa requisição e aguarda implementação de auditoria.
-
-        Args:
-            request: Objeto de requisição Starlette.
-            call_next: Callable para passar requisição para próximo middleware.
-
-        Returns:
-            Resposta HTTP do endpoint.
-        """
-
-        response = await call_next(request)
         return response

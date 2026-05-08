@@ -9,10 +9,7 @@ arguseye.duckdns.org {
 		-Server
 	}
 
-	handle /storage/* {
-		uri strip_prefix /storage
-		reverse_proxy minio:9000
-		header Cache-Control "no-store"
-	}
+	# /storage/* é roteado pela API (que valida JWT antes de proxy ao MinIO).
+	# NUNCA expor MinIO diretamente — bucket pode conter biométricos e PDFs sigilosos.
 	reverse_proxy api:8000
 }
