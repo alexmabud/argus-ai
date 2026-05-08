@@ -10,8 +10,8 @@ import logging
 import traceback
 from contextlib import asynccontextmanager
 
-import httpx
-from fastapi import Depends, FastAPI, Request
+from botocore.exceptions import ClientError
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -26,6 +26,7 @@ from app.core.rate_limit import limiter
 from app.database.session import engine
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
+from app.services.storage_service import StorageService
 
 logger = logging.getLogger("argus")
 
@@ -49,12 +50,9 @@ async def lifespan(app: FastAPI):
     # Startup rápido: serviços de IA são carregados sob demanda (lazy loading).
     app.state.embedding_service = None
     app.state.face_service = None
-    # Cliente HTTP para proxy de storage (MinIO/R2).
-    app.state.storage_http = httpx.AsyncClient(timeout=30.0)
 
     yield
     # Shutdown
-    await app.state.storage_http.aclose()
     await engine.dispose()
 
 
@@ -123,38 +121,59 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(api_router, prefix="/api/v1")
 
-    # Proxy reverso para storage S3/MinIO — evita mixed-content em HTTPS.
-    # Em produção o Caddy intercepta /storage/* antes de chegar aqui,
-    # mas em dev (sem Caddy) o FastAPI faz o proxy.
+    # Proxy autenticado para storage S3/MinIO. O bucket é privado
+    # (mc anonymous set none), então o backend baixa via S3 SDK com
+    # credenciais e devolve ao browser. Requer JWT (header ou cookie
+    # HTTPOnly) para impedir acesso público a fotos e documentos.
     @app.get("/storage/{path:path}")
     async def storage_proxy(
         path: str,
-        request: Request,
         _: Usuario = Depends(get_current_user),
     ) -> Response:
-        """Proxy reverso para arquivos no storage S3/MinIO.
+        """Proxy autenticado para arquivos no storage S3/MinIO.
 
-        Repassa a requisição para o endpoint S3 configurado, permitindo
-        que URLs relativas (/storage/bucket/key) funcionem em qualquer
-        ambiente sem mixed-content. Requer autenticação JWT válida para
-        impedir acesso público a fotos e documentos sensíveis.
+        O ``path`` recebido tem o formato ``{bucket}/{key}`` para manter
+        compatibilidade com URLs relativas já gravadas em banco
+        (``/storage/argus/fotos/foo.jpg``). Apenas o bucket configurado
+        em ``S3_BUCKET`` é aceito — qualquer outro bucket retorna 404
+        para impedir uso do proxy como SSRF para outros buckets.
 
         Args:
-            path: Caminho do arquivo no storage (bucket/key).
-            request: Request HTTP original.
-            _: Usuário autenticado (validação JWT — não utilizado no corpo).
+            path: Caminho ``{bucket}/{key}`` recebido na URL.
+            _: Usuário autenticado (JWT via header ou cookie).
 
         Returns:
-            Response com o conteúdo do arquivo e headers preservados.
+            Response com o conteúdo do arquivo e Content-Type informado
+            pelo S3.
+
+        Raises:
+            HTTPException: 404 se a chave não existe ou aponta para
+                outro bucket; 502 em outros erros de S3.
         """
-        upstream_url = f"{settings.S3_ENDPOINT}/{path}"
-        client: httpx.AsyncClient = request.app.state.storage_http
-        upstream = await client.get(upstream_url)
+        bucket, _, key = path.partition("/")
+        if not key or bucket != settings.S3_BUCKET:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Arquivo não encontrado",
+            )
+
+        try:
+            body, content_type = await StorageService().download_with_meta(key)
+        except ClientError as exc:
+            code = exc.response.get("Error", {}).get("Code", "")
+            if code in {"NoSuchKey", "404"}:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="Arquivo não encontrado"
+                ) from exc
+            logger.exception("Falha ao baixar %s do storage: %s", key, code)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao acessar storage"
+            ) from exc
+
         return Response(
-            content=upstream.content,
-            status_code=upstream.status_code,
+            content=body,
             headers={
-                "Content-Type": upstream.headers.get("Content-Type", "application/octet-stream"),
+                "Content-Type": content_type,
                 "Cache-Control": "private, max-age=3600",
             },
         )

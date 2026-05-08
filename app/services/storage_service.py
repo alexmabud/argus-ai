@@ -142,6 +142,27 @@ class StorageService:
         Raises:
             Exception: Se falha no download do S3.
         """
+        body, _ = await self.download_with_meta(key)
+        return body
+
+    async def download_with_meta(self, key: str) -> tuple[bytes, str]:
+        """Faz download retornando bytes e content type informado pelo S3.
+
+        Usado pelo proxy /storage/* para devolver o arquivo com o mesmo
+        Content-Type registrado no upload, sem precisar adivinhar pela
+        extensão.
+
+        Args:
+            key: Chave (caminho) do arquivo no bucket.
+
+        Returns:
+            Tupla ``(bytes, content_type)``. ``content_type`` é o valor
+            retornado pelo S3 ou ``application/octet-stream`` como fallback.
+
+        Raises:
+            botocore.exceptions.ClientError: Se a chave não existe (NoSuchKey)
+                ou outro erro de S3 (acesso, bucket inválido, etc).
+        """
         async with self._session.client(
             "s3",
             endpoint_url=settings.S3_ENDPOINT,
@@ -154,6 +175,7 @@ class StorageService:
                 Key=key,
             )
             body = await response["Body"].read()
+            content_type = response.get("ContentType") or "application/octet-stream"
 
         logger.info("Download concluído: %s", key)
-        return body
+        return body, content_type
