@@ -150,7 +150,7 @@ def create_app() -> FastAPI:
             HTTPException: 404 se a chave não existe ou aponta para
                 outro bucket; 502 em outros erros de S3.
         """
-        bucket, _, key = path.partition("/")
+        bucket, _sep, key = path.partition("/")
         if not key or bucket != settings.S3_BUCKET:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
