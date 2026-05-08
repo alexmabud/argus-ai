@@ -8,7 +8,7 @@ contra abuso.
 from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth_cookie import clear_access_cookie, set_access_cookie
+from app.core.auth_cookie import ACCESS_TOKEN_COOKIE, clear_access_cookie, set_access_cookie
 from app.core.rate_limit import limiter
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_imagem
 from app.database.session import get_db
@@ -133,13 +133,25 @@ async def logout(request: Request, response: Response) -> None:
 
 @router.get("/me", response_model=UsuarioRead)
 @limiter.limit("30/minute")
-async def me(request: Request, user: Usuario = Depends(get_current_user)) -> UsuarioRead:
+async def me(
+    request: Request,
+    response: Response,
+    user: Usuario = Depends(get_current_user),
+) -> UsuarioRead:
     """Retorna dados do usuário autenticado.
 
     Endpoint protegido que retorna as informações do usuário atualmente
-    autenticado, extraído do token JWT no header Authorization.
+    autenticado, extraído do token JWT no header Authorization ou cookie.
+
+    Como efeito colateral, re-emite o cookie HTTPOnly se a request veio
+    via header Authorization sem cookie correspondente. Isso permite que
+    sessões antigas (criadas antes do cookie existir) migrem
+    silenciosamente assim que o usuário abre o app — sem precisar
+    relogar para que <img src="/storage/..."> volte a funcionar.
 
     Args:
+        request: Request usado para inspecionar cookies enviados.
+        response: Response usado para emitir o cookie (migração).
         user: Usuário autenticado (injetado automaticamente via dependency).
 
     Returns:
@@ -151,10 +163,11 @@ async def me(request: Request, user: Usuario = Depends(get_current_user)) -> Usu
     Status Code:
         200: Sucesso com dados do usuário.
         401: Token não fornecido ou inválido.
-
-    Security:
-        Requer autenticação via Bearer token no header Authorization.
     """
+    if ACCESS_TOKEN_COOKIE not in request.cookies:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            set_access_cookie(response, auth_header.split(" ", 1)[1])
     return UsuarioRead.model_validate(user)
 
 
