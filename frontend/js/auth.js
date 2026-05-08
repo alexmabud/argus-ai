@@ -41,6 +41,9 @@ class AuthManager {
   }
 
   logout() {
+    // Avisa o backend para limpar o cookie HTTPOnly. Faz best-effort —
+    // mesmo se a chamada falhar, descartamos tokens locais.
+    api.post("/auth/logout").catch(() => {});
     api.clearTokens();
     this.user = null;
     localStorage.removeItem("argus_user");
