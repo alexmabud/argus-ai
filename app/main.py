@@ -21,7 +21,7 @@ from app.api.health import router as health_router
 from app.api.v1.router import api_router
 from app.config import settings
 from app.core.logging_config import setup_logging
-from app.core.middleware import AuditMiddleware, LoggingMiddleware, SecurityHeadersMiddleware
+from app.core.middleware import LoggingMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.database.session import engine
 from app.dependencies import get_current_user
@@ -62,7 +62,7 @@ def create_app() -> FastAPI:
     """Cria e configura a instância da aplicação FastAPI.
 
     Instancia FastAPI com título, descrição e versão configurados.
-    Aplica stack de middlewares (CORS, logging, audit, rate limiting)
+    Aplica stack de middlewares (CORS, logging, security headers, rate limiting)
     e inclui todos os routers (health, API v1).
 
     Returns:
@@ -92,7 +92,6 @@ def create_app() -> FastAPI:
         )
 
     # Middlewares (ordem importa — último adicionado executa primeiro)
-    app.add_middleware(AuditMiddleware)
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(

@@ -4,7 +4,12 @@ Carrega variáveis de ambiente e fornece configuração tipada para toda a
 aplicação Argus AI. Suporta recarregamento automático de arquivos .env.
 """
 
+import logging
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
+
+_logger = logging.getLogger("argus")
 
 
 class Settings(BaseSettings):
@@ -129,6 +134,28 @@ class Settings(BaseSettings):
     DATA_RETENTION_DAYS: int = 1825  # 5 anos
 
     model_config = {"env_file": ".env", "extra": "ignore"}
+
+    @model_validator(mode="after")
+    def _validar_producao(self) -> "Settings":
+        """Garante que origens de dev não vazem para produção.
+
+        Quando DEBUG=False, recusa CORS_ORIGINS contendo localhost/127.0.0.1
+        e CORS_ORIGINS contendo coringa "*". Falha rápido no startup em vez
+        de servir tráfego com configuração insegura.
+        """
+        if not self.DEBUG:
+            origens_dev = [o for o in self.CORS_ORIGINS if "localhost" in o or "127.0.0.1" in o]
+            if origens_dev:
+                raise ValueError(
+                    "CORS_ORIGINS contém origens de dev em produção (DEBUG=False): "
+                    f"{origens_dev}. Configure CORS_ORIGINS apenas com o domínio público."
+                )
+            if "*" in self.CORS_ORIGINS:
+                raise ValueError(
+                    "CORS_ORIGINS=['*'] não é permitido em produção. "
+                    "Liste explicitamente os domínios autorizados."
+                )
+        return self
 
 
 settings = Settings()
