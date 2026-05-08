@@ -79,6 +79,7 @@ async def criar_veiculo(
         409: Placa duplicada.
         429: Rate limit (30/min).
     """
+    assert user.guarnicao_id is not None
     service = VeiculoService(db)
     veiculo = await service.criar(
         data,

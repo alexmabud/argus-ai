@@ -78,6 +78,7 @@ async def criar_abordagem(
         403: Usuário sem guarnição.
         429: Rate limit (30/min).
     """
+    assert user.guarnicao_id is not None
     service = AbordagemService(db)
     abordagem = await service.criar(
         data,

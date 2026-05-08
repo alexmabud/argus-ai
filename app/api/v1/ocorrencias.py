@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rate_limit import limiter
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_pdf
 from app.database.session import get_db
-from app.dependencies import get_current_user, get_current_user_with_guarnicao
+from app.dependencies import get_current_user_with_guarnicao
 from app.models.usuario import Usuario
 from app.schemas.ocorrencia import OcorrenciaRead
 from app.services.audit_service import AuditService
@@ -72,6 +72,7 @@ async def criar_ocorrencia(
     pdf_bytes = await ler_upload_com_limite(arquivo_pdf, MAX_PDF_SIZE)
     validar_magic_bytes_pdf(pdf_bytes)
 
+    assert user.guarnicao_id is not None
     service = OcorrenciaService(db)
     ocorrencia = await service.criar(
         numero_ocorrencia=numero_ocorrencia,
@@ -116,7 +117,7 @@ async def listar_ocorrencias(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
 ) -> list[OcorrenciaRead]:
     """Lista ocorrências da guarnição com paginação.
 
@@ -125,11 +126,12 @@ async def listar_ocorrencias(
         skip: Registros a pular.
         limit: Máximo de resultados (1-100).
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado com guarnição atribuída.
 
     Returns:
         Lista de OcorrenciaRead.
     """
+    assert user.guarnicao_id is not None
     service = OcorrenciaService(db)
     ocorrencias = await service.listar(guarnicao_id=user.guarnicao_id, skip=skip, limit=limit)
     return [OcorrenciaRead.model_validate(o) for o in ocorrencias]
@@ -143,7 +145,7 @@ async def buscar_ocorrencias(
     rap: str | None = Query(None, description="Número RAP (busca parcial)"),
     data: date | None = Query(None, description="Data real do fato ocorrido (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
 ) -> list[OcorrenciaRead]:
     """Busca ocorrências por nome no texto extraído, RAP ou data.
 
@@ -157,13 +159,14 @@ async def buscar_ocorrencias(
         rap: Trecho do número RAP para busca parcial.
         data: Data exata do fato ocorrido (formato YYYY-MM-DD).
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado com guarnição atribuída.
 
     Returns:
         Lista de OcorrenciaRead ordenada por data decrescente.
     """
     if not nome and not rap and not data:
         return []
+    assert user.guarnicao_id is not None
     service = OcorrenciaService(db)
     ocorrencias = await service.buscar(
         guarnicao_id=user.guarnicao_id,

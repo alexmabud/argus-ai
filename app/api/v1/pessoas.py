@@ -97,6 +97,7 @@ async def criar_pessoa(
         409: CPF duplicado.
         429: Rate limit (30/min).
     """
+    assert user.guarnicao_id is not None
     service = PessoaService(db)
     pessoa = await service.criar(
         data,
