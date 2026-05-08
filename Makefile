@@ -1,4 +1,4 @@
-.PHONY: dev test lint migrate init-db seed worker anonimizar
+.PHONY: dev test test-db lint migrate init-db seed worker anonimizar
 
 # Detecta Windows (Scripts) vs Linux/Mac (bin)
 ifeq ($(OS),Windows_NT)
@@ -23,8 +23,23 @@ dev:
 worker:
 	$(ARQ) app.worker.WorkerSettings
 
-test:
-	$(PYTEST) -v --cov=app
+# Garante que existe um banco argus_test isolado, com as extensions do projeto.
+# Isso evita que o pytest (que dropa todas as tabelas em cada teste) destrua
+# argus_db (dev) ou pior, um banco de produção se DATABASE_URL apontar para lá.
+test-db:
+	docker compose up -d db redis
+	@docker compose exec -T db psql -U argus -d postgres -tAc \
+		"SELECT 1 FROM pg_database WHERE datname='argus_test'" 2>/dev/null | grep -q 1 || \
+		( \
+			echo "Criando banco argus_test..." && \
+			docker compose exec -T db psql -U argus -d postgres \
+				-c "CREATE DATABASE argus_test TEMPLATE template0" && \
+			docker compose exec -T db sh -c \
+				"psql -U argus -d argus_test -f /docker-entrypoint-initdb.d/init.sql" \
+		)
+
+test: test-db
+	DATABASE_URL=postgresql://argus:argus_dev@localhost:5432/argus_test $(PYTEST) -v --cov=app
 
 lint:
 	$(RUFF) check app/ tests/
