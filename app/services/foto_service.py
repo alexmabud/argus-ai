@@ -13,6 +13,8 @@ import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from botocore.exceptions import BotoCoreError, ClientError
+from PIL import UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +23,7 @@ from app.models.pessoa import Pessoa
 from app.repositories.foto_repo import FotoRepository
 from app.services.audit_service import AuditService
 from app.services.storage_service import StorageService
+from app.utils.imaging import gerar_thumbnail
 
 if TYPE_CHECKING:
     from app.services.face_service import FaceService
@@ -129,12 +132,12 @@ class FotoService:
         key = self.storage.generate_key("fotos", filename)
         url = await self.storage.upload(file_bytes, key, content_type)
 
-        # 1b. Gerar e enviar thumbnail (apenas para imagens — pula PDF/vídeo)
+        # 1b. Gerar e enviar thumbnail (apenas para imagens — pula PDF/vídeo).
+        # Falhas (imagem inválida, S3 indisponível) deixam thumbnail_url=None —
+        # Task C1 (backfill via arq) repara essas linhas quando o storage volta.
         thumbnail_url: str | None = None
         if content_type.startswith("image/"):
             try:
-                from app.utils.imaging import gerar_thumbnail
-
                 thumb_bytes = await asyncio.to_thread(gerar_thumbnail, file_bytes)
                 thumb_filename = filename.rsplit(".", 1)[0] + "_thumb.jpg"
                 thumb_key = self.storage.generate_key("thumbs", thumb_filename)
@@ -143,8 +146,7 @@ class FotoService:
                     thumb_key,
                     content_type="image/jpeg",
                 )
-            except Exception:
-                # Thumb é otimização — falha não bloqueia o upload da foto.
+            except (UnidentifiedImageError, OSError, ClientError, BotoCoreError):
                 logger.warning("Falha ao gerar thumbnail para %s", key, exc_info=True)
 
         # 2. Criar registro Foto no banco
