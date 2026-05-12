@@ -44,7 +44,7 @@ function renderAbordagemDetalhe() {
                     <div style="width:54px;height:54px;border-radius:4px;border:1px solid rgba(0,212,255,0.2);background:var(--color-surface-hover);display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color 0.15s;"
                          onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='rgba(0,212,255,0.2)'">
                       <template x-if="p.foto_principal_url">
-                        <img :src="p.foto_principal_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
+                        <img :src="p.foto_principal_thumb_url || p.foto_principal_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
                       </template>
                       <template x-if="!p.foto_principal_url">
                         <span style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--color-primary);" x-text="iniciais(p.nome)"></span>
@@ -214,7 +214,7 @@ function renderAbordagemDetalhe() {
                 <template x-for="f in midiasAbordagem" :key="f.id">
                   <div style="width:64px;height:64px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;overflow:hidden;cursor:pointer;position:relative;"
                        @click="fotoAmpliada = f.arquivo_url">
-                    <img :src="f.arquivo_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
+                    <img :src="f.thumbnail_url || f.arquivo_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
                     <!-- Botão download -->
                     <button @click.stop="downloadMidia(f)"
                        style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.65);border-radius:3px;padding:2px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;"
@@ -324,7 +324,7 @@ function abordagemDetalhePage() {
       const f = (this.ab && this.ab.fotos ? this.ab.fotos : []).find(
         f => f.veiculo_id === veiculoId && f.tipo === 'veiculo'
       );
-      return f ? f.arquivo_url : null;
+      return f ? (f.thumbnail_url || f.arquivo_url) : null;
     },
 
     abrirFicha(pessoaId) {

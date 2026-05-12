@@ -183,6 +183,148 @@ class TestBuscarPorRosto:
         assert results[0]["similaridade"] == 0.9877
 
 
+class TestUploadFotoThumbnail:
+    """Testes para geração de thumbnail no fluxo de upload_foto."""
+
+    def _make_service_para_upload(self, upload_urls: list[str]):
+        """Cria FotoService com storage mockado retornando URLs em sequência.
+
+        Mocka ``StorageService.get()`` para devolver um stub cujo ``upload``
+        retorna as URLs informadas na ordem das chamadas (foto, thumb).
+
+        Args:
+            upload_urls: URLs sequenciais a retornar em cada chamada ``upload``.
+
+        Returns:
+            Tupla (service, storage_mock) com mocks prontos para uso.
+        """
+        from app.services.foto_service import FotoService
+
+        db = AsyncMock()
+        storage_mock = MagicMock()
+        storage_mock.generate_key = MagicMock(
+            side_effect=lambda prefix, filename: f"{prefix}/abc_{filename}"
+        )
+        storage_mock.upload = AsyncMock(side_effect=list(upload_urls))
+
+        with patch(
+            "app.services.foto_service.StorageService.get",
+            return_value=storage_mock,
+        ):
+            service = FotoService(db)
+        service.repo = AsyncMock()
+        service.audit = AsyncMock()
+        return service, storage_mock
+
+    @pytest.mark.asyncio
+    async def test_upload_foto_gera_thumbnail(self):
+        """Upload de imagem deve gerar e salvar thumbnail_url.
+
+        Quando ``content_type`` começa com ``image/``, o serviço deve gerar
+        thumb via ``gerar_thumbnail`` e fazer upload separado, salvando a URL
+        resultante no campo ``thumbnail_url`` da Foto.
+        """
+        import io
+
+        from PIL import Image
+
+        img = Image.new("RGB", (1200, 800), color="blue")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        img_bytes = buf.getvalue()
+
+        service, storage_mock = self._make_service_para_upload(
+            upload_urls=[
+                "/storage/argus/fotos/abc_abordagem.jpg",
+                "/storage/argus/thumbs/abc_abordagem_thumb.jpg",
+            ]
+        )
+
+        foto = await service.upload_foto(
+            file_bytes=img_bytes,
+            filename="abordagem.jpg",
+            content_type="image/jpeg",
+            pessoa_id=None,
+            abordagem_id=1,
+            veiculo_id=None,
+            tipo="rosto",
+            latitude=None,
+            longitude=None,
+            user_id=1,
+        )
+
+        assert foto.thumbnail_url == "/storage/argus/thumbs/abc_abordagem_thumb.jpg"
+        assert foto.arquivo_url == "/storage/argus/fotos/abc_abordagem.jpg"
+        assert foto.thumbnail_url != foto.arquivo_url
+        # Storage.upload deve ter sido chamado duas vezes: foto original + thumb
+        assert storage_mock.upload.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_upload_pdf_nao_gera_thumbnail(self):
+        """PDFs e vídeos não devem tentar gerar thumb.
+
+        Para ``content_type`` que não começa com ``image/``, o serviço deve
+        pular a geração de thumb. ``thumbnail_url`` permanece ``None`` e o
+        storage.upload é chamado apenas uma vez.
+        """
+        service, storage_mock = self._make_service_para_upload(
+            upload_urls=["/storage/argus/fotos/abc_auto.pdf"]
+        )
+        pdf_bytes = b"%PDF-1.4\n%fake"
+
+        foto = await service.upload_foto(
+            file_bytes=pdf_bytes,
+            filename="auto.pdf",
+            content_type="application/pdf",
+            pessoa_id=None,
+            abordagem_id=1,
+            veiculo_id=None,
+            tipo="midia_abordagem",
+            latitude=None,
+            longitude=None,
+            user_id=1,
+            max_size=200 * 1024 * 1024,
+        )
+
+        assert foto.thumbnail_url is None
+        assert foto.arquivo_url == "/storage/argus/fotos/abc_auto.pdf"
+        # Apenas o upload original — sem chamada extra para thumb
+        assert storage_mock.upload.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_upload_imagem_thumb_falha_nao_quebra_upload(self):
+        """Falha ao gerar thumb deve apenas logar — upload da foto continua.
+
+        Garante que a geração de thumb é tratada como otimização: se
+        ``gerar_thumbnail`` ou o upload do thumb falham, a Foto ainda é
+        criada com ``thumbnail_url=None``.
+        """
+        service, storage_mock = self._make_service_para_upload(
+            upload_urls=["/storage/argus/fotos/abc_foto.jpg"]
+        )
+
+        # Bytes inválidos — PIL falha ao abrir
+        bytes_invalidos = b"not-a-real-image"
+
+        foto = await service.upload_foto(
+            file_bytes=bytes_invalidos,
+            filename="foto.jpg",
+            content_type="image/jpeg",
+            pessoa_id=None,
+            abordagem_id=1,
+            veiculo_id=None,
+            tipo="rosto",
+            latitude=None,
+            longitude=None,
+            user_id=1,
+        )
+
+        assert foto.thumbnail_url is None
+        assert foto.arquivo_url == "/storage/argus/fotos/abc_foto.jpg"
+        # Só o upload original — geração falhou antes do segundo upload
+        assert storage_mock.upload.await_count == 1
+
+
 class TestFotoComCompressaoStatus:
     """Testa que Foto possui campo compressao_status."""
 

@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from botocore.exceptions import ClientError
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
@@ -29,6 +29,11 @@ from app.models.usuario import Usuario
 from app.services.storage_service import StorageService
 
 logger = logging.getLogger("argus")
+
+#: Tamanho de chunk usado pelo proxy ``/storage`` ao streamar do S3 para o
+#: browser. 64 KB equilibra throughput (poucas iterações por foto típica
+#: de 1-3 MB) e memória de pico por stream concorrente.
+STORAGE_PROXY_CHUNK_SIZE = 64 * 1024
 
 
 @asynccontextmanager
@@ -51,8 +56,12 @@ async def lifespan(app: FastAPI):
     app.state.embedding_service = None
     app.state.face_service = None
 
+    # Cliente S3 singleton — reutiliza TCP/TLS entre requests.
+    await StorageService.get().startup()
+
     yield
     # Shutdown
+    await StorageService.get().shutdown()
     await engine.dispose()
 
 
@@ -128,9 +137,20 @@ def create_app() -> FastAPI:
     @app.get("/storage/{path:path}")
     async def storage_proxy(
         path: str,
+        request: Request,
         _: Usuario = Depends(get_current_user),
     ) -> Response:
         """Proxy autenticado para arquivos no storage S3/MinIO.
+
+        Streama os bytes diretamente do S3 para o cliente, sem buffer
+        intermediário — workers async não ficam presos esperando o
+        download inteiro do R2 terminar antes de devolver a resposta.
+
+        Suporta cache via ``ETag``/``If-None-Match``: o ETag do objeto
+        é repassado ao browser, e quando o cliente envia o mesmo valor
+        em ``If-None-Match``, propagamos para o S3 como ``IfNoneMatch``.
+        Se bater, o S3 responde 304 nativamente e poupamos a
+        transferência completa.
 
         O ``path`` recebido tem o formato ``{bucket}/{key}`` para manter
         compatibilidade com URLs relativas já gravadas em banco
@@ -140,11 +160,12 @@ def create_app() -> FastAPI:
 
         Args:
             path: Caminho ``{bucket}/{key}`` recebido na URL.
+            request: Request HTTP — usado para ler ``If-None-Match``.
             _: Usuário autenticado (JWT via header ou cookie).
 
         Returns:
-            Response com o conteúdo do arquivo e Content-Type informado
-            pelo S3.
+            ``StreamingResponse`` com o conteúdo do arquivo e headers de
+            cache, ou ``Response(304)`` quando o ETag do cliente bate.
 
         Raises:
             HTTPException: 404 se a chave não existe ou aponta para
@@ -157,11 +178,22 @@ def create_app() -> FastAPI:
                 detail="Arquivo não encontrado",
             )
 
+        if_none_match = request.headers.get("if-none-match")
+
         try:
-            body, content_type = await StorageService().download_with_meta(key)
+            body, content_type, etag, length = await StorageService.get().stream_with_meta(
+                key, if_none_match=if_none_match
+            )
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")
-            if code in {"NoSuchKey", "404"}:
+            status_code = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+            if code in {"304", "NotModified"} or status_code == 304:
+                # S3 confirmou que o ETag do cliente ainda é válido — poupa transferência.
+                headers_304 = {"Cache-Control": "private, max-age=3600"}
+                if if_none_match:
+                    headers_304["ETag"] = if_none_match
+                return Response(status_code=304, headers=headers_304)
+            if code in {"NoSuchKey", "404"} or status_code == 404:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND, detail="Arquivo não encontrado"
                 ) from exc
@@ -170,13 +202,25 @@ def create_app() -> FastAPI:
                 status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao acessar storage"
             ) from exc
 
-        return Response(
-            content=body,
-            headers={
-                "Content-Type": content_type,
-                "Cache-Control": "private, max-age=3600",
-            },
-        )
+        headers = {"Cache-Control": "private, max-age=3600"}
+        if etag:
+            headers["ETag"] = etag
+        if length is not None:
+            headers["Content-Length"] = str(length)
+
+        async def chunks():
+            """Stream do S3 com cleanup garantido em caso de desconexão."""
+            try:
+                async for chunk in body.iter_chunks(STORAGE_PROXY_CHUNK_SIZE):
+                    yield chunk
+            finally:
+                close = getattr(body, "close", None)
+                if close is not None:
+                    result = close()
+                    if hasattr(result, "__await__"):
+                        await result
+
+        return StreamingResponse(chunks(), headers=headers, media_type=content_type)
 
     # Service Worker — nunca pode ser cacheado pelo browser HTTP.
     # O browser precisa sempre buscar a versão mais recente para detectar atualizações da PWA.
