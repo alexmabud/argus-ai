@@ -204,6 +204,51 @@ class StorageService:
         body, _ = await self.download_with_meta(key)
         return body
 
+    async def stream_with_meta(
+        self,
+        key: str,
+        if_none_match: str | None = None,
+    ) -> tuple[Any, str, str | None, int | None]:
+        """Abre stream do S3 sem materializar bytes em memória.
+
+        Usado pelo proxy ``/storage/*`` para enviar bytes ao cliente
+        conforme chegam do R2, sem buffer intermediário. Também propaga
+        ``If-None-Match`` para que o S3 responda 304 nativo (via
+        ``ClientError`` com código ``304``/``NotModified``) e a
+        transferência inteira seja poupada quando o cache do cliente
+        ainda é válido.
+
+        Args:
+            key: Chave (caminho) do objeto no bucket.
+            if_none_match: Valor do cabeçalho ``If-None-Match`` enviado
+                pelo cliente. Quando bate com o ETag do objeto, o S3
+                lança ``ClientError`` com status 304 — o caller deve
+                converter em ``Response(status_code=304)``.
+
+        Returns:
+            Tupla ``(body, content_type, etag, content_length)``:
+            ``body`` é o ``StreamingBody`` do aioboto3 — itere via
+            ``async for chunk in body.iter_chunks(...)``.
+            ``content_type`` cai em ``application/octet-stream`` quando
+            ausente. ``etag`` e ``content_length`` podem ser ``None``.
+
+        Raises:
+            RuntimeError: Se ``startup()`` não foi chamado antes.
+            botocore.exceptions.ClientError: NoSuchKey, NotModified
+                (HTTP 304) ou outros erros S3.
+        """
+        client = self._ensure_client()
+        kwargs: dict[str, Any] = {"Bucket": settings.S3_BUCKET, "Key": key}
+        if if_none_match:
+            kwargs["IfNoneMatch"] = if_none_match
+        response = await client.get_object(**kwargs)
+        return (
+            response["Body"],
+            response.get("ContentType") or "application/octet-stream",
+            response.get("ETag"),
+            response.get("ContentLength"),
+        )
+
     async def download_with_meta(self, key: str) -> tuple[bytes, str]:
         """Faz download retornando bytes e content type informado pelo S3.
 
