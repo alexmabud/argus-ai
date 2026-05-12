@@ -30,6 +30,11 @@ from app.services.storage_service import StorageService
 
 logger = logging.getLogger("argus")
 
+#: Tamanho de chunk usado pelo proxy ``/storage`` ao streamar do S3 para o
+#: browser. 64 KB equilibra throughput (poucas iterações por foto típica
+#: de 1-3 MB) e memória de pico por stream concorrente.
+STORAGE_PROXY_CHUNK_SIZE = 64 * 1024
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -204,8 +209,16 @@ def create_app() -> FastAPI:
             headers["Content-Length"] = str(length)
 
         async def chunks():
-            async for chunk in body.iter_chunks(64 * 1024):
-                yield chunk
+            """Stream do S3 com cleanup garantido em caso de desconexão."""
+            try:
+                async for chunk in body.iter_chunks(STORAGE_PROXY_CHUNK_SIZE):
+                    yield chunk
+            finally:
+                close = getattr(body, "close", None)
+                if close is not None:
+                    result = close()
+                    if hasattr(result, "__await__"):
+                        await result
 
         return StreamingResponse(chunks(), headers=headers, media_type=content_type)
 
