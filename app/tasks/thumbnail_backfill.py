@@ -8,8 +8,6 @@ Idempotente: re-execuções na mesma foto são seguras.
 import asyncio
 import logging
 
-from botocore.exceptions import BotoCoreError, ClientError
-from PIL import UnidentifiedImageError
 from sqlalchemy import select
 
 from app.models.foto import Foto
@@ -49,11 +47,13 @@ async def gerar_thumbnail_backfill_task(ctx: dict, foto_id: int) -> dict:
 
     async with db_factory() as db:
         try:
+            # skip_locked: dois workers que tentem o mesmo foto_id simultaneamente
+            # — outro pega lock, este recebe None e retorna como "pulado_inexistente".
+            # Evita gerar/uplodar thumb duplicado quando o C2 enfileira em massa.
             result = await db.execute(
-                select(Foto).where(
-                    Foto.id == foto_id,
-                    Foto.ativo == True,  # noqa: E712
-                )
+                select(Foto)
+                .where(Foto.id == foto_id, Foto.ativo.is_(True))
+                .with_for_update(skip_locked=True)
             )
             foto = result.scalar_one_or_none()
             if foto is None:
@@ -82,12 +82,10 @@ async def gerar_thumbnail_backfill_task(ctx: dict, foto_id: int) -> dict:
             logger.info("Thumb backfilled para foto %d", foto_id)
             return {"status": "sucesso"}
 
-        except (UnidentifiedImageError, OSError, ClientError, BotoCoreError):
+        except Exception:
+            # Nada vaza para o worker — uma foto problemática não deve estourar
+            # max_tries do arq nem bloquear o pool. logger.exception preserva o
+            # tipo do erro no traceback.
             await db.rollback()
             logger.exception("Erro no backfill da foto %d", foto_id)
-            return {"status": "erro"}
-        except Exception:
-            # Garantia: nenhum erro inesperado vaza para o worker (degradação graceful).
-            await db.rollback()
-            logger.exception("Erro inesperado no backfill da foto %d", foto_id)
             return {"status": "erro"}
