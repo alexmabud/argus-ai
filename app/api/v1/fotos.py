@@ -318,9 +318,7 @@ async def buscar_por_rosto(
             else None,
             apelido=r["pessoa"].apelido if r["pessoa"] else None,
             foto_principal_url=r["pessoa"].foto_principal_url if r["pessoa"] else None,
-            foto_principal_thumb_url=r["pessoa"].foto_principal_thumb_url
-            if r["pessoa"]
-            else None,
+            foto_principal_thumb_url=r["pessoa"].foto_principal_thumb_url if r["pessoa"] else None,
         )
         for r in results
     ]

@@ -126,9 +126,7 @@ class StorageService:
             RuntimeError: Se ``startup()`` não foi chamado antes.
         """
         if self._client is None:
-            raise RuntimeError(
-                "StorageService não inicializado — chame startup() no lifespan."
-            )
+            raise RuntimeError("StorageService não inicializado — chame startup() no lifespan.")
         return self._client
 
     def generate_key(self, prefix: str, filename: str) -> str:

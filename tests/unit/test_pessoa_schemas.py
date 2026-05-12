@@ -74,22 +74,24 @@ def test_pessoa_read_foto_principal_thumb_url_default_none():
 
 def test_pessoa_read_normaliza_foto_principal_thumb_url_absoluta():
     """PessoaRead normaliza URL absoluta legada do thumb para path relativo."""
+    from app.config import settings
     from app.schemas.pessoa import PessoaRead
 
     p = PessoaRead(
         **_pessoa_read_data(
             foto_principal_thumb_url=(
-                "http://minio.local:9000/argus/fotos/perfil_thumb.jpg"
+                f"http://minio.local:9000/{settings.S3_BUCKET}/fotos/perfil_thumb.jpg"
             ),
         )
     )
-    assert p.foto_principal_thumb_url == "/storage/argus/fotos/perfil_thumb.jpg"
+    assert p.foto_principal_thumb_url == f"/storage/{settings.S3_BUCKET}/fotos/perfil_thumb.jpg"
 
 
 def test_vinculo_read_expoe_foto_principal_thumb_url():
     """VinculoRead expõe e normaliza foto_principal_thumb_url."""
     from datetime import datetime
 
+    from app.config import settings
     from app.schemas.pessoa import VinculoRead
 
     v = VinculoRead(
@@ -99,7 +101,7 @@ def test_vinculo_read_expoe_foto_principal_thumb_url():
         ultima_vez=datetime(2026, 1, 1, 12, 0, 0),
         foto_principal_url="/storage/argus/perfil.jpg",
         foto_principal_thumb_url=(
-            "http://minio.local:9000/argus/fotos/perfil_thumb.jpg"
+            f"http://minio.local:9000/{settings.S3_BUCKET}/fotos/perfil_thumb.jpg"
         ),
     )
-    assert v.foto_principal_thumb_url == "/storage/argus/fotos/perfil_thumb.jpg"
+    assert v.foto_principal_thumb_url == f"/storage/{settings.S3_BUCKET}/fotos/perfil_thumb.jpg"
