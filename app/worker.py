@@ -15,6 +15,7 @@ from arq.connections import RedisSettings
 from app.config import settings
 from app.tasks.face_processor import processar_face_task
 from app.tasks.pdf_processor import processar_pdf_task
+from app.tasks.thumbnail_backfill import gerar_thumbnail_backfill_task
 
 logger = logging.getLogger("argus")
 
@@ -105,7 +106,7 @@ class WorkerSettings:
         job_timeout: Timeout máximo por job em segundos (10 min).
     """
 
-    functions = [processar_pdf_task, processar_face_task]
+    functions = [processar_pdf_task, processar_face_task, gerar_thumbnail_backfill_task]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = _parse_redis_settings()
