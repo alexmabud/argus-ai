@@ -120,7 +120,7 @@ function renderPessoaDetalhe(appState) {
               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
               <template x-for="foto in fotos.slice(0, 4)" :key="foto.id">
                 <div style="position: relative;">
-                  <img :src="foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
+                  <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
                        @click="fotoAmpliada = foto.arquivo_url">
                   <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                         x-text="foto.tipo || 'foto'"></span>
@@ -182,7 +182,7 @@ function renderPessoaDetalhe(appState) {
               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
                 <template x-for="foto in fotos" :key="'modal-' + foto.id">
                   <div style="position: relative;">
-                    <img :src="foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
+                    <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
                          @click="fotoAmpliada = foto.arquivo_url">
                     <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                           x-text="foto.tipo || 'foto'"></span>
@@ -205,7 +205,7 @@ function renderPessoaDetalhe(appState) {
               </div>
               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
                 <template x-for="fv in (fotosVeiculos[modalFotosVeiculo] || [])" :key="'mv-' + fv.id">
-                  <img :src="fv.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
+                  <img :src="fv.thumbnail_url || fv.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
                        @click="fotoAmpliada = fv.arquivo_url">
                 </template>
               </div>
@@ -386,7 +386,7 @@ function renderPessoaDetalhe(appState) {
               <!-- Foto ou ícone -->
               <div style="display: flex; justify-content: center;">
                 <template x-if="pessoaPreview?.foto_principal_url">
-                  <img :src="pessoaPreview.foto_principal_url"
+                  <img :src="pessoaPreview.foto_principal_thumb_url || pessoaPreview.foto_principal_url"
                        style="width: 5rem; height: 5rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border);">
                 </template>
                 <template x-if="!pessoaPreview?.foto_principal_url">
@@ -491,7 +491,7 @@ function renderPessoaDetalhe(appState) {
                          style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--color-border); cursor: pointer;"
                          onmouseover="this.style.background='var(--color-surface)'" onmouseout="this.style.background='transparent'">
                       <template x-if="p.foto_principal_url">
-                        <img :src="p.foto_principal_url" style="width: 2rem; height: 2rem; border-radius: 4px; object-fit: cover;">
+                        <img :src="p.foto_principal_thumb_url || p.foto_principal_url" style="width: 2rem; height: 2rem; border-radius: 4px; object-fit: cover;">
                       </template>
                       <template x-if="!p.foto_principal_url">
                         <div style="width: 2rem; height: 2rem; border-radius: 4px; background: var(--color-surface); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 0.75rem;" x-text="p.nome[0]"></div>
@@ -644,7 +644,7 @@ function renderPessoaDetalhe(appState) {
                         <div style="margin-top: 0.25rem;">
                           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.25rem;">
                             <template x-for="fv in fotosVeiculos[v.id].slice(0, 4)" :key="fv.id">
-                              <img :src="fv.arquivo_url"
+                              <img :src="fv.thumbnail_url || fv.arquivo_url"
                                    style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;"
                                    @click="fotoAmpliada = fv.arquivo_url"
                                    loading="lazy">
@@ -689,7 +689,7 @@ function renderPessoaDetalhe(appState) {
                        onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                       <template x-if="rel.foto_principal_url">
-                        <img :src="rel.foto_principal_url"
+                        <img :src="rel.foto_principal_thumb_url || rel.foto_principal_url"
                              style="width: 2.5rem; height: 2.5rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border); flex-shrink: 0;"
                              loading="lazy">
                       </template>
@@ -728,7 +728,7 @@ function renderPessoaDetalhe(appState) {
                        onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
                     <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
                       <template x-if="vm.foto_principal_url">
-                        <img :src="vm.foto_principal_url"
+                        <img :src="vm.foto_principal_thumb_url || vm.foto_principal_url"
                              style="width: 2.5rem; height: 2.5rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border); flex-shrink: 0; margin-top: 0.125rem;"
                              loading="lazy">
                       </template>
@@ -877,7 +877,7 @@ function renderPessoaDetalhe(appState) {
                                style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem; cursor: pointer; width: 2.5rem;">
                             <!-- Com foto -->
                             <template x-if="p.foto_principal_url">
-                              <img :src="p.foto_principal_url"
+                              <img :src="p.foto_principal_thumb_url || p.foto_principal_url"
                                    style="width: 2.5rem; height: 2.5rem; border-radius: 4px; object-fit: cover; border: 2px solid var(--color-border);"
                                    loading="lazy">
                             </template>
