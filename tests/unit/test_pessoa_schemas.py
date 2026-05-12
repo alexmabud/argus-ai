@@ -32,3 +32,74 @@ def test_pessoa_update_aceita_nome_mae():
     """PessoaUpdate deve aceitar nome_mae em atualização parcial."""
     p = PessoaUpdate(nome_mae="Nova Mae")
     assert p.nome_mae == "Nova Mae"
+
+
+# --- Task B4: foto_principal_thumb_url ------------------------------------
+
+
+def _pessoa_read_data(**kwargs) -> dict:
+    """Retorna dados mínimos válidos para PessoaRead."""
+    from datetime import datetime
+
+    base = {
+        "id": 1,
+        "nome": "Fulano",
+        "criado_em": datetime(2026, 1, 1, 12, 0, 0),
+        "atualizado_em": datetime(2026, 1, 1, 12, 0, 0),
+    }
+    base.update(kwargs)
+    return base
+
+
+def test_pessoa_read_expoe_foto_principal_thumb_url():
+    """PessoaRead expõe foto_principal_thumb_url quando preenchido."""
+    from app.schemas.pessoa import PessoaRead
+
+    p = PessoaRead(
+        **_pessoa_read_data(
+            foto_principal_url="/storage/argus/perfil.jpg",
+            foto_principal_thumb_url="/storage/argus/perfil_thumb.jpg",
+        )
+    )
+    assert p.foto_principal_thumb_url == "/storage/argus/perfil_thumb.jpg"
+
+
+def test_pessoa_read_foto_principal_thumb_url_default_none():
+    """PessoaRead define foto_principal_thumb_url como None por padrão."""
+    from app.schemas.pessoa import PessoaRead
+
+    p = PessoaRead(**_pessoa_read_data())
+    assert p.foto_principal_thumb_url is None
+
+
+def test_pessoa_read_normaliza_foto_principal_thumb_url_absoluta():
+    """PessoaRead normaliza URL absoluta legada do thumb para path relativo."""
+    from app.schemas.pessoa import PessoaRead
+
+    p = PessoaRead(
+        **_pessoa_read_data(
+            foto_principal_thumb_url=(
+                "http://minio.local:9000/argus/fotos/perfil_thumb.jpg"
+            ),
+        )
+    )
+    assert p.foto_principal_thumb_url == "/storage/argus/fotos/perfil_thumb.jpg"
+
+
+def test_vinculo_read_expoe_foto_principal_thumb_url():
+    """VinculoRead expõe e normaliza foto_principal_thumb_url."""
+    from datetime import datetime
+
+    from app.schemas.pessoa import VinculoRead
+
+    v = VinculoRead(
+        pessoa_id=1,
+        nome="Fulano",
+        frequencia=3,
+        ultima_vez=datetime(2026, 1, 1, 12, 0, 0),
+        foto_principal_url="/storage/argus/perfil.jpg",
+        foto_principal_thumb_url=(
+            "http://minio.local:9000/argus/fotos/perfil_thumb.jpg"
+        ),
+    )
+    assert v.foto_principal_thumb_url == "/storage/argus/fotos/perfil_thumb.jpg"

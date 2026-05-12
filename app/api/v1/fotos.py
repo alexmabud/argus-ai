@@ -188,7 +188,12 @@ async def upload_foto(
         except Exception:
             logger.warning("Worker offline — face da foto %d será processada depois", foto.id)
 
-    return FotoUploadResponse(id=foto.id, arquivo_url=foto.arquivo_url, tipo=foto.tipo)
+    return FotoUploadResponse(
+        id=foto.id,
+        arquivo_url=foto.arquivo_url,
+        thumbnail_url=foto.thumbnail_url,
+        tipo=foto.tipo,
+    )
 
 
 @router.get("/pessoa/{pessoa_id}", response_model=list[FotoRead])
@@ -304,6 +309,7 @@ async def buscar_por_rosto(
         BuscaRostoItem(
             foto_id=r["foto"].id,
             arquivo_url=r["foto"].arquivo_url,
+            thumbnail_url=r["foto"].thumbnail_url,
             pessoa_id=r["foto"].pessoa_id,
             similaridade=r["similaridade"],
             nome=r["pessoa"].nome if r["pessoa"] else None,
@@ -312,6 +318,9 @@ async def buscar_por_rosto(
             else None,
             apelido=r["pessoa"].apelido if r["pessoa"] else None,
             foto_principal_url=r["pessoa"].foto_principal_url if r["pessoa"] else None,
+            foto_principal_thumb_url=r["pessoa"].foto_principal_thumb_url
+            if r["pessoa"]
+            else None,
         )
         for r in results
     ]
@@ -455,7 +464,12 @@ async def upload_midia_abordagem(
     )
     await db.commit()
 
-    return FotoUploadResponse(id=foto.id, arquivo_url=foto.arquivo_url, tipo=foto.tipo)
+    return FotoUploadResponse(
+        id=foto.id,
+        arquivo_url=foto.arquivo_url,
+        thumbnail_url=foto.thumbnail_url,
+        tipo=foto.tipo,
+    )
 
 
 @router.get("/{foto_id}/download")

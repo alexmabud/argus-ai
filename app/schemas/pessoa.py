@@ -71,6 +71,7 @@ class PessoaRead(BaseModel):
         apelido: Apelido ou "nome de rua".
         nome_mae: Nome da mãe.
         foto_principal_url: URL da foto de perfil (R2/S3).
+        foto_principal_thumb_url: URL da miniatura da foto de perfil (R2/S3).
         observacoes: Anotações sobre a pessoa.
         guarnicao_id: ID da guarnição (legado, pode ser nulo).
         criado_em: Timestamp de criação.
@@ -85,12 +86,15 @@ class PessoaRead(BaseModel):
     apelido: str | None = None
     nome_mae: str | None = None
     foto_principal_url: str | None = None
+    foto_principal_thumb_url: str | None = None
     observacoes: str | None = None
     guarnicao_id: int | None = None
     criado_em: datetime
     atualizado_em: datetime
 
-    _normalize_foto = field_validator("foto_principal_url", mode="before")(normalize_storage_url)
+    _normalize_foto = field_validator(
+        "foto_principal_url", "foto_principal_thumb_url", mode="before"
+    )(normalize_storage_url)
 
     model_config = {"from_attributes": True}
 
@@ -198,6 +202,7 @@ class VinculoRead(BaseModel):
         frequencia: Número de vezes abordadas juntas.
         ultima_vez: Timestamp da última abordagem conjunta.
         foto_principal_url: URL da foto principal da pessoa vinculada, para identificação visual.
+        foto_principal_thumb_url: URL da miniatura da foto principal da pessoa vinculada.
     """
 
     pessoa_id: int
@@ -205,8 +210,11 @@ class VinculoRead(BaseModel):
     frequencia: int
     ultima_vez: datetime
     foto_principal_url: str | None = None
+    foto_principal_thumb_url: str | None = None
 
-    _normalize_foto = field_validator("foto_principal_url", mode="before")(normalize_storage_url)
+    _normalize_foto = field_validator(
+        "foto_principal_url", "foto_principal_thumb_url", mode="before"
+    )(normalize_storage_url)
 
 
 class PessoaDetail(PessoaRead):
