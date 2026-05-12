@@ -92,7 +92,7 @@ function renderConsulta() {
                  onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
               <!-- Avatar -->
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" :alt="'Foto de ' + p.nome"
+                <img :src="p.foto_principal_thumb_url || p.foto_principal_url" :alt="'Foto de ' + p.nome"
                      @pointerdown.stop="iniciarZoom(p.foto_principal_url)" @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()" @contextmenu.prevent style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;-webkit-touch-callout:none;user-select:none;">
               </template>
               <template x-if="!p.foto_principal_url">
@@ -131,7 +131,7 @@ function renderConsulta() {
                  onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
               <div style="display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
-                  <img x-show="r.foto_principal_url || r.arquivo_url" :src="r.foto_principal_url || r.arquivo_url"
+                  <img x-show="r.foto_principal_url || r.arquivo_url" :src="r.foto_principal_thumb_url || r.foto_principal_url || r.thumbnail_url || r.arquivo_url"
                        style="width:40px;height:40px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);">
                   <div style="flex:1;min-width:0;">
                     <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="r.nome || 'Pessoa sem nome'"></p>
@@ -371,7 +371,7 @@ function renderConsulta() {
                  onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
                  onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url"
+                <img :src="p.foto_principal_thumb_url || p.foto_principal_url"
                      @pointerdown.stop="iniciarZoom(p.foto_principal_url)" @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()" @contextmenu.prevent style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;-webkit-touch-callout:none;user-select:none;">
               </template>
               <template x-if="!p.foto_principal_url">
@@ -455,7 +455,7 @@ function renderConsulta() {
                  onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
                  onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url"
+                <img :src="p.foto_principal_thumb_url || p.foto_principal_url"
                      @pointerdown.stop="iniciarZoom(p.foto_principal_url)" @pointerup.stop="cancelarZoom()" @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()" @contextmenu.prevent style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);touch-action:manipulation;-webkit-touch-callout:none;user-select:none;">
               </template>
               <template x-if="!p.foto_principal_url">
@@ -528,7 +528,7 @@ function renderConsulta() {
                  @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
                  style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" @contextmenu.prevent style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block; -webkit-touch-callout: none; user-select: none;">
+                <img :src="p.foto_principal_thumb_url || p.foto_principal_url" @contextmenu.prevent style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block; -webkit-touch-callout: none; user-select: none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--color-surface-hover); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); border: 1px solid var(--color-border);">
@@ -565,7 +565,7 @@ function renderConsulta() {
                  @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
                  style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" @contextmenu.prevent style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block; -webkit-touch-callout: none; user-select: none;">
+                <img :src="p.foto_principal_thumb_url || p.foto_principal_url" @contextmenu.prevent style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block; -webkit-touch-callout: none; user-select: none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--color-surface-hover); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); border: 1px solid var(--color-border);">
@@ -602,7 +602,7 @@ function renderConsulta() {
                  @pointerleave="cancelarZoom()" @pointercancel="cancelarZoom()"
                  style="cursor: pointer; text-align: center; min-width: 0; touch-action: manipulation;">
               <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_url" @contextmenu.prevent style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block; -webkit-touch-callout: none; user-select: none;">
+                <img :src="p.foto_principal_thumb_url || p.foto_principal_url" @contextmenu.prevent style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; border: 1px solid var(--color-border); display: block; -webkit-touch-callout: none; user-select: none;">
               </template>
               <template x-if="!p.foto_principal_url">
                 <div style="width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--color-surface-hover); display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); border: 1px solid var(--color-border);">
