@@ -67,6 +67,9 @@ jobs:
             cd ~/argus-ai
             git pull
 
+            echo "══════ Higienizando CORS_ORIGINS (idempotente) ══════"
+            bash ./scripts/fix_prod_cors.sh .env
+
             echo "══════ Versionando Service Worker e cache-bust do index.html ══════"
             bash ./update_sw_version.sh
             trap 'git checkout frontend/sw.js frontend/index.html 2>/dev/null || true' EXIT
