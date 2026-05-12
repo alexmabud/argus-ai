@@ -98,9 +98,7 @@ def _foto_read_data(**kwargs) -> dict:
 
 def test_foto_read_serializa_thumbnail_url():
     """FotoRead expõe thumbnail_url quando o campo é fornecido."""
-    foto = FotoRead(
-        **_foto_read_data(thumbnail_url="/storage/argus/foto_thumb.jpg")
-    )
+    foto = FotoRead(**_foto_read_data(thumbnail_url="/storage/argus/foto_thumb.jpg"))
     assert foto.thumbnail_url == "/storage/argus/foto_thumb.jpg"
 
 
@@ -112,12 +110,14 @@ def test_foto_read_aceita_thumbnail_url_none():
 
 def test_foto_read_normaliza_thumbnail_url_absoluta_legada():
     """FotoRead converte URL absoluta legada de thumbnail para path relativo."""
+    from app.config import settings
+
     foto = FotoRead(
         **_foto_read_data(
-            thumbnail_url="http://minio.local:9000/argus/fotos/abc_thumb.jpg"
+            thumbnail_url=f"http://minio.local:9000/{settings.S3_BUCKET}/fotos/abc_thumb.jpg"
         )
     )
-    assert foto.thumbnail_url == "/storage/argus/fotos/abc_thumb.jpg"
+    assert foto.thumbnail_url == f"/storage/{settings.S3_BUCKET}/fotos/abc_thumb.jpg"
 
 
 def test_foto_upload_response_expoe_thumbnail_url():
@@ -164,13 +164,15 @@ def test_busca_rosto_item_thumb_urls_default_none():
 
 def test_busca_rosto_item_normaliza_thumb_urls_absolutas():
     """BuscaRostoItem normaliza URLs absolutas legadas dos campos thumb."""
+    from app.config import settings
+
     item = BuscaRostoItem(
         **_base_data(
-            thumbnail_url="http://minio.local:9000/argus/fotos/a_thumb.jpg",
+            thumbnail_url=f"http://minio.local:9000/{settings.S3_BUCKET}/fotos/a_thumb.jpg",
             foto_principal_thumb_url=(
-                "http://minio.local:9000/argus/fotos/perfil_thumb.jpg"
+                f"http://minio.local:9000/{settings.S3_BUCKET}/fotos/perfil_thumb.jpg"
             ),
         )
     )
-    assert item.thumbnail_url == "/storage/argus/fotos/a_thumb.jpg"
-    assert item.foto_principal_thumb_url == "/storage/argus/fotos/perfil_thumb.jpg"
+    assert item.thumbnail_url == f"/storage/{settings.S3_BUCKET}/fotos/a_thumb.jpg"
+    assert item.foto_principal_thumb_url == f"/storage/{settings.S3_BUCKET}/fotos/perfil_thumb.jpg"
