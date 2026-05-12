@@ -172,6 +172,7 @@ async def upload_foto(
         pessoa = await db.get(Pessoa, pessoa_id)
         if pessoa:
             pessoa.foto_principal_url = foto.arquivo_url
+            pessoa.foto_principal_thumb_url = foto.thumbnail_url
             await db.commit()
 
     # Enfileirar processamento facial em background (apenas para fotos de rosto)
