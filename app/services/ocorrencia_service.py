@@ -43,7 +43,7 @@ class OcorrenciaService:
         self.db = db
         self.repo = OcorrenciaRepository(db)
         self.audit = AuditService(db)
-        self.storage = StorageService()
+        self.storage = StorageService.get()
 
     async def criar(
         self,

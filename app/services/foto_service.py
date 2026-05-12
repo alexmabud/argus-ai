@@ -60,7 +60,7 @@ class FotoService:
         """
         self.db = db
         self.repo = FotoRepository(db)
-        self.storage = StorageService()
+        self.storage = StorageService.get()
         self.audit = AuditService(db)
 
     async def upload_foto(

@@ -66,6 +66,7 @@ async def test_upload_foto_perfil(client: AsyncClient, auth_headers):
         mock_storage.upload.return_value = fake_url
         mock_storage.generate_key.return_value = "avatares/abc123_foto.jpg"
         mock_storage_cls.return_value = mock_storage
+        mock_storage_cls.get.return_value = mock_storage
 
         response = await client.post(
             "/api/v1/auth/perfil/foto",

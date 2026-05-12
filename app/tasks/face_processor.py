@@ -41,7 +41,7 @@ async def processar_face_task(ctx: dict, foto_id: int) -> dict:
         return {"status": "indisponível", "motivo": "FaceService não carregado"}
 
     db_factory = ctx["db_session_factory"]
-    storage = StorageService()
+    storage = StorageService.get()
 
     logger.info("Processando face da foto %d", foto_id)
 

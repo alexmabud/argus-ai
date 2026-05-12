@@ -30,6 +30,7 @@ async def startup(ctx: dict) -> None:
     """
     from app.database.session import AsyncSessionLocal
     from app.services.embedding_service import EmbeddingService
+    from app.services.storage_service import StorageService
 
     logger.info("Iniciando worker arq...")
 
@@ -48,6 +49,10 @@ async def startup(ctx: dict) -> None:
         logger.warning("FaceService indisponível: %s", exc)
         ctx["face_service"] = None
 
+    # Cliente S3 singleton — reutiliza TCP/TLS entre tasks.
+    await StorageService.get().startup()
+    ctx["storage"] = StorageService.get()
+
     ctx["db_session_factory"] = AsyncSessionLocal
     logger.info("Worker arq pronto")
 
@@ -58,7 +63,10 @@ async def shutdown(ctx: dict) -> None:
     Args:
         ctx: Contexto compartilhado do worker arq.
     """
+    from app.services.storage_service import StorageService
+
     logger.info("Encerrando worker arq...")
+    await StorageService.get().shutdown()
 
 
 def _parse_redis_settings() -> RedisSettings:

@@ -69,7 +69,7 @@ async def processar_pdf_task(ctx: dict, ocorrencia_id: int) -> dict:
 
     embedding_service = ctx["embedding_service"]
     db_factory = ctx["db_session_factory"]
-    storage = StorageService()
+    storage = StorageService.get()
 
     logger.info("Processando PDF da ocorrência %d", ocorrencia_id)
 

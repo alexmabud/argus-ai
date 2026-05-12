@@ -51,8 +51,12 @@ async def lifespan(app: FastAPI):
     app.state.embedding_service = None
     app.state.face_service = None
 
+    # Cliente S3 singleton — reutiliza TCP/TLS entre requests.
+    await StorageService.get().startup()
+
     yield
     # Shutdown
+    await StorageService.get().shutdown()
     await engine.dispose()
 
 
@@ -158,7 +162,7 @@ def create_app() -> FastAPI:
             )
 
         try:
-            body, content_type = await StorageService().download_with_meta(key)
+            body, content_type = await StorageService.get().download_with_meta(key)
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")
             if code in {"NoSuchKey", "404"}:
