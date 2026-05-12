@@ -12,6 +12,7 @@ evitando o custo de handshake (100-300ms) a cada operação contra R2.
 import logging
 import re
 import uuid
+from typing import Any
 
 import aioboto3
 
@@ -69,8 +70,8 @@ class StorageService:
     def __init__(self) -> None:
         """Inicializa o serviço sem abrir conexões — chame ``startup()``."""
         self._session = aioboto3.Session()
-        self._client_ctx = None
-        self._client = None
+        self._client_ctx: Any = None
+        self._client: Any = None
 
     @classmethod
     def get(cls) -> "StorageService":
@@ -105,7 +106,7 @@ class StorageService:
         self._client = await self._client_ctx.__aenter__()
 
     async def shutdown(self) -> None:
-        """Fecha o cliente S3 abrindo via ``startup()``.
+        """Fecha o cliente S3 aberto via ``startup()``.
 
         Idempotente. Deve ser chamado no encerramento do lifespan da
         aplicação FastAPI e no ``on_shutdown`` do worker arq.
@@ -115,7 +116,7 @@ class StorageService:
             self._client_ctx = None
             self._client = None
 
-    def _ensure_client(self):
+    def _ensure_client(self) -> Any:
         """Retorna o cliente S3, exigindo que ``startup()`` já tenha rodado.
 
         Returns:
