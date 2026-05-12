@@ -30,6 +30,7 @@ class TestUploadFoto:
         mock_storage.upload = AsyncMock(return_value="https://s3.example.com/fotos/test.jpg")
         mock_storage.generate_key = MagicMock(return_value="fotos/test.jpg")
         mock_storage_cls.return_value = mock_storage
+        mock_storage_cls.get = MagicMock(return_value=mock_storage)
 
         response = await client.post(
             "/api/v1/fotos/upload",

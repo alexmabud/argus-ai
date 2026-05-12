@@ -531,7 +531,7 @@ async def download_midia(
 
     # Download dos bytes do MinIO
     try:
-        storage = StorageService()
+        storage = StorageService.get()
         key = extrair_key_da_url(foto.arquivo_url)
         file_bytes = await storage.download(key)
     except Exception as exc:
