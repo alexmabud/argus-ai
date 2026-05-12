@@ -23,6 +23,9 @@ class Foto(Base, TimestampMixin, SoftDeleteMixin):
     Attributes:
         id: Identificador único (chave primária).
         arquivo_url: URL da imagem em R2/S3 (Cloudflare).
+        thumbnail_url: URL da versão reduzida (~300px JPEG q75, ~25KB) para
+            listagens. Pode ser None em fotos legadas (anteriores ao
+            backfill) ou tipos não-imagem (PDF, vídeo).
         tipo: Tipo de foto (default: "rosto", ex: "corpo", "placa").
         data_hora: Data/hora da captura (timezone-aware).
         latitude: Latitude GPS (opcional).
@@ -48,6 +51,7 @@ class Foto(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     arquivo_url: Mapped[str] = mapped_column(String(500))
+    thumbnail_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     tipo: Mapped[str] = mapped_column(String(50), default="rosto")
     data_hora: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
