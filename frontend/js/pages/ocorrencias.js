@@ -112,7 +112,7 @@ function renderOcorrencias() {
               <template x-for="(p, i) in ab.pessoas.slice(0, 3)" :key="p.id">
                 <div :style="'width:36px;height:36px;border-radius:4px;border:1px solid rgba(0,212,255,0.2);background:var(--color-surface-hover);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--color-primary);flex-shrink:0;' + (i > 0 ? 'margin-left:-8px;' : '') + (p.foto_principal_url ? 'padding:0;overflow:hidden;' : '')">
                   <template x-if="p.foto_principal_url">
-                    <img :src="p.foto_principal_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
+                    <img :src="p.foto_principal_thumb_url || p.foto_principal_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
                   </template>
                   <template x-if="!p.foto_principal_url">
                     <span x-text="iniciais(p.nome)"></span>
