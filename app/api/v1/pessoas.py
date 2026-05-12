@@ -216,6 +216,9 @@ async def detalhe_pessoa(
             foto_principal_url=vm.pessoa_vinculada.foto_principal_url
             if vm.pessoa_vinculada
             else None,
+            foto_principal_thumb_url=vm.pessoa_vinculada.foto_principal_thumb_url
+            if vm.pessoa_vinculada
+            else None,
             tipo=vm.tipo,
             descricao=vm.descricao,
             criado_em=vm.criado_em,
@@ -598,6 +601,7 @@ async def criar_vinculo_manual(
         pessoa_vinculada_id=vinculo.pessoa_vinculada_id,
         nome=vinculada.nome if vinculada else "",
         foto_principal_url=vinculada.foto_principal_url if vinculada else None,
+        foto_principal_thumb_url=vinculada.foto_principal_thumb_url if vinculada else None,
         tipo=vinculo.tipo,
         descricao=vinculo.descricao,
         criado_em=vinculo.criado_em,
