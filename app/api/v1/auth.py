@@ -248,7 +248,7 @@ async def upload_foto_perfil(
     """
     file_bytes = await ler_upload_com_limite(foto, max_size=5 * 1024 * 1024)
     validar_magic_bytes_imagem(file_bytes)
-    storage = StorageService()
+    storage = StorageService.get()
     key = storage.generate_key("avatares", foto.filename or "foto.jpg")
     url = await storage.upload(file_bytes, key, content_type=foto.content_type or "image/jpeg")
 

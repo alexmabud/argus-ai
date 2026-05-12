@@ -9,12 +9,13 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.auth import UsuarioResumoRead
 from app.schemas.foto import FotoRead
 from app.schemas.ocorrencia import OcorrenciaRead
 from app.schemas.veiculo import VeiculoRead
+from app.services.storage_service import normalize_storage_url
 
 
 class AbordagemCreate(BaseModel):
@@ -117,13 +118,20 @@ class PessoaAbordagemRead(BaseModel):
         id: Identificador único da pessoa.
         nome: Nome completo.
         foto_principal_url: URL da foto de perfil (opcional).
+        foto_principal_thumb_url: URL da thumbnail (~300px) para uso em
+            listagens — drasticamente mais leve que a foto cheia.
         apelido: Apelido ou nome de rua (opcional).
     """
 
     id: int
     nome: str
     foto_principal_url: str | None = None
+    foto_principal_thumb_url: str | None = None
     apelido: str | None = None
+
+    _normalize_foto = field_validator(
+        "foto_principal_url", "foto_principal_thumb_url", mode="before"
+    )(normalize_storage_url)
 
     model_config = {"from_attributes": True}
 

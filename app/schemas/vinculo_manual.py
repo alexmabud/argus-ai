@@ -35,6 +35,8 @@ class VinculoManualRead(BaseModel):
         pessoa_vinculada_id: ID da pessoa vinculada.
         nome: Nome da pessoa vinculada.
         foto_principal_url: URL da foto da pessoa vinculada (para exibição).
+        foto_principal_thumb_url: URL da thumbnail (~300px) usada em
+            listagens, mais leve que a foto cheia.
         tipo: Tipo do vínculo (ex: 'Irmão').
         descricao: Detalhe adicional sobre o vínculo.
         criado_em: Timestamp de criação do vínculo.
@@ -44,10 +46,13 @@ class VinculoManualRead(BaseModel):
     pessoa_vinculada_id: int
     nome: str
     foto_principal_url: str | None = None
+    foto_principal_thumb_url: str | None = None
     tipo: str
     descricao: str | None = None
     criado_em: datetime
 
-    _normalize_foto = field_validator("foto_principal_url", mode="before")(normalize_storage_url)
+    _normalize_foto = field_validator(
+        "foto_principal_url", "foto_principal_thumb_url", mode="before"
+    )(normalize_storage_url)
 
     model_config = {"from_attributes": True}

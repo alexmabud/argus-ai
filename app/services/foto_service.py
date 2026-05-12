@@ -9,9 +9,12 @@ de embedding facial (512 dimensões via InsightFace).
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from botocore.exceptions import BotoCoreError, ClientError
+from PIL import UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,9 +23,12 @@ from app.models.pessoa import Pessoa
 from app.repositories.foto_repo import FotoRepository
 from app.services.audit_service import AuditService
 from app.services.storage_service import StorageService
+from app.utils.imaging import gerar_thumbnail
 
 if TYPE_CHECKING:
     from app.services.face_service import FaceService
+
+logger = logging.getLogger("argus")
 
 
 #: Tamanho máximo de upload de imagem (10 MB) — defesa em profundidade na camada service.
@@ -60,7 +66,7 @@ class FotoService:
         """
         self.db = db
         self.repo = FotoRepository(db)
-        self.storage = StorageService()
+        self.storage = StorageService.get()
         self.audit = AuditService(db)
 
     async def upload_foto(
@@ -83,8 +89,12 @@ class FotoService:
         """Faz upload de foto para S3 e cria registro no banco.
 
         Fluxo:
-        1. Gera chave única e faz upload para S3/R2
-        2. Cria registro Foto no banco com metadados
+        1. Gera chave única e faz upload do arquivo original para S3/R2
+        1b. Se for imagem (``content_type`` inicia com ``image/``), gera
+            thumbnail JPEG (300px, q75) via ``app.utils.imaging.gerar_thumbnail``
+            e faz upload separado. Falha aqui é logada e não bloqueia o upload
+            da foto — thumb é otimização. PDFs/vídeos pulam essa etapa.
+        2. Cria registro Foto no banco com metadados (incluindo ``thumbnail_url``)
         3. Registra audit log da criação
 
         A foto é criada com face_processada=False. O arq worker processará
@@ -118,13 +128,31 @@ class FotoService:
         if len(file_bytes) > max_size:
             raise ValueError(f"Arquivo excede {max_size // (1024 * 1024)} MB")
 
-        # 1. Upload para S3/R2
+        # 1. Upload da imagem original
         key = self.storage.generate_key("fotos", filename)
         url = await self.storage.upload(file_bytes, key, content_type)
+
+        # 1b. Gerar e enviar thumbnail (apenas para imagens — pula PDF/vídeo).
+        # Falhas (imagem inválida, S3 indisponível) deixam thumbnail_url=None —
+        # Task C1 (backfill via arq) repara essas linhas quando o storage volta.
+        thumbnail_url: str | None = None
+        if content_type.startswith("image/"):
+            try:
+                thumb_bytes = await asyncio.to_thread(gerar_thumbnail, file_bytes)
+                thumb_filename = filename.rsplit(".", 1)[0] + "_thumb.jpg"
+                thumb_key = self.storage.generate_key("thumbs", thumb_filename)
+                thumbnail_url = await self.storage.upload(
+                    thumb_bytes,
+                    thumb_key,
+                    content_type="image/jpeg",
+                )
+            except (UnidentifiedImageError, OSError, ClientError, BotoCoreError):
+                logger.warning("Falha ao gerar thumbnail para %s", key, exc_info=True)
 
         # 2. Criar registro Foto no banco
         foto = Foto(
             arquivo_url=url,
+            thumbnail_url=thumbnail_url,
             tipo=tipo,
             data_hora=datetime.now(UTC),
             latitude=latitude,

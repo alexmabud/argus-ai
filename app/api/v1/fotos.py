@@ -172,6 +172,7 @@ async def upload_foto(
         pessoa = await db.get(Pessoa, pessoa_id)
         if pessoa:
             pessoa.foto_principal_url = foto.arquivo_url
+            pessoa.foto_principal_thumb_url = foto.thumbnail_url
             await db.commit()
 
     # Enfileirar processamento facial em background (apenas para fotos de rosto)
@@ -187,7 +188,12 @@ async def upload_foto(
         except Exception:
             logger.warning("Worker offline — face da foto %d será processada depois", foto.id)
 
-    return FotoUploadResponse(id=foto.id, arquivo_url=foto.arquivo_url, tipo=foto.tipo)
+    return FotoUploadResponse(
+        id=foto.id,
+        arquivo_url=foto.arquivo_url,
+        thumbnail_url=foto.thumbnail_url,
+        tipo=foto.tipo,
+    )
 
 
 @router.get("/pessoa/{pessoa_id}", response_model=list[FotoRead])
@@ -303,6 +309,7 @@ async def buscar_por_rosto(
         BuscaRostoItem(
             foto_id=r["foto"].id,
             arquivo_url=r["foto"].arquivo_url,
+            thumbnail_url=r["foto"].thumbnail_url,
             pessoa_id=r["foto"].pessoa_id,
             similaridade=r["similaridade"],
             nome=r["pessoa"].nome if r["pessoa"] else None,
@@ -311,6 +318,7 @@ async def buscar_por_rosto(
             else None,
             apelido=r["pessoa"].apelido if r["pessoa"] else None,
             foto_principal_url=r["pessoa"].foto_principal_url if r["pessoa"] else None,
+            foto_principal_thumb_url=r["pessoa"].foto_principal_thumb_url if r["pessoa"] else None,
         )
         for r in results
     ]
@@ -454,7 +462,12 @@ async def upload_midia_abordagem(
     )
     await db.commit()
 
-    return FotoUploadResponse(id=foto.id, arquivo_url=foto.arquivo_url, tipo=foto.tipo)
+    return FotoUploadResponse(
+        id=foto.id,
+        arquivo_url=foto.arquivo_url,
+        thumbnail_url=foto.thumbnail_url,
+        tipo=foto.tipo,
+    )
 
 
 @router.get("/{foto_id}/download")
@@ -531,7 +544,7 @@ async def download_midia(
 
     # Download dos bytes do MinIO
     try:
-        storage = StorageService()
+        storage = StorageService.get()
         key = extrair_key_da_url(foto.arquivo_url)
         file_bytes = await storage.download(key)
     except Exception as exc:

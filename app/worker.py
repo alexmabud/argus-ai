@@ -15,6 +15,7 @@ from arq.connections import RedisSettings
 from app.config import settings
 from app.tasks.face_processor import processar_face_task
 from app.tasks.pdf_processor import processar_pdf_task
+from app.tasks.thumbnail_backfill import gerar_thumbnail_backfill_task
 
 logger = logging.getLogger("argus")
 
@@ -30,6 +31,7 @@ async def startup(ctx: dict) -> None:
     """
     from app.database.session import AsyncSessionLocal
     from app.services.embedding_service import EmbeddingService
+    from app.services.storage_service import StorageService
 
     logger.info("Iniciando worker arq...")
 
@@ -48,6 +50,10 @@ async def startup(ctx: dict) -> None:
         logger.warning("FaceService indisponível: %s", exc)
         ctx["face_service"] = None
 
+    # Cliente S3 singleton — reutiliza TCP/TLS entre tasks.
+    await StorageService.get().startup()
+    ctx["storage"] = StorageService.get()
+
     ctx["db_session_factory"] = AsyncSessionLocal
     logger.info("Worker arq pronto")
 
@@ -58,7 +64,10 @@ async def shutdown(ctx: dict) -> None:
     Args:
         ctx: Contexto compartilhado do worker arq.
     """
+    from app.services.storage_service import StorageService
+
     logger.info("Encerrando worker arq...")
+    await StorageService.get().shutdown()
 
 
 def _parse_redis_settings() -> RedisSettings:
@@ -97,7 +106,7 @@ class WorkerSettings:
         job_timeout: Timeout máximo por job em segundos (10 min).
     """
 
-    functions = [processar_pdf_task, processar_face_task]
+    functions = [processar_pdf_task, processar_face_task, gerar_thumbnail_backfill_task]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = _parse_redis_settings()

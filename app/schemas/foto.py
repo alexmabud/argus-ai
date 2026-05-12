@@ -41,6 +41,7 @@ class FotoRead(BaseModel):
     Attributes:
         id: Identificador único da foto.
         arquivo_url: URL da imagem no storage (R2/S3).
+        thumbnail_url: URL da miniatura otimizada (R2/S3). Null se ainda não gerada.
         tipo: Tipo de foto ("rosto", "corpo", "placa", etc).
         data_hora: Data/hora da captura.
         latitude: Latitude GPS da captura.
@@ -53,6 +54,7 @@ class FotoRead(BaseModel):
 
     id: int
     arquivo_url: str
+    thumbnail_url: str | None = None
     tipo: str
     data_hora: datetime
     latitude: float | None = None
@@ -62,7 +64,9 @@ class FotoRead(BaseModel):
     veiculo_id: int | None = None
     face_processada: bool
 
-    _normalize_url = field_validator("arquivo_url", mode="before")(normalize_storage_url)
+    _normalize_url = field_validator("arquivo_url", "thumbnail_url", mode="before")(
+        normalize_storage_url
+    )
 
     model_config = {"from_attributes": True}
 
@@ -73,14 +77,18 @@ class FotoUploadResponse(BaseModel):
     Attributes:
         id: Identificador único da foto criada.
         arquivo_url: URL da imagem no storage.
+        thumbnail_url: URL da miniatura otimizada. Null se ainda não gerada.
         tipo: Tipo de foto.
     """
 
     id: int
     arquivo_url: str
+    thumbnail_url: str | None = None
     tipo: str
 
-    _normalize_url = field_validator("arquivo_url", mode="before")(normalize_storage_url)
+    _normalize_url = field_validator("arquivo_url", "thumbnail_url", mode="before")(
+        normalize_storage_url
+    )
 
 
 class BuscaRostoItem(BaseModel):
@@ -89,26 +97,34 @@ class BuscaRostoItem(BaseModel):
     Attributes:
         foto_id: ID da foto encontrada no banco.
         arquivo_url: URL da imagem no storage (R2/S3).
+        thumbnail_url: URL da miniatura da foto encontrada (R2/S3).
         pessoa_id: ID da pessoa associada à foto.
         similaridade: Grau de similaridade (0 a 1, cosseno).
         nome: Nome completo da pessoa (preenchido quando disponível).
         cpf_masked: CPF mascarado da pessoa (preenchido quando disponível).
         apelido: Apelido da pessoa (preenchido quando disponível).
         foto_principal_url: URL da foto de perfil da pessoa.
+        foto_principal_thumb_url: URL da miniatura da foto de perfil da pessoa.
     """
 
     foto_id: int
     arquivo_url: str
+    thumbnail_url: str | None = None
     pessoa_id: int | None = None
     similaridade: float
     nome: str | None = None
     cpf_masked: str | None = None
     apelido: str | None = None
     foto_principal_url: str | None = None
+    foto_principal_thumb_url: str | None = None
 
-    _normalize_urls = field_validator("arquivo_url", "foto_principal_url", mode="before")(
-        normalize_storage_url
-    )
+    _normalize_urls = field_validator(
+        "arquivo_url",
+        "thumbnail_url",
+        "foto_principal_url",
+        "foto_principal_thumb_url",
+        mode="before",
+    )(normalize_storage_url)
 
     model_config = {"from_attributes": True}
 

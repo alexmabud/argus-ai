@@ -35,6 +35,9 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         apelido: Apelido ou "nome de rua" (opcional).
         nome_mae: Nome da mãe (opcional, busca fuzzy via pg_trgm preparada).
         foto_principal_url: URL da foto de perfil (R2/S3).
+        foto_principal_thumb_url: URL da thumbnail (~300px) da foto de perfil,
+            usada em listagens para reduzir tráfego. Pode ser None em
+            registros legados (anteriores ao backfill).
         observacoes: Anotações sobre a pessoa.
         guarnicao_id: ID da guarnição (isolamento multi-tenant).
         enderecos: Relacionamento com EndereçosPessoa.
@@ -60,6 +63,7 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     apelido: Mapped[str | None] = mapped_column(String(100), nullable=True)
     nome_mae: Mapped[str | None] = mapped_column(String(300), nullable=True, index=True)
     foto_principal_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    foto_principal_thumb_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     enderecos = relationship("EnderecoPessoa", back_populates="pessoa", lazy="selectin")
