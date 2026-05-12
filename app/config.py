@@ -143,9 +143,14 @@ class Settings(BaseSettings):
     def _validar_producao(self) -> "Settings":
         """Garante que origens de dev não vazem para produção.
 
-        Quando DEBUG=False (e TESTING=False), recusa CORS_ORIGINS contendo
-        localhost/127.0.0.1 ou coringa "*". Falha rápido no startup em vez
-        de servir tráfego com configuração insegura.
+        Quando DEBUG=False (e TESTING=False), recusa CORS_ORIGINS contendo:
+        - localhost/127.0.0.1 (origens de desenvolvimento)
+        - coringa "*" (qualquer origem)
+        - esquema http:// (não-TLS — defesa em profundidade contra MITM
+          e divergência do redirect HTTPS feito pelo Caddy)
+
+        Falha rápido no startup em vez de servir tráfego com configuração
+        insegura.
 
         TESTING=1 desativa a checagem para que CI/pytest possam carregar
         Settings com defaults sem precisar setar CORS_ORIGINS.
@@ -162,6 +167,13 @@ class Settings(BaseSettings):
             raise ValueError(
                 "CORS_ORIGINS=['*'] não é permitido em produção. "
                 "Liste explicitamente os domínios autorizados."
+            )
+        origens_sem_tls = [o for o in self.CORS_ORIGINS if o.startswith("http://")]
+        if origens_sem_tls:
+            raise ValueError(
+                "CORS_ORIGINS contém origens http:// (sem TLS) em produção: "
+                f"{origens_sem_tls}. Use https:// — o Caddy força HTTPS e "
+                "manter origens http:// fragiliza defesa em profundidade."
             )
         return self
 
