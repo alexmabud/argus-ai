@@ -156,12 +156,17 @@ yarn.lock
 .ruff_cache/
 
 # ══════════════════════════════════
-# CLAUDE CODE
+# CLAUDE CODE & AI SKILLS
 # ══════════════════════════════════
-.claude/skills/
-.claude/settings.local.json
+# Setup local — nunca commitar
+CLAUDE.md
+GEMINI.md
+.claude/
+.gemini/
+
 # Credenciais e chaves privadas
 Claude Flare - Argus.txt
 .worktrees/
-.claude/worktrees/
-.worktrees/
+
+# NOTE: Skills (.claude/skills/ e .gemini/skills/) são mantidas localmente
+# Não são versionadas — cada máquina tem sua cópia
