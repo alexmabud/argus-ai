@@ -1,45 +1,101 @@
 services:
+  # ═══════════════════════════════════════════════════════════════════════
+  # Database: PostgreSQL com pgvector, PostGIS, pg_trgm
+  # ═══════════════════════════════════════════════════════════════════════
   db:
     build:
       context: .
       dockerfile: docker/db.Dockerfile
+    container_name: argus-db
     environment:
       POSTGRES_USER: argus
       POSTGRES_PASSWORD: argus_dev
       POSTGRES_DB: argus_db
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U argus -d argus_db"]
       interval: 10s
       timeout: 5s
       retries: 10
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./scripts/init_extensions.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - argus-network
 
+  # ═══════════════════════════════════════════════════════════════════════
+  # Cache: Redis para cache e fila de tarefas (arq)
+  # ═══════════════════════════════════════════════════════════════════════
   redis:
     image: redis:7-alpine
+    container_name: argus-redis
     command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - argus-network
 
+  # ═══════════════════════════════════════════════════════════════════════
+  # Storage: MinIO (S3-compatible) para uploads (imagens, PDFs, etc)
+  # ═══════════════════════════════════════════════════════════════════════
+  minio:
+    image: minio/minio:latest
+    container_name: argus-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - minio_data:/data
+    networks:
+      - argus-network
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # MinIO: Inicializa bucket "argus" no startup
+  # ═══════════════════════════════════════════════════════════════════════
+  minio-init:
+    image: minio/mc:latest
+    container_name: argus-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/argus &&
+      mc anonymous set download local/argus &&
+      echo 'Bucket argus criado com sucesso.'
+      "
+    networks:
+      - argus-network
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # FastAPI: Backend da aplicação
+  # ═══════════════════════════════════════════════════════════════════════
   api:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
+    container_name: argus-api
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
     env_file:
       - .env
     environment:
@@ -52,6 +108,8 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    volumes:
+      - .:/app
     depends_on:
       db:
         condition: service_healthy
@@ -59,13 +117,17 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+    networks:
+      - argus-network
 
+  # ═══════════════════════════════════════════════════════════════════════
+  # Worker: arq worker para tarefas assíncronas
+  # (PDF parsing, embeddings, face recognition, etc)
+  # ═══════════════════════════════════════════════════════════════════════
   worker:
     build: .
+    container_name: argus-worker
     command: arq app.worker.WorkerSettings
-    volumes:
-      - .:/app
-      - insightface_models:/root/.insightface
     env_file:
       - .env
     environment:
@@ -73,6 +135,9 @@ services:
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: http://localhost:9000
+    volumes:
+      - .:/app
+      - insightface_models:/root/.insightface
     depends_on:
       db:
         condition: service_healthy
@@ -80,36 +145,25 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+    networks:
+      - argus-network
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  minio-init:
-    image: minio/mc:latest
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 minioadmin minioadmin &&
-      mc mb --ignore-existing local/argus &&
-      mc anonymous set download local/argus &&
-      echo 'Bucket argus pronto.'
-      "
-
+# ═════════════════════════════════════════════════════════════════════════
+# Volumes persistentes
+# ═════════════════════════════════════════════════════════════════════════
 volumes:
   pgdata:
-  insightface_models:
+    driver: local
   redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  insightface_models:
+    driver: local
+
+# ═════════════════════════════════════════════════════════════════════════
+# Network para comunicação entre serviços
+# ═════════════════════════════════════════════════════════════════════════
+networks:
+  argus-network:
+    driver: bridge
