@@ -46,14 +46,17 @@
 | Analise geoespacial | Busca por raio e mapa de calor (PostGIS + GiST) |
 | Relacionamentos automaticos | Vinculo automatico entre pessoas abordadas juntas, com frequencia calculada |
 | Vinculos manuais | Criacao manual de relacionamentos entre pessoas com tipo e descricao |
+| Observacoes de pessoa | Anotacoes operacionais livres por pessoa com historico cronologico |
 | Consulta unificada | Busca simultanea em pessoas, veiculos e abordagens via unico termo |
 | Ocorrencias PDF | Upload de BOs em PDF com extracao de texto (PyMuPDF) e embedding semantico |
+| RAG | Busca semantica em pgvector + geracao de relatorios via Claude API ou Ollama |
 | Dashboard analitico | Resumo operacional, pessoas recorrentes, producao diaria/mensal, calendario de atividade |
-| Gestao de usuarios | Painel admin para criacao de usuarios com senha unica, pausar/reativar acesso |
+| Gestao de usuarios | Painel admin para criacao, pausa, reativacao e exclusao de usuarios; geracao de senha unica |
+| Gestao de BPMs e equipes | Criacao de batalhoes e equipes com controle de isolamento de dados |
 | Perfil do usuario | Edicao de nome, apelido, posto/graduacao e foto de perfil |
 | Sync offline | Fila IndexedDB sincroniza automaticamente ao reconectar (Dexie.js) |
 | Sessoes exclusivas | Apenas uma sessao ativa por usuario (session_id validado no JWT) |
-| Multi-tenancy | Cada guarnicao enxerga somente seus proprios dados |
+| Multi-tenancy | Cada equipe/guarnicao enxerga somente seus proprios dados |
 | LGPD compliant | CPF criptografado (Fernet AES-256), audit trail imutavel, soft delete, retencao controlada |
 
 ---
@@ -178,7 +181,7 @@ make worker
 | `make test` | Roda testes com cobertura (`pytest -v --cov=app`) |
 | `make lint` | Ruff lint + mypy type check |
 | `make format` | Ruff format (auto-formatacao) |
-| `make migrate` | Aplica migrations pendentes (ou `init_db.py` se nao houver versoes) |
+| `make migrate` | Aplica migrations pendentes |
 | `make migrate-create msg="desc"` | Cria nova migration Alembic com autogenerate |
 | `make seed` | Popular passagens |
 | `make anonimizar` | Anonimizacao LGPD de dados expirados |
@@ -198,34 +201,38 @@ argus-ai/
 +-- app/
 |   +-- api/v1/                # Routers (endpoints HTTP)
 |   |   +-- router.py          # Agregador de rotas
-|   |   +-- auth.py            # Login, refresh, perfil, foto de perfil
-|   |   +-- pessoas.py         # CRUD pessoas, enderecos, vinculos manuais
+|   |   +-- auth.py            # Login, logout, refresh, perfil, foto de perfil
+|   |   +-- pessoas.py         # CRUD pessoas, enderecos, vinculos manuais, observacoes
 |   |   +-- veiculos.py        # CRUD veiculos
 |   |   +-- localidades.py     # Autocomplete de bairros, cidades, estados
-|   |   +-- abordagens.py      # Registro de abordagens
-|   |   +-- fotos.py           # Upload de fotos + busca facial
+|   |   +-- abordagens.py      # Registro e listagem de abordagens
+|   |   +-- fotos.py           # Upload de fotos/midias, busca facial, OCR de placa
 |   |   +-- consultas.py       # Busca unificada por termo
 |   |   +-- ocorrencias.py     # Upload PDF + listagem + busca
 |   |   +-- analytics.py       # Dashboard, metricas, calendario
 |   |   +-- sync.py            # Sincronizacao offline batch
-|   |   +-- admin.py           # Gestao de usuarios (admin)
+|   |   +-- admin.py           # Gestao de usuarios, BPMs e equipes (admin)
 |   +-- models/                # SQLAlchemy models
 |   |   +-- base.py            # Mixins: Timestamp, SoftDelete, MultiTenant
 |   |   +-- usuario.py         # Usuario (oficial/membro)
-|   |   +-- guarnicao.py       # Guarnicao (raiz multi-tenancy)
+|   |   +-- guarnicao.py       # Equipe/guarnicao (multi-tenancy)
+|   |   +-- bpm.py             # Batalhao (agrupador de equipes, com isolamento)
 |   |   +-- pessoa.py          # Pessoa abordada (CPF criptografado)
+|   |   +-- pessoa_observacao.py # Observacoes livres por pessoa
 |   |   +-- endereco.py        # Endereco com PostGIS point
 |   |   +-- veiculo.py         # Veiculo (placa normalizada)
+|   |   +-- localidade.py      # Hierarquia estado/cidade/bairro
 |   |   +-- abordagem.py       # Abordagem (documento raiz)
-|   |   +-- foto.py            # Foto (embedding facial 512-dim)
+|   |   +-- foto.py            # Foto/midia (embedding facial 512-dim)
 |   |   +-- ocorrencia.py      # Ocorrencia PDF (embedding texto 384-dim)
 |   |   +-- relacionamento.py  # Vinculo automatico pessoa-pessoa
 |   |   +-- vinculo_manual.py  # Vinculo manual pessoa-pessoa
 |   |   +-- audit_log.py       # Trilha de auditoria imutavel
 |   +-- schemas/               # Pydantic schemas (request/response)
-|   +-- services/              # Logica de negocio (18 servicos, NUNCA importa FastAPI)
+|   +-- services/              # Logica de negocio (22 servicos, NUNCA importa FastAPI)
 |   +-- repositories/          # Acesso a dados com TenantFilter (multi-tenancy)
-|   +-- core/                  # Security, crypto, middleware, rate limiting, permissions
+|   +-- core/                  # Security, crypto, middleware, rate limiting, permissions,
+|   |                          #   upload_validation, auth_cookie, logging_config
 |   +-- tasks/                 # Background jobs arq (PDF, face embedding)
 |   +-- database/              # Engine async + session factory
 |   +-- config.py              # Settings (Pydantic BaseSettings)
@@ -248,7 +255,7 @@ argus-ai/
 |   |   |   +-- abordagem-nova.js   # Cadastro rapido (< 40s)
 |   |   |   +-- abordagem-detalhe.js # Detalhe de abordagem
 |   |   |   +-- consulta.js         # Busca unificada
-|   |   |   +-- pessoa-detalhe.js   # Detalhe de pessoa + relacionamentos
+|   |   |   +-- pessoa-detalhe.js   # Detalhe de pessoa + relacionamentos + observacoes
 |   |   |   +-- dashboard.js        # Dashboard analitico (ApexCharts)
 |   |   |   +-- ocorrencias.js      # Upload e listagem de BOs (PDF)
 |   |   |   +-- perfil.js           # Edicao de perfil do usuario
@@ -274,6 +281,7 @@ argus-ai/
 |   +-- generate_encryption_key.py  # Gerar chave Fernet
 |   +-- reset_usuario.py       # Reset de senha de usuario
 |   +-- anonimizar_dados.py    # Anonimizacao LGPD
+|   +-- backfill_thumbnails.py # Reprocessar thumbnails de fotos existentes
 |   +-- deploy.sh              # Script de deploy
 |   +-- setup_oracle.sh        # Setup de VM Oracle
 |   +-- backup_rclone.sh       # Backup com rclone
@@ -297,6 +305,7 @@ argus-ai/
 |--------|------|-----------|
 | POST | `/login` | Login por matricula + senha, retorna access + refresh tokens |
 | POST | `/refresh` | Renovar access token |
+| POST | `/logout` | Invalida a sessao atual (session_id) |
 | GET | `/me` | Dados do usuario autenticado |
 | PUT | `/perfil` | Atualizar perfil (nome, nome de guerra, posto/graduacao) |
 | POST | `/perfil/foto` | Upload de foto de perfil para R2 |
@@ -308,10 +317,17 @@ argus-ai/
 | POST | `/` | Cadastrar pessoa (CPF criptografado Fernet + hash SHA-256) |
 | GET | `/` | Listar pessoas (busca fuzzy nome/apelido, CPF, paginacao) |
 | GET | `/{id}` | Detalhe com enderecos, contagem de abordagens, relacionamentos |
+| PATCH | `/{id}` | Atualizar dados de uma pessoa |
+| DELETE | `/{id}` | Soft delete de pessoa |
 | POST | `/{id}/enderecos` | Adicionar endereco com ponto PostGIS |
+| PATCH | `/{id}/enderecos/{end_id}` | Atualizar endereco |
 | GET | `/{id}/abordagens` | Listar abordagens da pessoa |
 | POST | `/{id}/vinculos-manuais` | Criar vinculo manual entre pessoas |
 | DELETE | `/{id}/vinculos-manuais/{vinculo_id}` | Remover vinculo manual |
+| GET | `/{id}/observacoes` | Listar observacoes operacionais da pessoa |
+| POST | `/{id}/observacoes` | Criar observacao |
+| PATCH | `/{id}/observacoes/{obs_id}` | Atualizar observacao |
+| DELETE | `/{id}/observacoes/{obs_id}` | Soft delete de observacao |
 
 ### Veiculos (`/api/v1/veiculos`)
 
@@ -325,13 +341,20 @@ argus-ai/
 | Metodo | Rota | Descricao |
 |--------|------|-----------|
 | POST | `/` | Registrar abordagem com pessoas + veiculos + auto-relacionamento |
+| GET | `/` | Listar abordagens (paginado, com filtros) |
+| GET | `/{id}` | Detalhe de abordagem com pessoas, veiculos e fotos |
 
-### Fotos (`/api/v1/fotos`)
+### Fotos e Midias (`/api/v1/fotos`)
 
 | Metodo | Rota | Descricao |
 |--------|------|-----------|
-| POST | `/upload` | Upload de foto para R2 (face embedding async via worker) |
-| GET | `/buscar/rosto` | Busca por similaridade facial (IVFFlat pgvector) |
+| POST | `/upload` | Upload de foto de pessoa para R2 (face embedding async via worker) |
+| POST | `/midias` | Upload de midia (foto/video) vinculada a abordagem |
+| GET | `/pessoa/{pessoa_id}` | Listar fotos de uma pessoa |
+| GET | `/abordagem/{abordagem_id}` | Listar midias de uma abordagem |
+| POST | `/buscar-rosto` | Busca por similaridade facial (IVFFlat pgvector) |
+| POST | `/ocr-placa` | Extrair numero de placa via EasyOCR |
+| GET | `/{foto_id}/download` | Download/redirect de midia via URL assinada R2 |
 
 ### Consultas (`/api/v1/consultas`)
 
@@ -359,6 +382,7 @@ argus-ai/
 | GET | `/por-dia` | Serie diaria (ultimos 30 dias) |
 | GET | `/por-mes` | Serie mensal (ultimos 12 meses) |
 | GET | `/dias-com-abordagem` | Dias do mes com atividade (indicadores de calendario) |
+| GET | `/abordagens-do-dia` | Total de abordagens em data especifica |
 | GET | `/pessoas-do-dia` | Pessoas abordadas em data especifica |
 
 ### Sync (`/api/v1/sync`)
@@ -373,6 +397,16 @@ argus-ai/
 |--------|------|-----------|
 | GET | `/usuarios` | Listar usuarios (ativos + pausados) |
 | POST | `/usuarios` | Criar usuario com senha unica auto-gerada |
+| PATCH | `/usuarios/{id}/pausar` | Pausar ou reativar acesso de usuario |
+| POST | `/usuarios/{id}/gerar-senha` | Gerar nova senha unica para usuario |
+| DELETE | `/usuarios/{id}` | Excluir usuario (soft delete) |
+| PATCH | `/usuarios/{id}/equipe` | Transferir usuario para outra equipe |
+| GET | `/bpms` | Listar batalhoes (BPMs) |
+| POST | `/bpms` | Criar novo BPM |
+| PATCH | `/bpms/{id}/toggle-isolamento` | Ativar/desativar isolamento de dados por BPM |
+| GET | `/equipes` | Listar equipes/guarnicoes |
+| POST | `/equipes` | Criar nova equipe |
+| PATCH | `/equipes/{id}/toggle-isolamento` | Ativar/desativar isolamento de dados por equipe |
 
 ---
 
@@ -381,12 +415,15 @@ argus-ai/
 | Model | Descricao | Campos-chave |
 |-------|-----------|-------------|
 | **Usuario** | Usuario/oficial | matricula, senha_hash, session_id, is_admin, guarnicao_id |
-| **Guarnicao** | Guarnicao (raiz multi-tenancy) | nome, unidade, codigo (unique) |
+| **Guarnicao** | Equipe operacional (raiz multi-tenancy) | nome, unidade, codigo (unique), bpm_id |
+| **Bpm** | Batalhao de Policia Militar (agrupa equipes) | nome (unique), isolamento_abordagens |
 | **Pessoa** | Pessoa abordada | nome, cpf_encrypted (Fernet), cpf_hash (SHA-256), apelido, foto_principal_url |
+| **PessoaObservacao** | Anotacoes operacionais sobre uma pessoa | pessoa_id, texto, guarnicao_id |
 | **EnderecoPessoa** | Endereco com geo | endereco, bairro, cidade, estado, localizacao (PostGIS POINT) |
+| **Localidade** | Hierarquia geografica (estado/cidade/bairro) | nome, nome_exibicao, tipo, sigla, parent_id |
 | **Veiculo** | Veiculo | placa (unique normalizada), modelo, cor, ano, tipo |
 | **Abordagem** | Abordagem (doc raiz) | data_hora, latitude, longitude, localizacao (PostGIS POINT), client_id (sync offline) |
-| **Foto** | Foto com face | arquivo_url, embedding_face (Vector(512)), pessoa_id, abordagem_id |
+| **Foto** | Foto/midia com face | arquivo_url, embedding_face (Vector(512)), pessoa_id, abordagem_id |
 | **Ocorrencia** | BO em PDF | numero_ocorrencia, arquivo_pdf_url, texto_extraido, embedding (Vector(384)) |
 | **RelacionamentoPessoa** | Vinculo automatico | pessoa_id_a, pessoa_id_b, frequencia, primeira/ultima_vez |
 | **VinculoManual** | Vinculo manual | pessoa_id, pessoa_vinculada_id, tipo, descricao |
@@ -407,17 +444,24 @@ Copie `.env.example` e configure:
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://argus:pass@localhost/argus_db` |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
 | `SECRET_KEY` | Chave JWT | `openssl rand -hex 32` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Expiracao do access token | `480` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Expiracao do refresh token | `30` |
 | `ENCRYPTION_KEY` | Chave Fernet para CPF (LGPD) | `make encrypt-key` |
 | `S3_ENDPOINT` | Storage endpoint (MinIO local / R2 prod) | `http://localhost:9000` |
 | `S3_ACCESS_KEY` | Chave de acesso S3 | — |
 | `S3_SECRET_KEY` | Chave secreta S3 | — |
 | `S3_BUCKET` | Nome do bucket | `argus` |
-| `S3_PUBLIC_URL` | URL publica do bucket | — |
-| `LLM_PROVIDER` | Provider LLM (`ollama` ou `anthropic`) | `ollama` |
+| `LLM_PROVIDER` | Provider LLM (`ollama` ou `anthropic`) | `anthropic` |
 | `ANTHROPIC_API_KEY` | API key da Anthropic (se provider = anthropic) | — |
+| `OLLAMA_BASE_URL` | Base URL do Ollama local | `http://localhost:11434` |
 | `OLLAMA_MODEL` | Modelo Ollama para geracao de texto | `deepseek-r1:8b` |
 | `EMBEDDING_MODEL` | Modelo embeddings (SentenceTransformers) | `paraphrase-multilingual-MiniLM-L12-v2` |
-| `FACE_SIMILARITY_THRESHOLD` | Limiar de similaridade facial (0.0–1.0) | `0.6` |
+| `EMBEDDING_DIMENSIONS` | Dimensoes do embedding de texto | `384` |
+| `EMBEDDING_CACHE_TTL` | TTL do cache Redis para embeddings (s) | `3600` |
+| `FACE_SIMILARITY_THRESHOLD` | Limiar de similaridade facial (0.0-1.0) | `0.6` |
+| `GEOCODING_PROVIDER` | Provider de geocoding (`nominatim` ou `google`) | `nominatim` |
+| `GOOGLE_MAPS_API_KEY` | API key do Google Maps (se provider = google) | — |
+| `CORS_ORIGINS` | Origens permitidas (JSON array) | `["https://seu-dominio.com"]` |
 | `DATA_RETENTION_DAYS` | Retencao LGPD antes da anonimizacao (dias) | `1825` |
 | `RATE_LIMIT_DEFAULT` | Rate limit padrao | `60/minute` |
 | `RATE_LIMIT_AUTH` | Rate limit autenticacao | `10/minute` |
