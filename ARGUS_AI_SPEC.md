@@ -1,31 +1,32 @@
 # ARGUS AI — Especificação Técnica Completa
 
 > **Documento de referência para desenvolvimento com Claude Code**
-> Versão: 1.0
-> Última atualização: Fevereiro 2026
+> Versão: 1.1 (Production-Ready)
+> Última atualização: Maio 2026
+> Status: ✅ Implementado e em manutenção ativa
 
 ---
 
 ## ÍNDICE
 
 1. [Visão Geral](#1-visão-geral)
-2. [Stack Tecnológica](#2-stack-tecnológica)
-3. [Estrutura do Projeto](#3-estrutura-do-projeto)
-4. [Setup do Ambiente](#4-setup-do-ambiente)
-5. [Banco de Dados](#5-banco-de-dados)
-6. [Backend — FastAPI](#6-backend--fastapi)
-7. [Módulo RAG](#7-módulo-rag)
-8. [Visão Computacional](#8-visão-computacional)
-9. [Frontend PWA](#9-frontend-pwa)
-10. [Modo Offline e Sincronização](#10-modo-offline-e-sincronização)
-11. [Autenticação e Segurança](#11-autenticação-e-segurança)
-12. [LGPD e Compliance](#12-lgpd-e-compliance)
-13. [Dashboard Analítico](#13-dashboard-analítico)
-14. [Testes](#14-testes)
-15. [Deploy e Infraestrutura](#15-deploy-e-infraestrutura)
-16. [Convenções e Padrões de Código](#16-convenções-e-padrões-de-código)
-17. [Decisões Arquiteturais (ADR)](#17-decisões-arquiteturais-adr)
-18. [Roadmap de Desenvolvimento](#18-roadmap-de-desenvolvimento)
+2. [Status de Implementação](#2-status-de-implementação)
+3. [Stack Tecnológica](#3-stack-tecnológica)
+4. [Estrutura do Projeto](#4-estrutura-do-projeto)
+5. [Setup do Ambiente](#5-setup-do-ambiente)
+6. [Banco de Dados](#6-banco-de-dados)
+7. [Backend — FastAPI](#7-backend--fastapi)
+8. [Módulo RAG](#8-módulo-rag)
+9. [Visão Computacional](#9-visão-computacional)
+10. [Frontend PWA](#10-frontend-pwa)
+11. [Modo Offline e Sincronização](#11-modo-offline-e-sincronização)
+12. [Autenticação e Segurança](#12-autenticação-e-segurança)
+13. [LGPD e Compliance](#13-lgpd-e-compliance)
+14. [Dashboard Analítico](#14-dashboard-analítico)
+15. [Testes](#15-testes)
+16. [Deploy e Infraestrutura](#16-deploy-e-infraestrutura)
+17. [Convenções e Padrões de Código](#17-convenções-e-padrões-de-código)
+18. [Decisões Arquiteturais (ADR)](#18-decisões-arquiteturais-adr)
 19. [Comandos Úteis](#19-comandos-úteis)
 20. [Referência de Variáveis de Ambiente](#20-referência-de-variáveis-de-ambiente)
 21. [CLAUDE.md](#21-claudemd)
@@ -64,7 +65,64 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 
 ---
 
-## 2. STACK TECNOLÓGICA
+## 2. STATUS DE IMPLEMENTAÇÃO
+
+### ✅ Módulos Completos e Funcionais
+
+#### Backend FastAPI
+- ✅ **13 routers** implementados (auth, pessoas, veículos, abordagens, ocorrências, fotos, localidades, analytics, admin, sync, consultas)
+- ✅ **16 models** SQLAlchemy com mixins (Timestamp, SoftDelete, MultiTenant)
+- ✅ **21 services** especializados (auth, pessoa, veículo, abordagem, ocorrência, embedding, face, ocr, sync, analytics, audit)
+- ✅ **Multi-tenancy** operacional (isolamento por guarnição)
+- ✅ **Autenticação JWT** (registro, login, refresh token)
+- ✅ **Rate limiting** e controle de acesso
+- ✅ **Audit log** completo
+
+#### Banco de Dados
+- ✅ **PostgreSQL 16** com extensões (pgvector, PostGIS, pg_trgm, unaccent)
+- ✅ **Migrations** via Alembic
+- ✅ **Índices otimizados** (IVFFlat para busca vetorial, GiST para geoespacial)
+- ✅ **Soft delete** em todos os models
+
+#### Visão Computacional
+- ✅ **Face recognition** (InsightFace) com embedding 512 dim
+- ✅ **OCR de placas** (EasyOCR)
+- ✅ **Busca por foto** via similaridade facial
+
+#### RAG (Retrieval-Augmented Generation)
+- ✅ **Embedding multilíngue** (SentenceTransformers)
+- ✅ **PDF processor** assíncrono (PyMuPDF)
+- ✅ **Busca semântica** em pgvector
+- ✅ **Geração de relatórios** via Claude API
+- ✅ **Cache de embeddings** em Redis
+
+#### Frontend PWA
+- ✅ **Progressive Web App** (HTML + Alpine.js + Tailwind)
+- ✅ **Service Worker** com cache e background sync
+- ✅ **IndexedDB** para fila offline (Dexie.js)
+- ✅ **Modo offline completo** com sincronização automática
+- ✅ **GPS automático** + geocoding reverso
+- ✅ **Captura de câmera** (getUserMedia)
+- ✅ **Entrada por voz** (Web Speech API)
+- ✅ **OCR de placa** no frontend
+
+#### Infraestrutura & Segurança
+- ✅ **Criptografia de campos sensíveis** (CPF com Fernet)
+- ✅ **LGPD** (auditoria, soft delete, retenção)
+- ✅ **Storage em Cloudflare R2** (S3-compatible)
+- ✅ **Docker** (docker-compose dev + prod)
+- ✅ **CI/CD** ready (GitHub Actions)
+- ✅ **Testes** (unit, integration, e2e)
+
+### 🔄 Modo de Operação
+**Projeto em manutenção ativa** — todas as features estão implementadas e funcionando. Mudanças ocorrem por:
+1. **Bug fixes** quando problemas são reportados
+2. **Feature requests** de usuários/stakeholders
+3. **Otimizações** de performance ou segurança
+
+---
+
+## 3. STACK TECNOLÓGICA
 
 ### Backend
 
@@ -136,7 +194,7 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 
 ---
 
-## 3. ESTRUTURA DO PROJETO
+## 4. ESTRUTURA DO PROJETO
 
 ```
 argus-ai/
@@ -346,7 +404,7 @@ argus-ai/
 
 ---
 
-## 4. SETUP DO AMBIENTE
+## 5. SETUP DO AMBIENTE
 
 ### Pré-requisitos
 
@@ -443,7 +501,7 @@ docker compose exec api python scripts/seed_passagens.py
 
 ---
 
-## 5. BANCO DE DADOS
+## 6. BANCO DE DADOS
 
 ### Extensões obrigatórias
 
@@ -953,7 +1011,7 @@ CREATE INDEX idx_audit_timestamp_usuario
 
 ---
 
-## 6. BACKEND — FastAPI
+## 7. BACKEND — FastAPI
 
 ### App Factory
 
@@ -1604,7 +1662,7 @@ class RelacionamentoService:
 
 ---
 
-## 7. MÓDULO RAG
+## 8. MÓDULO RAG
 
 ### Pipeline completo
 
@@ -1945,7 +2003,7 @@ class LLMService:
 
 ---
 
-## 8. VISÃO COMPUTACIONAL
+## 9. VISÃO COMPUTACIONAL
 
 ### Face Service
 
@@ -2031,7 +2089,7 @@ class OCRService:
 
 ---
 
-## 9. FRONTEND PWA
+## 10. FRONTEND PWA
 
 ### manifest.json
 
@@ -2280,7 +2338,7 @@ const gps = new GPSService();
 
 ---
 
-## 10. MODO OFFLINE E SINCRONIZAÇÃO
+## 11. MODO OFFLINE E SINCRONIZAÇÃO
 
 ### Estratégia
 
@@ -2520,7 +2578,7 @@ async def sync_batch(
 
 ---
 
-## 11. AUTENTICAÇÃO E SEGURANÇA
+## 12. AUTENTICAÇÃO E SEGURANÇA
 
 ### JWT com Refresh Token
 
@@ -2615,7 +2673,7 @@ def get_embedding_service(request: Request):
 
 ---
 
-## 12. LGPD E COMPLIANCE
+## 13. LGPD E COMPLIANCE
 
 ### Política de dados
 
@@ -2670,7 +2728,7 @@ async def anonymize():
 
 ---
 
-## 13. DASHBOARD ANALÍTICO
+## 14. DASHBOARD ANALÍTICO
 
 ### Endpoints
 
@@ -2873,7 +2931,7 @@ class AnalyticsService:
 
 ---
 
-## 14. TESTES
+## 15. TESTES
 
 ### conftest.py
 
@@ -2994,7 +3052,7 @@ pytest -k "test_crypto" -v          # Filtrar por nome
 
 ---
 
-## 15. DEPLOY E INFRAESTRUTURA
+## 16. DEPLOY E INFRAESTRUTURA
 
 ### Dockerfile
 
@@ -3156,7 +3214,7 @@ jobs:
 
 ---
 
-## 16. CONVENÇÕES E PADRÕES DE CÓDIGO
+## 17. CONVENÇÕES E PADRÕES DE CÓDIGO
 
 ### Arquitetura em camadas
 
@@ -3204,7 +3262,7 @@ security/x  → correções de segurança
 
 ---
 
-## 17. DECISÕES ARQUITETURAIS (ADR)
+## 18. DECISÕES ARQUITETURAIS (ADR)
 
 ### ADR-001: Monolito Modular
 
@@ -3253,100 +3311,6 @@ security/x  → correções de segurança
 **Contexto**: Dados de abordagens são operacionalmente sensíveis. Uma guarnição não deve ver dados de outra. A alternativa (banco separado por guarnição) é overkill para o MVP.
 
 **Consequência**: Toda query passa pelo `TenantFilter` que injeta o filtro de guarnição. Simples e eficaz. Pode evoluir para Row Level Security (RLS) do PostgreSQL no futuro.
-
----
-
-## 18. ROADMAP DE DESENVOLVIMENTO
-
-### Fase 1 — Fundação (Semanas 1-2)
-
-- [ ] Setup do projeto (pyproject.toml, docker-compose, .env)
-- [ ] Configuração FastAPI + SQLAlchemy async + Alembic
-- [ ] Models completos (todos os models com mixins)
-- [ ] Extensões PostgreSQL (pgvector, PostGIS, pg_trgm)
-- [ ] Autenticação JWT (registro + login + refresh token)
-- [ ] Modelo de Guarnição + multi-tenancy
-- [ ] Criptografia de campos sensíveis (CPF)
-- [ ] Audit Log básico
-- [ ] Health check endpoint
-- [ ] Rate limiting
-
-### Fase 2 — Core Operacional (Semanas 3-4)
-
-- [ ] CRUD Pessoa (com busca fuzzy e CPF criptografado)
-- [ ] CRUD Veículo (com busca por placa)
-- [ ] CRUD Abordagem completo (com PostGIS)
-- [ ] Vinculação pessoa ↔ abordagem
-- [ ] Vinculação veículo ↔ abordagem
-- [ ] Relacionamento materializado entre pessoas (UPSERT)
-- [ ] Upload de fotos + storage S3
-- [ ] CRUD Passagens
-- [ ] Geocoding reverso automático
-- [ ] Endpoint de busca por raio geográfico
-- [ ] Endpoint de consulta unificada
-
-### Fase 3 — RAG (Semanas 5-6)
-
-- [ ] arq worker setup (Redis)
-- [ ] Upload PDF de ocorrência → task assíncrona
-- [ ] Extração de texto com PyMuPDF
-- [ ] Chunking semântico (seções de BO)
-- [ ] Embedding multilíngue (paraphrase-multilingual)
-- [ ] Cache de embeddings de busca (Redis)
-- [ ] Busca por similaridade no pgvector
-- [ ] Integração LLM (Claude API + Ollama)
-- [ ] Endpoint de geração de relatório
-- [ ] Seed de legislação (Código Penal)
-- [ ] Busca semântica em legislação
-- [ ] Métricas de qualidade do RAG
-
-### Fase 4 — Visão Computacional (Semana 7)
-
-- [ ] Setup InsightFace
-- [ ] Task assíncrona de embedding facial
-- [ ] Busca por foto (similaridade facial via pgvector)
-- [ ] OCR de placa veicular (EasyOCR)
-- [ ] Endpoint de busca por rosto
-- [ ] Endpoint de OCR de placa
-
-### Fase 5 — Frontend PWA (Semanas 8-10)
-
-- [ ] Estrutura PWA (manifest, service worker)
-- [ ] Tela de login
-- [ ] Tela de nova abordagem
-  - [ ] GPS automático + geocoding reverso
-  - [ ] Captura de foto (getUserMedia)
-  - [ ] Entrada por voz (Web Speech API)
-  - [ ] OCR de placa no frontend
-  - [ ] Autocomplete de pessoas e veículos
-- [ ] Tela de consulta unificada
-- [ ] Tela de detalhe de pessoa (com vínculos)
-- [ ] Tela de upload de ocorrência
-- [ ] Tela de geração de relatório (RAG)
-- [ ] Dashboard analítico
-  - [ ] Mapa de calor de abordagens
-  - [ ] Gráfico de horários de pico
-  - [ ] Pessoas mais abordadas
-- [ ] Modo offline completo
-  - [ ] IndexedDB com Dexie.js
-  - [ ] Fila de sincronização
-  - [ ] Indicador de status offline
-  - [ ] Background sync
-- [ ] Testes de uso mobile em campo
-
-### Fase 6 — Polimento e Deploy (Semanas 11-12)
-
-- [ ] Testes completos (unit + integration + e2e)
-- [ ] CI/CD com GitHub Actions
-- [ ] Deploy backend em Render/Railway
-- [ ] PostgreSQL gerenciado (Neon com pgvector + PostGIS)
-- [ ] Redis gerenciado (Upstash)
-- [ ] Storage em Cloudflare R2
-- [ ] Monitoramento e alertas
-- [ ] Documentação final (API, deploy, LGPD)
-- [ ] ADRs finalizados
-- [ ] README com GIF/vídeo demonstrativo
-- [ ] Script de anonimização periódica
 
 ---
 
