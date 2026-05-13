@@ -2,15 +2,21 @@
 
 ## Skills — Processo de Trabalho
 
-Antes de qualquer tarefa, verifique se existe uma skill aplicável em `.claude/skills/`.
-Consulte `.claude/skills/GUIA.md` para referência rápida.
+Antes de qualquer tarefa, **sempre consulte** `.claude/claude_skills.md` para ver qual skill se aplica.
 
-Regras:
-- Implementar feature nova → usar `brainstorming` + `writing-plans` antes de codar
-- Bug reportado → usar `systematic-debugging`
-- Tarefa concluída → usar `verification-before-completion` para confirmar
-- Code review → usar `requesting-code-review`
-- Se houver 1% de chance de uma skill se aplicar, use-a
+O guia contém:
+- **30 skills** organizadas por categoria (design, implementação, testes, debug, arquitetura, etc)
+- **O que dizer** para ativar cada skill
+- **Quando usar** e fluxos recomendados
+- **Exemplos práticos** de triggers naturais
+
+**Como escolher uma skill:**
+Leia o que você precisa fazer e procure pela skill que melhor se adequa. Não é necessário seguir exatamente o trigger — adapte ao contexto. Por exemplo:
+- Você pediu "implementa X rapidinho" → escolha `tdd` ou `executing-plans` 
+- Você pediu "refatora essa parte acoplada" → escolha `improve-codebase-architecture`
+- Você pediu "verifica se tá pronto" → escolha `verification-before-completion`
+
+**Regra de ouro**: Se há 1% de chance de uma skill se aplicar, use-a. O arquivo é sua fonte de verdade.
 
 ## Projeto
 Argus AI — Sistema de apoio operacional com IA para equipes de patrulhamento.
