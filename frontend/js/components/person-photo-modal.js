@@ -100,14 +100,6 @@ function personPhotoModalHTML() {
                       x-text="modalPessoa && modalPessoa.enderecos && formatEnderecoModal(modalPessoa.enderecos[0])"></span>
               </div>
 
-              <!-- Abordagens -->
-              <div x-show="modalPessoa && modalPessoa.abordagens_count !== undefined"
-                   style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="color: var(--color-text-dim); font-family: var(--font-data); font-weight: 500; text-transform: uppercase; font-size: 0.75rem;">Abordagens</span>
-                <span style="background: var(--color-primary); color: var(--color-bg); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-data); font-size: 0.75rem; font-weight: 600;"
-                      x-text="modalPessoa && modalPessoa.abordagens_count"></span>
-              </div>
-
               <!-- Observações -->
               <div x-show="modalPessoa && modalPessoa.observacoes"
                    style="display: flex; flex-direction: column; gap: 0.25rem; padding-top: 0.25rem;">
