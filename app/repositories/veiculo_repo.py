@@ -164,10 +164,9 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         """
         query = (
             select(Pessoa, Veiculo)
-            .select_from(Veiculo)
-            .join(AbordagemVeiculo, AbordagemVeiculo.veiculo_id == Veiculo.id)
-            .join(AbordagemPessoa, AbordagemPessoa.abordagem_id == AbordagemVeiculo.abordagem_id)
-            .join(Pessoa, Pessoa.id == AbordagemPessoa.pessoa_id)
+            .join_from(Pessoa, AbordagemPessoa, AbordagemPessoa.pessoa_id == Pessoa.id)
+            .join(AbordagemVeiculo, AbordagemVeiculo.abordagem_id == AbordagemPessoa.abordagem_id)
+            .join(Veiculo, Veiculo.id == AbordagemVeiculo.veiculo_id)
             .where(
                 Pessoa.ativo == True,  # noqa: E712
                 Veiculo.ativo == True,  # noqa: E712
