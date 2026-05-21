@@ -51,6 +51,32 @@ function personPhotoModalHTML() {
             </div>
           </template>
 
+          <!-- Dados do Veículo (opcional) -->
+          <div x-show="modalVeiculo" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <p style="font-family: var(--font-data); font-size: 0.7rem; font-weight: 600; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin: 0;">Dados do Veículo</p>
+            <div style="display: flex; flex-direction: column; gap: 0.4rem; padding: 0.75rem; background: var(--color-surface-hover); border-radius: 4px; border: 1px solid rgba(167,139,250,0.2);">
+              <div x-show="modalVeiculo && modalVeiculo.placa"
+                   style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="color: var(--color-text-dim); font-family: var(--font-data); font-weight: 500; text-transform: uppercase; font-size: 0.75rem;">Placa</span>
+                <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em; background: var(--color-surface); padding: 0.125rem 0.5rem; border-radius: 2px; border: 1px solid var(--color-border);"
+                      x-text="modalVeiculo && modalVeiculo.placa"></span>
+              </div>
+              <div x-show="modalVeiculo && (modalVeiculo.modelo || modalVeiculo.cor || modalVeiculo.ano)"
+                   style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="color: var(--color-text-dim); font-family: var(--font-data); font-weight: 500; text-transform: uppercase; font-size: 0.75rem;">Veículo</span>
+                <span style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.8rem;"
+                      x-text="modalVeiculo && [modalVeiculo.modelo, modalVeiculo.cor, modalVeiculo.ano].filter(Boolean).join(' · ')"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Divisor veículo → condutor -->
+          <div x-show="modalVeiculo && modalPessoa" style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="flex: 1; height: 1px; background: var(--color-border);"></div>
+            <span style="font-family: var(--font-data); font-size: 0.7rem; font-weight: 600; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap;">Dados do Condutor</span>
+            <div style="flex: 1; height: 1px; background: var(--color-border);"></div>
+          </div>
+
           <!-- Dados da pessoa (mostra com dados preview ou dados completos) -->
           <div x-show="modalPessoa" style="display: flex; flex-direction: column; gap: 0.75rem;">
 
@@ -141,6 +167,7 @@ function personPhotoModal() {
     photoUrl: null,
     modalPessoaId: null,
     modalPessoa: null,
+    modalVeiculo: null,
     photoModalLoading: false,
     photoModalError: null,
 
@@ -149,13 +176,15 @@ function personPhotoModal() {
      * @param {string} photoUrl - URL da foto
      * @param {number|string} pessoaId - ID da pessoa
      * @param {object|null} previewData - Dados básicos já disponíveis (exibe imediatamente)
+     * @param {object|null} veiculoData - Dados do veículo (opcional, exibe seção extra)
      */
-    openPhotoModal(photoUrl, pessoaId, previewData) {
+    openPhotoModal(photoUrl, pessoaId, previewData, veiculoData) {
       this.photoUrl = photoUrl;
       this.modalPessoaId = pessoaId;
       this.showPhotoModal = true;
       this.photoModalError = null;
       this.modalPessoa = previewData || null;
+      this.modalVeiculo = veiculoData || null;
       this.photoModalLoading = true;
       // Fetch dados completos em background
       this._fetchPessoaModal(pessoaId);
@@ -167,6 +196,7 @@ function personPhotoModal() {
         this.photoUrl = null;
         this.modalPessoaId = null;
         this.modalPessoa = null;
+        this.modalVeiculo = null;
         this.photoModalLoading = false;
         this.photoModalError = null;
       }, 300);

@@ -206,7 +206,7 @@ function renderPessoaDetalhe(appState) {
               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
                 <template x-for="fv in (fotosVeiculos[modalFotosVeiculo] || [])" :key="'mv-' + fv.id">
                   <img :src="fv.thumbnail_url || fv.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
-                       @click="fotoAmpliada = fv.arquivo_url">
+                       @click="openPhotoModal(fv.arquivo_url, pessoa.id, pessoa, veiculos.find(vv => vv.id === modalFotosVeiculo))">
                 </template>
               </div>
             </div>
@@ -646,7 +646,7 @@ function renderPessoaDetalhe(appState) {
                             <template x-for="fv in fotosVeiculos[v.id].slice(0, 4)" :key="fv.id">
                               <img :src="fv.thumbnail_url || fv.arquivo_url"
                                    style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;"
-                                   @click="fotoAmpliada = fv.arquivo_url"
+                                   @click="openPhotoModal(fv.arquivo_url, pessoa.id, pessoa, v)"
                                    loading="lazy">
                             </template>
                           </div>
