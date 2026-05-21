@@ -17,7 +17,7 @@
 function personPhotoModalHTML() {
   return `
     <div x-show="showPhotoModal" x-cloak @click="if($event.target === $el) closePhotoModal()"
-         style="position: fixed; inset: 0; background: rgba(5, 10, 15, 0.9); z-index: 60; display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px);">
+         style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: 0; background: rgba(5, 10, 15, 0.9); z-index: 60; display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px);">
       <div @click.stop
            style="display: flex; flex-direction: column; max-width: min(90vw, 540px); width: 100%; max-height: 90vh; overflow-y: auto; border-radius: 8px; background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
 
