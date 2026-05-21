@@ -13,7 +13,7 @@ function renderPessoaDetalhe(appState) {
   }
 
   return `
-    <div x-data="{ ...pessoaDetalhePage(${pessoaId}), ...personPhotoModal(window.app) }" x-init="load()" style="display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem;">
+    <div x-data="{ ...pessoaDetalhePage(${pessoaId}), ...personPhotoModal() }" x-init="load()" style="display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem;">
       <!-- Loading -->
       <div x-show="loading" style="display: flex; justify-content: center; padding: 3rem 0;">
         <span class="spinner"></span>
@@ -684,7 +684,7 @@ function renderPessoaDetalhe(appState) {
               </p>
               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <template x-for="rel in pessoa.relacionamentos" :key="rel.pessoa_id">
-                  <div @click="if(rel.foto_principal_url) openPhotoModal(rel.foto_principal_url, rel.pessoa_id); else viewPessoa(rel.pessoa_id)"
+                  <div @click="if(rel.foto_principal_url) openPhotoModal(rel.foto_principal_url, rel.pessoa_id, rel); else viewPessoa(rel.pessoa_id)"
                        class="card-led-purple" style="display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; cursor: pointer;"
                        onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -723,7 +723,7 @@ function renderPessoaDetalhe(appState) {
               </p>
               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <template x-for="vm in vinculosManuais" :key="vm.id">
-                  <div @click="if(vm.foto_principal_url) openPhotoModal(vm.foto_principal_url, vm.pessoa_vinculada_id); else viewPessoa(vm.pessoa_vinculada_id)"
+                  <div @click="if(vm.foto_principal_url) openPhotoModal(vm.foto_principal_url, vm.pessoa_vinculada_id, vm); else viewPessoa(vm.pessoa_vinculada_id)"
                        class="card-led-purple" style="display: flex; align-items: flex-start; justify-content: space-between; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; cursor: pointer;"
                        onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
                     <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
@@ -873,7 +873,7 @@ function renderPessoaDetalhe(appState) {
                       <p style="font-size: 10px; font-family: var(--font-data); font-weight: 600; color: var(--color-text-dim); margin: 0 0 0.375rem 0; text-transform: uppercase; letter-spacing: 0.05em;">Abordados juntos:</p>
                       <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
                         <template x-for="p in ab.pessoas.filter(pp => pp.id !== ${pessoaId})" :key="p.id">
-                          <div @click.stop="if(p.foto_principal_url) openPhotoModal(p.foto_principal_url, p.id); else goToFichaPessoa(p.id)"
+                          <div @click.stop="if(p.foto_principal_url) openPhotoModal(p.foto_principal_url, p.id, p); else goToFichaPessoa(p.id)"
                                style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem; cursor: pointer; width: 2.5rem;">
                             <!-- Com foto -->
                             <template x-if="p.foto_principal_url">

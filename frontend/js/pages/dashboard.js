@@ -7,7 +7,7 @@
  */
 function renderDashboard() {
   return `
-    <div x-data="{ ...dashboardPage(), ...personPhotoModal(window.app) }" x-init="load()" style="display:flex;flex-direction:column;gap:20px;">
+    <div x-data="{ ...dashboardPage(), ...personPhotoModal() }" x-init="load()" style="display:flex;flex-direction:column;gap:20px;">
 
       <!-- Header da página -->
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -178,7 +178,7 @@ function renderDashboard() {
               </div>
               <div style="display:flex;flex-direction:column;gap:4px;">
                 <template x-for="p in pessoasDoDia" :key="p.id">
-                  <div @click="if(p.foto_url) openPhotoModal(p.foto_url, p.id); else viewPessoa(p.id)"
+                  <div @click="if(p.foto_url) openPhotoModal(p.foto_url, p.id, p); else viewPessoa(p.id)"
                        style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 150ms;"
                        onmouseover="this.style.background='var(--color-surface-hover)';this.style.borderColor='rgba(0,212,255,0.15)'"
                        onmouseout="this.style.background='transparent';this.style.borderColor='transparent'">
@@ -242,7 +242,7 @@ function renderDashboard() {
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;">
               <template x-for="(p, i) in recorrentes" :key="p.id">
-                <div @click="if(p.foto_url) openPhotoModal(p.foto_url, p.id); else viewPessoa(p.id)"
+                <div @click="if(p.foto_url) openPhotoModal(p.foto_url, p.id, p); else viewPessoa(p.id)"
                      style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 150ms;"
                      onmouseover="this.style.background='var(--color-surface-hover)';this.style.borderColor='rgba(0,212,255,0.15)'"
                      onmouseout="this.style.background='transparent';this.style.borderColor='transparent'">
