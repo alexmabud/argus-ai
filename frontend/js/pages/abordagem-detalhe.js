@@ -7,7 +7,7 @@
 
 function renderAbordagemDetalhe() {
   return `
-    <div x-data="{ ...abordagemDetalhePage(), ...personPhotoModal(window.app) }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
+    <div x-data="{ ...abordagemDetalhePage(), ...personPhotoModal() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
 
       <!-- Loading inicial -->
       <div x-show="loading" style="text-align:center;padding:48px 0;">
@@ -40,7 +40,7 @@ function renderAbordagemDetalhe() {
               <div x-show="!ab.pessoas || ab.pessoas.length === 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">Nenhum abordado registrado.</div>
               <div style="display:flex;gap:10px;flex-wrap:wrap;">
                 <template x-for="p in (ab.pessoas || [])" :key="p.id">
-                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;" @click="if(p.foto_principal_url) openPhotoModal(p.foto_principal_url, p.id); else abrirFicha(p.id)">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;" @click="if(p.foto_principal_url) openPhotoModal(p.foto_principal_url, p.id, p); else abrirFicha(p.id)">
                     <div style="width:54px;height:54px;border-radius:4px;border:1px solid rgba(0,212,255,0.2);background:var(--color-surface-hover);display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color 0.15s;"
                          onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='rgba(0,212,255,0.2)'">
                       <template x-if="p.foto_principal_url">
