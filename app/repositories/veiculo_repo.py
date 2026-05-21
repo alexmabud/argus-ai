@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.abordagem import AbordagemVeiculo
+from app.models.abordagem import AbordagemPessoa, AbordagemVeiculo
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.veiculo import Veiculo
@@ -140,10 +140,14 @@ class VeiculoRepository(BaseRepository[Veiculo]):
     ) -> list[tuple]:
         """Busca pessoas vinculadas a veículos via abordagens.
 
-        Resolve Veiculo → AbordagemVeiculo (pessoa_id) → Pessoa para retornar
-        apenas o abordado diretamente vinculado ao veículo naquela abordagem,
-        excluindo demais pessoas que apenas participaram da mesma ocorrência.
-        Registros sem pessoa_id (legado) são ignorados. Deduplicação via DISTINCT.
+        Resolve Veiculo → AbordagemVeiculo (veiculo_id) → AbordagemPessoa
+        (abordagem_id) → Pessoa para retornar todos os abordados presentes
+        na mesma abordagem em que o veículo foi registrado. Deduplicação
+        via DISTINCT no par (Pessoa, Veiculo).
+
+        O caminho passa por AbordagemPessoa (não AbordagemVeiculo.pessoa_id)
+        pois o campo pessoa_id em AbordagemVeiculo é opcional (nullable) e
+        frequentemente NULL — o que tornava a busca inoperante.
 
         Args:
             placa: Placa parcial para busca ILIKE (opcional).
@@ -160,12 +164,15 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         """
         query = (
             select(Pessoa, Veiculo)
-            .join(AbordagemVeiculo, AbordagemVeiculo.pessoa_id == Pessoa.id)
-            .join(Veiculo, Veiculo.id == AbordagemVeiculo.veiculo_id)
+            .select_from(Veiculo)
+            .join(AbordagemVeiculo, AbordagemVeiculo.veiculo_id == Veiculo.id)
+            .join(AbordagemPessoa, AbordagemPessoa.abordagem_id == AbordagemVeiculo.abordagem_id)
+            .join(Pessoa, Pessoa.id == AbordagemPessoa.pessoa_id)
             .where(
                 Pessoa.ativo == True,  # noqa: E712
                 Veiculo.ativo == True,  # noqa: E712
-                AbordagemVeiculo.pessoa_id.isnot(None),
+                AbordagemVeiculo.ativo == True,  # noqa: E712
+                AbordagemPessoa.ativo == True,  # noqa: E712
             )
         )
 
