@@ -19,7 +19,7 @@ function personPhotoModalHTML() {
     <div x-show="showPhotoModal" x-cloak @click="if($event.target === $el) closePhotoModal()"
          style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: var(--bottom-nav-height); background: rgba(5, 10, 15, 0.9); z-index: 60; display: flex; align-items: center; justify-content: center; padding: 0.75rem; backdrop-filter: blur(4px);">
       <div @click.stop
-           style="display: flex; flex-direction: column; max-width: min(90vw, 540px); width: 100%; height: 100%; overflow: hidden; border-radius: 8px; background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+           style="display: flex; flex-direction: column; max-width: min(90vw, 540px); width: 100%; max-height: 100%; overflow: hidden; border-radius: 8px; background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
 
         <!-- Header -->
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--color-border); flex-shrink: 0;">
@@ -28,12 +28,12 @@ function personPhotoModalHTML() {
         </div>
 
         <!-- Conteúdo -->
-        <div style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.75rem; overflow-y: auto; flex: 1; min-height: 0;">
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.75rem; overflow-y: auto; min-height: 0;">
 
           <!-- Foto -->
           <template x-if="photoUrl">
             <div style="display: flex; justify-content: center;">
-              <img :src="photoUrl" style="width: 100%; max-height: 35vh; border-radius: 6px; object-fit: contain; display: block;">
+              <img :src="photoUrl" style="width: 100%; max-height: 55vh; border-radius: 6px; object-fit: contain; display: block;">
             </div>
           </template>
 
