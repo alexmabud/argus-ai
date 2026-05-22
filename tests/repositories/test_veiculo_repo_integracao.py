@@ -4,6 +4,8 @@ Reproduz o bug reportado: busca por placa/modelo não retorna resultados
 mesmo com veículo cadastrado e vinculado a abordado via abordagem.
 """
 
+import datetime
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,7 +41,7 @@ async def test_get_pessoas_por_veiculo_por_placa_retorna_abordado(
         guarnicao_id=guarnicao.id,
     )
     abordagem = Abordagem(
-        data_hora=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+        data_hora=datetime.datetime.now(datetime.UTC),
         usuario_id=usuario.id,
         guarnicao_id=guarnicao.id,
     )
@@ -93,7 +95,7 @@ async def test_get_pessoas_por_veiculo_por_modelo_retorna_abordado(
         guarnicao_id=guarnicao.id,
     )
     abordagem = Abordagem(
-        data_hora=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+        data_hora=datetime.datetime.now(datetime.UTC),
         usuario_id=usuario.id,
         guarnicao_id=guarnicao.id,
     )
@@ -116,3 +118,55 @@ async def test_get_pessoas_por_veiculo_por_modelo_retorna_abordado(
 
     assert len(resultado) == 1
     assert resultado[0][0].nome == "Maria Modelo"
+
+
+@pytest.mark.asyncio
+async def test_pessoa_global_aparece_na_busca_por_veiculo(
+    db_session: AsyncSession,
+    guarnicao: Guarnicao,
+    usuario: Usuario,
+):
+    """Regressão: pessoa sem guarnicao_id (global) deve aparecer na busca por veículo.
+
+    Spec: 'Pessoas são sempre globais' — a busca por veículo NÃO deve filtrar
+    pessoas por guarnicao_id. Antes do fix, Pessoa.guarnicao_id == guarnicao_id
+    excluía pessoas com guarnicao_id=NULL, retornando lista vazia.
+    """
+    # Pessoa GLOBAL — sem guarnicao_id (caso comum criado via admin ou
+    # em contexto sem guarnicao atribuída)
+    pessoa = Pessoa(nome="Thiago Global", guarnicao_id=None)
+    veiculo = Veiculo(
+        placa="PAT1E14",
+        modelo="Honda CB 250F Twister",
+        cor="Branca",
+        ano=2016,
+        guarnicao_id=guarnicao.id,
+    )
+    abordagem = Abordagem(
+        data_hora=datetime.datetime.now(datetime.UTC),
+        usuario_id=usuario.id,
+        guarnicao_id=guarnicao.id,
+    )
+    db_session.add_all([pessoa, veiculo, abordagem])
+    await db_session.flush()
+
+    db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
+    db_session.add(
+        AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id, pessoa_id=None)
+    )
+    await db_session.flush()
+
+    repo = VeiculoRepository(db_session)
+    resultado = await repo.get_pessoas_por_veiculo(
+        placa="PAT",
+        modelo=None,
+        cor=None,
+        guarnicao_id=guarnicao.id,
+    )
+
+    assert len(resultado) == 1, (
+        f"Esperava 1 resultado mas obteve {len(resultado)}. "
+        "Regressão: pessoa global (guarnicao_id=None) deve aparecer na busca por veículo."
+    )
+    assert resultado[0][0].nome == "Thiago Global"
+    assert resultado[0][1].placa == "PAT1E14"
