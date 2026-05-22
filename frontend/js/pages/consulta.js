@@ -891,9 +891,8 @@ function consultaPage() {
     viewPessoa(id) {
       const appEl = document.querySelector("[x-data]");
       if (appEl?._x_dataStack) {
-        appEl._x_dataStack[0].currentPage = "pessoa-detalhe";
         appEl._x_dataStack[0]._pessoaId = id;
-        appEl._x_dataStack[0].renderPage("pessoa-detalhe");
+        appEl._x_dataStack[0].navigate("pessoa-detalhe");
       }
     },
 
