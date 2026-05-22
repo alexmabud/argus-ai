@@ -39,6 +39,7 @@
 
   /* Layout */
   --header-height:      56px;
+  --bottom-nav-height:  68px;
   --radius:             4px;
   --transition:         150ms ease;
 }
