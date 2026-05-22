@@ -59,7 +59,7 @@ function personPhotoModalHTML() {
                    style="display: flex; align-items: center; justify-content: space-between;">
                 <span style="color: var(--color-text-dim); font-family: var(--font-data); font-weight: 500; text-transform: uppercase; font-size: 0.75rem;">Placa</span>
                 <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em; background: var(--color-surface); padding: 0.125rem 0.5rem; border-radius: 2px; border: 1px solid var(--color-border);"
-                      x-text="modalVeiculo && modalVeiculo.placa"></span>
+                      x-text="modalVeiculo && formatarPlaca(modalVeiculo.placa || '')"></span>
               </div>
               <div x-show="modalVeiculo && (modalVeiculo.modelo || modalVeiculo.cor || modalVeiculo.ano)"
                    style="display: flex; align-items: center; justify-content: space-between;">
