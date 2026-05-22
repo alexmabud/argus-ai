@@ -7,7 +7,7 @@ com filtros multi-tenant e soft delete.
 import logging
 from collections.abc import Sequence
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.abordagem import AbordagemPessoa, AbordagemVeiculo
@@ -186,41 +186,12 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         if cor:
             query = query.where(Veiculo.cor.ilike(f"%{escape_like(cor)}%"))
         if guarnicao_id is not None:
-            query = query.where(Pessoa.guarnicao_id == guarnicao_id)
+            # Pessoas são sempre globais per spec do projeto — NÃO filtrar por guarnicao_id.
+            # Filtrar apenas veículos por tenant para restringir o escopo da busca.
             query = query.where(Veiculo.guarnicao_id == guarnicao_id)
 
         query = query.distinct().offset(skip).limit(limit)
 
-        # [DEBUG-pv01] — verificar counts intermediários
-        if placa:
-            norm = placa.upper().replace("-", "").replace(" ", "")
-            sql_v = "SELECT COUNT(*) FROM veiculos WHERE placa ILIKE :p AND ativo = true"
-            sql_av = (
-                "SELECT COUNT(*) FROM abordagem_veiculos av "
-                "JOIN veiculos v ON v.id = av.veiculo_id "
-                "WHERE v.placa ILIKE :p AND av.ativo = true AND v.ativo = true"
-            )
-            sql_ap = (
-                "SELECT COUNT(*) FROM abordagem_pessoas ap "
-                "JOIN abordagem_veiculos av ON av.abordagem_id = ap.abordagem_id "
-                "JOIN veiculos v ON v.id = av.veiculo_id "
-                "WHERE v.placa ILIKE :p "
-                "AND av.ativo = true AND v.ativo = true AND ap.ativo = true"
-            )
-            p = {"p": f"%{norm}%"}
-            r_v = await self.db.execute(text(sql_v), p)
-            r_av = await self.db.execute(text(sql_av), p)
-            r_ap = await self.db.execute(text(sql_ap), p)
-            logger.info(
-                "[DEBUG-pv01] placa_norm=%r veiculos=%d av=%d ap=%d gid=%r",
-                norm,
-                r_v.scalar(),
-                r_av.scalar(),
-                r_ap.scalar(),
-                guarnicao_id,
-            )
-
         result = await self.db.execute(query)
         rows = list(result.all())
-        logger.info("[DEBUG-pv01] query final: %d rows", len(rows))  # [DEBUG-pv01]
         return rows  # type: ignore[return-value]
