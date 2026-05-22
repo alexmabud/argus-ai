@@ -142,7 +142,7 @@ function renderPessoaDetalhe(appState) {
 
           <!-- Foto ampliada (modal) -->
           <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
-               style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: 0; background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+               style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: var(--bottom-nav-height); background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;">
             <div @click.stop style="display: flex; flex-direction: column; max-width: min(90vw, 480px); width: 100%;">
               <img :src="fotoAmpliada" @click="fotoAmpliada = null"
                    style="width: 100%; border-radius: 4px 4px 0 0; display: block; cursor: pointer; object-fit: contain; max-height: 70vh;">
@@ -171,7 +171,7 @@ function renderPessoaDetalhe(appState) {
           <!-- Modal todas as fotos -->
           <div x-show="modalTodasFotos" x-cloak
                @click.self="modalTodasFotos = false"
-               style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: 0; background: rgba(5,10,15,0.85); z-index: 45; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto;">
+               style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: var(--bottom-nav-height); background: rgba(5,10,15,0.85); z-index: 45; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto;">
             <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; max-width: 32rem;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
                 <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
@@ -195,7 +195,7 @@ function renderPessoaDetalhe(appState) {
           <!-- Modal todas fotos de veículo -->
           <div x-show="modalFotosVeiculo" x-cloak
                @click.self="modalFotosVeiculo = null"
-               style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: 0; background: rgba(5,10,15,0.85); z-index: 45; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto;">
+               style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: var(--bottom-nav-height); background: rgba(5,10,15,0.85); z-index: 45; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto;">
             <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; max-width: 32rem;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
                 <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
@@ -215,7 +215,7 @@ function renderPessoaDetalhe(appState) {
           <!-- Modal editar dados pessoais -->
           <div x-cloak
                @click.self="modalEditarPessoa = false"
-               :style="modalEditarPessoa ? 'display:flex;position:fixed;top:var(--header-height);left:0;right:0;bottom:0;background:rgba(5,10,15,0.7);z-index:50;align-items:center;justify-content:center;padding:1rem;' : 'display:none;'">
+               :style="modalEditarPessoa ? 'display:flex;position:fixed;top:var(--header-height);left:0;right:0;bottom:var(--bottom-nav-height);background:rgba(5,10,15,0.7);z-index:50;align-items:center;justify-content:center;padding:1rem;' : 'display:none;'">
             <div class="glass-card"
                  style="border: 1px solid var(--color-border); padding: 1.25rem; width: 100%; max-width: 24rem; display: flex; flex-direction: column; gap: 0.75rem;"
                  @click.stop>
@@ -274,7 +274,7 @@ function renderPessoaDetalhe(appState) {
           <!-- Modal editar/criar endereço -->
           <div x-cloak
                @click.self="modalEditarEndereco = false"
-               :style="modalEditarEndereco ? 'display:flex;position:fixed;top:var(--header-height);left:0;right:0;bottom:0;background:rgba(5,10,15,0.7);z-index:50;align-items:center;justify-content:center;padding:1rem;' : 'display:none;'">
+               :style="modalEditarEndereco ? 'display:flex;position:fixed;top:var(--header-height);left:0;right:0;bottom:var(--bottom-nav-height);background:rgba(5,10,15,0.7);z-index:50;align-items:center;justify-content:center;padding:1rem;' : 'display:none;'">
             <div class="glass-card"
                  style="border: 1px solid var(--color-border); padding: 1.25rem; width: 100%; max-width: 24rem; display: flex; flex-direction: column; gap: 0.75rem;"
                  @click.stop>
@@ -379,7 +379,7 @@ function renderPessoaDetalhe(appState) {
           <!-- Modal preview de pessoa coabordada -->
           <div x-show="pessoaPreview" x-cloak
                @click.self="pessoaPreview = null"
-               style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: 0; background: rgba(5,10,15,0.7); z-index: 50; display: flex; align-items: flex-end; justify-content: center; padding: 1rem;">
+               style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: var(--bottom-nav-height); background: rgba(5,10,15,0.7); z-index: 50; display: flex; align-items: flex-end; justify-content: center; padding: 1rem;">
             <div @click="viewPessoa(pessoaPreview.id)"
                  class="glass-card"
                  style="border: 1px solid var(--color-border); padding: 1.25rem; width: 100%; max-width: 24rem; display: flex; flex-direction: column; gap: 0.75rem; cursor: pointer;">
@@ -421,7 +421,7 @@ function renderPessoaDetalhe(appState) {
 
           <!-- Modal de criar/editar observação -->
           <div x-show="modalObservacao" x-cloak @click.self="modalObservacao = false"
-               style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: 0; background: rgba(5,10,15,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem;">
+               style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: var(--bottom-nav-height); background: rgba(5,10,15,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem;">
             <div class="glass-card" style="width: 100%; max-width: 480px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; position: relative;">
               <div style="display: flex; align-items: center; justify-content: space-between;">
                 <h3 style="font-family: var(--font-data); font-size: 0.875rem; font-weight: 700; color: var(--color-text); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;"
@@ -459,7 +459,7 @@ function renderPessoaDetalhe(appState) {
           <!-- Modal de cadastro de vínculo manual -->
           <div x-cloak
                @click.self="fecharModalVinculo()"
-               :style="modalVinculo ? 'display:flex;position:fixed;top:var(--header-height);left:0;right:0;bottom:0;background:rgba(5,10,15,0.7);z-index:50;align-items:center;justify-content:center;padding:1rem;' : 'display:none;'">
+               :style="modalVinculo ? 'display:flex;position:fixed;top:var(--header-height);left:0;right:0;bottom:var(--bottom-nav-height);background:rgba(5,10,15,0.7);z-index:50;align-items:center;justify-content:center;padding:1rem;' : 'display:none;'">
             <div class="glass-card"
                  style="border: 1px solid var(--color-border); padding: 1.25rem; width: 100%; max-width: 24rem; display: flex; flex-direction: column; gap: 1rem;"
                  @click.stop>
