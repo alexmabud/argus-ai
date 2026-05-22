@@ -6,6 +6,8 @@ resultados em uma resposta unificada. Também expõe endpoint
 de localidades para autocomplete de bairro, cidade e estado.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +22,8 @@ from app.schemas.consulta import (
 )
 from app.services.consulta_service import ConsultaService
 from app.services.pessoa_service import PessoaService
+
+logger = logging.getLogger(__name__)  # [DEBUG-pv01]
 
 router = APIRouter(prefix="/consultas", tags=["Consultas"])
 
@@ -178,6 +182,13 @@ async def pessoas_por_veiculo(
     if not placa and not modelo:
         raise HTTPException(status_code=400, detail="Informe placa ou modelo para buscar.")
 
+    logger.info(  # [DEBUG-pv01]
+        "[DEBUG-pv01] pessoas_por_veiculo: placa=%r modelo=%r guarnicao_id=%r",
+        placa,
+        modelo,
+        user.guarnicao_id if user else None,
+    )
+
     service = ConsultaService(db)
     rows = await service.pessoas_por_veiculo(
         placa=placa,
@@ -187,6 +198,8 @@ async def pessoas_por_veiculo(
         limit=limit,
         user=user,
     )
+
+    logger.info("[DEBUG-pv01] resultado: %d rows", len(rows))  # [DEBUG-pv01]
 
     return [
         PessoaComVeiculoRead(
