@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.abordagem import Abordagem, AbordagemPessoa, AbordagemVeiculo
+from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
@@ -170,3 +171,60 @@ async def test_pessoa_global_aparece_na_busca_por_veiculo(
     )
     assert resultado[0][0].nome == "Thiago Global"
     assert resultado[0][1].placa == "PAT1E14"
+
+
+@pytest.mark.asyncio
+async def test_veiculo_de_outra_guarnicao_aparece_na_busca_global(
+    db_session: AsyncSession,
+    guarnicao: Guarnicao,
+    usuario: Usuario,
+):
+    """Regressão: consulta IA é global — veículo de qualquer equipe deve aparecer.
+
+    Ao passar guarnicao_id=None no repo, o filtro Veiculo.guarnicao_id
+    não é aplicado, tornando a busca cross-tenant para a consulta IA.
+    """
+    # Segunda guarnição — outro tenant
+    bpm = Bpm(nome="BPM Teste Cross")
+    db_session.add(bpm)
+    await db_session.flush()
+    outra_guarnicao = Guarnicao(nome="Outra Equipe", bpm_id=bpm.id, codigo="OUTRA-001")
+    db_session.add(outra_guarnicao)
+    await db_session.flush()
+
+    # Pessoa e veículo pertencem à OUTRA equipe
+    pessoa = Pessoa(nome="Carlos Outra Equipe", guarnicao_id=outra_guarnicao.id)
+    veiculo = Veiculo(
+        placa="ABC1234",
+        modelo="Corolla",
+        guarnicao_id=outra_guarnicao.id,
+    )
+    abordagem = Abordagem(
+        data_hora=datetime.datetime.now(datetime.UTC),
+        usuario_id=usuario.id,
+        guarnicao_id=outra_guarnicao.id,
+    )
+    db_session.add_all([pessoa, veiculo, abordagem])
+    await db_session.flush()
+
+    db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
+    db_session.add(
+        AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id, pessoa_id=None)
+    )
+    await db_session.flush()
+
+    repo = VeiculoRepository(db_session)
+
+    # guarnicao_id=None → busca global (qualquer usuário, qualquer equipe)
+    resultado = await repo.get_pessoas_por_veiculo(
+        placa="ABC",
+        modelo=None,
+        cor=None,
+        guarnicao_id=None,
+    )
+
+    assert len(resultado) == 1, (
+        f"Esperava 1 resultado mas obteve {len(resultado)}. "
+        "Consulta IA deve ser global (guarnicao_id=None)."
+    )
+    assert resultado[0][0].nome == "Carlos Outra Equipe"

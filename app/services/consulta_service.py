@@ -335,18 +335,19 @@ class ConsultaService:
             cor: Cor do veículo (opcional, usada junto com modelo).
             skip: Registros a pular (paginação).
             limit: Máximo de resultados.
-            user: Usuário autenticado para filtro multi-tenant.
+            user: Usuário autenticado (não usado para filtro — consulta é global).
 
         Returns:
             Lista de dicionários com "pessoa" (Pessoa), "veiculo" (Veiculo)
             e "foto_veiculo_url" (str | None) com a URL da foto mais recente do veículo.
         """
-        guarnicao_id = user.guarnicao_id if user else None
+        # Consulta IA é sempre global — qualquer usuário vê os mesmos resultados.
+        # Assim como pessoas, veículos na consulta não são filtrados por guarnicao_id.
         rows = await self.veiculo_repo.get_pessoas_por_veiculo(
             placa=placa,
             modelo=modelo,
             cor=cor,
-            guarnicao_id=guarnicao_id,
+            guarnicao_id=None,
             skip=skip,
             limit=limit,
         )

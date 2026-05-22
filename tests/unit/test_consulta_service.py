@@ -20,7 +20,7 @@ class TestPessoasPorVeiculo:
         """Testa que pessoas_por_veiculo delega corretamente para veiculo_repo.
 
         Verifica que:
-        1. O método extrai guarnicao_id do user
+        1. Consulta IA é global — guarnicao_id=None sempre passado ao repo
         2. Passa todos os parâmetros ao repositório
         3. Converte tuplas em dicts com chaves "pessoa" e "veiculo"
         """
@@ -35,7 +35,7 @@ class TestPessoasPorVeiculo:
         )
 
         user = MagicMock(spec=Usuario)
-        user.guarnicao_id = 42
+        user.guarnicao_id = 42  # user tem guarnicao, mas consulta é global
 
         result = await service.pessoas_por_veiculo(
             placa="ABC",
@@ -53,7 +53,7 @@ class TestPessoasPorVeiculo:
             placa="ABC",
             modelo=None,
             cor=None,
-            guarnicao_id=42,
+            guarnicao_id=None,  # sempre None — consulta IA é global
             skip=0,
             limit=20,
         )
@@ -91,7 +91,7 @@ class TestPessoasPorVeiculo:
             placa=None,
             modelo="Civic",
             cor="Branco",
-            guarnicao_id=10,
+            guarnicao_id=None,  # consulta IA é global
             skip=10,
             limit=50,
         )
