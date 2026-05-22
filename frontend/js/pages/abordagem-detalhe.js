@@ -75,8 +75,8 @@ function renderAbordagemDetalhe() {
                       </template>
                     </div>
                     <div>
-                      <div style="font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--color-primary);letter-spacing:0.1em;" x-text="v.placa"></div>
-                      <div style="font-family:var(--font-data);font-size:11px;color:var(--color-text-muted);"
+                      <span style="font-family:var(--font-data);font-size:12px;font-weight:700;color:var(--color-text);letter-spacing:0.1em;background:var(--color-surface-hover);padding:0.125rem 0.375rem;border-radius:2px;border:1px solid var(--color-border);" x-text="formatarPlaca(v.placa)"></span>
+                      <div style="font-family:var(--font-data);font-size:11px;color:var(--color-text-muted);margin-top:3px;"
                            x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></div>
                     </div>
                   </div>
