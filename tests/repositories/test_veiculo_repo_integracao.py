@@ -49,11 +49,13 @@ async def test_get_pessoas_por_veiculo_por_placa_retorna_abordado(
     # Vincular pessoa à abordagem (AbordagemPessoa)
     db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
     # Vincular veículo à abordagem (AbordagemVeiculo) com pessoa_id=NULL (caso legado)
-    db_session.add(AbordagemVeiculo(
-        abordagem_id=abordagem.id,
-        veiculo_id=veiculo.id,
-        pessoa_id=None,  # NULL — caso mais comum, o que causava 0 resultados
-    ))
+    db_session.add(
+        AbordagemVeiculo(
+            abordagem_id=abordagem.id,
+            veiculo_id=veiculo.id,
+            pessoa_id=None,  # NULL — caso mais comum, o que causava 0 resultados
+        )
+    )
     await db_session.flush()
 
     repo = VeiculoRepository(db_session)
@@ -99,9 +101,9 @@ async def test_get_pessoas_por_veiculo_por_modelo_retorna_abordado(
     await db_session.flush()
 
     db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
-    db_session.add(AbordagemVeiculo(
-        abordagem_id=abordagem.id, veiculo_id=veiculo.id, pessoa_id=None
-    ))
+    db_session.add(
+        AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id, pessoa_id=None)
+    )
     await db_session.flush()
 
     repo = VeiculoRepository(db_session)
