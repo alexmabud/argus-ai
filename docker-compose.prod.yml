@@ -34,6 +34,8 @@ services:
     volumes:
       - /mnt/banco/pgdata:/var/lib/postgresql/data
       - ./scripts/init_extensions.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - argus-network
 
   redis:
     image: redis:7-alpine
@@ -48,6 +50,8 @@ services:
       - "127.0.0.1:6379:6379"
     volumes:
       - /mnt/banco/redis:/data
+    networks:
+      - argus-network
 
   api:
     build:
@@ -77,6 +81,8 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+    networks:
+      - argus-network
 
   worker:
     build:
@@ -107,6 +113,8 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+    networks:
+      - argus-network
 
   worker-2:
     build:
@@ -137,6 +145,8 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+    networks:
+      - argus-network
 
   minio:
     image: minio/minio
@@ -155,6 +165,8 @@ services:
       retries: 10
     volumes:
       - /mnt/fotos:/data
+    networks:
+      - argus-network
 
   minio-init:
     image: minio/mc:latest
@@ -168,6 +180,8 @@ services:
       mc anonymous set none local/argus &&
       echo 'Bucket argus pronto (acesso privado).'
       "
+    networks:
+      - argus-network
 
   caddy:
     image: caddy:2-alpine
@@ -186,6 +200,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      - argus-network
 
   # Backup automático do banco — roda diariamente às 3h da manhã
   db-backup:
@@ -218,8 +234,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - argus-network
 
 volumes:
   caddy_data:
   caddy_config:
   insightface_models:
+
+networks:
+  argus-network:
+    driver: bridge
