@@ -89,7 +89,7 @@ anonimizar-dry:
 monitoring:
 	@echo "Criando diretórios de dados em /mnt/banco..."
 	sudo mkdir -p /mnt/banco/prometheus /mnt/banco/grafana
-	sudo chown -R ubuntu:ubuntu /mnt/banco/prometheus /mnt/banco/grafana
+	sudo chmod 777 /mnt/banco/prometheus /mnt/banco/grafana
 	@echo "Subindo stack de monitoramento (Prometheus + Grafana + Exporters)..."
 	docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
 		up -d \
