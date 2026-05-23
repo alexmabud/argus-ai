@@ -62,12 +62,14 @@ jobs:
 
             echo "══════ Criando diretórios de dados ══════"
             sudo mkdir -p /mnt/banco/prometheus /mnt/banco/grafana
+            # Limpa arquivos antigos com permissões erradas (safe: nenhum dado coletado ainda)
+            sudo rm -rf /mnt/banco/prometheus/* /mnt/banco/grafana/*
             # Prometheus roda como UID 65534 (nobody), Grafana como UID 472
             sudo chmod 777 /mnt/banco/prometheus /mnt/banco/grafana
 
             echo "══════ Subindo stack de monitoramento ══════"
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
-              up -d --force-recreate \
+              up -d --force-recreate --build \
               prometheus grafana node-exporter cadvisor \
               postgres-exporter redis-exporter telegram-reporter
 
