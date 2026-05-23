@@ -1,0 +1,239 @@
+apiVersion: 1
+groups:
+  # ─── Infraestrutura da VM ──────────────────────────────────────────
+  - orgId: 1
+    name: Infraestrutura
+    folder: Argus AI
+    interval: 1m
+    rules:
+
+      - uid: alert-cpu-alta
+        title: CPU Alta
+        condition: threshold
+        for: 5m
+        annotations:
+          summary: CPU alta na VM
+          description: "CPU está acima de 85% há mais de 5 minutos (atual: {{ $values.A.Value | printf \"%.1f\" }}%)"
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: 100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [85]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+      - uid: alert-cpu-critica
+        title: CPU Crítica
+        condition: threshold
+        for: 10m
+        annotations:
+          summary: "CPU CRÍTICA na VM"
+          description: "CPU acima de 95% há mais de 10 minutos. Sistema pode ficar instável."
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: 100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [95]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+      - uid: alert-ram-alta
+        title: RAM Alta
+        condition: threshold
+        for: 5m
+        annotations:
+          summary: RAM alta na VM
+          description: "RAM acima de 90% de uso (atual: {{ $values.A.Value | printf \"%.1f\" }}%)"
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [90]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+      - uid: alert-disco-fotos
+        title: Disco de Fotos Cheio
+        condition: threshold
+        for: 0s
+        annotations:
+          summary: Disco /mnt/fotos com pouco espaço
+          description: "Disco de fotos acima de 80% (atual: {{ $values.A.Value | printf \"%.1f\" }}%). Considere ampliar o volume."
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: 100 - (node_filesystem_avail_bytes{mountpoint="/mnt/fotos"} / node_filesystem_size_bytes{mountpoint="/mnt/fotos"} * 100)
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [80]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+      - uid: alert-disco-sistema
+        title: Disco do Sistema Crítico
+        condition: threshold
+        for: 0s
+        annotations:
+          summary: "Disco do sistema CRÍTICO"
+          description: "Disco raiz acima de 90% (atual: {{ $values.A.Value | printf \"%.1f\" }}%). Risco de parada total."
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: 100 - (node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"} * 100)
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [90]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+  # ─── Aplicação (API) ───────────────────────────────────────────────
+  - orgId: 1
+    name: Aplicação
+    folder: Argus AI
+    interval: 1m
+    rules:
+
+      - uid: alert-api-down
+        title: API Offline
+        condition: threshold
+        for: 3m
+        annotations:
+          summary: "API OFFLINE"
+          description: "A API do Argus não responde há mais de 3 minutos. Todos os usuários estão sem acesso."
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: up{job="argus-api"}
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+      - uid: alert-taxa-erros
+        title: Alta Taxa de Erros HTTP 5xx
+        condition: threshold
+        for: 5m
+        annotations:
+          summary: Alta taxa de erros na API
+          description: "Mais de 5% das requisições estão retornando erro 5xx (atual: {{ $values.A.Value | printf \"%.1f\" }}%)"
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [5]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+      - uid: alert-latencia-alta
+        title: Latência Alta na API
+        condition: threshold
+        for: 5m
+        annotations:
+          summary: Endpoints com latência alta
+          description: "p95 de resposta acima de 5 segundos há mais de 5 minutos."
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [5]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
