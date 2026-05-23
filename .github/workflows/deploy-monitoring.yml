@@ -66,14 +66,14 @@ jobs:
 
             echo "══════ Subindo stack de monitoramento ══════"
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
-              -p argus_ai up -d \
+              up -d \
               prometheus grafana node-exporter cadvisor \
               postgres-exporter redis-exporter telegram-reporter
 
             echo "══════ Verificando containers ══════"
             sleep 8
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
-              -p argus_ai ps \
+              ps \
               prometheus grafana node-exporter cadvisor \
               postgres-exporter redis-exporter telegram-reporter
 
