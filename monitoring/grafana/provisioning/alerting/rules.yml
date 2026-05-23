@@ -94,7 +94,7 @@ groups:
       - uid: alert-disco-fotos
         title: Disco de Fotos Cheio
         condition: threshold
-        for: 0s
+        for: 2m
         annotations:
           summary: Disco /mnt/fotos com pouco espaço
           description: "Disco de fotos acima de 80% (atual: {{ $values.A.Value | printf \"%.1f\" }}%). Considere ampliar o volume."
@@ -122,7 +122,7 @@ groups:
       - uid: alert-disco-sistema
         title: Disco do Sistema Crítico
         condition: threshold
-        for: 0s
+        for: 2m
         annotations:
           summary: "Disco do sistema CRÍTICO"
           description: "Disco raiz acima de 90% (atual: {{ $values.A.Value | printf \"%.1f\" }}%). Risco de parada total."
@@ -224,7 +224,7 @@ groups:
             relativeTimeRange: {from: 300, to: 0}
             datasourceUid: prometheus-argus
             model:
-              expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+              expr: histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))
               refId: A
           - refId: threshold
             datasourceUid: __expr__

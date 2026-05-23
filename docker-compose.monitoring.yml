@@ -104,6 +104,9 @@ services:
         postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}?sslmode=disable
     expose:
       - "9187"
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - argus-network
 
