@@ -89,6 +89,12 @@ function renderPerfil(_appState) {
             Gerenciar usuários
           </button>
         </template>
+
+        <template x-if="isAdmin">
+          <button @click="abrirDashboard()" class="btn btn-secondary" style="width: 100%; margin-top: 4px;">
+            📊 Dashboard de Performance
+          </button>
+        </template>
       </div>
 
       <!-- Botão Sair -->
@@ -157,6 +163,10 @@ function perfilPage() {
 
     irParaAdmin() {
       window.dispatchEvent(new CustomEvent("navigate", { detail: "admin-usuarios" }));
+    },
+
+    abrirDashboard() {
+      window.open("/grafana", "_blank", "noopener,noreferrer");
     },
 
     mostrarModalSaida() {
