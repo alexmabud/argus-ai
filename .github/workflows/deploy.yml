@@ -97,7 +97,11 @@ jobs:
 
             echo "══════ Reiniciando monitoring stack ══════"
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
-              up -d \
+              up -d --build \
               prometheus grafana node-exporter cadvisor \
-              postgres-exporter redis-exporter telegram-reporter 2>/dev/null || true
-            echo "Monitoring stack reiniciado."
+              postgres-exporter redis-exporter telegram-reporter
+            sleep 8
+            echo "══════ Status do monitoring stack ══════"
+            docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
+              ps prometheus grafana node-exporter cadvisor \
+              postgres-exporter redis-exporter telegram-reporter
