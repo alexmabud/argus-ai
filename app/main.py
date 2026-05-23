@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi.errors import RateLimitExceeded
 
 from app.api.health import router as health_router
@@ -247,6 +248,13 @@ def create_app() -> FastAPI:
 
     # Frontend PWA — deve ser o último mount (catch-all)
     app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+
+    # Prometheus metrics — acessível apenas internamente (Caddy bloqueia externamente)
+    Instrumentator(
+        should_group_status_codes=False,
+        should_ignore_untemplated=True,
+        excluded_handlers=["/health", "/metrics", "/sw.js", "/storage/.*"],
+    ).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
     return app
 
