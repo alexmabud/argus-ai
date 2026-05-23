@@ -67,16 +67,23 @@ jobs:
 
             echo "══════ Subindo stack de monitoramento ══════"
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
-              up -d \
+              up -d --force-recreate \
               prometheus grafana node-exporter cadvisor \
               postgres-exporter redis-exporter telegram-reporter
 
             echo "══════ Verificando containers ══════"
-            sleep 8
+            sleep 12
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
               ps \
               prometheus grafana node-exporter cadvisor \
               postgres-exporter redis-exporter telegram-reporter
+
+            echo "══════ Logs Prometheus ══════"
+            docker logs argus-prometheus --tail 20 2>&1 || true
+            echo "══════ Logs Grafana ══════"
+            docker logs argus-grafana --tail 20 2>&1 || true
+            echo "══════ Logs Reporter ══════"
+            docker logs argus-telegram-reporter --tail 20 2>&1 || true
 
             echo "✅ Monitoring stack deployed!"
         env:
