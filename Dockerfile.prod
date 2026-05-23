@@ -50,9 +50,14 @@ COPY alembic/ ./alembic/
 COPY alembic.ini .
 COPY pyproject.toml .
 
+# Diretório para métricas Prometheus multiprocess (compartilhado entre workers gunicorn)
+# Sem isso, cada worker mantém contadores isolados e o Prometheus vê ~25% do tráfego real
+ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
+RUN mkdir -p /tmp/prometheus_multiproc
+
 # Usuário não-root
 RUN groupadd -r argus && useradd -r -g argus -d /app argus && \
-    chown -R argus:argus /app
+    chown -R argus:argus /app /tmp/prometheus_multiproc
 USER argus
 
 EXPOSE 8000

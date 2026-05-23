@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi.errors import RateLimitExceeded
 
 from app.api.health import router as health_router
@@ -244,6 +245,14 @@ def create_app() -> FastAPI:
             media_type="application/javascript",
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
+
+    # Prometheus metrics deve ser exposto ANTES do mount "/" (catch-all StaticFiles).
+    # Routes registradas após mount("/") nunca são alcançadas — o StaticFiles captura tudo.
+    Instrumentator(
+        should_group_status_codes=False,
+        should_ignore_untemplated=True,
+        excluded_handlers=["/health", "/metrics", "/sw.js", "/storage/.*"],
+    ).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
     # Frontend PWA — deve ser o último mount (catch-all)
     app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
