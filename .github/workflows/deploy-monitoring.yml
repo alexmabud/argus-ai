@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+# ══════════════════════════════════════════════════════════════
+# Argus AI — Deploy Monitoring Stack
+# ══════════════════════════════════════════════════════════════
+# Sobe Prometheus + Grafana + Exporters + Telegram Reporter.
+# Disparado manualmente via workflow_dispatch.
+#
+# Secrets necessários:
+#   VM_SSH_HOST         — IP da VM
+#   VM_SSH_USER         — Usuário SSH (ubuntu)
+#   VM_SSH_KEY          — Chave privada SSH
+#   GF_ADMIN_PASSWORD   — Senha do admin do Grafana
+#   TELEGRAM_BOT_TOKEN  — Token do bot Telegram (@BotFather)
+#   TELEGRAM_CHAT_ID    — ID do grupo/chat que recebe alertas
+# ══════════════════════════════════════════════════════════════
+
+name: Deploy Monitoring
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-monitoring
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  deploy-monitoring:
+    name: Deploy monitoring stack to VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+
+    steps:
+      - name: Deploy monitoring via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_SSH_HOST }}
+          username: ${{ secrets.VM_SSH_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: 22
+          command_timeout: 12m
+          envs: GF_ADMIN_PASSWORD,TELEGRAM_BOT_TOKEN,TELEGRAM_CHAT_ID
+          script: |
+            set -e
+            cd ~/argus-ai
+
+            echo "══════ Atualizando código ══════"
+            git pull origin main
+
+            echo "══════ Adicionando variáveis de monitoramento ao .env ══════"
+            sed -i '/^GF_ADMIN_PASSWORD=/d; /^TELEGRAM_BOT_TOKEN=/d; /^TELEGRAM_CHAT_ID=/d' .env
+            printf '\nGF_ADMIN_PASSWORD=%s\nTELEGRAM_BOT_TOKEN=%s\nTELEGRAM_CHAT_ID=%s\n' \
+              "$GF_ADMIN_PASSWORD" "$TELEGRAM_BOT_TOKEN" "$TELEGRAM_CHAT_ID" >> .env
+
+            echo "══════ Criando diretórios de dados ══════"
+            mkdir -p /mnt/banco/prometheus /mnt/banco/grafana
+
+            echo "══════ Subindo stack de monitoramento ══════"
+            docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
+              -p argus_ai up -d \
+              prometheus grafana node-exporter cadvisor \
+              postgres-exporter redis-exporter telegram-reporter
+
+            echo "══════ Verificando containers ══════"
+            sleep 8
+            docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
+              -p argus_ai ps \
+              prometheus grafana node-exporter cadvisor \
+              postgres-exporter redis-exporter telegram-reporter
+
+            echo "✅ Monitoring stack deployed!"
+        env:
+          GF_ADMIN_PASSWORD: ${{ secrets.GF_ADMIN_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
