@@ -98,20 +98,25 @@ def send_telegram(message: str) -> None:
         message: Texto da mensagem em formato Markdown.
 
     Raises:
-        SystemExit: Se o envio falhar (status HTTP não-ok).
+        SystemExit: Se o envio falhar (erro de rede ou status HTTP não-ok).
     """
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    resp = requests.post(
-        url,
-        json={
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": message,
-            "parse_mode": "Markdown",
-        },
-        timeout=15,
-    )
+    try:
+        resp = requests.post(
+            url,
+            json={
+                "chat_id": TELEGRAM_CHAT_ID,
+                "text": message,
+                "parse_mode": "Markdown",
+            },
+            timeout=15,
+        )
+    except requests.exceptions.RequestException as e:
+        # Não logar a URL — contém o bot token
+        print(f"Erro de conexão ao enviar Telegram: {type(e).__name__}", file=sys.stderr)
+        sys.exit(1)
     if not resp.ok:
-        print(f"Erro ao enviar Telegram: {resp.text}", file=sys.stderr)
+        print(f"Erro ao enviar Telegram: status={resp.status_code}", file=sys.stderr)
         sys.exit(1)
 
 

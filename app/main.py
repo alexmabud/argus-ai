@@ -246,15 +246,16 @@ def create_app() -> FastAPI:
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
 
-    # Frontend PWA — deve ser o último mount (catch-all)
-    app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
-
-    # Prometheus metrics — acessível apenas internamente (Caddy bloqueia externamente)
+    # Prometheus metrics deve ser exposto ANTES do mount "/" (catch-all StaticFiles).
+    # Routes registradas após mount("/") nunca são alcançadas — o StaticFiles captura tudo.
     Instrumentator(
         should_group_status_codes=False,
         should_ignore_untemplated=True,
         excluded_handlers=["/health", "/metrics", "/sw.js", "/storage/.*"],
     ).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+    # Frontend PWA — deve ser o último mount (catch-all)
+    app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
     return app
 
