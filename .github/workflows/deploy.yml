@@ -57,18 +57,15 @@ jobs:
           script: |
             set -e
             cd ~/argus-ai
-            echo "══════ Parando containers para liberar disco ══════"
-            # Para containers do projeto de monitoramento (projeto separado argus_ai)
+            echo "══════ Parando todos os containers ══════"
+            # Usa ambos os arquivos para não tratar monitoring como "órfão"
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
-              -p argus_ai down --remove-orphans 2>/dev/null || true
-            # Para containers do projeto principal
-            docker compose -f docker-compose.prod.yml down --remove-orphans || true
+              down 2>/dev/null || true
 
             echo "══════ Limpando espaço ══════"
             docker system prune -af
 
             echo "══════ Atualizando código ══════"
-            cd ~/argus-ai
             git pull
 
             echo "══════ Higienizando CORS_ORIGINS (idempotente) ══════"
@@ -78,7 +75,7 @@ jobs:
             bash ./update_sw_version.sh
             trap 'git checkout frontend/sw.js frontend/index.html 2>/dev/null || true' EXIT
 
-            echo "══════ Build e deploy ══════"
+            echo "══════ Build e deploy da app ══════"
             docker compose -f docker-compose.prod.yml rm -f minio-init || true
             docker compose -f docker-compose.prod.yml up -d --build
 
@@ -89,9 +86,16 @@ jobs:
             echo "══════ Aguardando health check ══════"
             sleep 10
             if curl -sf http://localhost:80/health > /dev/null; then
-              echo "Deploy concluído com sucesso!"
+              echo "App deployada com sucesso!"
             else
               echo "::warning::Health check falhou — verificar logs"
               docker compose -f docker-compose.prod.yml logs --tail=20 api
               exit 1
             fi
+
+            echo "══════ Reiniciando monitoring stack ══════"
+            docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
+              up -d \
+              prometheus grafana node-exporter cadvisor \
+              postgres-exporter redis-exporter telegram-reporter 2>/dev/null || true
+            echo "Monitoring stack reiniciado."
