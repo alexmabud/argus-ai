@@ -62,8 +62,10 @@ jobs:
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
               down 2>/dev/null || true
 
-            echo "══════ Limpando espaço ══════"
-            docker system prune -af
+            echo "══════ Limpando espaço (mantém imagens base) ══════"
+            # -a removeria todas as imagens → Docker Hub rate limit a cada deploy
+            # Sem -a: remove apenas imagens dangling + containers parados
+            docker system prune -f
 
             echo "══════ Atualizando código ══════"
             git pull
