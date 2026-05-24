@@ -15,40 +15,31 @@
       "collapsed": false
     },
     {
-      "id": 51, "type": "alertlist", "title": "🔴 Críticos firing",
+      "id": 51, "type": "stat", "title": "🚨 Alertas Firing",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
-      "options": {
-        "viewMode": "stat",
-        "groupMode": "default",
-        "showInstances": false,
-        "maxItems": 20,
-        "sortOrder": 3,
-        "stateFilter": {
-          "firing": true, "pending": true, "noData": false, "normal": false, "error": true
-        },
-        "alertInstanceLabelFilter": "severity=critical",
-        "alertName": "",
-        "dashboardAlerts": false,
-        "folder": { "title": "Argus AI" }
-      }
+      "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
+        "expr": "grafana_alerting_alerts{state=\"alerting\"}" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background",
+        "graphMode": "none", "orientation": "auto", "textMode": "auto", "justifyMode": "center" },
+      "fieldConfig": { "defaults": { "unit": "short",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null },
+          { "color": "red", "value": 1 }
+        ]}}}
     },
     {
-      "id": 52, "type": "alertlist", "title": "⚠️ Warnings firing",
+      "id": 52, "type": "stat", "title": "✅ Saudáveis",
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
-      "options": {
-        "viewMode": "stat",
-        "groupMode": "default",
-        "showInstances": false,
-        "maxItems": 20,
-        "sortOrder": 3,
-        "stateFilter": {
-          "firing": true, "pending": true, "noData": false, "normal": false, "error": true
-        },
-        "alertInstanceLabelFilter": "severity=warning",
-        "alertName": "",
-        "dashboardAlerts": false,
-        "folder": { "title": "Argus AI" }
-      }
+      "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
+        "expr": "grafana_alerting_alerts{state=\"normal\"}" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background",
+        "graphMode": "none", "orientation": "auto", "textMode": "auto", "justifyMode": "center" },
+      "fieldConfig": { "defaults": { "unit": "short",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "red", "value": null },
+          { "color": "yellow", "value": 10 },
+          { "color": "green", "value": 15 }
+        ]}}}
     },
     {
       "id": 53, "type": "alertlist", "title": "📋 Alertas ativos (detalhe)",
