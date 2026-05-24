@@ -84,6 +84,9 @@ anonimizar:
 anonimizar-dry:
 	$(PYTHON) scripts/anonimizar_dados.py --dry-run
 
+sync-from-prod:
+	bash scripts/sync_from_prod.sh
+
 # ─── Monitoramento ────────────────────────────────────────────────────────────
 
 monitoring:

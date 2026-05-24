@@ -9,6 +9,7 @@
 .env.local
 .env.production
 .env.staging
+.env.bak.*
 *.pem
 *.key
 *.crt
