@@ -7,7 +7,7 @@ contactPoints:
         type: telegram
         settings:
           bottoken: ${TELEGRAM_BOT_TOKEN}
-          chatid: ${TELEGRAM_CHAT_ID}
+          chatid: "${TELEGRAM_CHAT_ID}"
           parse_mode: Markdown
           message: |
             {{ range .Alerts }}

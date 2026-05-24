@@ -31,6 +31,11 @@ services:
     image: grafana/grafana:10.4.0
     restart: always
     container_name: argus-grafana
+    # Entrypoint custom: render-provisioning.sh expande templates .tpl
+    # (substitui ${TELEGRAM_*}) antes de chamar /run.sh do Grafana.
+    # Workaround para bug do Grafana 10.x que perde tipagem string ao
+    # expandir ${VAR} no YAML quando valor é numérico (ex.: chatid -123...).
+    entrypoint: ["/bin/sh", "/render-provisioning.sh"]
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GF_ADMIN_PASSWORD:?GF_ADMIN_PASSWORD obrigatório}
@@ -39,15 +44,17 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_UNIFIED_ALERTING_ENABLED: "true"
-      # Permite embed futuro via iframe na mesma origem
       GF_SECURITY_ALLOW_EMBEDDING: "true"
-      # Variáveis disponíveis nos arquivos de provisioning
+      # Aponta provisioning para destino do render (writable pelo grafana)
+      GF_PATHS_PROVISIONING: /var/lib/grafana/provisioning
+      # Consumidas pelo render-provisioning.sh
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning-src:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/grafana/render-provisioning.sh:/render-provisioning.sh:ro
     expose:
       - "3000"
     depends_on:
