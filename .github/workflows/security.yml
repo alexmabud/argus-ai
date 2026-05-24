@@ -140,6 +140,49 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # ── Claude AI Security Review (PR only, opt-in via secret) ─
+  # Analisa o diff da PR com Claude (semantica + contexto) e
+  # comenta vulnerabilidades direto na PR. Roda apenas em
+  # pull_request. Se CLAUDE_API_KEY nao estiver configurado,
+  # o job termina verde com aviso (nao polui aba Checks).
+  # Para ativar: gh secret set CLAUDE_API_KEY
+  claude-review:
+    name: Claude AI Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check if CLAUDE_API_KEY is configured
+        id: check-key
+        env:
+          KEY: ${{ secrets.CLAUDE_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::notice::CLAUDE_API_KEY nao configurado — pulando review AI. Para ativar: gh secret set CLAUDE_API_KEY"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout PR head
+        if: steps.check-key.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+
+      - name: Claude Code Security Review
+        if: steps.check-key.outputs.enabled == 'true'
+        uses: anthropics/claude-code-security-review@main
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}
+          exclude-directories: "frontend/node_modules,tests/fixtures,data,monitoring/grafana"
+
   # ── Static Analysis (SAST) ─────────────────────────────────
   sast:
     name: SAST (Bandit)
