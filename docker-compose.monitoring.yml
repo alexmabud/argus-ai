@@ -89,8 +89,14 @@ services:
     privileged: true
     devices:
       - /dev/kmsg:/dev/kmsg
-    # ⚠️  Oracle Cloud ARM64: pode logar erros de permissão de kernel na primeira subida.
-    # É esperado — o cAdvisor continua funcionando e coleta métricas de container normalmente.
+    # ⚠️  INCOMPATIBILIDADE conhecida: Docker 29.x introduziu o storage driver
+    # "overlayfs" (novo, não confundir com "overlay2") e removeu a estrutura
+    # /var/lib/docker/image/overlayfs/layerdb/mounts/ que cAdvisor procura
+    # para enriquecer séries com labels (name, image, container). Resultado:
+    # target fica UP mas todas as séries container_* saem sem label "name",
+    # tornando inúteis painéis "por container". Testado v0.49.1 → v0.52.1.
+    # TODO: revisitar quando cAdvisor v0.53+ ou alternativa sair. Por ora,
+    # mantido rodando (não custa) — usar node-exporter para métricas do host.
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
