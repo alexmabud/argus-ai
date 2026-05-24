@@ -216,6 +216,7 @@ services:
       PGDATABASE: ${DB_NAME:-argus_db}
     entrypoint: >
       /bin/sh -c "
+      mkdir -p /textfile;
       while true; do
         now=\$$(date +%s);
         midnight=\$$((now - now % 86400));
@@ -225,14 +226,26 @@ services:
         echo \"[\$$(date)] Próximo backup em \$$((sleep_secs / 3600))h\$$((sleep_secs % 3600 / 60))m (às 07:00 BRT / 10:00 UTC).\";
         sleep \$$sleep_secs;
         echo \"[\$$(date)] Iniciando backup...\";
-        pg_dump -Fc > /backups/argus_\$$(date +%Y%m%d_%H%M%S).dump;
-        echo \"[\$$(date)] Backup concluído.\";
+        dump_file=/backups/argus_\$$(date +%Y%m%d_%H%M%S).dump;
+        if pg_dump -Fc > \$$dump_file; then
+          ts=\$$(date +%s);
+          printf '# HELP argus_backup_last_success_timestamp_seconds Unix timestamp do ultimo backup bem-sucedido\\n# TYPE argus_backup_last_success_timestamp_seconds gauge\\nargus_backup_last_success_timestamp_seconds %d\\n' \$$ts > /textfile/backup.prom.tmp;
+          mv /textfile/backup.prom.tmp /textfile/backup.prom;
+          chmod 644 /textfile/backup.prom;
+          echo \"[\$$(date)] Backup concluído + métrica registrada.\";
+        else
+          rc=\$$?;
+          echo \"[\$$(date)] ERRO: pg_dump falhou (exit \$$rc). Métrica de sucesso NÃO atualizada.\";
+          rm -f \$$dump_file;
+        fi;
         ls -t /backups/argus_*.dump | tail -n +8 | xargs rm -f 2>/dev/null;
         echo \"[\$$(date)] Backups antigos removidos (mantendo últimos 7).\";
       done
       "
     volumes:
       - /mnt/banco/backups:/backups
+      # Expõe métrica de last_success pro node-exporter via textfile collector
+      - /mnt/banco/textfile:/textfile
     depends_on:
       db:
         condition: service_healthy

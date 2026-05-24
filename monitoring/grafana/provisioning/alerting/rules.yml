@@ -253,3 +253,237 @@ groups:
                   operator: {type: and}
                   query: {params: [A]}
                   reducer: {type: avg}
+
+  # ─── Dependências (PG / Redis / Worker) ────────────────────────────
+  - orgId: 1
+    name: Dependencias
+    folder: Argus AI
+    interval: 1m
+    rules:
+
+      - uid: alert-postgres-down
+        title: PostgreSQL Offline
+        condition: threshold
+        noDataState: OK
+        execErrState: OK
+        for: 2m
+        annotations:
+          summary: "PostgreSQL OFFLINE"
+          description: "O banco de dados não responde há mais de 2 minutos. A API funciona mas TODA query vai falhar — usuários verão erro 500 ao salvar abordagens, ocorrências, fotos."
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: pg_up
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+      - uid: alert-redis-down
+        title: Redis Offline
+        condition: threshold
+        noDataState: OK
+        execErrState: OK
+        for: 2m
+        annotations:
+          summary: "Redis OFFLINE"
+          description: "O Redis não responde há mais de 2 minutos. Worker arq não consegue processar fila (uploads de PDF, geração de embeddings, reconhecimento facial param de funcionar)."
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: redis_up
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+      - uid: alert-worker-parado
+        title: Worker arq Parado
+        condition: threshold
+        noDataState: OK
+        execErrState: OK
+        for: 10m
+        annotations:
+          summary: "Worker arq parado"
+          description: "Nenhum comando Redis processado há 10min e Redis está no ar. Worker (containers argus-ai-worker-*) provavelmente caiu ou travou. Tasks em fila não estão sendo consumidas."
+        labels:
+          severity: warning
+        data:
+          # Atividade do worker = comandos no Redis (worker polla a cada ~300ms)
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              # Multiplica por redis_up pra não disparar junto com alert-redis-down
+              expr: rate(redis_commands_processed_total[5m]) * redis_up
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                # < 0.1 ops/s = praticamente parado (em uso normal são ~3-4 ops/s)
+                - evaluator: {type: lt, params: [0.1]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+  # ─── Disco, Storage e Backup ───────────────────────────────────────
+  - orgId: 1
+    name: Disco-e-Backup
+    folder: Argus AI
+    interval: 5m
+    rules:
+
+      - uid: alert-disco-fotos-tendencia
+        title: Disco de Fotos vai encher em 7 dias
+        condition: threshold
+        noDataState: OK
+        execErrState: OK
+        for: 30m
+        annotations:
+          summary: Disco /mnt/fotos vai encher em ~7 dias
+          description: "Pela taxa atual de crescimento, o disco de fotos vai zerar o espaço livre em menos de 7 dias. Considere expandir o volume na Oracle Cloud antes de bater o alerta crítico de 80%."
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: {from: 21600, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              # predict_linear: extrapola usando últimas 6h, prevê espaço em 7 dias (604800s)
+              expr: predict_linear(node_filesystem_avail_bytes{mountpoint="/mnt/fotos"}[6h], 7 * 24 * 3600)
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                # Se a projeção em 7 dias for < 0, vai encher antes disso
+                - evaluator: {type: lt, params: [0]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: last}
+
+      - uid: alert-minio-down
+        title: MinIO Offline
+        condition: threshold
+        noDataState: OK
+        execErrState: OK
+        for: 3m
+        annotations:
+          summary: "MinIO OFFLINE"
+          description: "MinIO não responde há mais de 3 minutos. Upload de fotos e PDFs vai falhar. Verificar container argus-ai-minio-1."
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              # blackbox_exporter retorna 1 se health endpoint responde, 0 se falha
+              expr: probe_success{job="blackbox-minio"}
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: avg}
+
+      - uid: alert-ssl-expirando
+        title: Certificado SSL Expirando
+        condition: threshold
+        noDataState: OK
+        execErrState: OK
+        for: 1h
+        annotations:
+          summary: Certificado SSL expira em menos de 15 dias
+          description: "O cert TLS do domínio expira em menos de 15 dias. Caddy deveria renovar automaticamente — se não renovou, investigar logs do Caddy."
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: {from: 3600, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              # Segundos restantes até expirar
+              expr: probe_ssl_earliest_cert_expiry{job="blackbox-https"} - time()
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                # < 15 dias = 1296000s
+                - evaluator: {type: lt, params: [1296000]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: last}
+
+      - uid: alert-backup-falhou
+        title: Backup do Postgres Atrasado
+        condition: threshold
+        noDataState: OK
+        execErrState: OK
+        for: 30m
+        annotations:
+          summary: "Backup do Postgres atrasado há mais de 26h"
+          description: "Não há novo dump em /backups há mais de 26h (backup deveria rodar diariamente às 07:00 BRT). Container argus-ai-db-backup-1 pode ter parado, ou o pg_dump está falhando. Verificar docker logs argus-ai-db-backup-1."
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              # Idade em segundos do último backup bem-sucedido
+              expr: time() - argus_backup_last_success_timestamp_seconds
+              refId: A
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                # > 26h = 93600s (1h de folga sobre os 24h esperados)
+                - evaluator: {type: gt, params: [93600]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: last}

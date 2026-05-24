@@ -1,0 +1,24 @@
+# Blackbox exporter — probes HTTP/HTTPS/TCP para serviços externos
+# Doc: https://github.com/prometheus/blackbox_exporter/blob/master/CONFIGURATION.md
+
+modules:
+  # Sonda HTTP simples: 2xx é sucesso
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200, 204]
+      valid_http_versions: [HTTP/1.1, HTTP/2.0]
+      follow_redirects: true
+
+  # Sonda HTTPS com verificação de cert TLS (preenche probe_ssl_earliest_cert_expiry)
+  http_2xx_tls:
+    prober: http
+    timeout: 5s
+    http:
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200, 204]
+      valid_http_versions: [HTTP/1.1, HTTP/2.0]
+      follow_redirects: true
+      fail_if_not_ssl: true
