@@ -66,6 +66,9 @@ jobs:
             # -a removeria todas as imagens → Docker Hub rate limit a cada deploy
             # Sem -a: remove apenas imagens dangling + containers parados
             docker system prune -f
+            # Cache de build acumula GBs por deploy; mantém últimos 7 dias para
+            # acelerar rebuilds da semana e descarta o resto.
+            docker builder prune -af --filter "until=168h"
 
             echo "══════ Atualizando código ══════"
             git pull
