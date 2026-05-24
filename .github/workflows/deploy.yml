@@ -99,7 +99,8 @@ jobs:
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
               up -d --build \
               prometheus grafana node-exporter cadvisor \
-              postgres-exporter redis-exporter telegram-reporter
+              postgres-exporter redis-exporter telegram-reporter \
+              blackbox-exporter
             sleep 8
             echo "══════ Status do monitoring stack ══════"
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
