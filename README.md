@@ -65,33 +65,33 @@
 
 ```
 +---------------------------------------------------------+
-|                    Frontend (PWA)                        |
-|          HTML + Alpine.js + Tailwind + IndexedDB         |
+|                    Frontend (PWA)                       |
+|          HTML + Alpine.js + Tailwind + IndexedDB        |
 |     Camera . GPS . Voz . OCR . Offline Queue . Sync     |
 +----------------------------+----------------------------+
                              | HTTPS
 +----------------------------v----------------------------+
-|               Backend (FastAPI - Monolito)               |
-|                                                          |
+|               Backend (FastAPI - Monolito)              |
+|                                                         |
 |  +----------+  +----------+  +----------+  +--------+   |
 |  | Routers  |->| Services |->|  Repos   |->|   DB   |   |
 |  | (API v1) |  | (Logica) |  | (Dados)  |  |        |   |
 |  +----------+  +----------+  +----------+  +--------+   |
-|                                                          |
-|  +----------------------------------------------------+  |
-|  |              arq Worker (Background)                |  |
-|  |       PDF Processing . Face Embedding               |  |
-|  +----------------------------------------------------+  |
+|                                                         |
+|  +---------------------------------------------------+  |
+|  |              arq Worker (Background)              |  |
+|  |       PDF Processing . Face Embedding             |  |
+|  +---------------------------------------------------+  |
 +----------------------------+----------------------------+
                              |
 +----------------------------v----------------------------+
-|                    Infraestrutura                        |
-|                                                          |
-|  PostgreSQL 16          Redis           Cloudflare R2    |
-|  + pgvector             Cache           Object Storage   |
-|  + PostGIS              + arq Queue     (Fotos + PDFs)   |
-|  + pg_trgm                                               |
-|  + unaccent                                              |
+|                    Infraestrutura                       |
+|                                                         |
+|  PostgreSQL 16          Redis           Cloudflare R2   |
+|  + pgvector             Cache           Object Storage  |
+|  + PostGIS              + arq Queue     (Fotos + PDFs)  |
+|  + pg_trgm                                              |
+|  + unaccent                                             |
 +---------------------------------------------------------+
 ```
 
