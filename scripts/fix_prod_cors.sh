@@ -28,6 +28,12 @@ set -euo pipefail
 
 ENV_FILE="${1:-.env}"
 
+# IP legado a remover do CORS_ORIGINS (origem residual sem TLS).
+# Definir via env var ao chamar o script, ex.: LEGACY_IP=1.2.3.4 bash scripts/fix_prod_cors.sh
+# Sem LEGACY_IP, o script só faz o ajuste http→https no domínio principal.
+LEGACY_IP="${LEGACY_IP:-}"
+DOMAIN="${DOMAIN:-arguseye.duckdns.org}"
+
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "[fix_prod_cors] Arquivo não encontrado: $ENV_FILE" >&2
   exit 1
@@ -41,7 +47,11 @@ if [[ -z "$BEFORE" ]]; then
 fi
 
 # Só altera o arquivo se houver algo pra limpar
-if [[ "$BEFORE" != *"<IP_DA_VM>"* ]] && [[ "$BEFORE" != *"http://arguseye.duckdns.org"* ]]; then
+NEEDS_IP_CLEANUP=0
+if [[ -n "$LEGACY_IP" ]] && [[ "$BEFORE" == *"$LEGACY_IP"* ]]; then
+  NEEDS_IP_CLEANUP=1
+fi
+if [[ $NEEDS_IP_CLEANUP -eq 0 ]] && [[ "$BEFORE" != *"http://$DOMAIN"* ]]; then
   echo "[fix_prod_cors] CORS_ORIGINS já está limpo, nada a fazer."
   echo "[fix_prod_cors] Valor atual: $BEFORE"
   exit 0
@@ -52,12 +62,19 @@ cp "$ENV_FILE" "$BACKUP"
 echo "[fix_prod_cors] Backup criado em: $BACKUP"
 
 # Três variantes para cobrir vírgula antes, depois ou entrada isolada
-sed -i \
-  -e 's|,[[:space:]]*"http://163\.176\.183\.93:8000"||g' \
-  -e 's|"http://163\.176\.183\.93:8000"[[:space:]]*,||g' \
-  -e 's|"http://163\.176\.183\.93:8000"||g' \
-  -e 's|"http://arguseye\.duckdns\.org"|"https://arguseye.duckdns.org"|g' \
-  "$ENV_FILE"
+SED_ARGS=()
+if [[ $NEEDS_IP_CLEANUP -eq 1 ]]; then
+  IP_ESC=$(echo "$LEGACY_IP" | sed 's/\./\\./g')
+  SED_ARGS+=(
+    -e "s|,[[:space:]]*\"http://${IP_ESC}:8000\"||g"
+    -e "s|\"http://${IP_ESC}:8000\"[[:space:]]*,||g"
+    -e "s|\"http://${IP_ESC}:8000\"||g"
+  )
+fi
+DOMAIN_ESC=$(echo "$DOMAIN" | sed 's/\./\\./g')
+SED_ARGS+=(-e "s|\"http://${DOMAIN_ESC}\"|\"https://${DOMAIN}\"|g")
+
+sed -i "${SED_ARGS[@]}" "$ENV_FILE"
 
 AFTER=$(grep '^CORS_ORIGINS' "$ENV_FILE" || echo "<não encontrado>")
 

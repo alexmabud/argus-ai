@@ -4,18 +4,6 @@ Guia para entender os alertas, ler o dashboard do Grafana e diagnosticar problem
 
 ---
 
-## 📍 Acessos rápidos
-
-| O quê | Onde |
-|---|---|
-| Dashboard | https://arguseye.duckdns.org/grafana |
-| Login Grafana | `admin` / senha em `.env` do servidor (`GF_ADMIN_PASSWORD`) |
-| Alertas | sidebar → 🔔 **Alerting** → **Alert rules** |
-| SSH no servidor | `ssh argus` (alias em `~/.ssh/config`) |
-| Backup das chaves SSH | Google Drive → cofre Cryptomator → pasta `Chaves Argus` |
-
----
-
 ## 📱 Como os alertas chegam no Telegram
 
 Cada alerta dispara uma mensagem com **emoji + título + descrição + horário**.
