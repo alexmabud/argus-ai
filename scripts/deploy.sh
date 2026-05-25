@@ -102,7 +102,8 @@ cmd_update() {
 
     log "Atualizando Argus AI..."
 
-    git pull origin main
+    git fetch origin main
+    git reset --hard origin/main
 
     log "Versionando Service Worker e cache-bust do index.html..."
     bash "${APP_DIR}/update_sw_version.sh"

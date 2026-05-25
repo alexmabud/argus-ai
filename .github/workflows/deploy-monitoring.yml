@@ -53,7 +53,8 @@ jobs:
             cd ~/argus-ai
 
             echo "══════ Atualizando código ══════"
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             echo "══════ Adicionando variáveis de monitoramento ao .env ══════"
             sed -i '/^GF_ADMIN_PASSWORD=/d; /^TELEGRAM_BOT_TOKEN=/d; /^TELEGRAM_CHAT_ID=/d' .env

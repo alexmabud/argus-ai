@@ -71,7 +71,8 @@ jobs:
             docker builder prune -af --filter "until=168h"
 
             echo "══════ Atualizando código ══════"
-            git pull
+            git fetch origin main
+            git reset --hard origin/main
 
             echo "══════ Higienizando CORS_ORIGINS (idempotente) ══════"
             bash ./scripts/fix_prod_cors.sh .env
