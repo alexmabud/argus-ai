@@ -138,6 +138,42 @@ class TestLogin:
         assert registros[0].usuario_id is None
 
 
+class TestLogout:
+    """Testes do endpoint POST /api/v1/auth/logout."""
+
+    async def test_logout_invalida_session_id_server_side(
+        self, client: AsyncClient, db_session: AsyncSession, usuario: Usuario
+    ):
+        """Logout deve zerar session_id no banco — refresh com token antigo falha.
+
+        Antes desta task o logout so limpa o cookie; refresh token continuava
+        valido por 30 dias com o mesmo session_id (impossivel revogar).
+        """
+        headers = _xff_unico()
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "TEST001", "senha": "senha123"},
+            headers=headers,
+        )
+        assert login.status_code == 200
+        refresh_token = login.json()["refresh_token"]
+        access_token = login.json()["access_token"]
+
+        # Logout com Bearer token (autenticado)
+        await client.post(
+            "/api/v1/auth/logout",
+            headers={**headers, "Authorization": f"Bearer {access_token}"},
+        )
+
+        # Refresh com token antigo deve falhar (session_id foi limpa)
+        resp = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refresh_token},
+            headers=headers,
+        )
+        assert resp.status_code in (400, 401)
+
+
 class TestRefresh:
     """Testes do endpoint POST /api/v1/auth/refresh."""
 
