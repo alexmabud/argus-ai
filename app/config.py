@@ -176,6 +176,11 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:8000", "http://localhost:3000"]
 
+    # Proxies cujo X-Forwarded-For pode ser confiado (Caddy local, por padrao).
+    # Requests de IPs fora desta lista terao o XFF ignorado — atacante externo
+    # nao consegue inflar o header para burlar rate limit.
+    TRUSTED_PROXIES: list[str] = ["127.0.0.1", "::1"]
+
     # LGPD
     DATA_RETENTION_DAYS: int = 1825  # 5 anos
 
