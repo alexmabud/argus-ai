@@ -6,11 +6,16 @@ registro, login, refresh de tokens e validação de credenciais.
 
 import secrets
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflitoDadosError, CredenciaisInvalidasError
+from app.core.exceptions import (
+    ConflitoDadosError,
+    ContaBloqueadaError,
+    CredenciaisInvalidasError,
+)
 from app.core.security import (
     criar_access_token,
     criar_refresh_token,
@@ -22,6 +27,11 @@ from app.models.usuario import Usuario
 from app.repositories.usuario_repo import UsuarioRepository
 from app.schemas.auth import RegisterRequest, TokenResponse
 from app.services.audit_service import AuditService
+
+#: Quantidade de falhas consecutivas que dispara bloqueio temporario.
+LIMIAR_BLOQUEIO = 5
+#: Duracao do bloqueio temporario apos atingir o limiar.
+DURACAO_BLOQUEIO = timedelta(minutes=15)
 
 
 class AuthService:
@@ -128,8 +138,27 @@ class AuthService:
             CredenciaisInvalidasError: Se matrícula não existe ou senha é inválida.
         """
         usuario = await self.repo.get_by_matricula(matricula)
-        if not usuario or not verificar_senha(senha, usuario.senha_hash):
+        if not usuario:
             raise CredenciaisInvalidasError()
+
+        agora = datetime.now(UTC)
+        if usuario.bloqueado_ate and usuario.bloqueado_ate > agora:
+            raise ContaBloqueadaError(
+                f"Conta bloqueada ate {usuario.bloqueado_ate.isoformat()}"
+            )
+
+        if not verificar_senha(senha, usuario.senha_hash):
+            usuario.tentativas_falhas += 1
+            if usuario.tentativas_falhas >= LIMIAR_BLOQUEIO:
+                usuario.bloqueado_ate = agora + DURACAO_BLOQUEIO
+                usuario.tentativas_falhas = 0
+            await self.db.flush()
+            await self.db.commit()
+            raise CredenciaisInvalidasError()
+
+        # Sucesso: zera contador e libera bloqueio anterior.
+        usuario.tentativas_falhas = 0
+        usuario.bloqueado_ate = None
 
         if usuario.is_admin:
             # Admin: senha permanente e sessão compartilhável entre dispositivos.

@@ -3,12 +3,25 @@
 Testa endpoints de login, refresh, perfil e upload de foto.
 """
 
+import uuid
+
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
 from app.models.usuario import Usuario
+
+
+def _xff_unico() -> dict[str, str]:
+    """Gera header X-Forwarded-For com IP unico por chamada.
+
+    Necessario para isolar testes do rate limit acumulado no Redis entre
+    execucoes da suite (a chave do limiter usa IP como bucket).
+    """
+    octeto3 = uuid.uuid4().int % 256
+    octeto4 = uuid.uuid4().int % 256
+    return {"X-Forwarded-For": f"10.99.{octeto3}.{octeto4}"}
 
 
 class TestLogin:
@@ -54,6 +67,55 @@ class TestLogin:
             json={"matricula": "NAOEXISTE", "senha": "qualquer"},
         )
         assert response.status_code in (400, 401)
+
+    async def test_login_bloqueia_apos_5_falhas(
+        self, client: AsyncClient, usuario: Usuario
+    ):
+        """Apos 5 senhas erradas, o login com senha CORRETA deve retornar 423.
+
+        Defende contra brute-force; sem lockout, rate limit do XFF e absurdo
+        de tentativas em paralelo deixam senha 'admin123' achavel em minutos.
+
+        Usa XFF unico para isolar este teste do rate limit acumulado
+        de outros testes na mesma sessao.
+        """
+        headers = _xff_unico()
+        for _ in range(5):
+            await client.post(
+                "/api/v1/auth/login",
+                json={"matricula": "TEST001", "senha": "errada"},
+                headers=headers,
+            )
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "TEST001", "senha": "senha123"},
+            headers=headers,
+        )
+        assert resp.status_code == 423
+
+    async def test_login_sucesso_zera_contador_de_falhas(
+        self, client: AsyncClient, db_session: AsyncSession, usuario: Usuario
+    ):
+        """Login bem-sucedido apos 2 falhas deve zerar tentativas_falhas.
+
+        Garante que o contador nao acumula entre sessoes legitimas:
+        usuario que erra a senha 2x e acerta na 3a nao fica perto do bloqueio.
+        """
+        headers = _xff_unico()
+        for _ in range(2):
+            await client.post(
+                "/api/v1/auth/login",
+                json={"matricula": "TEST001", "senha": "errada"},
+                headers=headers,
+            )
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "TEST001", "senha": "senha123"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        await db_session.refresh(usuario)
+        assert usuario.tentativas_falhas == 0
 
     async def test_login_falho_registra_audit(
         self, client: AsyncClient, db_session: AsyncSession
