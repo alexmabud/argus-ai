@@ -83,6 +83,32 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     ALGORITHM: str = "HS256"  # Constante — não sobrescrever via env
 
+    @field_validator("SECRET_KEY", mode="after")
+    @classmethod
+    def _validar_secret_key(cls, v: str) -> str:
+        """Garante que SECRET_KEY tem entropia suficiente e nao usa placeholder.
+
+        Recusa valores curtos (<32) ou placeholders conhecidos do .env.example.
+        Falha rapido no startup em vez de servir trafego com chave fraca.
+        """
+        if len(v) < 32:
+            raise ValueError(
+                "SECRET_KEY deve ter no minimo 32 caracteres "
+                "(gere com: openssl rand -hex 32)"
+            )
+        placeholders_inseguros = {
+            "changeme",
+            "secret",
+            "default",
+            "gerar-chave-segura-com-openssl-rand-hex-32",
+        }
+        if v.lower() in placeholders_inseguros:
+            raise ValueError(
+                "SECRET_KEY usa placeholder inseguro — substitua por chave gerada "
+                "com `openssl rand -hex 32`"
+            )
+        return v
+
     @field_validator("CPF_HMAC_KEY", mode="after")
     @classmethod
     def _cpf_hmac_fallback(cls, v: str, info: ValidationInfo) -> str:
