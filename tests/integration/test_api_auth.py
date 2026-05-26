@@ -4,7 +4,10 @@ Testa endpoints de login, refresh, perfil e upload de foto.
 """
 
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.audit_log import AuditLog
 from app.models.usuario import Usuario
 
 
@@ -51,6 +54,26 @@ class TestLogin:
             json={"matricula": "NAOEXISTE", "senha": "qualquer"},
         )
         assert response.status_code in (400, 401)
+
+    async def test_login_falho_registra_audit(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Falhas de login devem gerar registro de auditoria com acao=LOGIN_FAILED.
+
+        LGPD exige rastreabilidade de tentativas falhas — brute-force nao pode
+        passar invisivel. Sem usuario_id (matricula desconhecida ou senha errada
+        antes de identificar o user).
+        """
+        await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "naoexiste", "senha": "qualquer"},
+        )
+        result = await db_session.execute(
+            select(AuditLog).where(AuditLog.acao == "LOGIN_FAILED")
+        )
+        registros = result.scalars().all()
+        assert len(registros) == 1
+        assert registros[0].usuario_id is None
 
 
 class TestRefresh:
