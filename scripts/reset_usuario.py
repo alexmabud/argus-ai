@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import secrets
 import string
+import sys
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -26,12 +27,29 @@ def _async_url() -> str:
     return settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
 
 
-def _gerar_senha(tamanho: int = 12) -> str:
+def _gerar_senha(tamanho: int = 16) -> str:
     alfabeto = string.ascii_letters + string.digits
     return "".join(secrets.choice(alfabeto) for _ in range(tamanho))
 
 
+def _guard_producao() -> None:
+    """Aborta se o ambiente parece producao.
+
+    Defesas:
+    - DEBUG=False (operacao destrutiva so em dev)
+    - DATABASE_URL contendo 'prod' (heuristica simples mas eficaz)
+    """
+    if not settings.DEBUG:
+        sys.exit(
+            "ERRO: este script destroi todos os usuarios. "
+            "Recusando em ambiente nao-DEBUG."
+        )
+    if "prod" in (settings.DATABASE_URL or "").lower():
+        sys.exit("ERRO: DATABASE_URL contem 'prod'. Recusando.")
+
+
 async def main() -> None:
+    _guard_producao()
     engine = create_async_engine(_async_url(), echo=False)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
@@ -52,9 +70,9 @@ async def main() -> None:
             session.add(guarnicao)
             await session.flush()
 
-        # 3. Criar novo admin
+        # 3. Criar novo admin com senha aleatoria (nunca hardcoded)
         matricula = "admin001"
-        senha = "admin123"
+        senha = _gerar_senha(16)
 
         session.add(
             Usuario(
@@ -76,7 +94,7 @@ async def main() -> None:
     print(f"  Senha     : {senha}")
     print("  Admin     : Sim")
     print("=" * 40)
-    print("  Salve essas credenciais!")
+    print("  ANOTE A SENHA AGORA — nao sera exibida novamente.")
     print("=" * 40 + "\n")
 
 
