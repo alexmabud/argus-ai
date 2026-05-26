@@ -276,6 +276,7 @@ class TestUploadFotoThumbnail:
         ):
             service = FotoService(db)
         service.repo = AsyncMock()
+        service.repo.count_by_abordagem = AsyncMock(return_value=0)
         service.audit = AsyncMock()
         return service, storage_mock
 
