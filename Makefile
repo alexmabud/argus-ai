@@ -87,6 +87,18 @@ anonimizar-dry:
 sync-from-prod:
 	bash scripts/sync_from_prod.sh
 
+# ─── Supply chain ─────────────────────────────────────────────────────────────
+
+# Regera requirements.lock com hashes a partir de pyproject.toml.
+# Roda sempre que adicionar/remover dependencia no [project] dependencies.
+lock:
+	$(VENV_BIN)/pip-compile --generate-hashes --allow-unsafe \
+		--output-file=requirements.lock pyproject.toml
+
+# Audita o lock file contra base de CVEs conhecidos (gera relatorio JSON).
+audit:
+	$(VENV_BIN)/pip-audit -r requirements.lock --desc
+
 # ─── Monitoramento ────────────────────────────────────────────────────────────
 
 monitoring:

@@ -57,6 +57,9 @@ dev = [
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
     "factory-boy>=3.3.0",
+    # Supply chain hardening: pip-tools para gerar lock, pip-audit para CVEs.
+    "pip-tools>=7.4.0",
+    "pip-audit>=2.7.0",
 ]
 vision = [
     "insightface>=0.7.3",

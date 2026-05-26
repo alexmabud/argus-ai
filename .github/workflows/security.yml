@@ -81,6 +81,11 @@ jobs:
       - name: Install pip-audit
         run: python -m pip install pip-audit
 
+      - name: Audit pinned lock file (if present)
+        if: hashFiles('requirements.lock') != ''
+        continue-on-error: true
+        run: pip-audit -r requirements.lock --desc
+
       - name: Generate requirements from pyproject.toml
         run: |
           python - <<'PY'
