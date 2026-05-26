@@ -83,6 +83,31 @@ async def test_buscar_por_nome_e_parent(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
+async def test_autocomplete_escapa_wildcards(db_session: AsyncSession):
+    """Caracteres LIKE (%, _) na query devem ser tratados como literais.
+
+    Sem escape, q='%' faria match em tudo — atacante exfiltra a tabela
+    inteira em uma chamada (mesmo respeitando o limit, vaza nomes).
+    """
+    repo = LocalidadeRepository(db_session)
+    estados = await repo.listar_estados()
+    pe = next((e for e in estados if e.sigla == "PE"), None)
+    assert pe is not None
+
+    db_session.add(
+        Localidade(
+            nome="recife", nome_exibicao="Recife", tipo="cidade", parent_id=pe.id
+        )
+    )
+    await db_session.flush()
+
+    # Sem escape, '%' atua como wildcard e retornaria a cidade Recife.
+    # Com escape, '%' eh tratado literalmente — Recife nao contem '%'.
+    resultados = await repo.autocomplete(tipo="cidade", parent_id=pe.id, q="%")
+    assert resultados == [], "Wildcard nao escapado: query retornou registros indevidos"
+
+
+@pytest.mark.asyncio
 async def test_autocomplete_sem_q_retorna_todos(db_session: AsyncSession):
     """Sem q, retorna todos os filhos do parent_id sem filtro de texto."""
     repo = LocalidadeRepository(db_session)

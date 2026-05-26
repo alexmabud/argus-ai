@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.localidade import Localidade
+from app.services.text_utils import escape_like
 
 
 class LocalidadeRepository:
@@ -65,7 +66,7 @@ class LocalidadeRepository:
             Localidade.ativo.is_(True),
         )
         if q:
-            query = query.where(Localidade.nome.ilike(f"%{q}%"))
+            query = query.where(Localidade.nome.ilike(f"%{escape_like(q)}%"))
         query = query.order_by(Localidade.nome_exibicao).limit(limit)
         result = await self.db.execute(query)
         return list(result.scalars().all())
