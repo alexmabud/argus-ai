@@ -108,8 +108,15 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    # Bind mounts seletivos (Task 27): em vez de .:/app que expoe .git, .env,
+    # .secrets/, tmp/sync etc ao container, apenas o que muda durante dev.
+    # alembic.ini eh ro porque nao deve ser editado em runtime do container.
     volumes:
-      - .:/app
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./scripts:/app/scripts:ro
+      - ./pyproject.toml:/app/pyproject.toml:ro
     depends_on:
       db:
         condition: service_healthy
@@ -135,8 +142,10 @@ services:
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: http://localhost:9000
+    # Bind mounts seletivos (Task 27): mesmo principio do servico api.
     volumes:
-      - .:/app
+      - ./app:/app/app
+      - ./scripts:/app/scripts:ro
       - insightface_models:/root/.insightface
     depends_on:
       db:
