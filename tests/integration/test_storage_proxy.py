@@ -233,7 +233,7 @@ async def test_storage_proxy_bloqueia_midia_de_abordagem_de_outra_equipe(
     """
     outra = await _outra_equipe(db_session, bpm)
     foto = Foto(
-        arquivo_url="/storage/argus/fotos/midia_outra_abordagem.jpg",
+        arquivo_url=f"/storage/{settings.S3_BUCKET}/fotos/midia_outra_abordagem.jpg",
         tipo="abordagem",
         data_hora=datetime.now(),
         pessoa_id=None,
@@ -245,7 +245,7 @@ async def test_storage_proxy_bloqueia_midia_de_abordagem_de_outra_equipe(
     fake_storage.get_object = AsyncMock()
 
     response = await client.get(
-        "/storage/argus/fotos/midia_outra_abordagem.jpg",
+        f"/storage/{settings.S3_BUCKET}/fotos/midia_outra_abordagem.jpg",
         headers=auth_headers,
     )
     assert response.status_code == 403
@@ -268,7 +268,7 @@ async def test_storage_proxy_libera_foto_de_pessoa_de_outra_equipe(
     db_session.add(pessoa)
     await db_session.flush()
     foto = Foto(
-        arquivo_url="/storage/argus/fotos/pessoa_global.jpg",
+        arquivo_url=f"/storage/{settings.S3_BUCKET}/fotos/pessoa_global.jpg",
         tipo="rosto",
         data_hora=datetime.now(),
         pessoa_id=pessoa.id,
@@ -283,7 +283,7 @@ async def test_storage_proxy_libera_foto_de_pessoa_de_outra_equipe(
     )
 
     response = await client.get(
-        "/storage/argus/fotos/pessoa_global.jpg",
+        f"/storage/{settings.S3_BUCKET}/fotos/pessoa_global.jpg",
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -302,7 +302,7 @@ async def test_storage_proxy_bloqueia_pdf_de_ocorrencia_de_outra_equipe(
     outra = await _outra_equipe(db_session, bpm)
     ocorrencia = Ocorrencia(
         numero_ocorrencia="2026.00001/OUTRA",
-        arquivo_pdf_url="/storage/argus/pdfs/rap_outra.pdf",
+        arquivo_pdf_url=f"/storage/{settings.S3_BUCKET}/pdfs/rap_outra.pdf",
         data_ocorrencia=date.today(),
         usuario_id=usuario.id,
         guarnicao_id=outra.id,
@@ -313,7 +313,7 @@ async def test_storage_proxy_bloqueia_pdf_de_ocorrencia_de_outra_equipe(
     fake_storage.get_object = AsyncMock()
 
     response = await client.get(
-        "/storage/argus/pdfs/rap_outra.pdf",
+        f"/storage/{settings.S3_BUCKET}/pdfs/rap_outra.pdf",
         headers=auth_headers,
     )
     assert response.status_code == 403
@@ -326,7 +326,7 @@ async def test_storage_proxy_libera_midia_de_abordagem_propria(
 ):
     """Midia de abordagem da propria equipe deve passar normalmente."""
     foto = Foto(
-        arquivo_url="/storage/argus/fotos/minha_midia.jpg",
+        arquivo_url=f"/storage/{settings.S3_BUCKET}/fotos/minha_midia.jpg",
         tipo="abordagem",
         data_hora=datetime.now(),
         pessoa_id=None,
@@ -341,7 +341,7 @@ async def test_storage_proxy_libera_midia_de_abordagem_propria(
     )
 
     response = await client.get(
-        "/storage/argus/fotos/minha_midia.jpg",
+        f"/storage/{settings.S3_BUCKET}/fotos/minha_midia.jpg",
         headers=auth_headers,
     )
     assert response.status_code == 200
