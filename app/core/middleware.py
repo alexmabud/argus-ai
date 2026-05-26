@@ -43,9 +43,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Em dev liberamos http://localhost:9000 para servir fotos do MinIO
         # diretamente; em prod o storage passa pela API (mesmo origin).
         img_extra = " http://localhost:9000" if settings.DEBUG else ""
+        # CSP sem 'unsafe-inline':
+        # - script-src mantem 'unsafe-eval' (Alpine.js padrao usa new Function
+        #   para interpretar x-data/x-show; remover quebraria o PWA).
+        # - style-src precisa de 'unsafe-inline' enquanto tivermos style="..."
+        #   embutido em templates (frontend/js/app.js gera HTML com style inline
+        #   para animacoes). Migrar tudo pra classes CSS eh refactor maior.
+        # - inline onclick foi removido em favor de data-navigate-to + delegated
+        #   listener, permitindo retirar 'unsafe-inline' de script-src.
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+            "script-src 'self' 'unsafe-eval' "
             "https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://unpkg.com; "
             "style-src 'self' 'unsafe-inline' "
             "https://cdn.jsdelivr.net https://cdn.tailwindcss.com "
