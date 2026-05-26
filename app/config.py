@@ -6,7 +6,7 @@ aplicação Argus AI. Suporta recarregamento automático de arquivos .env.
 
 import logging
 
-from pydantic import model_validator
+from pydantic import ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 _logger = logging.getLogger("argus")
@@ -76,9 +76,29 @@ class Settings(BaseSettings):
 
     # Auth
     SECRET_KEY: str
+    # Pepper para HMAC de busca de CPF (LGPD). Default vazio = fallback para SECRET_KEY.
+    # Separar reduz blast radius: vazamento de uma chave não compromete a outra função.
+    CPF_HMAC_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 horas (turno completo)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     ALGORITHM: str = "HS256"  # Constante — não sobrescrever via env
+
+    @field_validator("CPF_HMAC_KEY", mode="after")
+    @classmethod
+    def _cpf_hmac_fallback(cls, v: str, info: ValidationInfo) -> str:
+        """Aplica fallback para SECRET_KEY quando CPF_HMAC_KEY não estiver definida.
+
+        Se CPF_HMAC_KEY for fornecida explicitamente, exige tamanho mínimo de 32
+        caracteres para garantir entropia suficiente como pepper HMAC.
+        """
+        if not v:
+            return info.data.get("SECRET_KEY", "")
+        if len(v) < 32:
+            raise ValueError(
+                "CPF_HMAC_KEY deve ter no minimo 32 caracteres "
+                "(gere com: openssl rand -hex 32)"
+            )
+        return v
 
     # Encryption (LGPD)
     ENCRYPTION_KEY: str  # Fernet key para campos sensíveis
