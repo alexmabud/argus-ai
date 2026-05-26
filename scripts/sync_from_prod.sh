@@ -113,3 +113,29 @@ echo " Fotos sincronizadas em:  $FOTOS_DIR"
 echo ""
 echo " Proximos passos: 'make dev' para subir a API local"
 echo "════════════════════════════════════════════════════════"
+
+# ─── Limpeza de backups antigos do .env (chaves rotacionadas) ──
+# Mantem apenas o backup recem-criado ($ENV_BACKUP) como rollback.
+# Backups mais antigos contem ENCRYPTION_KEYs anteriores que so
+# servem como vetor de ataque sobre eventuais dumps antigos.
+shopt -s nullglob
+ENV_BAK_ANTIGOS=()
+for f in "$PROJECT_DIR"/.env.bak.*; do
+    if [[ "$f" != "$ENV_BACKUP" ]]; then
+        ENV_BAK_ANTIGOS+=("$f")
+    fi
+done
+if [[ ${#ENV_BAK_ANTIGOS[@]} -gt 0 ]]; then
+    echo ""
+    echo "Removendo ${#ENV_BAK_ANTIGOS[@]} backup(s) antigo(s) de .env (chaves rotacionadas)..."
+    shred -u "${ENV_BAK_ANTIGOS[@]}" 2>/dev/null || rm -f "${ENV_BAK_ANTIGOS[@]}"
+fi
+
+# ─── Aviso de seguranca LGPD ──────────────────────────────────
+echo ""
+echo "═══════════════════════════════════════════════════════════════"
+echo " ATENCAO: .env local agora contem a ENCRYPTION_KEY de PRODUCAO."
+echo " Se este device for perdido ou comprometido, CPFs da base ficam"
+echo " decifraveis. Exija criptografia de disco (LUKS/BitLocker) e"
+echo " bloqueio automatico de tela."
+echo "═══════════════════════════════════════════════════════════════"

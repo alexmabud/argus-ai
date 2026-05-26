@@ -10,7 +10,6 @@ import pytest
 
 from app.config import Settings
 
-
 _BASE_ENV = {
     "DATABASE_URL": "postgresql+asyncpg://test:test@localhost/test",
     "ENCRYPTION_KEY": "Y2hhdmUtZmVybmV0LXBhcmEtdGVzdGVzLWFxdWktcGFkZA==",
