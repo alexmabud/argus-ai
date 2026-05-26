@@ -7,7 +7,7 @@ e busca por similaridade facial via pgvector (cosine distance 512-dim).
 from collections.abc import Sequence
 from typing import cast
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.foto import Foto
@@ -49,6 +49,24 @@ class FotoRepository(BaseRepository[Foto]):
         )
         result = await self.db.execute(query)
         return result.scalars().all()
+
+    async def count_by_abordagem(self, abordagem_id: int) -> int:
+        """Conta fotos ativas vinculadas a uma abordagem.
+
+        Usado pelo enforcement de QUOTA_FOTOS_POR_ABORDAGEM no upload.
+
+        Args:
+            abordagem_id: ID da abordagem.
+
+        Returns:
+            Numero de fotos ativas (nao soft-deleted).
+        """
+        query = select(func.count(Foto.id)).where(
+            Foto.abordagem_id == abordagem_id,
+            Foto.ativo == True,  # noqa: E712
+        )
+        result = await self.db.execute(query)
+        return int(result.scalar_one())
 
     async def get_by_abordagem(self, abordagem_id: int) -> Sequence[Foto]:
         """Lista fotos associadas a uma abordagem.
