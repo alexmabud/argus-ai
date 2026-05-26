@@ -85,31 +85,31 @@ services:
     networks:
       - argus-network
 
-  # ─── cAdvisor: métricas de cada container Docker ────────────────────
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1   # suporte oficial ARM64 ✅
-    restart: always
-    container_name: argus-cadvisor
-    privileged: true
-    devices:
-      - /dev/kmsg:/dev/kmsg
-    # ⚠️  INCOMPATIBILIDADE conhecida: Docker 29.x introduziu o storage driver
-    # "overlayfs" (novo, não confundir com "overlay2") e removeu a estrutura
-    # /var/lib/docker/image/overlayfs/layerdb/mounts/ que cAdvisor procura
-    # para enriquecer séries com labels (name, image, container). Resultado:
-    # target fica UP mas todas as séries container_* saem sem label "name",
-    # tornando inúteis painéis "por container". Testado v0.49.1 → v0.52.1.
-    # TODO: revisitar quando cAdvisor v0.53+ ou alternativa sair. Por ora,
-    # mantido rodando (não custa) — usar node-exporter para métricas do host.
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
-    expose:
-      - "8080"
-    networks:
-      - argus-network
+  # ─── cAdvisor: DESATIVADO (incompatibilidade Docker 29.x) ───────────
+  # Removido em 2026-05-26 (hardening Task 23): cAdvisor v0.49.x–v0.52.x
+  # nao reconhecem o storage driver "overlayfs" do Docker 29.x — series
+  # container_* saem sem label name e os paineis "por container" ficam
+  # vazios. Manter o servico rodando privileged + bind / e /var/lib/docker
+  # readonly so para dados inuteis = vetor de ataque puro (escalada de
+  # container, leitura de imagens privadas). Revisitar com cAdvisor v0.53+
+  # ou trocar por alternativa quando paineis por container voltarem a ser
+  # necessarios.
+  # cadvisor:
+  #   image: gcr.io/cadvisor/cadvisor:v0.49.1
+  #   restart: always
+  #   container_name: argus-cadvisor
+  #   privileged: true
+  #   devices:
+  #     - /dev/kmsg:/dev/kmsg
+  #   volumes:
+  #     - /:/rootfs:ro
+  #     - /var/run:/var/run:ro
+  #     - /sys:/sys:ro
+  #     - /var/lib/docker:/var/lib/docker:ro
+  #   expose:
+  #     - "8080"
+  #   networks:
+  #     - argus-network
 
   # ─── postgres_exporter: métricas do PostgreSQL ──────────────────────
   postgres-exporter:

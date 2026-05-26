@@ -108,19 +108,19 @@ monitoring:
 	@echo "Subindo stack de monitoramento (Prometheus + Grafana + Exporters)..."
 	docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
 		up -d \
-		prometheus grafana node-exporter cadvisor postgres-exporter redis-exporter telegram-reporter
+		prometheus grafana node-exporter postgres-exporter redis-exporter telegram-reporter
 	@echo "✅ Grafana disponível em: https://$$DOMAIN/grafana"
 	@echo "   Login: admin / $$GF_ADMIN_PASSWORD"
 
 monitoring-local:
 	@echo "Subindo monitoramento em ambiente local..."
 	docker compose -f docker-compose.yml -f docker-compose.monitoring.yml \
-		up -d prometheus grafana node-exporter cadvisor postgres-exporter redis-exporter
+		up -d prometheus grafana node-exporter postgres-exporter redis-exporter
 
 monitoring-down:
 	docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
 		stop \
-		prometheus grafana node-exporter cadvisor postgres-exporter redis-exporter telegram-reporter
+		prometheus grafana node-exporter postgres-exporter redis-exporter telegram-reporter
 
 monitoring-logs:
 	docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
