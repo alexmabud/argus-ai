@@ -143,9 +143,7 @@ class AuthService:
 
         agora = datetime.now(UTC)
         if usuario.bloqueado_ate and usuario.bloqueado_ate > agora:
-            raise ContaBloqueadaError(
-                f"Conta bloqueada ate {usuario.bloqueado_ate.isoformat()}"
-            )
+            raise ContaBloqueadaError(f"Conta bloqueada ate {usuario.bloqueado_ate.isoformat()}")
 
         if not verificar_senha(senha, usuario.senha_hash):
             usuario.tentativas_falhas += 1

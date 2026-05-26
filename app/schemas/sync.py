@@ -40,9 +40,7 @@ class SyncItem(BaseModel):
     def _validar_tamanho_dados(cls, v: dict[str, Any]) -> dict[str, Any]:
         """Aborta payloads acima de MAX_DADOS_BYTES (anti-DoS)."""
         if len(json.dumps(v, default=str)) > MAX_DADOS_BYTES:
-            raise ValueError(
-                f"Payload de sync excede {MAX_DADOS_BYTES // 1024} KB"
-            )
+            raise ValueError(f"Payload de sync excede {MAX_DADOS_BYTES // 1024} KB")
         return v
 
 

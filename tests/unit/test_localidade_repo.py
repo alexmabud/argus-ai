@@ -95,9 +95,7 @@ async def test_autocomplete_escapa_wildcards(db_session: AsyncSession):
     assert pe is not None
 
     db_session.add(
-        Localidade(
-            nome="recife", nome_exibicao="Recife", tipo="cidade", parent_id=pe.id
-        )
+        Localidade(nome="recife", nome_exibicao="Recife", tipo="cidade", parent_id=pe.id)
     )
     await db_session.flush()
 

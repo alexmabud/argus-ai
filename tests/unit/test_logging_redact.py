@@ -11,8 +11,13 @@ from app.core.logging_config import RedactFilter
 
 def _make_record(msg: str) -> logging.LogRecord:
     return logging.LogRecord(
-        name="argus", level=logging.INFO, pathname="", lineno=0,
-        msg=msg, args=(), exc_info=None,
+        name="argus",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg=msg,
+        args=(),
+        exc_info=None,
     )
 
 

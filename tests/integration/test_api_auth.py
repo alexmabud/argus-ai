@@ -68,9 +68,7 @@ class TestLogin:
         )
         assert response.status_code in (400, 401)
 
-    async def test_login_bloqueia_apos_5_falhas(
-        self, client: AsyncClient, usuario: Usuario
-    ):
+    async def test_login_bloqueia_apos_5_falhas(self, client: AsyncClient, usuario: Usuario):
         """Apos 5 senhas erradas, o login com senha CORRETA deve retornar 423.
 
         Defende contra brute-force; sem lockout, rate limit do XFF e absurdo
@@ -117,9 +115,7 @@ class TestLogin:
         await db_session.refresh(usuario)
         assert usuario.tentativas_falhas == 0
 
-    async def test_login_falho_registra_audit(
-        self, client: AsyncClient, db_session: AsyncSession
-    ):
+    async def test_login_falho_registra_audit(self, client: AsyncClient, db_session: AsyncSession):
         """Falhas de login devem gerar registro de auditoria com acao=LOGIN_FAILED.
 
         LGPD exige rastreabilidade de tentativas falhas — brute-force nao pode
@@ -130,9 +126,7 @@ class TestLogin:
             "/api/v1/auth/login",
             json={"matricula": "naoexiste", "senha": "qualquer"},
         )
-        result = await db_session.execute(
-            select(AuditLog).where(AuditLog.acao == "LOGIN_FAILED")
-        )
+        result = await db_session.execute(select(AuditLog).where(AuditLog.acao == "LOGIN_FAILED"))
         registros = result.scalars().all()
         assert len(registros) == 1
         assert registros[0].usuario_id is None

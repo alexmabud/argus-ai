@@ -106,6 +106,4 @@ def hash_for_search(value: str) -> str:
         HMAC-SHA256 hexadecimal do valor normalizado.
     """
     normalized = value.strip().replace(".", "").replace("-", "")
-    return hmac.new(
-        settings.CPF_HMAC_KEY.encode(), normalized.encode(), hashlib.sha256
-    ).hexdigest()
+    return hmac.new(settings.CPF_HMAC_KEY.encode(), normalized.encode(), hashlib.sha256).hexdigest()

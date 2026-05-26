@@ -262,6 +262,7 @@ async def test_storage_proxy_libera_foto_de_pessoa_de_outra_equipe(
     quebraria fluxo operacional.
     """
     from app.models.pessoa import Pessoa
+
     outra = await _outra_equipe(db_session, bpm)
     pessoa = Pessoa(nome="Cidadao X", guarnicao_id=outra.id)
     db_session.add(pessoa)
@@ -297,6 +298,7 @@ async def test_storage_proxy_bloqueia_pdf_de_ocorrencia_de_outra_equipe(
     Mesma logica das midias de abordagem: documento operacional eh tenant-scoped.
     """
     from datetime import date
+
     outra = await _outra_equipe(db_session, bpm)
     ocorrencia = Ocorrencia(
         numero_ocorrencia="2026.00001/OUTRA",

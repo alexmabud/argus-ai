@@ -93,8 +93,7 @@ class Settings(BaseSettings):
         """
         if len(v) < 32:
             raise ValueError(
-                "SECRET_KEY deve ter no minimo 32 caracteres "
-                "(gere com: openssl rand -hex 32)"
+                "SECRET_KEY deve ter no minimo 32 caracteres (gere com: openssl rand -hex 32)"
             )
         placeholders_inseguros = {
             "changeme",
@@ -121,8 +120,7 @@ class Settings(BaseSettings):
             return info.data.get("SECRET_KEY", "")
         if len(v) < 32:
             raise ValueError(
-                "CPF_HMAC_KEY deve ter no minimo 32 caracteres "
-                "(gere com: openssl rand -hex 32)"
+                "CPF_HMAC_KEY deve ter no minimo 32 caracteres (gere com: openssl rand -hex 32)"
             )
         return v
 
