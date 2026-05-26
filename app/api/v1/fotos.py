@@ -68,16 +68,17 @@ except ImportError:
 
 
 def _sanitizar_filename(filename: str) -> str:
-    """Sanitiza nome de arquivo para uso em Content-Disposition.
+    """Sanitiza nome de arquivo para uso em uploads e Content-Disposition.
 
-    Remove path traversal, substitui espaços por underscore e
-    garante que o resultado não seja vazio.
+    Remove path traversal, substitui espacos por underscore, descarta
+    caracteres unicode de controle (RTL override etc) e trunca em 100
+    caracteres para nao estourar keys S3 ou cabecalhos HTTP.
 
     Args:
         filename: Nome original do arquivo.
 
     Returns:
-        Nome sanitizado seguro para cabeçalho HTTP.
+        Nome sanitizado seguro para uso em S3 keys e cabecalhos HTTP.
     """
     # Remover qualquer componente de path
     name = filename.replace("\\", "/").split("/")[-1]
@@ -85,6 +86,8 @@ def _sanitizar_filename(filename: str) -> str:
     name = name.replace(" ", "_")
     # Remover caracteres não seguros (manter alfanuméricos, ponto, hífen, underscore)
     name = re.sub(r"[^\w.\-]", "", name)
+    # Truncar para nao estourar S3 key (~1024 limite, mas 100 e suficiente)
+    name = name[:100]
     return name or "midia"
 
 
@@ -142,7 +145,7 @@ async def upload_foto(
         file_bytes = await converter_heic_para_jpeg(file_bytes)
         original_content_type = "image/jpeg"
 
-    filename = file.filename or "foto.jpg"
+    filename = _sanitizar_filename(file.filename or "foto.jpg")
     if filename.lower().endswith((".heic", ".heif")):
         filename = filename.rsplit(".", 1)[0] + ".jpg"
 
@@ -420,7 +423,7 @@ async def upload_midia_abordagem(
     elif content_type == "application/pdf":
         validar_magic_bytes_pdf(file_bytes)
 
-    filename = file.filename or "midia"
+    filename = _sanitizar_filename(file.filename or "midia")
 
     # Verificar que a abordagem pertence à guarnição do usuário (anti cross-tenant)
     if user.guarnicao_id is None:

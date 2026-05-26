@@ -30,3 +30,21 @@ class TestSanitizarFilename:
 
         result = _sanitizar_filename("meu video da abordagem.mp4")
         assert " " not in result
+
+    def test_filename_longo_e_truncado(self):
+        """Filenames muito longos devem ser truncados (~100 chars).
+
+        Sem limite, atacante envia filename de 4KB que estoura S3 key ou
+        Content-Disposition no download.
+        """
+        from app.api.v1.fotos import _sanitizar_filename
+
+        result = _sanitizar_filename("a" * 500)
+        assert len(result) <= 100
+
+    def test_filename_unicode_rtl_removido(self):
+        """Caracteres Unicode de controle (RTL override) sao removidos."""
+        from app.api.v1.fotos import _sanitizar_filename
+
+        result = _sanitizar_filename("teste‮evil.pdf")
+        assert "‮" not in result
