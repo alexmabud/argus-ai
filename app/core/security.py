@@ -6,7 +6,7 @@ e criação/validação de tokens JWT para fluxos de autenticação e autorizaç
 
 from datetime import UTC, datetime, timedelta
 
-from jose import JWTError, jwt
+import jwt
 from passlib.context import CryptContext
 
 from app.config import settings
@@ -140,5 +140,5 @@ def decodificar_token(token: str, expected_type: str = "access") -> dict | None:
         if payload.get("type") != expected_type:
             return None
         return payload
-    except JWTError:
+    except jwt.InvalidTokenError:
         return None
