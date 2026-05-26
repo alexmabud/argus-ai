@@ -11,11 +11,11 @@ class TestSyncBatch:
     """Testes do endpoint POST /api/v1/sync/batch."""
 
     async def test_sync_batch_tipo_invalido(self, client: AsyncClient, auth_headers: dict):
-        """Deve retornar erro para tipo desconhecido.
+        """Tipo desconhecido deve ser rejeitado em validacao (422).
 
-        Args:
-            client: Cliente HTTP assincrónico.
-            auth_headers: Headers com Bearer token válido.
+        Apos Task 18, SyncItem.tipo eh Literal[...] — Pydantic rejeita antes
+        de chegar ao service. Antes, o service respondia 200 com status=error.
+        Falhar cedo eh melhor: nao consome tempo do worker com lixo.
         """
         response = await client.post(
             "/api/v1/sync/batch",
@@ -30,11 +30,7 @@ class TestSyncBatch:
             },
             headers=auth_headers,
         )
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["results"]) == 1
-        assert data["results"][0]["status"] == "error"
-        assert data["results"][0]["client_id"] == "test-uuid-1"
+        assert response.status_code == 422
 
     async def test_sync_batch_vazio(self, client: AsyncClient, auth_headers: dict):
         """Deve aceitar batch vazio sem erro.
