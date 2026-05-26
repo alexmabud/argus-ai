@@ -17,15 +17,20 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.health import router as health_router
 from app.api.v1.router import api_router
 from app.config import settings
 from app.core.logging_config import setup_logging
 from app.core.middleware import LoggingMiddleware, SecurityHeadersMiddleware
+from app.core.permissions import TenantFilter
 from app.core.rate_limit import limiter
-from app.database.session import engine
+from app.database.session import engine, get_db
 from app.dependencies import get_current_user
+from app.models.foto import Foto
+from app.models.ocorrencia import Ocorrencia
 from app.models.usuario import Usuario
 from app.services.storage_service import StorageService
 
@@ -139,7 +144,8 @@ def create_app() -> FastAPI:
     async def storage_proxy(
         path: str,
         request: Request,
-        _: Usuario = Depends(get_current_user),
+        user: Usuario = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
     ) -> Response:
         """Proxy autenticado para arquivos no storage S3/MinIO.
 
@@ -178,6 +184,31 @@ def create_app() -> FastAPI:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Arquivo não encontrado",
             )
+
+        # Tenant check seletivo: fotos vinculadas a pessoa permanecem globais
+        # (BNMP, modelo de produto); midias de abordagem e PDFs de ocorrencia
+        # respeitam o isolamento BPM/equipe. Assets nao registrados em banco
+        # passam sem checagem (uploads legitimos ainda nao indexados).
+        url_publica = f"/storage/{path}"
+        foto = (
+            await db.execute(
+                select(Foto).where(
+                    or_(Foto.arquivo_url == url_publica, Foto.thumbnail_url == url_publica)
+                )
+            )
+        ).scalar_one_or_none()
+        if foto is not None:
+            if foto.pessoa_id is None:
+                # Midia de abordagem: respeita tenant.
+                TenantFilter.check_ownership(foto, user)
+        else:
+            ocorrencia = (
+                await db.execute(
+                    select(Ocorrencia).where(Ocorrencia.arquivo_pdf_url == url_publica)
+                )
+            ).scalar_one_or_none()
+            if ocorrencia is not None:
+                TenantFilter.check_ownership(ocorrencia, user)
 
         if_none_match = request.headers.get("if-none-match")
 
