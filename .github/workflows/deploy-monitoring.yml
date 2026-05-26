@@ -56,10 +56,15 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            echo "══════ Adicionando variáveis de monitoramento ao .env ══════"
+            echo "══════ Limpando secrets antigos do .env e endurecendo perms ══════"
+            # Task 25: NAO persiste TELEGRAM_BOT_TOKEN/GF_ADMIN_PASSWORD no .env
+            # da VM. As variaveis sao passadas como env vars desta sessao SSH
+            # (envs: na config da appleboy/ssh-action) e o docker compose as le
+            # do shell durante o "up -d". Remover entradas antigas evita resto
+            # de chave rotacionada na VM.
             sed -i '/^GF_ADMIN_PASSWORD=/d; /^TELEGRAM_BOT_TOKEN=/d; /^TELEGRAM_CHAT_ID=/d' .env
-            printf '\nGF_ADMIN_PASSWORD=%s\nTELEGRAM_BOT_TOKEN=%s\nTELEGRAM_CHAT_ID=%s\n' \
-              "$GF_ADMIN_PASSWORD" "$TELEGRAM_BOT_TOKEN" "$TELEGRAM_CHAT_ID" >> .env
+            # Defesa em profundidade: .env so legivel pelo owner.
+            chmod 600 .env
 
             echo "══════ Criando diretórios de dados ══════"
             sudo mkdir -p /mnt/banco/prometheus /mnt/banco/grafana
