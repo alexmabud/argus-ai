@@ -7,8 +7,6 @@ o XFF para burlar rate limit.
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.core.rate_limit import _get_real_client_ip
 
 

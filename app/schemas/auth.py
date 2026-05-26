@@ -263,6 +263,28 @@ class PerfilUpdate(BaseModel):
             raise ValueError(f"Posto inválido. Valores aceitos: {POSTOS_GRADUACAO}")
         return v
 
+    @field_validator("foto_url")
+    @classmethod
+    def validar_foto_url(cls, v: str | None) -> str | None:
+        """Restringe foto_url a paths internos /storage/...
+
+        Bloqueia URLs externas que policial pode gravar no perfil — outros
+        usuarios que abrirem a ficha pingariam o servidor do atacante
+        exfiltrando IP + referer.
+
+        Args:
+            v: Valor de foto_url a validar.
+
+        Returns:
+            O valor se valido, None se nao fornecido.
+
+        Raises:
+            ValueError: Se foto_url nao comecar com /storage/.
+        """
+        if v is not None and not v.startswith("/storage/"):
+            raise ValueError("foto_url deve ser um path interno /storage/...")
+        return v
+
 
 class UsuarioAdminCreate(BaseModel):
     """Dados para criação de usuário pelo admin.
