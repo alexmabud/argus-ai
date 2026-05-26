@@ -259,7 +259,7 @@ async def listar_fotos_abordagem(
 async def buscar_por_rosto(
     request: Request,
     file: UploadFile,
-    top_k: int = Form(5),
+    top_k: int = Form(5, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
     face_service=Depends(get_face_service),
