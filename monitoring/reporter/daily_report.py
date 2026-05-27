@@ -149,7 +149,7 @@ def main() -> None:
     pico_req_min = query_range_max("sum(rate(http_requests_total[1m])) * 60")
     total_erros = query("sum(increase(http_requests_total{status=~'5..'}[24h]))")
     latencia_p95 = query(
-        "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1h])) by (le))"
+        "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[24h])) by (le))"
     )
 
     # Sem séries 5xx no período = zero erros (e não "sem dados") quando houve tráfego
