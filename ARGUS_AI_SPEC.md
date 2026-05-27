@@ -109,7 +109,7 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 #### Infraestrutura & Segurança
 - ✅ **Criptografia de campos sensíveis** (CPF com Fernet)
 - ✅ **LGPD** (auditoria, soft delete, retenção)
-- ✅ **Storage em Cloudflare R2** (S3-compatible)
+- ✅ **Storage S3-compatible** (MinIO em prod hoje; código agnóstico, troca-se por R2/AWS S3 mudando `S3_ENDPOINT`)
 - ✅ **Docker** (docker-compose dev + prod)
 - ✅ **CI/CD** ready (GitHub Actions)
 - ✅ **Testes** (unit, integration, e2e)
@@ -189,7 +189,7 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 | Render ou Railway | Backend hosting |
 | Neon ou Supabase | PostgreSQL gerenciado com pgvector + PostGIS |
 | Upstash Redis | Cache + fila do arq worker |
-| Cloudflare R2 | Storage de fotos e PDFs (S3-compatible) |
+| MinIO (S3-compatible) | Storage de fotos e PDFs em container Docker — trocável por R2/AWS S3 |
 | GitHub Actions | CI/CD |
 
 ---
@@ -3396,7 +3396,7 @@ REFRESH_TOKEN_EXPIRE_DAYS=30
 ENCRYPTION_KEY=gerar-com-scripts/generate_encryption_key.py
 
 # ══════════════════════════════════
-# STORAGE (MinIO local / Cloudflare R2 em prod)
+# STORAGE (MinIO em dev e prod hoje — S3-compatible, trocavel por R2/AWS S3)
 # ══════════════════════════════════
 S3_ENDPOINT=http://localhost:9000
 S3_ACCESS_KEY=minioadmin
@@ -3467,7 +3467,7 @@ Memória operacional da guarnição: abordagens, ocorrências, RAG, reconhecimen
 - SentenceTransformers (paraphrase-multilingual-MiniLM-L12-v2)
 - InsightFace (reconhecimento facial) + EasyOCR (placas)
 - PWA frontend (HTML + Alpine.js + Tailwind)
-- Cloudflare R2 (storage)
+- MinIO (storage S3-compatible em container Docker, dados em `/mnt/fotos` na VM)
 
 ## Estrutura
 - `app/api/` — Routers FastAPI (camada HTTP, versionada em v1/)

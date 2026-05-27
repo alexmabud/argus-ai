@@ -122,7 +122,7 @@ class UsuarioRead(BaseModel):
         guarnicao_id: Identificador da guarnição do agente.
         posto_graduacao: Posto ou graduação PM (ex: "Sargento").
         nome_guerra: Nome de guerra do agente (ex: "Silva").
-        foto_url: URL pública da foto de perfil no R2.
+        foto_url: URL pública da foto de perfil no storage S3-compatible.
         criado_em: Data e hora de criação do usuário.
     """
 
@@ -237,7 +237,7 @@ class PerfilUpdate(BaseModel):
         nome: Nome completo do agente (2 a 200 caracteres).
         nome_guerra: Nome de guerra do agente (ex: "Silva"). Máx 50 chars.
         posto_graduacao: Posto ou graduação PM (lista fixa). None para remover.
-        foto_url: URL pública da foto de perfil no R2 (opcional).
+        foto_url: URL pública da foto de perfil no storage S3-compatible (opcional).
     """
 
     nome: str = Field(..., min_length=2, max_length=200)

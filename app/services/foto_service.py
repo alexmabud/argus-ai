@@ -1,6 +1,6 @@
 """Serviço de lógica de negócio para Foto.
 
-Gerencia upload de fotos para S3/R2 (Cloudflare), criação de registros
+Gerencia upload de fotos para o storage S3-compatible, criação de registros
 no banco e listagem de fotos por pessoa ou abordagem. Fotos com tipo
 "rosto" são posteriormente processadas pelo arq worker para extração
 de embedding facial (512 dimensões via InsightFace).
@@ -39,14 +39,14 @@ MAX_FOTO_SIZE = 10 * 1024 * 1024
 MAX_MIDIA_SIZE = 200 * 1024 * 1024
 
 #: Quota maxima de fotos vinculadas a uma mesma abordagem. Defende contra
-#: conta comprometida que gravaria GB/h no R2 sem esse limite.
+#: conta comprometida que gravaria GB/h no storage sem esse limite.
 QUOTA_FOTOS_POR_ABORDAGEM = 50
 
 
 class FotoService:
     """Serviço de Foto com upload S3 e registro no banco.
 
-    Orquestra o fluxo de upload de fotos: envio para storage S3/R2,
+    Orquestra o fluxo de upload de fotos: envio para storage S3-compatible,
     criação do registro no banco com metadados (tipo, coordenadas,
     vinculação a pessoa/abordagem) e log de auditoria. Fotos com
     tipo "rosto" ficam pendentes de processamento facial pelo worker.
@@ -59,7 +59,7 @@ class FotoService:
     Attributes:
         db: Sessão assíncrona do SQLAlchemy.
         repo: Repositório de Foto com busca por pessoa e abordagem.
-        storage: Serviço de armazenamento S3/R2 (Cloudflare).
+        storage: Serviço de armazenamento S3-compatible.
         audit: Serviço de auditoria para log de mutações (LGPD).
     """
 
@@ -94,7 +94,7 @@ class FotoService:
         """Faz upload de foto para S3 e cria registro no banco.
 
         Fluxo:
-        1. Gera chave única e faz upload do arquivo original para S3/R2
+        1. Gera chave única e faz upload do arquivo original para S3-compatible
         1b. Se for imagem (``content_type`` inicia com ``image/``), gera
             thumbnail JPEG (300px, q75) via ``app.utils.imaging.gerar_thumbnail``
             e faz upload separado. Falha aqui é logada e não bloqueia o upload
@@ -128,7 +128,7 @@ class FotoService:
 
         Raises:
             ValueError: Se o arquivo exceder o tamanho máximo permitido.
-            Exception: Se falha no upload ao S3/R2.
+            Exception: Se falha no upload ao S3-compatible.
         """
         if len(file_bytes) > max_size:
             raise ValueError(f"Arquivo excede {max_size // (1024 * 1024)} MB")

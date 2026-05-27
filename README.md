@@ -39,7 +39,7 @@
 |---------|-----------|
 | Cadastro rapido | Registro de abordagem em < 40 segundos (GPS automatico, voz, camera) |
 | Entrada por voz | Ditado de observacoes via Web Speech API |
-| Captura de foto | Camera direta no navegador com upload para Cloudflare R2 |
+| Captura de foto | Camera direta no navegador com upload para MinIO (storage S3-compatible) |
 | Reconhecimento facial | Busca por similaridade com InsightFace (embedding 512-dim, IVFFlat pgvector) |
 | OCR de placas | Leitura automatica de placas veiculares via EasyOCR |
 | Geolocalizacao | GPS automatico + geocoding reverso (Nominatim) |
@@ -87,8 +87,8 @@
 +----------------------------v----------------------------+
 |                    Infraestrutura                       |
 |                                                         |
-|  PostgreSQL 16          Redis           Cloudflare R2   |
-|  + pgvector             Cache           Object Storage  |
+|  PostgreSQL 16          Redis           MinIO           |
+|  + pgvector             Cache           S3-compatible   |
 |  + PostGIS              + arq Queue     (Fotos + PDFs)  |
 |  + pg_trgm                                              |
 |  + unaccent                                             |
@@ -106,7 +106,7 @@
 | **IA / RAG** | SentenceTransformers (`paraphrase-multilingual-MiniLM-L12-v2`), PyMuPDF, Claude API (Anthropic) / Ollama |
 | **Visao (opcional)** | InsightFace (buffalo_l, 512-dim), EasyOCR, Pillow, ONNX Runtime |
 | **Frontend** | PWA, Alpine.js v3, Tailwind CSS (CDN), Dexie.js (IndexedDB), Web Speech API, Leaflet.js, ApexCharts, Service Worker |
-| **Infra** | Docker Compose, Redis, Cloudflare R2 (MinIO local), GitHub Actions CI |
+| **Infra** | Docker Compose, Redis, MinIO (storage S3-compatible), GitHub Actions CI |
 | **Seguranca** | JWT (python-jose), Fernet AES-256 (cryptography), bcrypt (passlib), audit logging, slowapi rate limiting |
 
 ---
@@ -308,7 +308,7 @@ argus-ai/
 | POST | `/logout` | Invalida a sessao atual (session_id) |
 | GET | `/me` | Dados do usuario autenticado |
 | PUT | `/perfil` | Atualizar perfil (nome, nome de guerra, posto/graduacao) |
-| POST | `/perfil/foto` | Upload de foto de perfil para R2 |
+| POST | `/perfil/foto` | Upload de foto de perfil para o storage S3-compatible |
 
 ### Pessoas (`/api/v1/pessoas`)
 
@@ -348,13 +348,13 @@ argus-ai/
 
 | Metodo | Rota | Descricao |
 |--------|------|-----------|
-| POST | `/upload` | Upload de foto de pessoa para R2 (face embedding async via worker) |
+| POST | `/upload` | Upload de foto de pessoa para o storage S3-compatible (face embedding async via worker) |
 | POST | `/midias` | Upload de midia (foto/video) vinculada a abordagem |
 | GET | `/pessoa/{pessoa_id}` | Listar fotos de uma pessoa |
 | GET | `/abordagem/{abordagem_id}` | Listar midias de uma abordagem |
 | POST | `/buscar-rosto` | Busca por similaridade facial (IVFFlat pgvector) |
 | POST | `/ocr-placa` | Extrair numero de placa via EasyOCR |
-| GET | `/{foto_id}/download` | Download/redirect de midia via URL assinada R2 |
+| GET | `/{foto_id}/download` | Download/redirect de midia via URL assinada (S3 presigned URL) |
 
 ### Consultas (`/api/v1/consultas`)
 
@@ -447,7 +447,7 @@ Copie `.env.example` e configure:
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Expiracao do access token | `480` |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | Expiracao do refresh token | `30` |
 | `ENCRYPTION_KEY` | Chave Fernet para CPF (LGPD) | `make encrypt-key` |
-| `S3_ENDPOINT` | Storage endpoint (MinIO local / R2 prod) | `http://localhost:9000` |
+| `S3_ENDPOINT` | Endpoint S3-compatible (MinIO em dev e em prod hoje; trocavel para R2/AWS S3) | `http://localhost:9000` |
 | `S3_ACCESS_KEY` | Chave de acesso S3 | — |
 | `S3_SECRET_KEY` | Chave secreta S3 | — |
 | `S3_BUCKET` | Nome do bucket | `argus` |

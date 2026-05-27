@@ -259,7 +259,7 @@ async def upload_foto_perfil(
     user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Faz upload da foto de perfil para R2 e atualiza foto_url do usuário.
+    """Faz upload da foto de perfil para o storage S3-compatible e atualiza foto_url do usuário.
 
     Args:
         foto: Arquivo de imagem enviado via multipart/form-data.
@@ -267,7 +267,7 @@ async def upload_foto_perfil(
         db: Sessão do banco de dados.
 
     Returns:
-        dict: Objeto com campo foto_url contendo a URL pública da foto no R2.
+        dict: Objeto com campo foto_url contendo a URL pública da foto.
 
     Raises:
         AuthenticationError: Se token inválido.

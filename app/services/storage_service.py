@@ -1,12 +1,15 @@
-"""Serviço de armazenamento de arquivos em S3/R2.
+"""Serviço de armazenamento de arquivos em storage S3-compatível.
 
-Gerencia upload, download e remoção de arquivos em storage S3-compatível
-(Cloudflare R2 em produção, MinIO em desenvolvimento). URLs geradas são
-sempre relativas (/storage/...) para evitar mixed-content em HTTPS.
+Gerencia upload, download e remoção de arquivos em qualquer backend
+S3-compatível (MinIO em prod e em dev hoje; trocável para AWS S3,
+Cloudflare R2 ou Backblaze B2 alterando `S3_ENDPOINT` e credenciais).
+URLs geradas são sempre relativas (/storage/...) para evitar
+mixed-content em HTTPS.
 
 O cliente S3 é mantido como singleton inicializado no lifespan da
 aplicação/worker para reaproveitar TCP/TLS keep-alive entre requests,
-evitando o custo de handshake (100-300ms) a cada operação contra R2.
+evitando o custo de handshake (100-300ms) a cada operação contra o
+backend remoto.
 """
 
 import logging
@@ -49,7 +52,7 @@ def normalize_storage_url(url: str | None) -> str | None:
 
 
 class StorageService:
-    """Serviço S3/R2 com cliente persistente (reusa TCP keep-alive).
+    """Serviço S3-compatible com cliente persistente (reusa TCP keep-alive).
 
     O cliente é criado em ``startup()`` (lifespan da API ou worker) e
     fechado em ``shutdown()``. As operações usam ``self._client``
@@ -148,7 +151,7 @@ class StorageService:
         key: str,
         content_type: str = "image/jpeg",
     ) -> str:
-        """Faz upload de arquivo para S3/R2.
+        """Faz upload de arquivo para S3-compatible.
 
         Args:
             file_bytes: Conteúdo do arquivo em bytes.
@@ -173,7 +176,7 @@ class StorageService:
         return f"/storage/{settings.S3_BUCKET}/{key}"
 
     async def delete(self, key: str) -> None:
-        """Remove arquivo do S3/R2.
+        """Remove arquivo do S3-compatible.
 
         Args:
             key: Chave (caminho) do arquivo no bucket.
@@ -187,7 +190,7 @@ class StorageService:
         logger.info("Arquivo removido: %s", key)
 
     async def download(self, key: str) -> bytes:
-        """Faz download de arquivo do S3/R2.
+        """Faz download de arquivo do S3-compatible.
 
         Args:
             key: Chave (caminho) do arquivo no bucket.
@@ -210,7 +213,7 @@ class StorageService:
         """Abre stream do S3 sem materializar bytes em memória.
 
         Usado pelo proxy ``/storage/*`` para enviar bytes ao cliente
-        conforme chegam do R2, sem buffer intermediário. Também propaga
+        conforme chegam do backend, sem buffer intermediário. Também propaga
         ``If-None-Match`` para que o S3 responda 304 nativo (via
         ``ClientError`` com código ``304``/``NotModified``) e a
         transferência inteira seja poupada quando o cache do cliente

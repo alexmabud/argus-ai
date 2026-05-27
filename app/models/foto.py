@@ -22,7 +22,7 @@ class Foto(Base, TimestampMixin, SoftDeleteMixin):
 
     Attributes:
         id: Identificador único (chave primária).
-        arquivo_url: URL da imagem em R2/S3 (Cloudflare).
+        arquivo_url: URL da imagem no storage S3-compatible (MinIO em prod).
         thumbnail_url: URL da versão reduzida (~300px JPEG q75, ~25KB) para
             listagens. Pode ser None em fotos legadas (anteriores ao
             backfill) ou tipos não-imagem (PDF, vídeo).

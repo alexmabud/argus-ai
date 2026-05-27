@@ -48,7 +48,7 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
         senha_hash: Hash bcrypt da senha (gerada pelo admin, uso único).
         posto_graduacao: Posto ou graduação PM (ex: "Sargento"). Ver POSTOS_GRADUACAO.
         nome_guerra: Nome de guerra do agente (ex: "Silva"). Máx 50 chars.
-        foto_url: URL pública da foto de perfil no R2 (opcional).
+        foto_url: URL pública da foto de perfil no storage S3-compatible (opcional).
         session_id: UUID da sessão ativa. None = sem sessão. Novo login gera novo UUID.
         guarnicao_id: ID da Equipe (guarnição) à qual o usuário pertence.
             FK para guarnicoes.id, nullable. Usuários sem equipe aparecem

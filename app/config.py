@@ -33,13 +33,15 @@ class Settings(BaseSettings):
         REFRESH_TOKEN_EXPIRE_DAYS: Tempo de vida do token de refresh.
         ALGORITHM: Algoritmo JWT (HS256).
         ENCRYPTION_KEY: Chave Fernet para criptografia de campos sensíveis LGPD.
-        S3_ENDPOINT: Endpoint de armazenamento S3-compatível (R2, MinIO).
-            Usado pelo backend para upload/download. Em Docker Compose
-            tipicamente aponta para hostname interno (ex: http://minio:9000).
+        S3_ENDPOINT: Endpoint S3-compatível (MinIO em prod hoje; aceita
+            também AWS S3, Cloudflare R2, Backblaze B2 mudando a URL).
+            Em Docker Compose tipicamente aponta para hostname interno
+            (ex: http://minio:9000).
         S3_ACCESS_KEY: Credencial de acesso S3.
         S3_SECRET_KEY: Credencial secreta S3.
         S3_BUCKET: Nome do bucket S3 para armazenamento de arquivos.
-        S3_REGION: Região S3 (auto para Cloudflare R2).
+        S3_REGION: Região S3 (`auto` funciona para MinIO e Cloudflare R2;
+            usar valor explícito como `us-east-1` para AWS S3).
         S3_PUBLIC_URL: URL pública do storage acessível pelo browser (opcional).
             Quando não definida, S3_ENDPOINT é usado como fallback. Necessária
             em Docker Compose onde S3_ENDPOINT usa hostname interno Docker

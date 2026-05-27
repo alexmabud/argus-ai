@@ -151,7 +151,7 @@ def create_app() -> FastAPI:
 
         Streama os bytes diretamente do S3 para o cliente, sem buffer
         intermediário — workers async não ficam presos esperando o
-        download inteiro do R2 terminar antes de devolver a resposta.
+        download inteiro do backend terminar antes de devolver a resposta.
 
         Suporta cache via ``ETag``/``If-None-Match``: o ETag do objeto
         é repassado ao browser, e quando o cliente envia o mesmo valor
