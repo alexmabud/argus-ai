@@ -60,12 +60,16 @@
       }
     },
     {
-      "id": 1, "type": "stat", "title": "CPU",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 5 },
+      "id": 1, "type": "gauge", "title": "CPU",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 5 },
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto",
-        "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
         "thresholds": { "mode": "absolute", "steps": [
           { "color": "green", "value": null },
@@ -74,12 +78,16 @@
         ]}}}
     },
     {
-      "id": 2, "type": "stat", "title": "RAM",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 5 },
+      "id": 2, "type": "gauge", "title": "RAM",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 5 },
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background",
-        "graphMode": "area", "orientation": "auto", "textMode": "auto", "justifyMode": "auto" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
         "thresholds": { "mode": "absolute", "steps": [
           { "color": "green", "value": null },
@@ -88,12 +96,16 @@
         ]}}}
     },
     {
-      "id": 3, "type": "stat", "title": "Disco Fotos",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 5 },
+      "id": 3, "type": "gauge", "title": "Disco Fotos",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 5 },
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "100 - (node_filesystem_avail_bytes{mountpoint=\"/mnt/fotos\"} / node_filesystem_size_bytes{mountpoint=\"/mnt/fotos\"} * 100)" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background",
-        "graphMode": "none", "orientation": "auto", "textMode": "auto", "justifyMode": "auto" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
         "thresholds": { "mode": "absolute", "steps": [
           { "color": "green", "value": null },
@@ -102,23 +114,31 @@
         ]}}}
     },
     {
-      "id": 4, "type": "stat", "title": "Requests/s",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 5 },
+      "id": 4, "type": "gauge", "title": "Requests/s",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 5 },
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "sum(irate(http_requests_total[1m]))" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background",
-        "graphMode": "area", "orientation": "auto", "textMode": "auto", "justifyMode": "auto" },
-      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0,
-        "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }]}}}
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": { "defaults": { "unit": "reqps", "min": 0, "max": 10,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null },
+          { "color": "yellow", "value": 2.5 },
+          { "color": "red", "value": 5 }
+        ]}}}
     },
     {
       "id": 10, "type": "row", "title": "Infraestrutura",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 11 },
       "collapsed": false
     },
     {
       "id": 11, "type": "timeseries", "title": "CPU ao longo do tempo",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "legendFormat": "CPU %",
         "expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)" }],
@@ -133,7 +153,7 @@
     },
     {
       "id": 12, "type": "timeseries", "title": "RAM ao longo do tempo",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
       "targets": [
         { "datasource": { "uid": "prometheus-argus" }, "refId": "A",
           "legendFormat": "RAM usada",
@@ -147,12 +167,12 @@
     },
     {
       "id": 20, "type": "row", "title": "API",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
       "collapsed": false
     },
     {
       "id": 21, "type": "timeseries", "title": "Requests por minuto",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 21 },
       "targets": [
         { "datasource": { "uid": "prometheus-argus" }, "refId": "A",
           "legendFormat": "Total req/min",
@@ -166,7 +186,7 @@
     },
     {
       "id": 22, "type": "timeseries", "title": "Latência por endpoint (p95)",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 21 },
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "legendFormat": "{{ handler }}",
         "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (handler, le)) > 0.01" }],
@@ -175,12 +195,12 @@
     },
     {
       "id": 40, "type": "row", "title": "Banco e Fila",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 },
       "collapsed": false
     },
     {
       "id": 41, "type": "stat", "title": "Conexões PostgreSQL",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 28 },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 30 },
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "sum(pg_stat_activity_count{datname=\"argus_db\"})" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background",
@@ -194,7 +214,7 @@
     },
     {
       "id": 42, "type": "stat", "title": "Comandos Redis/s",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 28 },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 30 },
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "rate(redis_commands_processed_total[5m])" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value",
@@ -206,7 +226,7 @@
     },
     {
       "id": 43, "type": "timeseries", "title": "Crescimento do disco de fotos",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 30 },
       "targets": [
         { "datasource": { "uid": "prometheus-argus" }, "refId": "A",
           "legendFormat": "Usado",
@@ -219,5 +239,5 @@
         "custom": { "fillOpacity": 10, "lineWidth": 2 }}}
     }
   ],
-  "version": 1
+  "version": 2
 }
