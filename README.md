@@ -485,6 +485,65 @@ Ver `.env.example` para lista completa.
 
 ---
 
+## Backup e Recuperacao
+
+### O que e salvo, onde e com que frequencia
+
+| Item | Origem | Oracle Object Storage (10 GB free) | Google Drive pessoal | Retencao |
+|---|---|:---:|:---:|---|
+| Dump diario do banco | container `db-backup` (Postgres `pg_dump -Fc` as 07h BRT, em `/mnt/banco/backups`) | replicado | replicado | 7 dias |
+| `.env` cifrado (GPG AES256) | `/home/ubuntu/argus-ai/.env` | replicado | replicado | 7 dias |
+| Grafana (configs, dashboards, anotacoes) | `/mnt/banco/grafana` em tar.gz | replicado | replicado | 7 dias |
+| Fotos / uploads (MinIO) | `/mnt/fotos` (espelhado via `rclone sync`) | nao | sim | espelho |
+| Backup local | `/mnt/banco/backups` (na propria VM, sem replicacao para fora) | — | — | 7 dias |
+
+### Como funciona
+
+Tres camadas independentes:
+
+1. **Container `db-backup`** (interno ao `docker-compose.prod.yml`): faz `pg_dump` todo
+   dia as **07h BRT** e mantem os ultimos 7 dumps em `/mnt/banco/backups`. Atualiza a
+   metrica `argus_backup_last_success_timestamp_seconds` para o Prometheus.
+
+2. **Script `scripts/backup_to_clouds.sh`** (rodado via cron como root as **03h BRT**):
+   - Pega o dump mais recente do banco
+   - Cifra o `.env` com GPG (senha em `/root/.argus_gpg_passphrase`, chmod 600)
+   - Empacota `/mnt/banco/grafana` em tar.gz
+   - Replica para `oracle:argus-backups` e `gdrive:Argus_Backups`
+   - Faz `rclone sync` das fotos apenas para Google Drive
+   - Aplica retencao de 7 dias nos dois destinos
+   - Atualiza metrica `argus_backup_clouds_last_success_timestamp_seconds`
+
+3. **Alertas no Grafana**:
+   - `alert-backup-falhou` dispara se o backup local nao atualizar por mais de 26h.
+   - (TODO) Alerta analogo para `argus_backup_clouds_last_success_timestamp_seconds`.
+
+### Restauracao
+
+Use `scripts/restore_from_backup.sh` (interativo, requer `sudo`). O script lista os
+backups disponiveis em Oracle ou Google Drive, pede a data, pergunta o que restaurar
+(banco / `.env` / Grafana / fotos / tudo) e executa com confirmacao por item.
+
+### Resiliencia coberta
+
+| Cenario | Recuperacao |
+|---|---|
+| Dado perdido ou tabela corrompida | Restore do dump mais recente (`/mnt/banco/backups`, ou Oracle/GDrive) |
+| VM Oracle terminada | Recreacao da VM + restore completo via Google Drive (banco + env + grafana + fotos) |
+| Perda da conta Oracle | Backups continuam acessiveis no Google Drive |
+| Perda da conta Google | Banco, env e grafana ainda no Oracle; fotos ficam perdidas se a VM tambem morreu |
+| Perda da senha GPG | `.env` no backup vira inutilizavel — manter copia da senha no Cryptomator + backup adicional |
+
+Detalhes operacionais (passos exatos de restore, checklist mensal de validacao,
+contatos): ver [docs/disaster-recovery.md](docs/disaster-recovery.md).
+
+### Setup inicial em uma VM nova
+
+`bash scripts/setup_rclone.sh` imprime o roteiro completo (instalar rclone, configurar
+os dois remotes, salvar senha GPG, ativar cron).
+
+---
+
 ## Decisoes Arquiteturais (ADRs)
 
 | ADR | Decisao |
@@ -502,6 +561,7 @@ Ver `.env.example` para lista completa.
 | [ARGUS_AI_SPEC.md](ARGUS_AI_SPEC.md) | Especificacao tecnica completa |
 | [docs/API.md](docs/API.md) | Referencia de todos os endpoints |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Guia de deploy |
+| [docs/disaster-recovery.md](docs/disaster-recovery.md) | Plano de backup duplo (Oracle + Google Drive) e recuperacao em 5 cenarios |
 | [docs/LGPD.md](docs/LGPD.md) | Compliance LGPD e protecao de dados |
 | [docs/PRODUCTION_SECURITY.md](docs/PRODUCTION_SECURITY.md) | Seguranca em producao |
 | [docs/DATA_SANITIZATION.md](docs/DATA_SANITIZATION.md) | Sanitizacao de dados para publicacao |

@@ -113,6 +113,10 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 - ✅ **Docker** (docker-compose dev + prod)
 - ✅ **CI/CD** ready (GitHub Actions)
 - ✅ **Testes** (unit, integration, e2e)
+- ✅ **Backup duplo offsite** — `pg_dump` diário (07h BRT, em `/mnt/banco/backups`) +
+  replicação para Oracle Object Storage e Google Drive (03h BRT, retenção 7 dias).
+  Inclui `.env` cifrado com GPG, configs do Grafana e espelho das fotos (apenas
+  Google Drive). Detalhes em [docs/disaster-recovery.md](docs/disaster-recovery.md).
 
 ### 🔄 Modo de Operação
 **Projeto em manutenção ativa** — todas as features estão implementadas e funcionando. Mudanças ocorrem por:
