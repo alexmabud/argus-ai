@@ -163,7 +163,7 @@ def main() -> None:
         taxa_erro_str = f"{taxa:.2f}%"
 
     # Banco e Cache
-    pg_connections = query("pg_stat_activity_count{datname='argus_db'}")
+    pg_connections = query("sum(pg_stat_activity_count{datname='argus_db'})")
     redis_hit_rate = query(
         "rate(redis_keyspace_hits_total[1h])"
         " / (rate(redis_keyspace_hits_total[1h]) + rate(redis_keyspace_misses_total[1h])) * 100"
