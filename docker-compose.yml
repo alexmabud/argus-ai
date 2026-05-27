@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: argus_dev
       POSTGRES_DB: argus_db
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U argus -d argus_db"]
       interval: 10s
@@ -32,7 +32,7 @@ services:
     container_name: argus-redis
     command: redis-server --appendonly yes
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -51,8 +51,8 @@ services:
     container_name: argus-minio
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"   # API
-      - "9001:9001"   # Console
+      - "127.0.0.1:9000:9000"   # API
+      - "127.0.0.1:9001:9001"   # Console
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -108,8 +108,15 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    # Bind mounts seletivos (Task 27): em vez de .:/app que expoe .git, .env,
+    # .secrets/, tmp/sync etc ao container, apenas o que muda durante dev.
+    # alembic.ini eh ro porque nao deve ser editado em runtime do container.
     volumes:
-      - .:/app
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./scripts:/app/scripts:ro
+      - ./pyproject.toml:/app/pyproject.toml:ro
     depends_on:
       db:
         condition: service_healthy
@@ -135,8 +142,10 @@ services:
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: http://localhost:9000
+    # Bind mounts seletivos (Task 27): mesmo principio do servico api.
     volumes:
-      - .:/app
+      - ./app:/app/app
+      - ./scripts:/app/scripts:ro
       - insightface_models:/root/.insightface
     depends_on:
       db:

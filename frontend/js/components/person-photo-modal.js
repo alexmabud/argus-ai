@@ -24,7 +24,7 @@ function personPhotoModalHTML() {
         <!-- Header -->
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--color-border); flex-shrink: 0;">
           <h3 style="font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Foto Ampliada</h3>
-          <button @click="closePhotoModal()" style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); font-size: 1.1rem; line-height: 1; padding: 0; width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center; transition: color 0.15s;" onmouseover="this.style.color='var(--color-danger)'" onmouseout="this.style.color='var(--color-text-dim)'">✕</button>
+          <button @click="closePhotoModal()" class="hov-icon-danger" style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); font-size: 1.1rem; line-height: 1; padding: 0; width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">✕</button>
         </div>
 
         <!-- Conteúdo -->
@@ -147,12 +147,12 @@ function personPhotoModalHTML() {
         <div style="display: flex; gap: 0.5rem; padding: 1rem; border-top: 1px solid var(--color-border); background: var(--color-surface-hover); border-radius: 0 0 8px 8px; flex-shrink: 0;">
           <button @click="goToFichaPessoa()"
                   style="flex: 2; padding: 0.75rem; border-radius: 4px; background: var(--color-primary); color: var(--color-bg); border: none; font-family: var(--font-data); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.05em;"
-                  onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                  class="hov-opacity-down">
             Ver Ficha Completa →
           </button>
           <button @click="closePhotoModal()"
                   style="flex: 1; padding: 0.75rem; border-radius: 4px; background: transparent; color: var(--color-danger); border: 1px solid var(--color-danger); font-family: var(--font-data); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.05em;"
-                  onmouseover="this.style.background='rgba(255,59,48,0.1)'" onmouseout="this.style.background='transparent'">
+                  class="hov-bg-danger-tint">
             Fechar
           </button>
         </div>

@@ -180,6 +180,15 @@ function app() {
       // Escutar navegacao por evento customizado
       window.addEventListener("navigate", (e) => this.navigate(e.detail));
 
+      // Delegated handler para botoes [data-navigate-to] (substitui onclick
+      // inline em renderHomePage — CSP sem 'unsafe-inline').
+      document.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-navigate-to]");
+        if (btn) {
+          this.navigate(btn.getAttribute("data-navigate-to"));
+        }
+      });
+
       // Escutar logout solicitado por componentes filhos
       window.addEventListener("auth:logout", () => this.logout());
 
@@ -552,7 +561,8 @@ function renderHomePage(appState) {
   ];
 
   const cardsHtml = cards.map((c, i) => `
-    <button onclick="document.querySelector('[x-data]')._x_dataStack[0].navigate('${c.page}')"
+    <button type="button"
+            data-navigate-to="${c.page}"
             class="home-action-card"
             style="animation-delay: ${i * 60}ms;">
       <div class="card-code">

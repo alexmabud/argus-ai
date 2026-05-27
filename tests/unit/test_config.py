@@ -6,7 +6,18 @@ s3_public_url que controla a URL pública do storage retornada ao browser.
 
 from unittest.mock import patch
 
+import pytest
+
 from app.config import Settings
+
+_BASE_ENV = {
+    "DATABASE_URL": "postgresql+asyncpg://test:test@localhost/test",
+    "ENCRYPTION_KEY": "Y2hhdmUtZmVybmV0LXBhcmEtdGVzdGVzLWFxdWktcGFkZA==",
+    "S3_ENDPOINT": "http://minio:9000",
+    "S3_ACCESS_KEY": "minioadmin",
+    "S3_SECRET_KEY": "minioadmin",
+    "TESTING": "1",
+}
 
 
 class TestS3PublicUrl:
@@ -22,7 +33,7 @@ class TestS3PublicUrl:
             "os.environ",
             {
                 "DATABASE_URL": "postgresql+asyncpg://test:test@localhost/test",
-                "SECRET_KEY": "chave-secreta-para-testes",
+                "SECRET_KEY": "a" * 64,
                 "ENCRYPTION_KEY": "Y2hhdmUtZmVybmV0LXBhcmEtdGVzdGVzLWFxdWktcGFkZA==",
                 "S3_ENDPOINT": "http://minio:9000",
                 "S3_ACCESS_KEY": "minioadmin",
@@ -44,7 +55,7 @@ class TestS3PublicUrl:
             "os.environ",
             {
                 "DATABASE_URL": "postgresql+asyncpg://test:test@localhost/test",
-                "SECRET_KEY": "chave-secreta-para-testes",
+                "SECRET_KEY": "a" * 64,
                 "ENCRYPTION_KEY": "Y2hhdmUtZmVybmV0LXBhcmEtdGVzdGVzLWFxdWktcGFkZA==",
                 "S3_ENDPOINT": "http://minio:9000",
                 "S3_ACCESS_KEY": "minioadmin",
@@ -67,7 +78,7 @@ class TestS3PublicUrl:
             "os.environ",
             {
                 "DATABASE_URL": "postgresql+asyncpg://test:test@localhost/test",
-                "SECRET_KEY": "chave-secreta-para-testes",
+                "SECRET_KEY": "a" * 64,
                 "ENCRYPTION_KEY": "Y2hhdmUtZmVybmV0LXBhcmEtdGVzdGVzLWFxdWktcGFkZA==",
                 "S3_ENDPOINT": "http://minio:9000",
                 "S3_ACCESS_KEY": "minioadmin",
@@ -79,3 +90,70 @@ class TestS3PublicUrl:
         ):
             s = Settings()
             assert "minio" not in s.s3_public_url
+
+
+class TestCpfHmacKey:
+    """Testes para separação de SECRET_KEY (JWT) e CPF_HMAC_KEY (HMAC LGPD)."""
+
+    def test_jwt_secret_and_cpf_hmac_are_separate(self):
+        """Quando CPF_HMAC_KEY for definida, deve ser distinta da SECRET_KEY.
+
+        Vazamento de uma das chaves não pode comprometer a outra função:
+        SECRET_KEY assina JWT; CPF_HMAC_KEY pepper o hash de busca de CPF.
+        """
+        env = dict(_BASE_ENV)
+        env["SECRET_KEY"] = "a" * 64
+        env["CPF_HMAC_KEY"] = "b" * 64
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings()
+            assert s.SECRET_KEY != s.CPF_HMAC_KEY
+            assert len(s.CPF_HMAC_KEY) >= 32
+
+    def test_cpf_hmac_key_falls_back_to_secret_key_when_unset(self):
+        """Quando CPF_HMAC_KEY não estiver definida, deve usar SECRET_KEY como fallback.
+
+        Preserva compatibilidade com ambientes existentes onde apenas
+        SECRET_KEY foi rotacionada — hashes antigos continuam batendo.
+        """
+        env = dict(_BASE_ENV)
+        env["SECRET_KEY"] = "a" * 64
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings()
+            assert s.CPF_HMAC_KEY == s.SECRET_KEY
+
+    def test_cpf_hmac_key_rejeita_valor_curto(self):
+        """CPF_HMAC_KEY explicitamente definida deve ter pelo menos 32 caracteres."""
+        env = dict(_BASE_ENV)
+        env["SECRET_KEY"] = "a" * 64
+        env["CPF_HMAC_KEY"] = "curto"
+        with patch.dict("os.environ", env, clear=True):
+            with pytest.raises(ValueError, match="CPF_HMAC_KEY"):
+                Settings()
+
+
+class TestSecretKeyValidation:
+    """Testes do validator de SECRET_KEY (tamanho minimo e placeholders inseguros)."""
+
+    def test_secret_key_rejects_short_value(self):
+        """SECRET_KEY com menos de 32 caracteres deve ser rejeitada no startup."""
+        env = dict(_BASE_ENV)
+        env["SECRET_KEY"] = "short"
+        with patch.dict("os.environ", env, clear=True):
+            with pytest.raises(ValueError, match="SECRET_KEY deve ter no minimo 32"):
+                Settings()
+
+    def test_secret_key_rejects_placeholder(self):
+        """SECRET_KEY igual ao placeholder do .env.example deve ser rejeitada."""
+        env = dict(_BASE_ENV)
+        env["SECRET_KEY"] = "gerar-chave-segura-com-openssl-rand-hex-32"
+        with patch.dict("os.environ", env, clear=True):
+            with pytest.raises(ValueError, match="placeholder"):
+                Settings()
+
+    def test_secret_key_aceita_valor_forte(self):
+        """SECRET_KEY com 64 caracteres aleatorios deve ser aceita."""
+        env = dict(_BASE_ENV)
+        env["SECRET_KEY"] = "a" * 64
+        with patch.dict("os.environ", env, clear=True):
+            s = Settings()
+            assert len(s.SECRET_KEY) == 64

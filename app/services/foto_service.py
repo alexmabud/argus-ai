@@ -18,6 +18,7 @@ from PIL import UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import QuotaExcedidaError
 from app.models.foto import Foto
 from app.models.pessoa import Pessoa
 from app.repositories.foto_repo import FotoRepository
@@ -36,6 +37,10 @@ MAX_FOTO_SIZE = 10 * 1024 * 1024
 
 #: Tamanho máximo de upload de mídia (vídeo/PDF) — alinhado com o limite do router.
 MAX_MIDIA_SIZE = 200 * 1024 * 1024
+
+#: Quota maxima de fotos vinculadas a uma mesma abordagem. Defende contra
+#: conta comprometida que gravaria GB/h no R2 sem esse limite.
+QUOTA_FOTOS_POR_ABORDAGEM = 50
 
 
 class FotoService:
@@ -127,6 +132,14 @@ class FotoService:
         """
         if len(file_bytes) > max_size:
             raise ValueError(f"Arquivo excede {max_size // (1024 * 1024)} MB")
+
+        # Enforcement de quota — so aplica a fotos vinculadas a abordagem.
+        if abordagem_id is not None:
+            atual = await self.repo.count_by_abordagem(abordagem_id)
+            if atual >= QUOTA_FOTOS_POR_ABORDAGEM:
+                raise QuotaExcedidaError(
+                    f"Limite de {QUOTA_FOTOS_POR_ABORDAGEM} fotos por abordagem atingido"
+                )
 
         # 1. Upload da imagem original
         key = self.storage.generate_key("fotos", filename)

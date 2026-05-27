@@ -27,7 +27,7 @@ class AuditService:
 
     async def log(
         self,
-        usuario_id: int,
+        usuario_id: int | None,
         acao: str,
         recurso: str,
         recurso_id: int | None = None,
@@ -41,7 +41,9 @@ class AuditService:
         contexto de rede e detalhes adicionais em formato JSON.
 
         Args:
-            usuario_id: Identificador do usuário que realizou a ação.
+            usuario_id: Identificador do usuário que realizou a ação. Pode
+                ser None em eventos sem usuário associado (ex: LOGIN_FAILED
+                com matricula inexistente).
             acao: Tipo de ação realizada (ex: "CREATE", "UPDATE", "DELETE", "LOGIN").
             recurso: Tipo de recurso afetado (ex: "usuario", "abordagem", "ocorrencia").
             recurso_id: Identificador do recurso específico afetado (opcional).

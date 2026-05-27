@@ -16,15 +16,9 @@ scrape_configs:
     static_configs:
       - targets: [node-exporter:9100]
 
-  # Containers Docker: CPU/RAM por container
-  - job_name: cadvisor
-    static_configs:
-      - targets: [cadvisor:8080]
-    metric_relabel_configs:
-      # Manter apenas containers argus-*
-      - source_labels: [name]
-        regex: argus-.*
-        action: keep
+  # cAdvisor desativado em 2026-05-26 (Task 23) — incompatibilidade Docker 29.x
+  # (storage driver overlayfs) deixava metricas sem labels uteis. Re-habilitar
+  # junto com o servico em docker-compose.monitoring.yml se voltar a ser necessario.
 
   # FastAPI: requests, latência, erros por endpoint
   - job_name: argus-api

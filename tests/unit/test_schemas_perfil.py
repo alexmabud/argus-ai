@@ -80,3 +80,34 @@ def test_senha_gerada_response():
     """Verifica campos de SenhaGeradaResponse."""
     schema = SenhaGeradaResponse(usuario_id=1, matricula="PM001", senha="abc12345")
     assert schema.senha == "abc12345"
+
+
+def test_perfil_update_rejeita_foto_url_externa_http():
+    """URL externa http:// nao deve ser aceita em foto_url.
+
+    Caso contrario, atacante grava http://attacker/track.png?u=vitima e cada
+    outro policial que abre o perfil exfiltra IP+referer.
+    """
+    with pytest.raises(ValidationError, match="foto_url"):
+        PerfilUpdate(nome="Agente Teste", foto_url="http://attacker.com/x.png")
+
+
+def test_perfil_update_rejeita_foto_url_externa_https():
+    """URL externa https:// tambem nao deve ser aceita."""
+    with pytest.raises(ValidationError, match="foto_url"):
+        PerfilUpdate(nome="Agente Teste", foto_url="https://attacker.com/x.png")
+
+
+def test_perfil_update_aceita_path_storage():
+    """Path interno /storage/... deve ser aceito (formato retornado pelo S3 upload)."""
+    schema = PerfilUpdate(
+        nome="Agente Teste",
+        foto_url="/storage/argus/avatares/uuid123_perfil.jpg",
+    )
+    assert schema.foto_url == "/storage/argus/avatares/uuid123_perfil.jpg"
+
+
+def test_perfil_update_aceita_foto_url_none():
+    """foto_url=None deve continuar valido (campo opcional)."""
+    schema = PerfilUpdate(nome="Agente Teste", foto_url=None)
+    assert schema.foto_url is None

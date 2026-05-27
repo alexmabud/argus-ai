@@ -42,7 +42,7 @@ function renderAbordagemDetalhe() {
                 <template x-for="p in (ab.pessoas || [])" :key="p.id">
                   <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;" @click="if(p.foto_principal_url) openPhotoModal(p.foto_principal_url, p.id, p); else abrirFicha(p.id)">
                     <div style="width:54px;height:54px;border-radius:4px;border:1px solid rgba(0,212,255,0.2);background:var(--color-surface-hover);display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color 0.15s;"
-                         onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='rgba(0,212,255,0.2)'">
+                         class="hov-border-primary">
                       <template x-if="p.foto_principal_url">
                         <img :src="p.foto_principal_thumb_url || p.foto_principal_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
                       </template>

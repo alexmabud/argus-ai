@@ -124,14 +124,12 @@ function renderDashboard() {
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <button @click="mesMenos()"
                       style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
-                      onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.color='var(--color-primary)'"
-                      onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-muted)'"
+                      class="hov-tab-pill"
               >&#8249;</button>
               <span style="font-family:var(--font-data);font-size:14px;font-weight:600;color:var(--color-text);" x-text="mesAtualLabel"></span>
               <button @click="mesMais()"
                       style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
-                      onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.color='var(--color-primary)'"
-                      onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-muted)'"
+                      class="hov-tab-pill"
               >&#8250;</button>
             </div>
 
@@ -180,8 +178,7 @@ function renderDashboard() {
                 <template x-for="p in pessoasDoDia" :key="p.id">
                   <div @click="if(p.foto_url) openPhotoModal(p.foto_url, p.id, p); else viewPessoa(p.id)"
                        style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 150ms;"
-                       onmouseover="this.style.background='var(--color-surface-hover)';this.style.borderColor='rgba(0,212,255,0.15)'"
-                       onmouseout="this.style.background='transparent';this.style.borderColor='transparent'">
+                       class="hov-dash-card">
                     <img :src="p.foto_url || '/icons/icon-192.png'"
                          style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);"
                          :alt="p.nome">
@@ -244,8 +241,7 @@ function renderDashboard() {
               <template x-for="(p, i) in recorrentes" :key="p.id">
                 <div @click="if(p.foto_url) openPhotoModal(p.foto_url, p.id, p); else viewPessoa(p.id)"
                      style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 150ms;"
-                     onmouseover="this.style.background='var(--color-surface-hover)';this.style.borderColor='rgba(0,212,255,0.15)'"
-                     onmouseout="this.style.background='transparent';this.style.borderColor='transparent'">
+                     class="hov-dash-card">
                   <!-- Rank badge -->
                   <span style="font-family:var(--font-data);font-size:12px;font-weight:700;color:var(--color-primary);width:20px;flex-shrink:0;text-align:center;"
                         x-text="(i+1)"></span>

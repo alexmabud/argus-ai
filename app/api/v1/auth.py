@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth_cookie import ACCESS_TOKEN_COOKIE, clear_access_cookie, set_access_cookie
+from app.core.exceptions import CredenciaisInvalidasError
 from app.core.rate_limit import limiter
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_imagem
 from app.database.session import get_db
@@ -64,12 +65,26 @@ async def login(
         para requisições subsequentes.
     """
     service = AuthService(db)
-    tokens = await service.login(
-        data.matricula,
-        data.senha,
-        ip_address=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
-    )
+    ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    try:
+        tokens = await service.login(
+            data.matricula,
+            data.senha,
+            ip_address=ip,
+            user_agent=user_agent,
+        )
+    except CredenciaisInvalidasError:
+        await AuditService(db).log(
+            usuario_id=None,
+            acao="LOGIN_FAILED",
+            recurso="auth",
+            detalhes={"matricula": data.matricula},
+            ip_address=ip,
+            user_agent=user_agent,
+        )
+        await db.commit()
+        raise
     # Cookie HTTPOnly permite que <img src="/storage/..."> autentique
     # automaticamente, mantendo o token oculto de XSS.
     set_access_cookie(response, tokens.access_token)
@@ -115,19 +130,34 @@ async def refresh(
 
 @router.post("/logout", status_code=204)
 @limiter.limit("30/minute")
-async def logout(request: Request, response: Response) -> None:
-    """Encerra a sessão limpando o cookie HTTPOnly.
+async def logout(
+    request: Request,
+    response: Response,
+    user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Encerra a sessão revogando o session_id no servidor.
 
-    Não exige autenticação — limpar cookie expirado/inválido também
-    é válido. Frontend deve descartar tokens do localStorage em paralelo.
+    Limpa o session_id do usuario no banco para que refresh tokens
+    com o sid antigo falhem imediatamente. Antes desta task o logout
+    apenas limpava o cookie, deixando o refresh token valido por 30 dias.
+
+    Exige autenticacao (header Authorization Bearer ou cookie). Tokens
+    expirados resultam em 401 — frontend deve descartar tokens locais
+    mesmo nessa resposta.
 
     Args:
         request: Objeto Request do FastAPI.
         response: Resposta usada para emitir o Set-Cookie de remoção.
+        user: Usuario autenticado.
+        db: Sessao do banco para persistir a revogacao.
 
     Status Code:
-        204: Sessão encerrada (sem corpo).
+        204: Sessão encerrada.
+        401: Token ausente, invalido ou expirado.
     """
+    user.session_id = None
+    await db.commit()
     clear_access_cookie(response)
 
 

@@ -1,13 +1,76 @@
-"""Testes unitários para FotoService.buscar_por_rosto.
+"""Testes unitários para FotoService.
 
-Valida enriquecimento de resultados com dados da pessoa vinculada,
-incluindo cenários sem rosto detectado, com pessoa vinculada e sem.
+Valida enriquecimento de resultados com dados da pessoa vinculada e
+enforcement da quota de fotos por abordagem.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
+
+from app.core.exceptions import QuotaExcedidaError
+from app.services.foto_service import QUOTA_FOTOS_POR_ABORDAGEM, FotoService
+
+
+def _make_service_para_quota():
+    db = AsyncMock()
+    with patch("app.services.foto_service.StorageService"):
+        service = FotoService(db)
+    service.repo = AsyncMock()
+    service.audit = AsyncMock()
+    return service
+
+
+@pytest.mark.asyncio
+async def test_upload_foto_rejeita_quando_quota_atingida():
+    """Upload alem de QUOTA_FOTOS_POR_ABORDAGEM deve dar QuotaExcedidaError.
+
+    Sem essa checagem, conta comprometida grava 6 GB/h no R2
+    (10 fotos/min x 10 MB).
+    """
+    service = _make_service_para_quota()
+    service.repo.count_by_abordagem = AsyncMock(return_value=QUOTA_FOTOS_POR_ABORDAGEM)
+    with pytest.raises(QuotaExcedidaError):
+        await service.upload_foto(
+            file_bytes=b"\xff\xd8\xff\xe0",
+            filename="ok.jpg",
+            content_type="image/jpeg",
+            pessoa_id=None,
+            abordagem_id=1,
+            veiculo_id=None,
+            tipo="abordagem",
+            latitude=None,
+            longitude=None,
+            user_id=1,
+        )
+
+
+@pytest.mark.asyncio
+async def test_upload_foto_sem_abordagem_nao_checa_quota():
+    """Uploads sem abordagem_id (ex: foto de pessoa) nao sao limitados por quota."""
+    service = _make_service_para_quota()
+    service.repo.count_by_abordagem = AsyncMock(return_value=999_999)
+    service.storage.generate_key = MagicMock(return_value="fotos/x.jpg")
+    service.storage.upload = AsyncMock(return_value="/storage/argus/fotos/x.jpg")
+    service.repo.create = AsyncMock(return_value=MagicMock(id=1))
+    # Nao deve levantar QuotaExcedidaError mesmo com count enorme:
+    # quando abordagem_id eh None nao checamos.
+    try:
+        await service.upload_foto(
+            file_bytes=b"\xff\xd8\xff\xe0",
+            filename="ok.jpg",
+            content_type="image/jpeg",
+            pessoa_id=42,
+            abordagem_id=None,
+            veiculo_id=None,
+            tipo="rosto",
+            latitude=None,
+            longitude=None,
+            user_id=1,
+        )
+    except QuotaExcedidaError:
+        pytest.fail("Quota nao deveria aplicar quando abordagem_id eh None")
 
 
 class TestBuscarPorRosto:
@@ -213,6 +276,7 @@ class TestUploadFotoThumbnail:
         ):
             service = FotoService(db)
         service.repo = AsyncMock()
+        service.repo.count_by_abordagem = AsyncMock(return_value=0)
         service.audit = AsyncMock()
         return service, storage_mock
 

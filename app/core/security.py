@@ -4,30 +4,34 @@ Fornece funções para hashing de senhas com bcrypt, verificação de credenciai
 e criação/validação de tokens JWT para fluxos de autenticação e autorização.
 """
 
+import logging
 from datetime import UTC, datetime, timedelta
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
+import jwt
 
 from app.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
+logger = logging.getLogger("argus")
+
+#: Custo bcrypt (rounds). 12 = ~250ms/hash em CPU moderno — balanco entre
+#: defesa contra brute-force e UX de login (mantido do passlib).
+_BCRYPT_ROUNDS = 12
 
 
-def _truncar_bcrypt(senha: str) -> str:
+def _truncar_bcrypt(senha: str) -> bytes:
     """Trunca senha para 72 bytes (limite do algoritmo bcrypt).
 
-    O bcrypt ignora bytes além do 72º. Versões >= 4.2 do pacote bcrypt
-    rejeitam senhas maiores com ValueError em vez de truncar
-    silenciosamente. Esta função garante compatibilidade.
+    O bcrypt rejeita senhas > 72 bytes desde a versao 4.1+ (em vez de
+    truncar silenciosamente). Esta funcao garante compatibilidade.
 
     Args:
         senha: Senha em texto plano.
 
     Returns:
-        Senha truncada para no máximo 72 bytes UTF-8.
+        Senha truncada para no maximo 72 bytes UTF-8.
     """
-    return senha.encode("utf-8")[:72].decode("utf-8", errors="ignore")
+    return senha.encode("utf-8")[:72]
 
 
 def hash_senha(senha: str) -> str:
@@ -39,25 +43,29 @@ def hash_senha(senha: str) -> str:
     Returns:
         String de hash bcrypt adequada para armazenamento em banco de dados.
     """
-    return pwd_context.hash(_truncar_bcrypt(senha))
+    return bcrypt.hashpw(_truncar_bcrypt(senha), bcrypt.gensalt(rounds=_BCRYPT_ROUNDS)).decode(
+        "utf-8"
+    )
 
 
 def verificar_senha(senha: str, hash: str) -> bool:
     """Verifica uma senha em texto plano contra um hash bcrypt.
 
-    Retorna False (em vez de lançar exceção) se o hash armazenado estiver
-    corrompido ou em formato não reconhecido, evitando erros 500.
+    Retorna False (em vez de lancar excecao) se o hash armazenado estiver
+    corrompido ou em formato nao reconhecido, evitando erros 500. Aceita
+    tanto hashes com prefixo $2b$ (atual) quanto $2a$ (legados do passlib).
 
     Args:
         senha: Senha em texto plano a verificar.
         hash: Hash bcrypt armazenado no banco de dados.
 
     Returns:
-        True se a senha bate com o hash, False caso contrário ou se hash inválido.
+        True se a senha bate com o hash, False caso contrario ou se hash invalido.
     """
     try:
-        return pwd_context.verify(_truncar_bcrypt(senha), hash)
-    except Exception:
+        return bcrypt.checkpw(_truncar_bcrypt(senha), hash.encode("utf-8"))
+    except (ValueError, TypeError) as exc:
+        logger.warning("hash bcrypt invalido: %s", exc)
         return False
 
 
@@ -140,5 +148,5 @@ def decodificar_token(token: str, expected_type: str = "access") -> dict | None:
         if payload.get("type") != expected_type:
             return None
         return payload
-    except JWTError:
+    except jwt.InvalidTokenError:
         return None

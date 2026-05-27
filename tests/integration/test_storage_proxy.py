@@ -1,16 +1,23 @@
 """Testes de integração do proxy autenticado ``/storage/{path}``.
 
 Valida streaming dos bytes do S3 (sem buffer em memória), propagação de
-``ETag``/``If-None-Match`` para 304 nativo do S3 e tratamento de erros
-(404 para NoSuchKey, 502 para outros erros).
+``ETag``/``If-None-Match`` para 304 nativo do S3, tratamento de erros
+(404 para NoSuchKey, 502 para outros erros) e enforcement de tenant
+para midias de abordagem/PDFs de ocorrencia.
 """
 
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from botocore.exceptions import ClientError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.models.bpm import Bpm
+from app.models.foto import Foto
+from app.models.guarnicao import Guarnicao
+from app.models.ocorrencia import Ocorrencia
 from app.services import storage_service as ss_module
 
 
@@ -205,3 +212,136 @@ async def test_storage_proxy_sem_autenticacao_retorna_401(client, fake_storage):
 
     assert response.status_code == 401
     fake_storage.get_object.assert_not_called()
+
+
+async def _outra_equipe(db_session: AsyncSession, bpm: Bpm) -> Guarnicao:
+    """Cria uma guarnicao distinta da fixture padrao para isolar tenant."""
+    g = Guarnicao(nome="Outra Equipe", bpm_id=bpm.id, codigo="OUTRA-EQUIPE")
+    db_session.add(g)
+    await db_session.flush()
+    return g
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_bloqueia_midia_de_abordagem_de_outra_equipe(
+    client, auth_headers, fake_storage, db_session, usuario, bpm
+):
+    """Foto vinculada a abordagem (pessoa_id=None) de outra equipe deve dar 403.
+
+    Modelo de produto: fotos de pessoa = globais; demais midias operacionais
+    (RAP, foto direta de abordagem) respeitam isolamento BPM/equipe.
+    """
+    outra = await _outra_equipe(db_session, bpm)
+    foto = Foto(
+        arquivo_url=f"/storage/{settings.S3_BUCKET}/fotos/midia_outra_abordagem.jpg",
+        tipo="abordagem",
+        data_hora=datetime.now(),
+        pessoa_id=None,
+        guarnicao_id=outra.id,
+    )
+    db_session.add(foto)
+    await db_session.flush()
+
+    fake_storage.get_object = AsyncMock()
+
+    response = await client.get(
+        f"/storage/{settings.S3_BUCKET}/fotos/midia_outra_abordagem.jpg",
+        headers=auth_headers,
+    )
+    assert response.status_code == 403
+    fake_storage.get_object.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_libera_foto_de_pessoa_de_outra_equipe(
+    client, auth_headers, fake_storage, db_session, usuario, bpm
+):
+    """Foto vinculada a pessoa (pessoa_id != None) eh global mesmo cross-team.
+
+    Modelo de produto: BNMP/passagens compartilhadas. Bloquear este caso
+    quebraria fluxo operacional.
+    """
+    from app.models.pessoa import Pessoa
+
+    outra = await _outra_equipe(db_session, bpm)
+    pessoa = Pessoa(nome="Cidadao X", guarnicao_id=outra.id)
+    db_session.add(pessoa)
+    await db_session.flush()
+    foto = Foto(
+        arquivo_url=f"/storage/{settings.S3_BUCKET}/fotos/pessoa_global.jpg",
+        tipo="rosto",
+        data_hora=datetime.now(),
+        pessoa_id=pessoa.id,
+        guarnicao_id=outra.id,
+    )
+    db_session.add(foto)
+    await db_session.flush()
+
+    body = _FakeStreamingBody([b"\x00"])
+    fake_storage.get_object = AsyncMock(
+        return_value={"Body": body, "ContentType": "image/jpeg", "ETag": '"x"'}
+    )
+
+    response = await client.get(
+        f"/storage/{settings.S3_BUCKET}/fotos/pessoa_global.jpg",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_bloqueia_pdf_de_ocorrencia_de_outra_equipe(
+    client, auth_headers, fake_storage, db_session, usuario, bpm
+):
+    """PDF de ocorrencia (RAP) de outra equipe deve dar 403.
+
+    Mesma logica das midias de abordagem: documento operacional eh tenant-scoped.
+    """
+    from datetime import date
+
+    outra = await _outra_equipe(db_session, bpm)
+    ocorrencia = Ocorrencia(
+        numero_ocorrencia="2026.00001/OUTRA",
+        arquivo_pdf_url=f"/storage/{settings.S3_BUCKET}/pdfs/rap_outra.pdf",
+        data_ocorrencia=date.today(),
+        usuario_id=usuario.id,
+        guarnicao_id=outra.id,
+    )
+    db_session.add(ocorrencia)
+    await db_session.flush()
+
+    fake_storage.get_object = AsyncMock()
+
+    response = await client.get(
+        f"/storage/{settings.S3_BUCKET}/pdfs/rap_outra.pdf",
+        headers=auth_headers,
+    )
+    assert response.status_code == 403
+    fake_storage.get_object.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_libera_midia_de_abordagem_propria(
+    client, auth_headers, fake_storage, db_session, usuario
+):
+    """Midia de abordagem da propria equipe deve passar normalmente."""
+    foto = Foto(
+        arquivo_url=f"/storage/{settings.S3_BUCKET}/fotos/minha_midia.jpg",
+        tipo="abordagem",
+        data_hora=datetime.now(),
+        pessoa_id=None,
+        guarnicao_id=usuario.guarnicao_id,
+    )
+    db_session.add(foto)
+    await db_session.flush()
+
+    body = _FakeStreamingBody([b"\x00"])
+    fake_storage.get_object = AsyncMock(
+        return_value={"Body": body, "ContentType": "image/jpeg", "ETag": '"x"'}
+    )
+
+    response = await client.get(
+        f"/storage/{settings.S3_BUCKET}/fotos/minha_midia.jpg",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200

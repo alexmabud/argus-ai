@@ -42,7 +42,7 @@ function renderAbordagemNova() {
             <template x-for="item in results" :key="item.id">
               <button @click="select(item); $dispatch('pessoa-selected', { selected: selected })"
                       style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);"
-                      onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
+                      class="hov-row-surface">
                 <span x-text="getLabel(item)"></span>
                 <span x-show="item.cpf || item.cpf_masked" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);margin-left:8px;" x-text="item.cpf || item.cpf_masked"></span>
               </button>
@@ -143,13 +143,13 @@ function renderAbordagemNova() {
                 <template x-for="cidade in anCidadeSugestoes" :key="cidade.id">
                   <div @mousedown.prevent="anSelecionarCidade(cidade)"
                        style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);"
-                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                       class="hov-row-surface">
                     <span x-text="cidade.nome_exibicao"></span>
                   </div>
                 </template>
                 <div x-show="anCidadeCadastrarNovo" @mousedown.prevent="anCadastrarCidade()"
                      style="padding:8px 12px;cursor:pointer;font-size:13px;font-weight:600;color:#f59e0b;border-top:1px solid var(--color-border);display:flex;align-items:center;gap:6px;"
-                     onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                     class="hov-row-surface">
                   <span style="font-size:15px;line-height:1;">+</span> Cadastrar "<span x-text="anCidadeTexto"></span>"
                 </div>
               </div>
@@ -166,13 +166,13 @@ function renderAbordagemNova() {
                 <template x-for="bairro in anBairroSugestoes" :key="bairro.id">
                   <div @mousedown.prevent="anSelecionarBairro(bairro)"
                        style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);"
-                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                       class="hov-row-surface">
                     <span x-text="bairro.nome_exibicao"></span>
                   </div>
                 </template>
                 <div x-show="anBairroCadastrarNovo" @mousedown.prevent="anCadastrarBairro()"
                      style="padding:8px 12px;cursor:pointer;font-size:13px;font-weight:600;color:#f59e0b;border-top:1px solid var(--color-border);display:flex;align-items:center;gap:6px;"
-                     onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                     class="hov-row-surface">
                   <span style="font-size:15px;line-height:1;">+</span> Cadastrar "<span x-text="anBairroTexto"></span>"
                 </div>
               </div>
@@ -302,7 +302,7 @@ function renderAbordagemNova() {
             <template x-for="item in results" :key="item.id">
               <button @click="select(item); $dispatch('veiculo-selected', { selected: selected })"
                       style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);"
-                      onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'"
+                      class="hov-row-surface"
                       x-text="getLabel(item)">
               </button>
             </template>

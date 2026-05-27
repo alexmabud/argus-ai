@@ -39,3 +39,20 @@ class TestUploadMidiaAbordagem:
             "/api/v1/fotos/midias", files=files, data=data, headers=auth_headers
         )
         assert response.status_code == 400
+
+    async def test_rejeita_pdf_com_conteudo_falso(
+        self, client: AsyncClient, auth_headers: dict, abordagem: Abordagem
+    ):
+        """Conteudo HTML/JS com Content-Type application/pdf deve ser rejeitado.
+
+        Caso contrario, atacante sobe payload XSS com mime PDF, e o arquivo
+        servido via /storage executa no browser de outros policiais.
+        """
+        fake_pdf = b"<html><script>alert(1)</script></html>"
+        files = {"file": ("fake.pdf", io.BytesIO(fake_pdf), "application/pdf")}
+        data = {"abordagem_id": str(abordagem.id)}
+        response = await client.post(
+            "/api/v1/fotos/midias", files=files, data=data, headers=auth_headers
+        )
+        assert response.status_code == 400
+        assert "PDF" in response.json()["detail"]

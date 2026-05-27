@@ -40,8 +40,7 @@ function renderPerfil(_appState) {
           </div>
           <button @click="$refs.fotoInput.click()"
                   style="position: absolute; bottom: -4px; right: -4px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 4px; color: var(--color-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center;"
-                  onmouseover="this.style.color='var(--color-text)'"
-                  onmouseout="this.style.color='var(--color-text-muted)'">
+                  class="hov-text">
             <svg xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -101,8 +100,7 @@ function renderPerfil(_appState) {
       <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--color-border);">
         <button @click="mostrarModalSaida()"
                 style="width: 100%; padding: 8px 16px; font-family: var(--font-data); font-size: 14px; font-weight: 500; color: var(--color-danger); background: transparent; border: 1px solid var(--color-danger); border-radius: 4px; cursor: pointer; transition: opacity 0.2s;"
-                onmouseover="this.style.opacity='0.8'"
-                onmouseout="this.style.opacity='1'">
+                class="hov-opacity-down">
           Sair do aplicativo
         </button>
       </div>

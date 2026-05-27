@@ -73,6 +73,36 @@ class CredenciaisInvalidasError(HTTPException):
         )
 
 
+class QuotaExcedidaError(HTTPException):
+    """Quota de recursos excedida (429).
+
+    Levantada quando o numero de recursos (ex: fotos por abordagem)
+    ultrapassa o limite configurado, evitando que conta comprometida
+    consuma armazenamento de forma abusiva.
+    """
+
+    def __init__(self, detail: str = "Quota excedida"):
+        super().__init__(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=detail,
+        )
+
+
+class ContaBloqueadaError(HTTPException):
+    """Conta temporariamente bloqueada por excesso de tentativas falhas (423).
+
+    Levantada apos N tentativas de login com senha incorreta. O bloqueio
+    expira automaticamente apos DURACAO_BLOQUEIO (definido em AuthService).
+    """
+
+    def __init__(self, detail: str = "Conta bloqueada temporariamente"):
+        super().__init__(
+            status_code=status.HTTP_423_LOCKED,
+            detail=detail,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
 class ConflitoDadosError(HTTPException):
     """Exceção para conflito de dados (409).
 

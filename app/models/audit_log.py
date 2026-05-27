@@ -39,7 +39,9 @@ class AuditLog(Base):
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )
-    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), index=True)
+    usuario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id"), index=True, nullable=True
+    )
     acao: Mapped[str] = mapped_column(String(50), index=True)
     # CREATE, READ, UPDATE, DELETE, LOGIN, EXPORT, SEARCH, SYNC
     recurso: Mapped[str] = mapped_column(String(100))  # ex: "pessoa", "abordagem"

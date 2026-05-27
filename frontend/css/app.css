@@ -1094,6 +1094,31 @@ input.input-warning {
 }
 
 /* ========================================
+   CSP-SAFE INTERACTIVE STATES
+   Substituem os antigos onmouseover/onmouseout/onfocus/onblur inline
+   (proibidos por script-src sem 'unsafe-inline'). Estado de repouso
+   continua no style="..." inline; o :hover/:focus aqui sobrescreve.
+   !important necessário porque inline style supera specificity.
+   ======================================== */
+.hov-cta-card:hover { background: rgba(0, 212, 255, 0.06) !important; border-color: rgba(0, 212, 255, 0.5) !important; }
+.hov-list-card:hover { border-color: rgba(0, 212, 255, 0.3) !important; box-shadow: 0 0 8px rgba(0, 212, 255, 0.08) !important; }
+.hov-row-surface:hover { background: var(--color-surface-hover) !important; }
+.hov-tab-pill:hover { border-color: rgba(0, 212, 255, 0.3) !important; color: var(--color-primary) !important; }
+.hov-dash-card:hover { background: var(--color-surface-hover) !important; border-color: rgba(0, 212, 255, 0.15) !important; }
+.hov-icon-danger:hover { color: var(--color-danger) !important; }
+.hov-text:hover { color: var(--color-text) !important; }
+.hov-text-primary:hover { color: var(--color-primary) !important; }
+.hov-opacity-up:hover { opacity: 1 !important; }
+.hov-opacity-down:hover { opacity: 0.8 !important; }
+.hov-border-primary:hover { border-color: var(--color-primary) !important; }
+.hov-bg-danger-tint:hover { background: rgba(255, 59, 48, 0.1) !important; }
+.hov-bg-surface:hover { background: var(--color-surface) !important; }
+.hov-bg-cyan-tint:hover { background: rgba(0, 212, 255, 0.1) !important; }
+.hov-bg-primary-hover:hover { background: var(--color-primary-hover) !important; }
+.hov-bg-surface-active:hover { background: var(--color-surface-active) !important; }
+.foc-input-primary:focus { border-color: var(--color-primary) !important; }
+
+/* ========================================
    UTILITY CLASSES (substitui Tailwind CDN)
    ======================================== */
 .hidden { display: none !important; }

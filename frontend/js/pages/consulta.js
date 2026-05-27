@@ -48,9 +48,8 @@ function renderConsulta() {
 
         <!-- Reconhecimento Facial -->
         <button x-show="!fotoFile" @click="$refs.fotoInput.click()"
-                style="width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:4px;border:2px dashed rgba(0,212,255,0.3);background:rgba(0,212,255,0.03);cursor:pointer;transition:all 150ms;"
-                onmouseover="this.style.background='rgba(0,212,255,0.06)';this.style.borderColor='rgba(0,212,255,0.5)'"
-                onmouseout="this.style.background='rgba(0,212,255,0.03)';this.style.borderColor='rgba(0,212,255,0.3)'">
+                class="hov-cta-card"
+                style="width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:4px;border:2px dashed rgba(0,212,255,0.3);background:rgba(0,212,255,0.03);cursor:pointer;transition:all 150ms;">
           <div style="width:40px;height:40px;border-radius:4px;background:rgba(0,212,255,0.1);display:flex;align-items:center;justify-content:center;color:var(--color-primary);">
             <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
@@ -72,8 +71,7 @@ function renderConsulta() {
             <p style="font-family:var(--font-body);font-size:12px;color:var(--color-primary);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="fotoFile?.name"></p>
             <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.05em;">Analisando base operacional...</p>
           </div>
-          <button @click="removeFoto()" style="padding:4px;color:var(--color-text-dim);background:transparent;border:none;cursor:pointer;transition:color 150ms;"
-                  onmouseover="this.style.color='var(--color-danger)'" onmouseout="this.style.color='var(--color-text-dim)'">
+          <button @click="removeFoto()" class="hov-icon-danger" style="padding:4px;color:var(--color-text-dim);background:transparent;border:none;cursor:pointer;transition:color 150ms;">
             <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -87,9 +85,8 @@ function renderConsulta() {
           </p>
           <template x-for="p in pessoasTexto.slice(0, 10)" :key="'t-' + p.id">
             <div @click="viewPessoa(p.id)"
-                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;"
-                 onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
-                 onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+                 class="hov-list-card"
+                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;">
               <!-- Avatar -->
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_thumb_url || p.foto_principal_url" :alt="'Foto de ' + p.nome"
@@ -126,9 +123,8 @@ function renderConsulta() {
           </p>
           <template x-for="r in pessoasFoto" :key="'f-' + r.foto_id">
             <div @click="r.pessoa_id && viewPessoa(r.pessoa_id)"
-                 style="padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;"
-                 onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
-                 onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+                 class="hov-list-card"
+                 style="padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;">
               <div style="display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
                   <img x-show="r.foto_principal_url || r.arquivo_url" :src="r.foto_principal_thumb_url || r.foto_principal_url || r.thumbnail_url || r.arquivo_url"
@@ -248,14 +244,14 @@ function renderConsulta() {
                    style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
                 <template x-for="cidade in cpCidadeSugestoes" :key="cidade.id">
                   <div @mousedown.prevent="cpSelecionarCidade(cidade)"
-                       style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);"
-                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                       class="hov-row-surface"
+                       style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);">
                     <span x-text="cidade.nome_exibicao"></span>
                   </div>
                 </template>
                 <div x-show="cpCidadeCadastrarNovo" @mousedown.prevent="cpCadastrarCidade()"
-                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-primary);border-top:1px solid var(--color-border);"
-                     onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                     class="hov-row-surface"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-primary);border-top:1px solid var(--color-border);">
                   + Cadastrar "<span x-text="cpCidadeTexto"></span>"
                 </div>
               </div>
@@ -271,14 +267,14 @@ function renderConsulta() {
                    style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
                 <template x-for="bairro in cpBairroSugestoes" :key="bairro.id">
                   <div @mousedown.prevent="cpSelecionarBairro(bairro)"
-                       style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);"
-                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                       class="hov-row-surface"
+                       style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);">
                     <span x-text="bairro.nome_exibicao"></span>
                   </div>
                 </template>
                 <div x-show="cpBairroCadastrarNovo" @mousedown.prevent="cpCadastrarBairro()"
-                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-primary);border-top:1px solid var(--color-border);"
-                     onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                     class="hov-row-surface"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-primary);border-top:1px solid var(--color-border);">
                   + Cadastrar "<span x-text="cpBairroTexto"></span>"
                 </div>
               </div>
@@ -367,9 +363,8 @@ function renderConsulta() {
           </p>
           <template x-for="p in pessoasEndereco.slice(0, 10)" :key="'e-' + p.id">
             <div @click="viewPessoa(p.id)"
-                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;"
-                 onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
-                 onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+                 class="hov-list-card"
+                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;">
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_thumb_url || p.foto_principal_url"
                      @click.stop="openPhotoModal(p.foto_principal_url, p.id, p)" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);cursor:pointer;">
@@ -451,9 +446,8 @@ function renderConsulta() {
           </p>
           <template x-for="p in pessoasVeiculo.slice(0, 10)" :key="'v-' + p.id + '-' + (p.veiculo_info?.placa || '')">
             <div @click="viewPessoa(p.id)"
-                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;"
-                 onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.boxShadow='0 0 8px rgba(0,212,255,0.08)'"
-                 onmouseout="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+                 class="hov-list-card"
+                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;">
               <template x-if="p.foto_principal_url">
                 <img :src="p.foto_principal_thumb_url || p.foto_principal_url"
                      @click.stop="openPhotoModal(p.foto_principal_url, p.id, p)" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);cursor:pointer;">
@@ -773,7 +767,7 @@ function consultaPage() {
       this.loadingPessoa = true;
       this.buscouPessoa = true;
       try {
-        const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa&limit=10000`;
+        const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa&limit=200`;
         const r = await api.get(url);
         this.pessoasTexto = r.pessoas || [];
         this.searched = true;
@@ -807,7 +801,7 @@ function consultaPage() {
     async searchPorEndereco() {
       this.loadingEndereco = true;
       try {
-        let url = `/consultas/?q=&tipo=pessoa&limit=10000`;
+        let url = `/consultas/?q=&tipo=pessoa&limit=200`;
         if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
         if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
         if (this.filtroEstado.length >= 1) url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
@@ -828,7 +822,7 @@ function consultaPage() {
         if (this.filtroPlaca.length >= 2) params.append("placa", this.filtroPlaca.toUpperCase());
         if (this.filtroModelo.length >= 2) params.append("modelo", this.filtroModelo);
         if (this.filtroCor.length >= 1) params.append("cor", this.filtroCor);
-        params.append("limit", "10000");
+        params.append("limit", "200");
         const r = await api.get(`/consultas/pessoas-por-veiculo?${params}`);
         this.pessoasVeiculo = Array.isArray(r) ? r : [];
         this.searchedVeiculo = true;
@@ -843,7 +837,7 @@ function consultaPage() {
       this.modalVerMaisTexto = true;
       this.loadingVerMais = true;
       try {
-        const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa&limit=10000`;
+        const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa&limit=200`;
         const r = await api.get(url);
         this.pessoasTexto = r.pessoas || [];
       } catch {
@@ -857,7 +851,7 @@ function consultaPage() {
       this.modalVerMaisEndereco = true;
       this.loadingVerMais = true;
       try {
-        let url = `/consultas/?q=&tipo=pessoa&limit=10000`;
+        let url = `/consultas/?q=&tipo=pessoa&limit=200`;
         if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
         if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
         if (this.filtroEstado.length >= 1) url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
@@ -878,7 +872,7 @@ function consultaPage() {
         if (this.filtroPlaca.length >= 2) params.append("placa", this.filtroPlaca.toUpperCase());
         if (this.filtroModelo.length >= 2) params.append("modelo", this.filtroModelo);
         if (this.filtroCor.length >= 1) params.append("cor", this.filtroCor);
-        params.append("limit", "10000");
+        params.append("limit", "200");
         const r = await api.get(`/consultas/pessoas-por-veiculo?${params}`);
         this.pessoasVeiculo = Array.isArray(r) ? r : [];
       } catch {

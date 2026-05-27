@@ -34,8 +34,8 @@ function renderPessoaDetalhe(appState) {
             <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">
               <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Dados Pessoais</h3>
               <button @click="abrirModalEditarPessoa()"
+                      class="hov-text-primary"
                       style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); padding: 0.125rem; transition: color 0.15s;"
-                      onmouseover="this.style.color='var(--color-primary)'" onmouseout="this.style.color='var(--color-text-dim)'"
                       title="Editar dados pessoais">
                 <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/>
@@ -228,13 +228,13 @@ function renderPessoaDetalhe(appState) {
                   <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Nome <span style="color: var(--color-danger)">*</span></label>
                   <input type="text" x-model="editPessoaForm.nome"
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                         class="foc-input-primary">
                 </div>
                 <div>
                   <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">CPF</label>
                   <input type="text" x-model="editPessoaForm.cpf"
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                         class="foc-input-primary">
                 </div>
                 <div>
                   <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Data de Nascimento</label>
@@ -242,19 +242,19 @@ function renderPessoaDetalhe(appState) {
                          @input="editPessoaForm.data_nascimento = formatarData($event.target.value)"
                          placeholder="DD/MM/AAAA" maxlength="10"
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                         class="foc-input-primary">
                 </div>
                 <div>
                   <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Apelido</label>
                   <input type="text" x-model="editPessoaForm.apelido"
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                         class="foc-input-primary">
                 </div>
                 <div>
                   <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Observações</label>
                   <textarea x-model="editPessoaForm.observacoes" rows="2"
                             style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); resize: none; box-sizing: border-box;"
-                            onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'"></textarea>
+                            class="foc-input-primary"></textarea>
                 </div>
               </div>
               <div style="display: flex; gap: 0.5rem; padding-top: 0.25rem;">
@@ -289,7 +289,7 @@ function renderPessoaDetalhe(appState) {
                   <input type="text" x-model="editEnderecoForm.endereco"
                          placeholder="Rua, número..."
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                         class="foc-input-primary">
                 </div>
                 <!-- Estado -->
                 <div>
@@ -314,20 +314,20 @@ function renderPessoaDetalhe(appState) {
                          @blur.debounce.200ms="enderecoCidadeSugestoes = []"
                          placeholder="Digite para buscar..."
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                         class="foc-input-primary">
                   <div x-show="enderecoCidadeSugestoes.length > 0 || enderecoCidadeCadastrarNovo"
                        style="position: absolute; z-index: 100; width: 100%; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; margin-top: 2px; max-height: 200px; overflow-y: auto;">
                     <template x-for="cidade in enderecoCidadeSugestoes" :key="cidade.id">
                       <div @mousedown.prevent="selecionarCidade(cidade)"
                            style="padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; color: var(--color-text);"
-                           onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                           class="hov-row-surface">
                         <span x-text="cidade.nome_exibicao"></span>
                       </div>
                     </template>
                     <div x-show="enderecoCidadeCadastrarNovo"
                          @mousedown.prevent="cadastrarNovaCidade()"
                          style="padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; color: var(--color-primary); border-top: 1px solid var(--color-border);"
-                         onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                         class="hov-row-surface">
                       + Cadastrar "<span x-text="enderecoCidadeTexto"></span>" como nova cidade
                     </div>
                   </div>
@@ -343,20 +343,20 @@ function renderPessoaDetalhe(appState) {
                          @blur.debounce.200ms="enderecoBairroSugestoes = []"
                          placeholder="Digite para buscar..."
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                         class="foc-input-primary">
                   <div x-show="enderecoBairroSugestoes.length > 0 || enderecoBairroCadastrarNovo"
                        style="position: absolute; z-index: 100; width: 100%; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; margin-top: 2px; max-height: 200px; overflow-y: auto;">
                     <template x-for="bairro in enderecoBairroSugestoes" :key="bairro.id">
                       <div @mousedown.prevent="selecionarBairro(bairro)"
                            style="padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; color: var(--color-text);"
-                           onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                           class="hov-row-surface">
                         <span x-text="bairro.nome_exibicao"></span>
                       </div>
                     </template>
                     <div x-show="enderecoBairroCadastrarNovo"
                          @mousedown.prevent="cadastrarNovoBairro()"
                          style="padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; color: var(--color-primary); border-top: 1px solid var(--color-border);"
-                         onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background=''">
+                         class="hov-row-surface">
                       + Cadastrar "<span x-text="enderecoBairroTexto"></span>" como novo bairro
                     </div>
                   </div>
@@ -476,7 +476,7 @@ function renderPessoaDetalhe(appState) {
                        @input="onBuscaVinculo()"
                        placeholder="Nome, apelido ou CPF..."
                        style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                       onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+                       class="foc-input-primary">
 
                 <!-- Loading -->
                 <div x-show="buscandoPessoa" style="display: flex; justify-content: center; padding: 0.5rem 0;">
@@ -489,7 +489,7 @@ function renderPessoaDetalhe(appState) {
                   <template x-for="p in resultadosBusca" :key="p.id">
                     <div @click="selecionarPessoa(p)"
                          style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--color-border); cursor: pointer;"
-                         onmouseover="this.style.background='var(--color-surface)'" onmouseout="this.style.background='transparent'">
+                         class="hov-bg-surface">
                       <template x-if="p.foto_principal_url">
                         <img :src="p.foto_principal_thumb_url || p.foto_principal_url" style="width: 2rem; height: 2rem; border-radius: 4px; object-fit: cover;">
                       </template>
@@ -506,7 +506,7 @@ function renderPessoaDetalhe(appState) {
                   <div x-show="buscaVinculo.trim().length >= 2 && !buscandoPessoa"
                        @click="iniciarCadastroNovo()"
                        style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(0,212,255,0.05); cursor: pointer;"
-                       onmouseover="this.style.background='rgba(0,212,255,0.1)'" onmouseout="this.style.background='rgba(0,212,255,0.05)'">
+                       class="hov-bg-cyan-tint">
                     <div style="width: 2rem; height: 2rem; border-radius: 4px; background: var(--color-primary); display: flex; align-items: center; justify-content: center; color: var(--color-bg); font-size: 0.875rem; font-weight: 700;">+</div>
                     <div>
                       <div style="font-size: 0.875rem; color: var(--color-primary); font-weight: 500;">Cadastrar novo</div>
@@ -591,7 +591,7 @@ function renderPessoaDetalhe(appState) {
               </h3>
               <button @click="abrirModalNovoEndereco()"
                       style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-size: 0.75rem; font-family: var(--font-data); font-weight: 600; letter-spacing: 0.05em; padding: 0; opacity: 0.85; transition: opacity 0.15s;"
-                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+                      class="hov-opacity-up">
                 + Novo Endereço
               </button>
             </div>
@@ -603,7 +603,7 @@ function renderPessoaDetalhe(appState) {
                           x-text="'Cadastrado em ' + new Date(end.criado_em).toLocaleDateString('pt-BR')"></span>
                     <button @click="abrirModalEditarEndereco(end)"
                             style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); padding: 0.125rem; transition: color 0.15s;"
-                            onmouseover="this.style.color='var(--color-primary)'" onmouseout="this.style.color='var(--color-text-dim)'"
+                            class="hov-text-primary"
                             title="Editar endereço">
                       <svg style="width: 0.75rem; height: 0.75rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/>
@@ -672,7 +672,7 @@ function renderPessoaDetalhe(appState) {
               <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">Vínculos</h3>
               <button @click="abrirModalVinculo()"
                       style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-size: 0.75rem; font-family: var(--font-data); font-weight: 600; letter-spacing: 0.05em; padding: 0; opacity: 0.85; transition: opacity 0.15s;"
-                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+                      class="hov-opacity-up">
                 + Adicionar Vínculo
               </button>
             </div>
@@ -685,8 +685,7 @@ function renderPessoaDetalhe(appState) {
               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <template x-for="rel in pessoa.relacionamentos" :key="rel.pessoa_id">
                   <div @click="if(rel.foto_principal_url) openPhotoModal(rel.foto_principal_url, rel.pessoa_id, rel); else viewPessoa(rel.pessoa_id)"
-                       class="card-led-purple" style="display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; cursor: pointer;"
-                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
+                       class="card-led-purple hov-row-surface" style="display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; cursor: pointer;">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                       <template x-if="rel.foto_principal_url">
                         <img :src="rel.foto_principal_thumb_url || rel.foto_principal_url"
@@ -724,8 +723,7 @@ function renderPessoaDetalhe(appState) {
               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <template x-for="vm in vinculosManuais" :key="vm.id">
                   <div @click="if(vm.foto_principal_url) openPhotoModal(vm.foto_principal_url, vm.pessoa_vinculada_id, vm); else viewPessoa(vm.pessoa_vinculada_id)"
-                       class="card-led-purple" style="display: flex; align-items: flex-start; justify-content: space-between; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; cursor: pointer;"
-                       onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
+                       class="card-led-purple hov-row-surface" style="display: flex; align-items: flex-start; justify-content: space-between; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem; cursor: pointer;">
                     <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
                       <template x-if="vm.foto_principal_url">
                         <img :src="vm.foto_principal_thumb_url || vm.foto_principal_url"
@@ -752,7 +750,7 @@ function renderPessoaDetalhe(appState) {
                             x-text="new Date(vm.criado_em).toLocaleDateString('pt-BR')"></span>
                       <button @click.stop="removerVinculo(vm.id)"
                               style="color: var(--color-text-dim); background: none; border: none; cursor: pointer;"
-                              onmouseover="this.style.color='var(--color-danger)'" onmouseout="this.style.color='var(--color-text-dim)'"
+                              class="hov-icon-danger"
                               title="Remover vínculo">
                         <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -777,7 +775,7 @@ function renderPessoaDetalhe(appState) {
               <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">Observações</h3>
               <button @click="abrirModalObservacao()"
                       style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-size: 0.75rem; font-family: var(--font-data); font-weight: 600; letter-spacing: 0.05em; padding: 0; opacity: 0.85; transition: opacity 0.15s;"
-                      onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+                      class="hov-opacity-up">
                 + Nova Observação
               </button>
             </div>
@@ -792,7 +790,7 @@ function renderPessoaDetalhe(appState) {
                           x-text="new Date(obs.criado_em).toLocaleDateString('pt-BR') + ' ' + new Date(obs.criado_em).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})"></span>
                     <button @click="abrirModalObservacao(obs)"
                             style="color: var(--color-text-dim); background: none; border: none; cursor: pointer; padding: 0;"
-                            onmouseover="this.style.color='var(--color-primary)'" onmouseout="this.style.color='var(--color-text-dim)'"
+                            class="hov-text-primary"
                             title="Editar observação">
                       <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
@@ -800,7 +798,7 @@ function renderPessoaDetalhe(appState) {
                     </button>
                     <button @click="deletarObservacao(obs.id)"
                             style="color: var(--color-text-dim); background: none; border: none; cursor: pointer; padding: 0;"
-                            onmouseover="this.style.color='var(--color-danger)'" onmouseout="this.style.color='var(--color-text-dim)'"
+                            class="hov-icon-danger"
                             title="Remover observação">
                       <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>

@@ -29,21 +29,10 @@ class TestProcessBatch:
         user.guarnicao_id = 1
         return user
 
-    async def test_tipo_desconhecido_retorna_error(self, service, mock_user):
-        """Deve retornar erro para tipo desconhecido."""
-        items = [
-            SyncItem(
-                client_id="uuid-1",
-                tipo="invalido",
-                dados={"foo": "bar"},
-            )
-        ]
-
-        results = await service.process_batch(items, mock_user)
-
-        assert len(results) == 1
-        assert results[0].status == "error"
-        assert "desconhecido" in results[0].error.lower()
+    # Nota: o teste antigo "tipo_desconhecido_retorna_error" exercia o fallback
+    # do service quando tipo nao mapeava handler. Apos Task 18, SyncItem.tipo eh
+    # Literal[abordagem|pessoa|veiculo] — Pydantic rejeita antes (validacao no
+    # schema). Cobertura agora em tests/unit/test_sync_schemas.py.
 
     @patch("app.services.sync_service.AbordagemService")
     async def test_abordagem_sync_ok(self, mock_abd_cls, service, mock_user):
@@ -98,14 +87,6 @@ class TestProcessBatch:
         # Não deve ter chamado commit (item duplicado)
         service.db.commit.assert_not_called()
 
-    async def test_batch_multiplos_itens(self, service, mock_user):
-        """Deve processar múltiplos itens independentemente."""
-        items = [
-            SyncItem(client_id="uuid-1", tipo="invalido", dados={}),
-            SyncItem(client_id="uuid-2", tipo="invalido", dados={}),
-        ]
-
-        results = await service.process_batch(items, mock_user)
-
-        assert len(results) == 2
-        assert all(r.status == "error" for r in results)
+    # Teste antigo "batch_multiplos_itens" usava tipo="invalido" para forcar
+    # erro em cada item; agora bloqueado por Pydantic. Cobertura de batch
+    # multiplo com tipos validos vive em test_api_sync.py (integration).

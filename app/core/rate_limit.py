@@ -13,23 +13,26 @@ from app.config import settings
 
 
 def _get_real_client_ip(request: Request) -> str:
-    """Extrai IP real do cliente, respeitando headers de proxy reverso.
+    """Extrai IP real do cliente respeitando trust boundary do proxy reverso.
 
-    Lê X-Forwarded-For (primeiro IP da cadeia, que é o IP do cliente
-    original) quando presente. Previne que todos os clientes atrás de
-    nginx compartilhem o mesmo rate limit bucket.
+    So honra X-Forwarded-For quando o `request.client.host` esta em
+    `settings.TRUSTED_PROXIES`. Caso contrario, retorna o `client.host`
+    direto — atacante externo nao consegue inflar XFF para burlar rate
+    limit em endpoints como `/auth/login` (10/min por IP).
 
     Args:
         request: Objeto Request do Starlette.
 
     Returns:
-        Endereço IP do cliente real.
+        Endereço IP do cliente real ou "unknown" se nao for possivel determinar.
     """
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        # Primeiro IP é o cliente real; restante são proxies
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "127.0.0.1"
+    client_host = request.client.host if request.client else None
+    if client_host and client_host in settings.TRUSTED_PROXIES:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            # Primeiro IP é o cliente original; demais sao proxies da cadeia.
+            return forwarded.split(",")[0].strip()
+    return client_host or "unknown"
 
 
 #: Instância global de limiter usado em todos os endpoints.

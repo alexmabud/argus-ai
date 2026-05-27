@@ -4,7 +4,9 @@ Define o usuário (oficial de patrulhamento) do sistema, com autenticação,
 perfil (posto, nome de guerra, foto) e controle de sessão exclusiva.
 """
 
-from sqlalchemy import Boolean, ForeignKey, String
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
@@ -70,6 +72,12 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     guarnicao_id: Mapped[int | None] = mapped_column(ForeignKey("guarnicoes.id"), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    tentativas_falhas: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+    bloqueado_ate: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     guarnicao = relationship(
         "Guarnicao",
