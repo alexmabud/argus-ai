@@ -15,7 +15,7 @@ groups:
         for: 5m
         annotations:
           summary: CPU alta na VM
-          description: "CPU está acima de 85% há mais de 5 minutos (atual: {{ $values.A.Value | printf \"%.1f\" }}%)"
+          description: "CPU está acima de 85% há mais de 5 minutos (atual: {{ with $values.A }}{{ printf \"%.1f\" .Value }}{{ else }}—{{ end }}%)"
         labels:
           severity: warning
         data:
@@ -75,7 +75,7 @@ groups:
         for: 5m
         annotations:
           summary: RAM alta na VM
-          description: "RAM acima de 90% de uso (atual: {{ $values.A.Value | printf \"%.1f\" }}%)"
+          description: "RAM acima de 90% de uso (atual: {{ with $values.A }}{{ printf \"%.1f\" .Value }}{{ else }}—{{ end }}%)"
         labels:
           severity: warning
         data:
@@ -105,7 +105,7 @@ groups:
         for: 2m
         annotations:
           summary: Disco /mnt/fotos com pouco espaço
-          description: "Disco de fotos acima de 80% (atual: {{ $values.A.Value | printf \"%.1f\" }}%). Considere ampliar o volume."
+          description: "Disco de fotos acima de 80% (atual: {{ with $values.A }}{{ printf \"%.1f\" .Value }}{{ else }}—{{ end }}%). Considere ampliar o volume."
         labels:
           severity: warning
         data:
@@ -135,7 +135,7 @@ groups:
         for: 2m
         annotations:
           summary: "Disco do sistema CRÍTICO"
-          description: "Disco raiz acima de 90% (atual: {{ $values.A.Value | printf \"%.1f\" }}%). Risco de parada total."
+          description: "Disco raiz acima de 90% (atual: {{ with $values.A }}{{ printf \"%.1f\" .Value }}{{ else }}—{{ end }}%). Risco de parada total."
         labels:
           severity: critical
         data:
@@ -202,7 +202,7 @@ groups:
         for: 5m
         annotations:
           summary: Alta taxa de erros na API
-          description: "Mais de 5% das requisições estão retornando erro 5xx (atual: {{ $values.A.Value | printf \"%.1f\" }}%)"
+          description: "Mais de 5% das requisições estão retornando erro 5xx (atual: {{ with $values.A }}{{ printf \"%.1f\" .Value }}{{ else }}—{{ end }}%)"
         labels:
           severity: warning
         data:

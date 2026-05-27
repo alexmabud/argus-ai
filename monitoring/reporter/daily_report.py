@@ -4,6 +4,7 @@ Roda via crond todo dia às 8h (horário de Brasília).
 Consulta o Prometheus e envia resumo do dia anterior.
 """
 
+import math
 import os
 import sys
 from datetime import datetime, timedelta, timezone
@@ -86,7 +87,7 @@ def fmt(value: float | None, unit: str = "", decimals: int = 1) -> str:
     Returns:
         String formatada ou '—' se value for None.
     """
-    if value is None:
+    if value is None or math.isnan(value):
         return "—"
     return f"{value:.{decimals}f}{unit}"
 
@@ -144,16 +145,20 @@ def main() -> None:
     )
 
     # API
-    total_requests = query("increase(http_requests_total[24h])")
+    total_requests = query("sum(increase(http_requests_total[24h]))")
     pico_req_min = query_range_max("sum(rate(http_requests_total[1m])) * 60")
-    total_erros = query("increase(http_requests_total{status=~'5..'}[24h])")
+    total_erros = query("sum(increase(http_requests_total{status=~'5..'}[24h]))")
     latencia_p95 = query(
         "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1h])) by (le))"
     )
 
     # Calcular taxa de erro
     taxa_erro_str = "—"
-    if total_requests and total_erros and total_requests > 0:
+    if (
+        total_requests is not None
+        and total_erros is not None
+        and total_requests > 0
+    ):
         taxa = (total_erros / total_requests) * 100
         taxa_erro_str = f"{taxa:.2f}%"
 
