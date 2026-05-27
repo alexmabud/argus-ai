@@ -62,6 +62,7 @@
     {
       "id": 1, "type": "gauge", "title": "CPU",
       "gridPos": { "h": 6, "w": 4, "x": 0, "y": 5 },
+      "timeFrom": "5m",
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)" }],
       "options": {
@@ -80,6 +81,7 @@
     {
       "id": 2, "type": "gauge", "title": "RAM",
       "gridPos": { "h": 6, "w": 4, "x": 4, "y": 5 },
+      "timeFrom": "5m",
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100" }],
       "options": {
@@ -98,6 +100,7 @@
     {
       "id": 3, "type": "gauge", "title": "Disco Fotos",
       "gridPos": { "h": 6, "w": 4, "x": 8, "y": 5 },
+      "timeFrom": "5m",
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "100 - (node_filesystem_avail_bytes{mountpoint=\"/mnt/fotos\"} / node_filesystem_size_bytes{mountpoint=\"/mnt/fotos\"} * 100)" }],
       "options": {
@@ -116,6 +119,7 @@
     {
       "id": 5, "type": "gauge", "title": "Latência p95",
       "gridPos": { "h": 6, "w": 4, "x": 12, "y": 5 },
+      "timeFrom": "15m",
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))" }],
       "options": {
@@ -134,6 +138,7 @@
     {
       "id": 4, "type": "gauge", "title": "Requests/s",
       "gridPos": { "h": 6, "w": 4, "x": 16, "y": 5 },
+      "timeFrom": "15m",
       "targets": [{ "datasource": { "uid": "prometheus-argus" }, "refId": "A",
         "expr": "sum(irate(http_requests_total[1m]))" }],
       "options": {
