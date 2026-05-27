@@ -39,14 +39,12 @@ function renderOcorrencias() {
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <button @click="mesMenos()"
                   style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
-                  onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.color='var(--color-primary)'"
-                  onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-muted)'"
+                  class="hov-tab-pill"
           >&#8249;</button>
           <span style="font-family:var(--font-data);font-size:14px;font-weight:600;color:var(--color-text);" x-text="mesAtualLabel"></span>
           <button @click="mesMais()"
                   style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
-                  onmouseover="this.style.borderColor='rgba(0,212,255,0.3)';this.style.color='var(--color-primary)'"
-                  onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-muted)'"
+                  class="hov-tab-pill"
           >&#8250;</button>
         </div>
 
