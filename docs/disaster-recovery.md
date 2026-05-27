@@ -5,7 +5,7 @@
 
 Este documento descreve como recuperar o Argus AI em diferentes cenários
 de falha. Mantenha-o **impresso ou salvo offline** — em uma emergência,
-pode ser que você não tenha acesso à VM nem ao Cryptomator.
+pode ser que você não tenha acesso à VM nem ao cofre de senhas.
 
 ---
 
@@ -33,9 +33,9 @@ pode ser que você não tenha acesso à VM nem ao Cryptomator.
   - Pasta raiz: `/Argus_Backups/`
   - Subpastas: `banco/`, `env/`, `grafana/`, `fotos/`
 
-- **Credenciais e senhas** (armazenadas no Cryptomator → Google Drive)
-  - `argus_oracle_object_storage.txt` — Access/Secret Key Oracle
-  - `argus_senha_gpg_backup.txt` — senha para decifrar o `.env`
+- **Credenciais e senhas** (armazenadas no cofre de senhas offline do operador)
+  - Access Key + Secret Key do Oracle Object Storage
+  - Senha de descriptografia do `.env` (GPG simétrico)
 
 ---
 
@@ -94,7 +94,7 @@ sudo mkdir -p /mnt/fotos
 #### B.3 — Restaurar `.env`
 ```bash
 # Configura rclone seguindo scripts/setup_rclone.sh (passos 2 e 3)
-# (precisa do conteúdo do Cryptomator: chaves Oracle + senha GPG)
+# (precisa das credenciais guardadas no cofre de senhas: chaves Oracle + senha GPG)
 
 # Baixa o .env cifrado mais recente
 rclone copy gdrive:Argus_Backups/env/ /tmp/
@@ -102,7 +102,7 @@ rclone copy gdrive:Argus_Backups/env/ /tmp/
 # Descobre o mais recente e decifra
 LATEST=$(ls -t /tmp/env_*.gpg | head -1)
 gpg --output ~/argus-ai/.env --decrypt "$LATEST"
-# Senha: a do Cryptomator (argus_senha_gpg_backup.txt)
+# Senha: a do cofre de senhas (entrada do GPG do Argus)
 chmod 600 ~/argus-ai/.env
 ```
 
@@ -168,7 +168,7 @@ docker compose -f docker-compose.monitoring.yml up -d
 
 ---
 
-### Cenário E — Perdi a senha do GPG (Cryptomator)
+### Cenário E — Perdi a senha do GPG
 
 **Impacto**: catastrófico se também perdeu acesso à VM original.
 
@@ -178,7 +178,7 @@ docker compose -f docker-compose.monitoring.yml up -d
 - A aplicação até sobe, mas os dados pessoais ficam ilegíveis.
 
 **Mitigação preventiva**:
-- Backup do Cryptomator no Google Drive **e** uma cópia local
+- Manter o cofre de senhas em mais de um lugar (sync na nuvem **e** cópia local offline)
 - Backup adicional da senha do GPG em outro local seguro (ex: cofre físico)
 
 **Se já aconteceu**:

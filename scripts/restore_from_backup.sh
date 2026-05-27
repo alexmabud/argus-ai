@@ -130,7 +130,7 @@ if [ "$DO_ENV" = true ]; then
     say "Baixando .env cifrado..."
     rclone copy "$REMOTE/env/env_${RESTORE_DATE}.gpg" "$WORK_DIR/" --log-level NOTICE
 
-    say "Decifrando .env (vai pedir a senha GPG salva no Cryptomator)..."
+    say "Decifrando .env (vai pedir a senha GPG salva no seu cofre de senhas)..."
     gpg --batch --yes --output "$WORK_DIR/.env" --decrypt "$ENV_GPG" || {
         err "Falha ao decifrar — senha errada?"
         exit 1

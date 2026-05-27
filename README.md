@@ -532,7 +532,7 @@ backups disponiveis em Oracle ou Google Drive, pede a data, pergunta o que resta
 | VM Oracle terminada | Recreacao da VM + restore completo via Google Drive (banco + env + grafana + fotos) |
 | Perda da conta Oracle | Backups continuam acessiveis no Google Drive |
 | Perda da conta Google | Banco, env e grafana ainda no Oracle; fotos ficam perdidas se a VM tambem morreu |
-| Perda da senha GPG | `.env` no backup vira inutilizavel — manter copia da senha no Cryptomator + backup adicional |
+| Perda da senha GPG | `.env` no backup vira inutilizavel — manter copia da senha em gerenciador seguro com backup redundante |
 
 Detalhes operacionais (passos exatos de restore, checklist mensal de validacao,
 contatos): ver [docs/disaster-recovery.md](docs/disaster-recovery.md).

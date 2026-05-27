@@ -41,7 +41,7 @@ Escolha:
   provider>  Other
   env_auth>  false                       (vamos colocar credenciais inline)
   access_key_id>  <Access Key do Oracle Object Storage>
-  secret_access_key>  <Secret Key do Oracle — está no seu Cryptomator>
+  secret_access_key>  <Secret Key do Oracle — guardada no seu cofre de senhas>
   region>  sa-saopaulo-1
   endpoint>  https://grjzkxyb1rpa.compat.objectstorage.sa-saopaulo-1.oraclecloud.com
   location_constraint>  (deixa em branco — Enter)
@@ -98,7 +98,7 @@ Teste:
 PASSO 4 — Salvar senha do GPG
 ═══════════════════════════════════════════════════════════════════════
 
-A senha do GPG (que você salvou no Cryptomator) precisa estar acessível
+A senha do GPG (que você salvou no seu cofre de senhas) precisa estar acessível
 ao script de backup que roda via cron — sem prompt interativo.
 
 Crie o arquivo:
