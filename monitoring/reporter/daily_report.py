@@ -152,6 +152,10 @@ def main() -> None:
         "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1h])) by (le))"
     )
 
+    # Sem séries 5xx no período = zero erros (e não "sem dados") quando houve tráfego
+    if total_erros is None and total_requests is not None and total_requests > 0:
+        total_erros = 0.0
+
     # Calcular taxa de erro
     taxa_erro_str = "—"
     if (
