@@ -92,20 +92,39 @@ def fmt(value: float | None, unit: str = "", decimals: int = 1) -> str:
     return f"{value:.{decimals}f}{unit}"
 
 
-def backup_status(timestamp: float | None, threshold_hours: float) -> str:
-    """Formata status de backup com base no timestamp do último sucesso.
+def backup_status(
+    timestamp: float | None,
+    scheduled_hour_brt: int,
+    run_window_hours: float = 3.0,
+) -> str:
+    """Formata status de um backup agendado diariamente em scheduled_hour_brt.
+
+    Em vez de um threshold fixo (que mascara uma execução perdida enquanto o
+    último sucesso ainda estiver "recente"), valida se o backup ocorreu no
+    slot agendado mais recente. Assim, se a execução de hoje não rodou, o
+    relatório acusa ⚠️ ATRASADO já na manhã seguinte — mesmo que tenha havido
+    um run manual avulso poucas horas antes.
 
     Args:
         timestamp: Unix timestamp (em segundos) do último backup OK, ou None.
-        threshold_hours: Acima desse valor (em horas), considera ATRASADO.
+        scheduled_hour_brt: Hora do agendamento diário em BRT (ex: 3 = 03h).
+        run_window_hours: Folga após o horário agendado em que o backup ainda
+            pode estar em execução (evita falso ATRASADO durante o run).
 
     Returns:
         String com emoji + status + tempo decorrido (ex: "✅ OK (8h atrás)").
     """
     if timestamp is None:
         return "❓ nunca registrado"
-    now_ts = datetime.now(tz=BRT).timestamp()
-    delta_h = (now_ts - timestamp) / 3600
+    now = datetime.now(tz=BRT)
+    scheduled_today = now.replace(
+        hour=scheduled_hour_brt, minute=0, second=0, microsecond=0
+    )
+    last_scheduled = (
+        scheduled_today if scheduled_today <= now else scheduled_today - timedelta(days=1)
+    )
+
+    delta_h = (now.timestamp() - timestamp) / 3600
     if delta_h < 0:
         # Clock skew — trata como atual
         delta_h = 0
@@ -115,7 +134,14 @@ def backup_status(timestamp: float | None, threshold_hours: float) -> str:
         when = f"{delta_h:.1f}h atrás"
     else:
         when = f"{int(delta_h / 24)}d atrás"
-    if delta_h <= threshold_hours:
+
+    ran_this_cycle = timestamp >= last_scheduled.timestamp()
+    # Ainda dentro da janela de execução do slot atual: o backup pode estar
+    # rodando agora; basta o ciclo anterior ter ido bem para não alarmar.
+    within_run_window = (now - last_scheduled) <= timedelta(hours=run_window_hours)
+    ran_prev_cycle = timestamp >= (last_scheduled - timedelta(days=1)).timestamp()
+
+    if ran_this_cycle or (within_run_window and ran_prev_cycle):
         return f"✅ OK ({when})"
     return f"⚠️ ATRASADO ({when})"
 
@@ -201,13 +227,13 @@ def main() -> None:
         " / (rate(redis_keyspace_hits_total[1h]) + rate(redis_keyspace_misses_total[1h])) * 100"
     )
 
-    # Backup
-    # - Local (db-backup container): roda diariamente às 07h BRT (alerta dispara em >26h)
-    # - Nuvens (backup_to_clouds.sh): roda às 03h BRT, 1h de folga sobre 24h diárias
+    # Backup — valida o slot agendado mais recente (não um threshold fixo)
+    # - Local (db-backup container): roda diariamente às 07h BRT
+    # - Nuvens (backup_to_clouds.sh, cron root): roda às 03h BRT
     backup_local_ts = query("argus_backup_last_success_timestamp_seconds")
     backup_clouds_ts = query("argus_backup_clouds_last_success_timestamp_seconds")
-    backup_local_status = backup_status(backup_local_ts, threshold_hours=26)
-    backup_clouds_status = backup_status(backup_clouds_ts, threshold_hours=27)
+    backup_local_status = backup_status(backup_local_ts, scheduled_hour_brt=7)
+    backup_clouds_status = backup_status(backup_clouds_ts, scheduled_hour_brt=3)
 
     # Montar mensagem
     ram_line = f"{fmt(ram_pct_max, '%')}"
