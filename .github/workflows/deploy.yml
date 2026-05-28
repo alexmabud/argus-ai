@@ -7,9 +7,15 @@
 # Conecta via SSH e executa docker compose up --build.
 #
 # Secrets necessários no GitHub:
-#   VM_SSH_HOST — IP ou hostname da VM
-#   VM_SSH_USER — Usuário SSH (ex: root, ubuntu)
-#   VM_SSH_KEY  — Chave privada SSH (conteúdo completo)
+#   VM_SSH_HOST        — IP ou hostname da VM
+#   VM_SSH_USER        — Usuário SSH (ex: root, ubuntu)
+#   VM_SSH_KEY         — Chave privada SSH (conteúdo completo)
+#   GF_ADMIN_PASSWORD  — Senha do admin do Grafana (monitoring stack)
+#   TELEGRAM_BOT_TOKEN — Token do bot Telegram (monitoring stack)
+#   TELEGRAM_CHAT_ID   — ID do chat de alertas (monitoring stack)
+# Os 3 últimos são necessários porque este deploy também sobe a monitoring
+# stack (docker-compose.monitoring.yml exige essas variáveis). Passamos como
+# env de sessão SSH, sem persistir no .env da VM (ver Task 25).
 # ══════════════════════════════════════════════════════════════
 
 name: Deploy
@@ -54,6 +60,7 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           port: 22
           command_timeout: 30m
+          envs: GF_ADMIN_PASSWORD,TELEGRAM_BOT_TOKEN,TELEGRAM_CHAT_ID
           script: |
             set -e
             cd ~/argus-ai
@@ -110,3 +117,7 @@ jobs:
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
               ps prometheus grafana node-exporter \
               postgres-exporter redis-exporter telegram-reporter
+        env:
+          GF_ADMIN_PASSWORD: ${{ secrets.GF_ADMIN_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
