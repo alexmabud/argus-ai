@@ -92,6 +92,34 @@ def fmt(value: float | None, unit: str = "", decimals: int = 1) -> str:
     return f"{value:.{decimals}f}{unit}"
 
 
+def backup_status(timestamp: float | None, threshold_hours: float) -> str:
+    """Formata status de backup com base no timestamp do último sucesso.
+
+    Args:
+        timestamp: Unix timestamp (em segundos) do último backup OK, ou None.
+        threshold_hours: Acima desse valor (em horas), considera ATRASADO.
+
+    Returns:
+        String com emoji + status + tempo decorrido (ex: "✅ OK (8h atrás)").
+    """
+    if timestamp is None:
+        return "❓ nunca registrado"
+    now_ts = datetime.now(tz=BRT).timestamp()
+    delta_h = (now_ts - timestamp) / 3600
+    if delta_h < 0:
+        # Clock skew — trata como atual
+        delta_h = 0
+    if delta_h < 1:
+        when = f"{int(delta_h * 60)}min atrás"
+    elif delta_h < 48:
+        when = f"{delta_h:.1f}h atrás"
+    else:
+        when = f"{int(delta_h / 24)}d atrás"
+    if delta_h <= threshold_hours:
+        return f"✅ OK ({when})"
+    return f"⚠️ ATRASADO ({when})"
+
+
 def send_telegram(message: str) -> None:
     """Envia mensagem formatada no Telegram.
 
@@ -173,6 +201,14 @@ def main() -> None:
         " / (rate(redis_keyspace_hits_total[1h]) + rate(redis_keyspace_misses_total[1h])) * 100"
     )
 
+    # Backup
+    # - Local (db-backup container): roda diariamente às 07h BRT (alerta dispara em >26h)
+    # - Nuvens (backup_to_clouds.sh): roda às 03h BRT, 1h de folga sobre 24h diárias
+    backup_local_ts = query("argus_backup_last_success_timestamp_seconds")
+    backup_clouds_ts = query("argus_backup_clouds_last_success_timestamp_seconds")
+    backup_local_status = backup_status(backup_local_ts, threshold_hours=26)
+    backup_clouds_status = backup_status(backup_clouds_ts, threshold_hours=27)
+
     # Montar mensagem
     ram_line = f"{fmt(ram_pct_max, '%')}"
     if ram_gb_num:
@@ -196,6 +232,10 @@ def main() -> None:
 🗄️ *Banco e Cache*
 ├── Conexões PG: {fmt(pg_connections, '', 0)}
 └── Redis hit rate: {fmt(redis_hit_rate, '%')}
+
+💾 *Backup*
+├── Local (banco): {backup_local_status}
+└── Nuvens (Oracle + GDrive): {backup_clouds_status}
 
 🔗 [Ver dashboard completo](https://{DOMAIN}/grafana)"""
 
