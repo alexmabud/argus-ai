@@ -46,7 +46,7 @@ class TestCriarAbordagem:
             guarnicao_id=guarnicao.id,
         )
         assert abordagem.id is not None
-        assert abordagem.endereco_texto == "Rua Teste, 100"
+        assert abordagem.endereco_texto == "RUA TESTE, 100"
         assert abordagem.guarnicao_id == guarnicao.id
 
     async def test_criar_abordagem_com_pessoas(
@@ -154,8 +154,9 @@ class TestAtualizarAbordagem:
         )
         abordagem = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
         update = AbordagemUpdate(observacao="Nova observação")
+        # observacao é normalizada para MAIÚSCULAS no schema
         atualizada = await service.atualizar(abordagem.id, update, usuario.id, guarnicao.id)
-        assert atualizada.observacao == "Nova observação"
+        assert atualizada.observacao == "NOVA OBSERVAÇÃO"
 
     async def test_buscar_por_id_inexistente(self, db_session: AsyncSession, guarnicao: Guarnicao):
         """Testa busca de abordagem inexistente retorna NaoEncontradoError.

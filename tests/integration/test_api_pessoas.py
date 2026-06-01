@@ -27,8 +27,8 @@ class TestCriarPessoa:
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["nome"] == "Maria Souza"
-        assert data["apelido"] == "Marizinha"
+        assert data["nome"] == "MARIA SOUZA"
+        assert data["apelido"] == "MARIZINHA"
         assert "id" in data
 
     async def test_criar_pessoa_com_cpf_mascarado(self, client: AsyncClient, auth_headers: dict):
@@ -130,7 +130,7 @@ class TestObterPessoa:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["nome"] == "Pessoa Detalhe"
+        assert data["nome"] == "PESSOA DETALHE"
         assert "enderecos" in data
         assert "relacionamentos" in data
 

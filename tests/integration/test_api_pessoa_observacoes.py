@@ -32,7 +32,7 @@ class TestCriarObservacao:
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["texto"] == "Indivíduo usa boné vermelho como sinal de reconhecimento."
+        assert data["texto"] == "INDIVÍDUO USA BONÉ VERMELHO COMO SINAL DE RECONHECIMENTO."
         assert "id" in data
         assert "criado_em" in data
 
@@ -150,8 +150,8 @@ class TestListarObservacoes:
         data = response.json()
         assert len(data) == 2
         # Mais recente primeiro
-        assert data[0]["texto"] == "Segunda observação criada."
-        assert data[1]["texto"] == "Primeira observação criada."
+        assert data[0]["texto"] == "SEGUNDA OBSERVAÇÃO CRIADA."
+        assert data[1]["texto"] == "PRIMEIRA OBSERVAÇÃO CRIADA."
 
 
 class TestAtualizarObservacao:
@@ -185,7 +185,7 @@ class TestAtualizarObservacao:
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == obs_id
-        assert data["texto"] == "Texto atualizado da observação."
+        assert data["texto"] == "TEXTO ATUALIZADO DA OBSERVAÇÃO."
 
     async def test_obs_inexistente_retorna_404(
         self,
