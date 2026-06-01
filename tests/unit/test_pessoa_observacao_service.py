@@ -114,7 +114,7 @@ class TestCriarObservacao:
 
         assert isinstance(result, PessoaObservacao)
         assert result.pessoa_id == 1
-        assert result.texto == "Possui tatuagem no braço direito"
+        assert result.texto == "POSSUI TATUAGEM NO BRAÇO DIREITO"
         assert result.guarnicao_id == 1
         service.audit.log.assert_awaited_once()
 
@@ -230,7 +230,7 @@ class TestAtualizarObservacao:
         result = await service.atualizar(obs_id=5, pessoa_id=1, data=data, user=user)
 
         assert result is obs
-        service.obs_repo.update.assert_awaited_once_with(obs, {"texto": "Texto atualizado"})
+        service.obs_repo.update.assert_awaited_once_with(obs, {"texto": "TEXTO ATUALIZADO"})
         service.audit.log.assert_awaited_once()
 
     async def test_obs_inexistente(self, service):
