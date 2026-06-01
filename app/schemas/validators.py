@@ -24,9 +24,11 @@ def to_upper(v: str | None) -> str | None:
 
     Returns:
         Texto em maiúsculas sem espaços nas pontas. None permanece None.
+        Valores não-string são repassados intactos para o Pydantic reportar
+        o erro de tipo normalmente (evita AttributeError em .strip()).
     """
-    if v is None:
-        return None
+    if not isinstance(v, str):
+        return v
     return v.strip().upper()
 
 

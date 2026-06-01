@@ -32,6 +32,11 @@ def test_to_upper_preserva_none():
     assert to_upper(None) is None
 
 
+def test_to_upper_repassa_nao_string():
+    """Valor não-string é repassado intacto (Pydantic reporta o erro de tipo)."""
+    assert to_upper(123) == 123
+
+
 class _ModeloOpcional(BaseModel):
     campo: UpperStr = None
 
