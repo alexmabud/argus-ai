@@ -60,8 +60,8 @@ class TestCriarVinculoManual:
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["tipo"] == "Irmão"
-        assert data["descricao"] == "Mora junto"
+        assert data["tipo"] == "IRMÃO"
+        assert data["descricao"] == "MORA JUNTO"
         assert data["pessoa_vinculada_id"] == outra_pessoa.id
         assert data["nome"] == outra_pessoa.nome
         assert "id" in data
@@ -188,7 +188,7 @@ class TestVinculoManualNoDetalhe:
         data = response.json()
         assert "vinculos_manuais" in data
         assert len(data["vinculos_manuais"]) == 1
-        assert data["vinculos_manuais"][0]["tipo"] == "Pai"
+        assert data["vinculos_manuais"][0]["tipo"] == "PAI"
         assert data["vinculos_manuais"][0]["nome"] == outra_pessoa.nome
 
 

@@ -41,6 +41,11 @@ _CAMPOS: list[tuple[str, str]] = [
     ("veiculos", "cor"),
     ("veiculos", "tipo"),
     ("veiculos", "observacoes"),
+    ("vinculos_manuais", "tipo"),
+    ("vinculos_manuais", "descricao"),
+    # Em localidades, apenas nome_exibicao (texto mostrado ao usuário).
+    # A coluna `nome` é o índice de busca (minúsculo, sem acento) e não muda.
+    ("localidades", "nome_exibicao"),
 ]
 
 
