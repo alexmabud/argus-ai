@@ -84,7 +84,7 @@ function renderAbordagemNova() {
 
           <div>
             <label class="login-field-label">Nome *</label>
-            <input type="text" x-model="novaPessoa.nome" placeholder="Nome completo">
+            <input type="text" class="input-upper" x-model="novaPessoa.nome" placeholder="Nome completo">
           </div>
 
           <div>
@@ -105,18 +105,18 @@ function renderAbordagemNova() {
             </div>
             <div>
               <label class="login-field-label">Vulgo</label>
-              <input type="text" x-model="novaPessoa.apelido" placeholder="Apelido">
+              <input type="text" class="input-upper" x-model="novaPessoa.apelido" placeholder="Apelido">
             </div>
           </div>
 
           <div>
             <label class="login-field-label">Nome da mãe</label>
-            <input type="text" x-model="novaPessoa.nome_mae" placeholder="Nome completo da mãe" maxlength="300">
+            <input type="text" class="input-upper" x-model="novaPessoa.nome_mae" placeholder="Nome completo da mãe" maxlength="300">
           </div>
 
           <div>
             <label class="login-field-label">Endereço</label>
-            <input type="text" x-model="novaPessoa.endereco" placeholder="Rua e número">
+            <input type="text" class="input-upper" x-model="novaPessoa.endereco" placeholder="Rua e número">
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
@@ -133,7 +133,7 @@ function renderAbordagemNova() {
             </div>
             <div style="position:relative;">
               <label class="login-field-label">Cidade</label>
-              <input type="text" x-model="anCidadeTexto" :disabled="!anEstadoId"
+              <input type="text" class="input-upper" x-model="anCidadeTexto" :disabled="!anEstadoId"
                      @focus="anBuscarCidades($event)"
                      @input.debounce.300ms="anBuscarCidades($event)"
                      @blur.debounce.200ms="anCidadeSugestoes=[]"
@@ -156,7 +156,7 @@ function renderAbordagemNova() {
             </div>
             <div style="position:relative;">
               <label class="login-field-label">Bairro</label>
-              <input type="text" x-model="anBairroTexto" :disabled="!anCidadeId"
+              <input type="text" class="input-upper" x-model="anBairroTexto" :disabled="!anCidadeId"
                      @focus="anBuscarBairros($event)"
                      @input.debounce.300ms="anBuscarBairros($event)"
                      @blur.debounce.200ms="anBairroSugestoes=[]"
@@ -248,10 +248,10 @@ function renderAbordagemNova() {
                   <button @click="novoEnderecoAberto = {...novoEnderecoAberto, [p.id]: false}"
                           style="color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;font-family:var(--font-data);font-size:11px;">Cancelar</button>
                 </div>
-                <input type="text" x-model="novoEnderecoData[p.id + '_endereco']" placeholder="Rua e número">
+                <input type="text" class="input-upper" x-model="novoEnderecoData[p.id + '_endereco']" placeholder="Rua e número">
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-                  <input type="text" list="lista-bairros-pessoa" x-model="novoEnderecoData[p.id + '_bairro']" placeholder="Bairro">
-                  <input type="text" list="lista-cidades-pessoa" x-model="novoEnderecoData[p.id + '_cidade']" placeholder="Cidade">
+                  <input type="text" class="input-upper" list="lista-bairros-pessoa" x-model="novoEnderecoData[p.id + '_bairro']" placeholder="Bairro">
+                  <input type="text" class="input-upper" list="lista-cidades-pessoa" x-model="novoEnderecoData[p.id + '_cidade']" placeholder="Cidade">
                   <input type="text" list="lista-estados-pessoa" x-model="novoEnderecoData[p.id + '_estado']" placeholder="UF" maxlength="2" style="text-transform:uppercase;">
                 </div>
                 <button @click="salvarNovoEndereco(p.id)" class="btn btn-primary" style="font-size:12px;padding:6px 0;"
@@ -419,11 +419,11 @@ function renderAbordagemNova() {
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
             <div>
               <label class="login-field-label">Modelo</label>
-              <input type="text" list="lista-modelos-veiculo" x-model="novoVeiculo.modelo" placeholder="Ex: Gol">
+              <input type="text" class="input-upper" list="lista-modelos-veiculo" x-model="novoVeiculo.modelo" placeholder="Ex: Gol">
             </div>
             <div>
               <label class="login-field-label">Cor</label>
-              <input type="text" list="lista-cores-veiculo" x-model="novoVeiculo.cor" placeholder="Ex: Branco">
+              <input type="text" class="input-upper" list="lista-cores-veiculo" x-model="novoVeiculo.cor" placeholder="Ex: Branco">
             </div>
             <div>
               <label class="login-field-label">Ano</label>
@@ -461,7 +461,7 @@ function renderAbordagemNova() {
             <span x-text="recording ? 'PARAR' : 'VOZ'"></span>
           </button>
         </div>
-        <textarea x-model="observacao" rows="3" placeholder="Descreva a abordagem..."></textarea>
+        <textarea class="input-upper" x-model="observacao" rows="3" placeholder="Descreva a abordagem..."></textarea>
       </div>
 
       <!-- 6. Submit -->

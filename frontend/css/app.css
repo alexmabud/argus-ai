@@ -526,6 +526,15 @@ input.input-warning {
   box-shadow: 0 0 6px rgba(255, 107, 0, 0.1);
 }
 
+/* Padroniza entrada de dados operacionais em MAIUSCULAS (apenas visual;
+   o backend garante o dado salvo). Placeholders permanecem legiveis. */
+.input-upper {
+  text-transform: uppercase;
+}
+.input-upper::placeholder {
+  text-transform: none;
+}
+
 /* ========================================
    BUTTONS
    ======================================== */

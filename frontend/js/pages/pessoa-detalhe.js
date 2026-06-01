@@ -228,7 +228,7 @@ function renderPessoaDetalhe(appState) {
                   <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Nome <span style="color: var(--color-danger)">*</span></label>
                   <input type="text" x-model="editPessoaForm.nome"
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         class="foc-input-primary">
+                         class="foc-input-primary input-upper">
                 </div>
                 <div>
                   <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">CPF</label>
@@ -248,13 +248,13 @@ function renderPessoaDetalhe(appState) {
                   <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Apelido</label>
                   <input type="text" x-model="editPessoaForm.apelido"
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         class="foc-input-primary">
+                         class="foc-input-primary input-upper">
                 </div>
                 <div>
                   <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500; display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Observações</label>
                   <textarea x-model="editPessoaForm.observacoes" rows="2"
                             style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); resize: none; box-sizing: border-box;"
-                            class="foc-input-primary"></textarea>
+                            class="foc-input-primary input-upper"></textarea>
                 </div>
               </div>
               <div style="display: flex; gap: 0.5rem; padding-top: 0.25rem;">
@@ -289,7 +289,7 @@ function renderPessoaDetalhe(appState) {
                   <input type="text" x-model="editEnderecoForm.endereco"
                          placeholder="Rua, número..."
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         class="foc-input-primary">
+                         class="foc-input-primary input-upper">
                 </div>
                 <!-- Estado -->
                 <div>
@@ -314,7 +314,7 @@ function renderPessoaDetalhe(appState) {
                          @blur.debounce.200ms="enderecoCidadeSugestoes = []"
                          placeholder="Digite para buscar..."
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         class="foc-input-primary">
+                         class="foc-input-primary input-upper">
                   <div x-show="enderecoCidadeSugestoes.length > 0 || enderecoCidadeCadastrarNovo"
                        style="position: absolute; z-index: 100; width: 100%; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; margin-top: 2px; max-height: 200px; overflow-y: auto;">
                     <template x-for="cidade in enderecoCidadeSugestoes" :key="cidade.id">
@@ -343,7 +343,7 @@ function renderPessoaDetalhe(appState) {
                          @blur.debounce.200ms="enderecoBairroSugestoes = []"
                          placeholder="Digite para buscar..."
                          style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;"
-                         class="foc-input-primary">
+                         class="foc-input-primary input-upper">
                   <div x-show="enderecoBairroSugestoes.length > 0 || enderecoBairroCadastrarNovo"
                        style="position: absolute; z-index: 100; width: 100%; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; margin-top: 2px; max-height: 200px; overflow-y: auto;">
                     <template x-for="bairro in enderecoBairroSugestoes" :key="bairro.id">
@@ -434,7 +434,7 @@ function renderPessoaDetalhe(appState) {
                 <label style="font-family: var(--font-data); font-size: 0.75rem; color: var(--color-text-dim); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">
                   Observação <span style="color: var(--color-danger)">*</span>
                 </label>
-                <textarea x-model="obsForm.texto" rows="4"
+                <textarea class="input-upper" x-model="obsForm.texto" rows="4"
                           placeholder="Digite a observação..."
                           style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.625rem; color: var(--color-text); font-size: 0.875rem; font-family: var(--font-data); resize: vertical; outline: none;"
                           @focus="$el.style.borderColor='var(--color-primary)'"
@@ -530,9 +530,9 @@ function renderPessoaDetalhe(appState) {
               <!-- Sub-formulário: cadastrar nova pessoa -->
               <div x-show="subFormNovaPessoa" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <p style="font-size: 0.75rem; color: var(--color-primary); font-weight: 500; margin: 0;">Nova pessoa</p>
-                <input type="text" x-model="novaPessoaForm.nome" placeholder="Nome *"
+                <input type="text" class="input-upper" x-model="novaPessoaForm.nome" placeholder="Nome *"
                        style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;">
-                <input type="text" x-model="novaPessoaForm.apelido" placeholder="Apelido (opcional)"
+                <input type="text" class="input-upper" x-model="novaPessoaForm.apelido" placeholder="Apelido (opcional)"
                        style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;">
                 <input type="text" x-model="novaPessoaForm.cpf" placeholder="CPF (opcional)"
                        style="width: 100%; background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: var(--color-text); font-family: var(--font-body); box-sizing: border-box;">
