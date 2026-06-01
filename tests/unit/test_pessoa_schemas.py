@@ -8,9 +8,9 @@ from app.schemas.pessoa import PessoaCreate, PessoaUpdate
 
 
 def test_pessoa_create_aceita_nome_mae():
-    """PessoaCreate deve aceitar nome_mae e preservar o valor."""
+    """PessoaCreate deve aceitar nome_mae (normalizado para maiúsculas)."""
     p = PessoaCreate(nome="Fulano", nome_mae="Maria")
-    assert p.nome_mae == "Maria"
+    assert p.nome_mae == "MARIA"
 
 
 def test_pessoa_create_nome_mae_opcional():
@@ -29,9 +29,50 @@ def test_pessoa_create_nome_mae_max_length():
 
 
 def test_pessoa_update_aceita_nome_mae():
-    """PessoaUpdate deve aceitar nome_mae em atualização parcial."""
+    """PessoaUpdate deve aceitar nome_mae (normalizado para maiúsculas)."""
     p = PessoaUpdate(nome_mae="Nova Mae")
-    assert p.nome_mae == "Nova Mae"
+    assert p.nome_mae == "NOVA MAE"
+
+
+# --- Padronização em MAIÚSCULAS -------------------------------------------
+
+
+def test_pessoa_create_normaliza_nome_e_campos():
+    """PessoaCreate normaliza nome, apelido, nome_mae e observações."""
+    p = PessoaCreate(
+        nome="joão silva",
+        apelido="jão",
+        nome_mae="maria silva",
+        observacoes="usa boné azul",
+    )
+    assert p.nome == "JOÃO SILVA"
+    assert p.apelido == "JÃO"
+    assert p.nome_mae == "MARIA SILVA"
+    assert p.observacoes == "USA BONÉ AZUL"
+
+
+def test_pessoa_create_nao_afeta_cpf():
+    """CPF não deve ser alterado pela normalização."""
+    p = PessoaCreate(nome="joão", cpf="123.456.789-09")
+    assert p.cpf == "123.456.789-09"
+
+
+def test_pessoa_update_campos_opcionais_none():
+    """PessoaUpdate normaliza o que vem e mantém None nos omitidos."""
+    p = PessoaUpdate(nome="ana")
+    assert p.nome == "ANA"
+    assert p.apelido is None
+
+
+def test_endereco_create_normaliza():
+    """EnderecoCreate normaliza logradouro, bairro, cidade e UF."""
+    from app.schemas.pessoa import EnderecoCreate
+
+    e = EnderecoCreate(endereco="rua a, 10", bairro="centro", cidade="rio", estado="rj")
+    assert e.endereco == "RUA A, 10"
+    assert e.bairro == "CENTRO"
+    assert e.cidade == "RIO"
+    assert e.estado == "RJ"
 
 
 # --- Task B4: foto_principal_thumb_url ------------------------------------

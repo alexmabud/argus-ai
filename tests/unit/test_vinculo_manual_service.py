@@ -103,8 +103,8 @@ class TestCriarVinculoManual:
         assert isinstance(result, VinculoManual)
         assert result.pessoa_id == 1
         assert result.pessoa_vinculada_id == 2
-        assert result.tipo == "Irmão"
-        assert result.descricao == "Mora junto"
+        assert result.tipo == "IRMÃO"
+        assert result.descricao == "MORA JUNTO"
         service.audit.log.assert_awaited_once()
 
     async def test_pessoa_nao_encontrada_levanta_erro(self, service):

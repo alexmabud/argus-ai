@@ -7,7 +7,7 @@
  */
 function renderDashboard() {
   return `
-    <div x-data="{ ...dashboardPage(), ...personPhotoModal() }" x-init="load()" style="display:flex;flex-direction:column;gap:20px;">
+    <div x-data="dashboardPage()" x-init="load()" style="display:flex;flex-direction:column;gap:20px;">
 
       <!-- Header da página -->
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -277,6 +277,12 @@ function renderDashboard() {
 function dashboardPage() {
   const agora = new Date();
   return {
+    // Spread no objeto retornado (não no x-data) para preservar os getters
+    // reativos do calendário — o spread no x-data congelaria mesAtualLabel,
+    // diasDoMes e primeiroDiaSemana em valores estáticos. personPhotoModal()
+    // só tem dados/métodos (sem getters), então pode ser mesclado aqui.
+    ...personPhotoModal(),
+
     loading: true,
     loadingPessoas: false,
 

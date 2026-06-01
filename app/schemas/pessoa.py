@@ -10,6 +10,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.validators import UpperStr, UpperStrReq
 from app.schemas.vinculo_manual import VinculoManualRead
 from app.services.storage_service import normalize_storage_url
 
@@ -26,12 +27,12 @@ class PessoaCreate(BaseModel):
         observacoes: Anotações sobre a pessoa (opcional).
     """
 
-    nome: str = Field(..., min_length=2, max_length=300)
+    nome: UpperStrReq = Field(..., min_length=2, max_length=300)
     cpf: str | None = Field(None, max_length=14)
     data_nascimento: date | None = None
-    apelido: str | None = Field(None, max_length=100)
-    nome_mae: str | None = Field(None, max_length=300)
-    observacoes: str | None = None
+    apelido: UpperStr = Field(None, max_length=100)
+    nome_mae: UpperStr = Field(None, max_length=300)
+    observacoes: UpperStr = None
 
 
 class PessoaUpdate(BaseModel):
@@ -48,12 +49,12 @@ class PessoaUpdate(BaseModel):
         observacoes: Anotações atualizadas.
     """
 
-    nome: str | None = Field(None, min_length=2, max_length=300)
+    nome: UpperStr = Field(None, min_length=2, max_length=300)
     cpf: str | None = Field(None, max_length=14)
     data_nascimento: date | None = None
-    apelido: str | None = Field(None, max_length=100)
-    nome_mae: str | None = Field(None, max_length=300)
-    observacoes: str | None = None
+    apelido: UpperStr = Field(None, max_length=100)
+    nome_mae: UpperStr = Field(None, max_length=300)
+    observacoes: UpperStr = None
 
 
 class PessoaRead(BaseModel):
@@ -116,10 +117,10 @@ class EnderecoCreate(BaseModel):
         data_fim: Data de fim da associação com endereço.
     """
 
-    endereco: str = Field(..., min_length=1, max_length=500)
-    bairro: str | None = Field(None, max_length=200)
-    cidade: str | None = Field(None, max_length=200)
-    estado: str | None = Field(None, max_length=2)
+    endereco: UpperStrReq = Field(..., min_length=1, max_length=500)
+    bairro: UpperStr = Field(None, max_length=200)
+    cidade: UpperStr = Field(None, max_length=200)
+    estado: UpperStr = Field(None, max_length=2)
     estado_id: int | None = None
     cidade_id: int | None = None
     bairro_id: int | None = None
@@ -148,10 +149,10 @@ class EnderecoUpdate(BaseModel):
         data_fim: Data de fim atualizada.
     """
 
-    endereco: str | None = Field(None, min_length=1, max_length=500)
-    bairro: str | None = Field(None, max_length=200)
-    cidade: str | None = Field(None, max_length=200)
-    estado: str | None = Field(None, max_length=2)
+    endereco: UpperStr = Field(None, min_length=1, max_length=500)
+    bairro: UpperStr = Field(None, max_length=200)
+    cidade: UpperStr = Field(None, max_length=200)
+    estado: UpperStr = Field(None, max_length=2)
     estado_id: int | None = None
     cidade_id: int | None = None
     bairro_id: int | None = None

@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.schemas.auth import UsuarioResumoRead
 from app.schemas.foto import FotoRead
 from app.schemas.ocorrencia import OcorrenciaRead
+from app.schemas.validators import UpperStr
 from app.schemas.veiculo import VeiculoRead
 from app.services.storage_service import normalize_storage_url
 
@@ -40,8 +41,8 @@ class AbordagemCreate(BaseModel):
     data_hora: datetime
     latitude: float | None = Field(None, ge=-90, le=90)
     longitude: float | None = Field(None, ge=-180, le=180)
-    endereco_texto: str | None = Field(None, max_length=500)
-    observacao: str | None = None
+    endereco_texto: UpperStr = Field(None, max_length=500)
+    observacao: UpperStr = None
     origem: str = Field("online", max_length=20)
     client_id: str | None = Field(None, max_length=100)
     pessoa_ids: list[int] = Field(default=[], min_length=1)
@@ -59,8 +60,8 @@ class AbordagemUpdate(BaseModel):
         endereco_texto: Endereço em texto atualizado.
     """
 
-    observacao: str | None = None
-    endereco_texto: str | None = Field(None, max_length=500)
+    observacao: UpperStr = None
+    endereco_texto: UpperStr = Field(None, max_length=500)
 
 
 class AbordagemRead(BaseModel):

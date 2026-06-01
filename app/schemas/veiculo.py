@@ -10,6 +10,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.validators import UpperStr
+
 
 class VeiculoCreate(BaseModel):
     """Requisição de criação de veículo.
@@ -26,11 +28,11 @@ class VeiculoCreate(BaseModel):
     """
 
     placa: str = Field(..., min_length=7, max_length=10)
-    modelo: str | None = Field(None, max_length=100)
-    cor: str | None = Field(None, max_length=50)
+    modelo: UpperStr = Field(None, max_length=100)
+    cor: UpperStr = Field(None, max_length=50)
     ano: int | None = None
-    tipo: str | None = Field(None, max_length=50)
-    observacoes: str | None = Field(None, max_length=500)
+    tipo: UpperStr = Field(None, max_length=50)
+    observacoes: UpperStr = Field(None, max_length=500)
 
     @field_validator("placa")
     @classmethod
@@ -60,11 +62,11 @@ class VeiculoUpdate(BaseModel):
         observacoes: Anotações atualizadas.
     """
 
-    modelo: str | None = Field(None, max_length=100)
-    cor: str | None = Field(None, max_length=50)
+    modelo: UpperStr = Field(None, max_length=100)
+    cor: UpperStr = Field(None, max_length=50)
     ano: int | None = None
-    tipo: str | None = Field(None, max_length=50)
-    observacoes: str | None = Field(None, max_length=500)
+    tipo: UpperStr = Field(None, max_length=50)
+    observacoes: UpperStr = Field(None, max_length=500)
 
 
 class VeiculoRead(BaseModel):

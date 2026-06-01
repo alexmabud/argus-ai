@@ -79,3 +79,30 @@ class TestAbordagemDetailUsuario:
         # campo deve ser opcional (None quando usuário não carregado)
         field = fields["usuario"]
         assert field.default is None
+
+
+class TestNormalizacaoMaiusculas:
+    """Testes da normalização de texto para MAIÚSCULAS na abordagem."""
+
+    def test_normaliza_observacao_e_endereco(self):
+        """AbordagemCreate converte observacao e endereco_texto para maiúsculas."""
+        from datetime import UTC, datetime
+
+        from app.schemas.abordagem import AbordagemCreate
+
+        a = AbordagemCreate(
+            data_hora=datetime.now(UTC),
+            endereco_texto="av. brasil, 100",
+            observacao="indivíduo em atitude suspeita",
+            pessoa_ids=[1],
+        )
+        assert a.endereco_texto == "AV. BRASIL, 100"
+        assert a.observacao == "INDIVÍDUO EM ATITUDE SUSPEITA"
+
+    def test_update_normaliza(self):
+        """AbordagemUpdate converte observacao e endereco_texto para maiúsculas."""
+        from app.schemas.abordagem import AbordagemUpdate
+
+        u = AbordagemUpdate(observacao="ronda noturna", endereco_texto="rua x")
+        assert u.observacao == "RONDA NOTURNA"
+        assert u.endereco_texto == "RUA X"

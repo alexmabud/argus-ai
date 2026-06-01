@@ -39,8 +39,8 @@ class TestCriarPessoa:
             guarnicao_id=guarnicao.id,
         )
         assert pessoa.id is not None
-        assert pessoa.nome == "Maria da Silva"
-        assert pessoa.apelido == "Marinha"
+        assert pessoa.nome == "MARIA DA SILVA"
+        assert pessoa.apelido == "MARINHA"
         assert pessoa.cpf_encrypted is None
         assert pessoa.cpf_hash is None
 
@@ -107,7 +107,7 @@ class TestCriarPessoa:
             user_id=usuario.id,
             guarnicao_id=guarnicao.id,
         )
-        assert pessoa.nome_mae == "Maria das Dores"
+        assert pessoa.nome_mae == "MARIA DAS DORES"
 
 
 class TestBuscarPessoa:
@@ -128,7 +128,7 @@ class TestBuscarPessoa:
         pessoa = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
         encontrada = await service.buscar_por_id(pessoa.id, usuario)
         assert encontrada.id == pessoa.id
-        assert encontrada.nome == "Teste Busca"
+        assert encontrada.nome == "TESTE BUSCA"
 
     async def test_buscar_por_id_inexistente(self, db_session: AsyncSession, usuario: Usuario):
         """Testa busca de pessoa inexistente retorna NaoEncontradoError.

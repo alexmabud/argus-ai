@@ -32,7 +32,7 @@ class TestCriarAbordagem:
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["endereco_texto"] == "Av. Brasil, 1000 - Centro, RJ"
+        assert data["endereco_texto"] == "AV. BRASIL, 1000 - CENTRO, RJ"
         assert "id" in data
 
     async def test_criar_abordagem_com_pessoa(

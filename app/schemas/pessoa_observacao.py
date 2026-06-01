@@ -10,6 +10,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.validators import UpperStrReq
+
 
 class PessoaObservacaoCreate(BaseModel):
     """Requisição de criação de observação.
@@ -18,7 +20,7 @@ class PessoaObservacaoCreate(BaseModel):
         texto: Conteúdo da observação. Obrigatório, mínimo 1 caractere.
     """
 
-    texto: str = Field(..., min_length=1, max_length=2000)
+    texto: UpperStrReq = Field(..., min_length=1, max_length=2000)
 
 
 class PessoaObservacaoUpdate(BaseModel):
@@ -28,7 +30,7 @@ class PessoaObservacaoUpdate(BaseModel):
         texto: Novo conteúdo da observação. Obrigatório, mínimo 1 caractere.
     """
 
-    texto: str = Field(..., min_length=1, max_length=2000)
+    texto: UpperStrReq = Field(..., min_length=1, max_length=2000)
 
 
 class PessoaObservacaoRead(BaseModel):

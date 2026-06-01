@@ -10,6 +10,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.validators import UpperStr, UpperStrReq
 from app.services.storage_service import normalize_storage_url
 
 
@@ -23,8 +24,8 @@ class VinculoManualCreate(BaseModel):
     """
 
     pessoa_vinculada_id: int
-    tipo: str = Field(..., min_length=1, max_length=100)
-    descricao: str | None = Field(None, max_length=500)
+    tipo: UpperStrReq = Field(..., min_length=1, max_length=100)
+    descricao: UpperStr = Field(None, max_length=500)
 
 
 class VinculoManualRead(BaseModel):

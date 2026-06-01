@@ -6,17 +6,20 @@ de autocomplete e criação de localidades (estado, cidade, bairro).
 
 from pydantic import BaseModel, Field
 
+from app.schemas.validators import UpperStrReq
+
 
 class LocalidadeCreate(BaseModel):
     """Requisição de criação de nova localidade.
 
     Attributes:
-        nome: Nome da localidade como digitado pelo usuário.
+        nome: Nome da localidade como digitado pelo usuário (normalizado para
+            MAIÚSCULAS; vira nome_exibicao. A busca usa o nome sem acento/minúsculo).
         tipo: Nível hierárquico — 'cidade' ou 'bairro' (estado não é criado via API).
         parent_id: ID da localidade pai (estado para cidade, cidade para bairro).
     """
 
-    nome: str = Field(..., min_length=2, max_length=200)
+    nome: UpperStrReq = Field(..., min_length=2, max_length=200)
     tipo: str = Field(..., pattern="^(cidade|bairro)$")
     parent_id: int
 
