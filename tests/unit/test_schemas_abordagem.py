@@ -86,12 +86,12 @@ class TestNormalizacaoMaiusculas:
 
     def test_normaliza_observacao_e_endereco(self):
         """AbordagemCreate converte observacao e endereco_texto para maiúsculas."""
-        from datetime import datetime, timezone
+        from datetime import UTC, datetime
 
         from app.schemas.abordagem import AbordagemCreate
 
         a = AbordagemCreate(
-            data_hora=datetime.now(timezone.utc),
+            data_hora=datetime.now(UTC),
             endereco_texto="av. brasil, 100",
             observacao="indivíduo em atitude suspeita",
             pessoa_ids=[1],
