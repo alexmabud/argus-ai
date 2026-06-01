@@ -38,7 +38,7 @@ class TestCriarLocalidade:
             headers=auth_headers,
         )
         assert response.status_code == 201
-        assert response.json()["nome_exibicao"] == "Campinas"
+        assert response.json()["nome_exibicao"] == "CAMPINAS"
 
     async def test_criar_duplicata_retorna_409(self, client: AsyncClient, auth_headers: dict):
         """Deve retornar 409 ao criar cidade duplicada."""
