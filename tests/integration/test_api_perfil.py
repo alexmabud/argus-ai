@@ -16,7 +16,7 @@ async def test_atualizar_perfil_sucesso(client: AsyncClient, auth_headers, usuar
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["nome"] == "João Silva"
+    assert data["nome"] == "JOÃO SILVA"
     assert data["posto_graduacao"] == "Capitão"
 
 
@@ -30,7 +30,7 @@ async def test_atualizar_perfil_nome_guerra(client: AsyncClient, auth_headers, u
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["nome_guerra"] == "Silva"
+    assert data["nome_guerra"] == "SILVA"
 
 
 @pytest.mark.asyncio

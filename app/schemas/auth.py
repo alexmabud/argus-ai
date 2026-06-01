@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.models.usuario import POSTOS_GRADUACAO
 from app.schemas.bpm import BpmRead
+from app.schemas.validators import UpperStr, UpperStrReq
 from app.services.storage_service import normalize_storage_url
 
 #: Regex para validação de complexidade de senha.
@@ -61,7 +62,7 @@ class RegisterRequest(BaseModel):
         email: Email do agente (opcional, máximo 200 caracteres).
     """
 
-    nome: str = Field(..., min_length=2, max_length=200)
+    nome: UpperStrReq = Field(..., min_length=2, max_length=200)
     matricula: str = Field(..., min_length=1, max_length=50)
     senha: str = Field(..., min_length=8)
     email: str | None = Field(None, max_length=200)
@@ -240,8 +241,8 @@ class PerfilUpdate(BaseModel):
         foto_url: URL pública da foto de perfil no storage S3-compatible (opcional).
     """
 
-    nome: str = Field(..., min_length=2, max_length=200)
-    nome_guerra: str | None = Field(None, max_length=50)
+    nome: UpperStrReq = Field(..., min_length=2, max_length=200)
+    nome_guerra: UpperStr = Field(None, max_length=50)
     posto_graduacao: str | None = Field(None, max_length=50)
     foto_url: str | None = Field(None, max_length=500)
 

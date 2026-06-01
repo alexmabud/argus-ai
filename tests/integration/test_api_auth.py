@@ -229,7 +229,7 @@ class TestPerfil:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["nome"] == "Agente Atualizado"
+        assert data["nome"] == "AGENTE ATUALIZADO"
 
     async def test_atualizar_perfil_sem_auth_retorna_401(self, client: AsyncClient):
         """Testa que atualização sem token retorna 401.
