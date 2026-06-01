@@ -55,12 +55,12 @@ function renderPerfil(_appState) {
       <div style="display: flex; flex-direction: column; gap: 16px;">
         <div>
           <label class="login-field-label">Nome completo</label>
-          <input type="text" x-model="nome" />
+          <input type="text" class="input-upper" x-model="nome" />
         </div>
 
         <div>
           <label class="login-field-label">Nome de guerra</label>
-          <input type="text" x-model="nomeGuerra"
+          <input type="text" class="input-upper" x-model="nomeGuerra"
                  placeholder="Ex: Silva" maxlength="50" />
         </div>
 

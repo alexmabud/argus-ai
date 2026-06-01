@@ -33,9 +33,24 @@ def test_perfil_update_sem_posto_valido():
 
 
 def test_perfil_update_nome_guerra():
-    """Verifica que PerfilUpdate aceita nome_guerra."""
+    """Verifica que PerfilUpdate aceita nome_guerra (normalizado para maiúsculas)."""
     schema = PerfilUpdate(nome="João Silva", nome_guerra="Silva")
-    assert schema.nome_guerra == "Silva"
+    assert schema.nome_guerra == "SILVA"
+
+
+def test_perfil_update_normaliza_nome_para_maiuscula():
+    """PerfilUpdate converte nome completo para maiúsculas."""
+    schema = PerfilUpdate(nome="joão da silva")
+    assert schema.nome == "JOÃO DA SILVA"
+
+
+def test_register_normaliza_nome_para_maiuscula():
+    """RegisterRequest converte o nome do agente para maiúsculas."""
+    from app.schemas.auth import RegisterRequest
+
+    schema = RegisterRequest(nome="maria souza", matricula="PM123", senha="Abcd@1234")
+    assert schema.nome == "MARIA SOUZA"
+    assert schema.matricula == "PM123"  # matrícula intacta
 
 
 def test_admin_create_apenas_matricula():
