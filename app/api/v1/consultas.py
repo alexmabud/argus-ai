@@ -6,6 +6,8 @@ resultados em uma resposta unificada. Também expõe endpoint
 de localidades para autocomplete de bairro, cidade e estado.
 """
 
+import hashlib
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +20,7 @@ from app.schemas.consulta import (
     PessoaComVeiculoRead,
     VeiculoInfo,
 )
+from app.services.audit_service import AuditService
 from app.services.consulta_service import ConsultaService
 from app.services.pessoa_service import PessoaService
 
@@ -138,6 +141,17 @@ async def consulta_unificada(
         guarnicao_id_filtro=gid,
         bpm_id_filtro=bid,
     )
+
+    # Audit LGPD: registrar consulta sem expor o termo em claro.
+    termo_hash = hashlib.sha256(q.encode()).hexdigest()[:16] if q else None
+    await AuditService(db).log(
+        usuario_id=user.id,
+        acao="SEARCH",
+        recurso="consulta",
+        detalhes={"tipo": tipo or "todos", "termo_hash": termo_hash},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
 
     return service.formatar_resultado_busca(resultados)
 
