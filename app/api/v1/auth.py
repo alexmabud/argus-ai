@@ -12,6 +12,7 @@ from app.core.auth_cookie import ACCESS_TOKEN_COOKIE, clear_access_cookie, set_a
 from app.core.exceptions import ContaBloqueadaError, CredenciaisInvalidasError
 from app.core.login_guard import ip_bloqueado, registrar_falha_ip, resetar_ip
 from app.core.rate_limit import _get_real_client_ip, limiter
+from app.services import notification_service
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_imagem
 from app.database.session import get_db
 from app.dependencies import get_current_user
@@ -69,6 +70,7 @@ async def login(
     user_agent = request.headers.get("user-agent")
 
     if await ip_bloqueado(ip):
+        await notification_service.alerta_ip_bloqueado(ip)
         raise ContaBloqueadaError("IP temporariamente bloqueado por excesso de tentativas")
 
     service = AuthService(db)

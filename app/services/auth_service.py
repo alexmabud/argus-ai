@@ -8,10 +8,10 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
-    ConflitoDadosError,
     ContaBloqueadaError,
     CredenciaisInvalidasError,
 )
@@ -22,9 +22,11 @@ from app.core.security import (
     hash_senha,
     verificar_senha,
 )
+from app.models.audit_log import AuditLog
 from app.models.usuario import Usuario
 from app.repositories.usuario_repo import UsuarioRepository
 from app.schemas.auth import TokenResponse
+from app.services import notification_service
 from app.services.audit_service import AuditService
 
 #: Quantidade de falhas consecutivas que dispara bloqueio temporario.
@@ -145,6 +147,20 @@ class AuthService:
             ip_address=ip_address,
             user_agent=user_agent,
         )
+
+        # Alerta de IP novo: verificar se o IP já apareceu em LOGINs anteriores.
+        if ip_address:
+            result = await self.db.execute(
+                select(AuditLog).where(
+                    AuditLog.usuario_id == usuario.id,
+                    AuditLog.acao == "LOGIN",
+                    AuditLog.ip_address == ip_address,
+                ).limit(2)
+            )
+            historico = result.scalars().all()
+            # Se só há 1 registro (o recém-inserido pelo flush acima), é IP novo
+            if len(historico) <= 1:
+                await notification_service.alerta_login_ip_novo(usuario.matricula, ip_address)
 
         return TokenResponse(
             access_token=access_token,

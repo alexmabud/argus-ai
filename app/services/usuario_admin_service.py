@@ -15,6 +15,7 @@ from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
 from app.core.security import hash_senha
 from app.models.usuario import Usuario
 from app.repositories.usuario_repo import UsuarioRepository
+from app.services import notification_service
 from app.services.audit_service import AuditService
 
 
@@ -191,6 +192,7 @@ class UsuarioAdminService:
             recurso_id=usuario_id,
             detalhes={"acao": "pausar", "admin_id": admin_id},
         )
+        await notification_service.alerta_sessao_revogada(usuario.matricula, admin_id)
 
         return usuario
 

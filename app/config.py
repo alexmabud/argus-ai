@@ -171,6 +171,10 @@ class Settings(BaseSettings):
     GEOCODING_PROVIDER: str = "nominatim"  # nominatim (free) | google
     GOOGLE_MAPS_API_KEY: str = ""
 
+    # Telegram (alertas de segurança — vazio = desativado)
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_CHAT_ID: str = ""
+
     # Rate Limiting
     RATE_LIMIT_DEFAULT: str = "60/minute"
     RATE_LIMIT_AUTH: str = "10/minute"
