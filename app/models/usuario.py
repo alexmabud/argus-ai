@@ -53,6 +53,9 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
         senha_expira_em: Timestamp de expiração da senha provisória. NULL = sem expiração.
             Senhas geradas pelo admin expiram em SENHA_PROVISORIA_EXPIRE_HOURS horas.
             Zerado no primeiro login bem-sucedido. Admin é isento de expiração.
+        totp_secret: Secret TOTP cifrado com Fernet (AES-256). NULL = sem 2FA configurado.
+            Apenas admins usam 2FA. Login de admin sem secret funciona normalmente
+            (fase de bootstrap/enrollment). Enrollment via POST /admin/2fa/setup.
         guarnicao_id: ID da Equipe (guarnição) à qual o usuário pertence.
             FK para guarnicoes.id, nullable. Usuários sem equipe aparecem
             na aba "Sem Equipe" do painel admin e têm acesso restrito
@@ -84,6 +87,7 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     senha_expira_em: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    totp_secret: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     guarnicao = relationship(
         "Guarnicao",
