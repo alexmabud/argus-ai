@@ -22,7 +22,9 @@ class AuthManager {
   }
 
   isAuthenticated() {
-    return !!api.token && !!this.user;
+    // api.token é só in-memory (não persiste). Após reload, cookie HttpOnly
+    // garante a autenticação; argus_user (localStorage) indica sessão ativa.
+    return !!this.user;
   }
 
   getUser() {
