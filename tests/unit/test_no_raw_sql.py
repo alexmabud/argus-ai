@@ -22,9 +22,9 @@ _PADROES_PERIGOSOS = [
     # f-string em SQL
     re.compile(r'(?:execute|text)\s*\(\s*f["\']'),
     # .format() em SQL
-    re.compile(r'(?:execute|text)\s*\(.*\.format\s*\('),
+    re.compile(r"(?:execute|text)\s*\(.*\.format\s*\("),
     # % em SQL (interpolação estilo printf)
-    re.compile(r'(?:execute|text)\s*\(.*%\s*[(\w]'),
+    re.compile(r"(?:execute|text)\s*\(.*%\s*[(\w]"),
 ]
 
 
@@ -61,7 +61,6 @@ def test_sem_sql_bruto_por_regex():
                 if padrao.search(linha):
                     violacoes.append(f"{path.relative_to(Path.cwd())}:{i}: {linha.strip()}")
 
-    assert not violacoes, (
-        "SQL bruto detectado (f-string/format/% em execute/text):\n"
-        + "\n".join(violacoes)
+    assert not violacoes, "SQL bruto detectado (f-string/format/% em execute/text):\n" + "\n".join(
+        violacoes
     )

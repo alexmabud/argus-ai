@@ -169,11 +169,13 @@ class AuthService:
         # Alerta de IP novo: verificar se o IP já apareceu em LOGINs anteriores.
         if ip_address:
             result = await self.db.execute(
-                select(AuditLog).where(
+                select(AuditLog)
+                .where(
                     AuditLog.usuario_id == usuario.id,
                     AuditLog.acao == "LOGIN",
                     AuditLog.ip_address == ip_address,
-                ).limit(2)
+                )
+                .limit(2)
             )
             historico = result.scalars().all()
             # Se só há 1 registro (o recém-inserido pelo flush acima), é IP novo

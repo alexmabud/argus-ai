@@ -247,9 +247,7 @@ async def test_totp_setup_sem_admin_retorna_403(client: AsyncClient, auth_header
 
 
 @pytest.mark.asyncio
-async def test_login_admin_com_totp_correto(
-    client, db_session, guarnicao, admin_usuario
-):
+async def test_login_admin_com_totp_correto(client, db_session, guarnicao, admin_usuario):
     """Login do admin com TOTP configurado e código correto deve autenticar."""
     import pyotp
 
@@ -309,9 +307,7 @@ async def test_login_admin_sem_totp_configurado_funciona(
 
 
 @pytest.mark.asyncio
-async def test_totp_errado_nao_reseta_fail_counter(
-    client, db_session, guarnicao, admin_usuario
-):
+async def test_totp_errado_nao_reseta_fail_counter(client, db_session, guarnicao, admin_usuario):
     """Falha de TOTP com senha correta não deve zerar tentativas_falhas.
 
     Garante que um atacante com a senha não consiga fazer brute-force de
@@ -340,9 +336,7 @@ async def test_totp_errado_nao_reseta_fail_counter(
 
 
 @pytest.mark.asyncio
-async def test_totp_setup_gera_audit_log(
-    client, db_session, admin_headers, admin_usuario
-):
+async def test_totp_setup_gera_audit_log(client, db_session, admin_headers, admin_usuario):
     """POST /admin/2fa/setup deve registrar evento 2FA_SETUP no audit log.
 
     Args:

@@ -248,9 +248,7 @@ class TestPerfil:
 class TestRefreshCookie:
     """Testes de refresh token em cookie HttpOnly (Fase I1)."""
 
-    async def test_login_seta_cookie_refresh_httponly(
-        self, client: AsyncClient, usuario: Usuario
-    ):
+    async def test_login_seta_cookie_refresh_httponly(self, client: AsyncClient, usuario: Usuario):
         """Login deve setar cookie argus_refresh_token HttpOnly.
 
         Args:
@@ -264,9 +262,7 @@ class TestRefreshCookie:
         assert resp.status_code == 200
         assert "argus_refresh_token" in resp.cookies
 
-    async def test_refresh_via_cookie_sem_corpo(
-        self, client: AsyncClient, usuario: Usuario
-    ):
+    async def test_refresh_via_cookie_sem_corpo(self, client: AsyncClient, usuario: Usuario):
         """POST /auth/refresh com cookie e corpo vazio deve renovar tokens.
 
         Args:
