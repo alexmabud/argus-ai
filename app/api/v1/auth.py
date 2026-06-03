@@ -8,7 +8,14 @@ contra abuso.
 from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth_cookie import ACCESS_TOKEN_COOKIE, clear_access_cookie, set_access_cookie
+from app.core.auth_cookie import (
+    ACCESS_TOKEN_COOKIE,
+    REFRESH_TOKEN_COOKIE,
+    clear_access_cookie,
+    clear_refresh_cookie,
+    set_access_cookie,
+    set_refresh_cookie,
+)
 from app.core.exceptions import ContaBloqueadaError, CredenciaisInvalidasError
 from app.core.login_guard import ip_bloqueado, registrar_falha_ip, resetar_ip
 from app.core.rate_limit import _get_real_client_ip, limiter
@@ -95,9 +102,9 @@ async def login(
         await registrar_falha_ip(ip)
         raise
     await resetar_ip(ip)
-    # Cookie HTTPOnly permite que <img src="/storage/..."> autentique
-    # automaticamente, mantendo o token oculto de XSS.
+    # Cookies HTTPOnly: access (path=/) e refresh (path restrito ao /refresh).
     set_access_cookie(response, tokens.access_token)
+    set_refresh_cookie(response, tokens.refresh_token)
     return tokens
 
 
@@ -132,9 +139,14 @@ async def refresh(
         400: Refresh token inválido ou usuário não existe.
         429: Muitas requisições no período (rate limit: 30/minuto).
     """
+    # Preferir cookie (HttpOnly) ao corpo — fallback para compatibilidade
+    token = request.cookies.get(REFRESH_TOKEN_COOKIE) or data.refresh_token
+    if not token:
+        raise CredenciaisInvalidasError()
     service = AuthService(db)
-    tokens = await service.refresh(data.refresh_token)
+    tokens = await service.refresh(token)
     set_access_cookie(response, tokens.access_token)
+    set_refresh_cookie(response, tokens.refresh_token)
     return tokens
 
 
@@ -169,6 +181,7 @@ async def logout(
     user.session_id = None
     await db.commit()
     clear_access_cookie(response)
+    clear_refresh_cookie(response)
 
 
 @router.get("/me", response_model=UsuarioRead)

@@ -44,11 +44,14 @@ class TokenResponse(BaseModel):
 class RefreshRequest(BaseModel):
     """Requisição para renovação de token de acesso.
 
+    Durante a transição para cookie HttpOnly, refresh_token no corpo é
+    opcional — o backend prefere o cookie argus_refresh_token quando presente.
+
     Attributes:
-        refresh_token: Token JWT de refresh válido.
+        refresh_token: Token JWT de refresh válido (opcional — fallback ao corpo).
     """
 
-    refresh_token: str
+    refresh_token: str | None = None
 
 
 class UsuarioRead(BaseModel):

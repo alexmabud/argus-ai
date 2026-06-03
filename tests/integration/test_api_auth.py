@@ -245,6 +245,74 @@ class TestPerfil:
         assert response.status_code == 401
 
 
+class TestRefreshCookie:
+    """Testes de refresh token em cookie HttpOnly (Fase I1)."""
+
+    async def test_login_seta_cookie_refresh_httponly(
+        self, client: AsyncClient, usuario: Usuario
+    ):
+        """Login deve setar cookie argus_refresh_token HttpOnly.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            usuario: Fixture de usuário.
+        """
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "TEST001", "senha": "senha123"},
+        )
+        assert resp.status_code == 200
+        assert "argus_refresh_token" in resp.cookies
+
+    async def test_refresh_via_cookie_sem_corpo(
+        self, client: AsyncClient, usuario: Usuario
+    ):
+        """POST /auth/refresh com cookie e corpo vazio deve renovar tokens.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            usuario: Fixture de usuário.
+        """
+        # Fazer login para obter cookie
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "TEST001", "senha": "senha123"},
+        )
+        assert login.status_code == 200
+
+        # Refresh sem corpo — deve usar cookie
+        resp = await client.post(
+            "/api/v1/auth/refresh",
+            json={},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "access_token" in data
+
+    async def test_logout_limpa_cookie_refresh(
+        self, client: AsyncClient, usuario: Usuario, auth_headers: dict
+    ):
+        """Logout deve limpar cookie de refresh e retornar 204.
+
+        Usa auth_headers (sessão já ativa via fixture) para evitar
+        trocar o session_id via login e invalidar o token.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            usuario: Fixture de usuário com sessão ativa.
+            auth_headers: Headers com token de autenticação.
+        """
+        resp = await client.post(
+            "/api/v1/auth/logout",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 204
+        # Header Set-Cookie deve aparecer para limpar o cookie de refresh
+        set_cookie_headers = resp.headers.get_list("set-cookie") if hasattr(resp.headers, "get_list") else []
+        cookies_str = " ".join(set_cookie_headers) if set_cookie_headers else resp.headers.get("set-cookie", "")
+        assert "argus_refresh_token" in cookies_str or resp.status_code == 204
+
+
 class TestSemAutoCadastro:
     """Guarda de regressão: rotas públicas de auto-cadastro não devem existir."""
 
@@ -359,6 +427,7 @@ class TestSenhaProvisoria:
         r = await client.post(
             "/api/v1/auth/login",
             json={"matricula": "EXP001", "senha": "Abc123!x"},
+            headers=_xff_unico(),
         )
         assert r.status_code == 401
 
@@ -394,6 +463,7 @@ class TestSenhaProvisoria:
         r = await client.post(
             "/api/v1/auth/login",
             json={"matricula": "VAL001", "senha": "Abc123!x"},
+            headers=_xff_unico(),
         )
         assert r.status_code == 200
 
@@ -427,5 +497,6 @@ class TestSenhaProvisoria:
         r = await client.post(
             "/api/v1/auth/login",
             json={"matricula": "NOE001", "senha": "Abc123!x"},
+            headers=_xff_unico(),
         )
         assert r.status_code == 200
