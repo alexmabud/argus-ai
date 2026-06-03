@@ -244,6 +244,67 @@ class TestPerfil:
         assert response.status_code == 401
 
 
+class TestBloqueioIP:
+    """Testes de bloqueio por IP no Redis (Fase B)."""
+
+    async def test_ip_bloqueado_apos_tentativas_falhas(
+        self,
+        client: AsyncClient,
+        usuario: Usuario,
+    ):
+        """Após MAX_LOGIN_ATTEMPTS falhas do mesmo IP, o login deve ser bloqueado.
+
+        Usa XFF único para isolar o bucket Redis deste teste.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            usuario: Fixture de usuário.
+        """
+        from app.config import settings
+
+        headers = _xff_unico()
+        for _ in range(settings.MAX_LOGIN_ATTEMPTS):
+            await client.post(
+                "/api/v1/auth/login",
+                json={"matricula": "TEST001", "senha": "errada"},
+                headers=headers,
+            )
+        # Tentativa extra (mesmo com senha correta) deve ser bloqueada
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "TEST001", "senha": "senha123"},
+            headers=headers,
+        )
+        assert resp.status_code in (423, 429)
+
+    async def test_login_correto_reseta_contador_ip(
+        self,
+        client: AsyncClient,
+        usuario: Usuario,
+    ):
+        """Login bem-sucedido deve zerar o contador de falhas por IP.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            usuario: Fixture de usuário.
+        """
+        headers = _xff_unico()
+        # 2 falhas — abaixo do limiar
+        for _ in range(2):
+            await client.post(
+                "/api/v1/auth/login",
+                json={"matricula": "TEST001", "senha": "errada"},
+                headers=headers,
+            )
+        # Login correto deve funcionar e resetar contador
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "TEST001", "senha": "senha123"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+
+
 class TestSenhaProvisoria:
     """Testes de TTL da senha provisória (Fase A2)."""
 

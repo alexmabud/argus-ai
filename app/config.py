@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     # Auth
     SECRET_KEY: str
     SENHA_PROVISORIA_EXPIRE_HOURS: int = 24
+    MAX_LOGIN_ATTEMPTS: int = 10  # falhas por IP antes do bloqueio
+    LOGIN_BLOCK_DURATION_SECONDS: int = 3600  # 1 hora de bloqueio
     # Pepper para HMAC de busca de CPF (LGPD). Default vazio = fallback para SECRET_KEY.
     # Separar reduz blast radius: vazamento de uma chave não compromete a outra função.
     CPF_HMAC_KEY: str = ""

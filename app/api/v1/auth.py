@@ -9,8 +9,9 @@ from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth_cookie import ACCESS_TOKEN_COOKIE, clear_access_cookie, set_access_cookie
-from app.core.exceptions import CredenciaisInvalidasError
-from app.core.rate_limit import limiter
+from app.core.exceptions import ContaBloqueadaError, CredenciaisInvalidasError
+from app.core.login_guard import ip_bloqueado, registrar_falha_ip, resetar_ip
+from app.core.rate_limit import _get_real_client_ip, limiter
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_imagem
 from app.database.session import get_db
 from app.dependencies import get_current_user
@@ -64,9 +65,13 @@ async def login(
         O access_token deve ser incluído no header Authorization (Bearer)
         para requisições subsequentes.
     """
-    service = AuthService(db)
-    ip = request.client.host if request.client else None
+    ip = _get_real_client_ip(request)
     user_agent = request.headers.get("user-agent")
+
+    if await ip_bloqueado(ip):
+        raise ContaBloqueadaError("IP temporariamente bloqueado por excesso de tentativas")
+
+    service = AuthService(db)
     try:
         tokens = await service.login(
             data.matricula,
@@ -84,7 +89,9 @@ async def login(
             user_agent=user_agent,
         )
         await db.commit()
+        await registrar_falha_ip(ip)
         raise
+    await resetar_ip(ip)
     # Cookie HTTPOnly permite que <img src="/storage/..."> autentique
     # automaticamente, mantendo o token oculto de XSS.
     set_access_cookie(response, tokens.access_token)
