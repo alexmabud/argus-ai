@@ -18,14 +18,15 @@ from app.services.audit_service import AuditService
 
 
 def _gerar_senha() -> str:
-    """Gera senha aleatória segura de 10 caracteres.
+    """Gera senha aleatória segura com entropia mínima de 12 caracteres.
 
-    Usa secrets.token_urlsafe para garantir aleatoriedade criptográfica.
+    Usa secrets.token_urlsafe(12) que produz ≈16 chars URL-safe (base64),
+    sem truncar, para garantir entropia criptográfica adequada.
 
     Returns:
-        Senha em texto plano com 10 caracteres URL-safe.
+        Senha em texto plano com ≥12 caracteres URL-safe.
     """
-    return secrets.token_urlsafe(8)[:10]
+    return secrets.token_urlsafe(12)
 
 
 class UsuarioAdminService:
