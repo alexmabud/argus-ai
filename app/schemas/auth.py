@@ -13,6 +13,7 @@ from app.schemas.bpm import BpmRead
 from app.schemas.validators import UpperStr, UpperStrReq
 from app.services.storage_service import normalize_storage_url
 
+
 class LoginRequest(BaseModel):
     """Requisição de autenticação (login).
 

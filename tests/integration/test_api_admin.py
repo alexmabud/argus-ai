@@ -229,7 +229,6 @@ async def test_totp_setup_retorna_uri(client: AsyncClient, admin_headers, admin_
 
     O secret é salvo cifrado no banco. A URI é compatível com Google Authenticator.
     """
-    from sqlalchemy import select
 
     response = await client.post("/api/v1/admin/2fa/setup", headers=admin_headers)
     assert response.status_code == 200
@@ -253,7 +252,7 @@ async def test_login_admin_com_totp_correto(
     """Login do admin com TOTP configurado e código correto deve autenticar."""
     import pyotp
 
-    from app.core.crypto import decrypt, encrypt
+    from app.core.crypto import encrypt
 
     # Configurar secret TOTP para o admin
     secret = pyotp.random_base32()

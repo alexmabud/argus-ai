@@ -4,10 +4,9 @@ Fornece endpoints restritos a administradores para criar usuários
 com senha de uso único, pausar/excluir acesso e gerar novas senhas.
 """
 
+import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import pyotp
 
 from app.core.crypto import encrypt
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError

@@ -19,7 +19,6 @@ from app.core.auth_cookie import (
 from app.core.exceptions import ContaBloqueadaError, CredenciaisInvalidasError
 from app.core.login_guard import ip_bloqueado, registrar_falha_ip, resetar_ip
 from app.core.rate_limit import _get_real_client_ip, limiter
-from app.services import notification_service
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_imagem
 from app.database.session import get_db
 from app.dependencies import get_current_user
@@ -31,6 +30,7 @@ from app.schemas.auth import (
     TokenResponse,
     UsuarioRead,
 )
+from app.services import notification_service
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
 from app.services.storage_service import StorageService

@@ -5,10 +5,8 @@ o que abriria vetores de SQL injection. O único text() permitido é com
 bind params nomeados (ex: ':param').
 """
 
-import ast
 import re
 from pathlib import Path
-
 
 # Arquivos/pastas a ignorar (migrações e conftest têm padrões legítimos)
 _IGNORAR = {

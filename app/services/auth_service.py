@@ -25,7 +25,6 @@ from app.core.security import (
     verificar_senha,
 )
 from app.models.audit_log import AuditLog
-from app.models.usuario import Usuario
 from app.repositories.usuario_repo import UsuarioRepository
 from app.schemas.auth import TokenResponse
 from app.services import notification_service
