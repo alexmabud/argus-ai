@@ -29,8 +29,10 @@ class AuthManager {
     return this.user;
   }
 
-  async login(matricula, senha) {
-    const data = await api.post("/auth/login", { matricula, senha });
+  async login(matricula, senha, totpCode = null) {
+    const payload = { matricula, senha };
+    if (totpCode) payload.totp_code = totpCode;
+    const data = await api.post("/auth/login", payload);
     api.setTokens(data.access_token, data.refresh_token);
 
     // Buscar dados do usuário

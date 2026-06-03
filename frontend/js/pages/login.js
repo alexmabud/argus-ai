@@ -38,6 +38,16 @@ function renderLoginPage(appState) {
                    autocomplete="current-password">
           </div>
 
+          <div class="login-field" x-show="mostrarTotp" x-cloak>
+            <label class="login-field-label">Código 2FA (6 dígitos)</label>
+            <input type="text"
+                   x-model="totpCode"
+                   placeholder="000000"
+                   maxlength="8"
+                   inputmode="numeric"
+                   autocomplete="one-time-code">
+          </div>
+
           <!-- Erro -->
           <div x-show="erro" x-cloak
                style="background: rgba(255,107,0,0.1); border: 1px solid rgba(255,107,0,0.3); border-radius: 4px; padding: 10px 14px;">
@@ -82,14 +92,16 @@ function loginForm() {
   return {
     matricula: "",
     senha: "",
+    totpCode: "",
+    mostrarTotp: false,
     loading: false,
     erro: null,
 
     /**
      * Submete formulário de login.
      *
-     * Valida campos, chama auth.login() e propaga resultado
-     * para o componente principal da aplicação.
+     * Valida campos, chama auth.login() e propaga resultado.
+     * Se o backend exigir TOTP (código ausente), exibe o campo.
      */
     async submit() {
       if (!this.matricula || !this.senha) {
@@ -101,13 +113,21 @@ function loginForm() {
       this.erro = null;
 
       try {
-        const user = await auth.login(this.matricula, this.senha);
+        const totp = this.totpCode.trim() || null;
+        const user = await auth.login(this.matricula, this.senha, totp);
         const appEl = document.querySelector("[x-data='app()']");
         if (appEl && appEl._x_dataStack) {
           appEl._x_dataStack[0].onLogin(user);
         }
       } catch (err) {
-        this.erro = err.message || "Erro ao fazer login. Tente novamente.";
+        const msg = err.message || "";
+        // Se falhou e o campo TOTP não estava visível, mostrar campo e pedir código
+        if (!this.mostrarTotp) {
+          this.mostrarTotp = true;
+          this.erro = "Informe o código 2FA se você é administrador.";
+        } else {
+          this.erro = msg || "Erro ao fazer login. Tente novamente.";
+        }
       } finally {
         this.loading = false;
       }
