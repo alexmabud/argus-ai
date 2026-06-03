@@ -8,7 +8,6 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
@@ -25,7 +24,7 @@ from app.core.security import (
 )
 from app.models.usuario import Usuario
 from app.repositories.usuario_repo import UsuarioRepository
-from app.schemas.auth import RegisterRequest, TokenResponse
+from app.schemas.auth import TokenResponse
 from app.services.audit_service import AuditService
 
 #: Quantidade de falhas consecutivas que dispara bloqueio temporario.
@@ -51,63 +50,6 @@ class AuthService:
         self.db = db
         self.repo = UsuarioRepository(db)
         self.audit = AuditService(db)
-
-    async def register(
-        self,
-        data: RegisterRequest,
-        ip_address: str | None = None,
-        user_agent: str | None = None,
-    ) -> Usuario:
-        """Registra um novo agente na guarnição.
-
-        Cria novo usuário com senha hasheada e verificações de duplicação de
-        matrícula e email. Registra evento de auditoria da criação.
-
-        Args:
-            data: Dados de registro (nome, matrícula, senha, email, guarnicao_id).
-            ip_address: Endereço IP da requisição de registro (opcional).
-            user_agent: User-Agent do cliente (opcional).
-
-        Returns:
-            Usuario: Objeto do usuário criado com ID atribuído.
-
-        Raises:
-            ConflitoDadosError: Se matrícula ou email já estão cadastrados.
-        """
-        existing = await self.repo.get_by_matricula(data.matricula)
-        if existing:
-            raise ConflitoDadosError("Matricula ja cadastrada")
-
-        if data.email:
-            existing_email = await self.repo.get_by_email(data.email)
-            if existing_email:
-                raise ConflitoDadosError("Email ja cadastrado")
-
-        usuario = Usuario(
-            nome=data.nome,
-            matricula=data.matricula,
-            senha_hash=hash_senha(data.senha),
-            email=data.email,
-        )
-
-        self.db.add(usuario)
-        try:
-            await self.db.flush()
-        except IntegrityError:
-            await self.db.rollback()
-            raise ConflitoDadosError("Matricula ja cadastrada")
-
-        await self.audit.log(
-            usuario_id=usuario.id,
-            acao="CREATE",
-            recurso="usuario",
-            recurso_id=usuario.id,
-            detalhes={"matricula": data.matricula},
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-
-        return usuario
 
     async def login(
         self,

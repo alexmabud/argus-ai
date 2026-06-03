@@ -5,6 +5,7 @@ Testa endpoints de login, refresh, perfil e upload de foto.
 
 import uuid
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -242,6 +243,24 @@ class TestPerfil:
             json={"nome": "Hacker"},
         )
         assert response.status_code == 401
+
+
+class TestSemAutoCadastro:
+    """Guarda de regressão: rotas públicas de auto-cadastro não devem existir."""
+
+    @pytest.mark.parametrize(
+        "path",
+        ["/api/v1/auth/register", "/api/v1/auth/signup", "/api/v1/register"],
+    )
+    async def test_sem_endpoint_de_autocadastro(self, client: AsyncClient, path: str):
+        """Rotas de auto-cadastro devem retornar 404 ou 405.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            path: Caminho testado.
+        """
+        r = await client.post(path, json={})
+        assert r.status_code in (404, 405)
 
 
 class TestBloqueioIP:

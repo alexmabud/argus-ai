@@ -4,7 +4,6 @@ Define estruturas de requisição e resposta para login, registro, refresh de to
 e leitura de dados de usuários e guarnições.
 """
 
-import re
 from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
@@ -13,32 +12,6 @@ from app.models.usuario import POSTOS_GRADUACAO
 from app.schemas.bpm import BpmRead
 from app.schemas.validators import UpperStr, UpperStrReq
 from app.services.storage_service import normalize_storage_url
-
-#: Regex para validação de complexidade de senha.
-_SENHA_PATTERN = re.compile(
-    r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]).{8,}$"
-)
-
-
-def _validar_complexidade_senha(v: str) -> str:
-    """Valida complexidade de senha: 8+ chars, maiúscula, minúscula, dígito, especial.
-
-    Args:
-        v: Senha a validar.
-
-    Returns:
-        Senha validada.
-
-    Raises:
-        ValueError: Se senha não atender requisitos de complexidade.
-    """
-    if not _SENHA_PATTERN.match(v):
-        raise ValueError(
-            "Senha deve ter no mínimo 8 caracteres, incluindo: "
-            "1 maiúscula, 1 minúscula, 1 dígito e 1 caractere especial"
-        )
-    return v
-
 
 class LoginRequest(BaseModel):
     """Requisição de autenticação (login).
@@ -50,38 +23,6 @@ class LoginRequest(BaseModel):
 
     matricula: str = Field(..., min_length=1, max_length=50)
     senha: str = Field(..., min_length=6)
-
-
-class RegisterRequest(BaseModel):
-    """Requisição de registro de novo agente.
-
-    Attributes:
-        nome: Nome completo do agente (2 a 200 caracteres).
-        matricula: Matrícula do agente (1 a 50 caracteres, único no sistema).
-        senha: Senha em texto plano (mínimo 8 chars com complexidade).
-        email: Email do agente (opcional, máximo 200 caracteres).
-    """
-
-    nome: UpperStrReq = Field(..., min_length=2, max_length=200)
-    matricula: str = Field(..., min_length=1, max_length=50)
-    senha: str = Field(..., min_length=8)
-    email: str | None = Field(None, max_length=200)
-
-    @field_validator("senha")
-    @classmethod
-    def validar_senha(cls, v: str) -> str:
-        """Valida complexidade de senha no registro.
-
-        Args:
-            v: Senha a validar.
-
-        Returns:
-            Senha validada.
-
-        Raises:
-            ValueError: Se senha não atender complexidade.
-        """
-        return _validar_complexidade_senha(v)
 
 
 class TokenResponse(BaseModel):
