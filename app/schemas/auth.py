@@ -25,7 +25,7 @@ class LoginRequest(BaseModel):
 
     matricula: str = Field(..., min_length=1, max_length=50, pattern=r"^[A-Za-z0-9._-]+$")
     senha: str = Field(..., min_length=6)
-    totp_code: str | None = Field(None, min_length=6, max_length=8)
+    totp_code: str | None = Field(None, min_length=6, max_length=6, pattern=r"^\d{6}$")
 
 
 class TokenResponse(BaseModel):

@@ -576,6 +576,15 @@ async def setup_totp(
     """
     secret = pyotp.random_base32()
     admin.totp_secret = encrypt(secret)
+
+    audit = AuditService(db)
+    await audit.log(
+        usuario_id=admin.id,
+        acao="2FA_SETUP",
+        recurso="usuario",
+        recurso_id=admin.id,
+        ip_address=request.client.host if request.client else None,
+    )
     await db.commit()
 
     totp = pyotp.TOTP(secret)

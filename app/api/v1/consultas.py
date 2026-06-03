@@ -11,7 +11,7 @@ import hashlib
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rate_limit import limiter
+from app.core.rate_limit import _get_real_client_ip, limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
@@ -149,7 +149,7 @@ async def consulta_unificada(
         acao="SEARCH",
         recurso="consulta",
         detalhes={"tipo": tipo or "todos", "termo_hash": termo_hash},
-        ip_address=request.client.host if request.client else None,
+        ip_address=_get_real_client_ip(request),
     )
     await db.commit()
 

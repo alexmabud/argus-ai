@@ -112,11 +112,9 @@ class AuthService:
             )
             raise CredenciaisInvalidasError()
 
-        # Sucesso: zera contador e libera bloqueio anterior.
-        usuario.tentativas_falhas = 0
-        usuario.bloqueado_ate = None
-
-        # Verificar TOTP: obrigatório para admins com secret configurado.
+        # Verificar TOTP ANTES de zerar fail counter — evita bypass de lockout:
+        # senha correta + TOTP errado não deve resetar tentativas_falhas,
+        # pois um atacante com a senha poderia fazer brute-force do TOTP sem bloqueio.
         if usuario.is_admin and usuario.totp_secret:
             if not totp_code:
                 raise CredenciaisInvalidasError()
@@ -129,6 +127,10 @@ class AuthService:
                 raise
             except Exception:
                 raise CredenciaisInvalidasError()
+
+        # Sucesso completo (senha + TOTP): zera contador e libera bloqueio.
+        usuario.tentativas_falhas = 0
+        usuario.bloqueado_ate = None
 
         if usuario.is_admin:
             # Admin: senha permanente e sessão compartilhável entre dispositivos.

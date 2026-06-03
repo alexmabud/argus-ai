@@ -1,5 +1,6 @@
 """Testes do painel admin — gestão de usuários."""
 
+import pyotp
 import pytest
 from httpx import AsyncClient
 
@@ -257,9 +258,7 @@ async def test_login_admin_com_totp_correto(
     # Configurar secret TOTP para o admin
     secret = pyotp.random_base32()
     admin_usuario.totp_secret = encrypt(secret)
-    admin_usuario.senha_hash = __import__("app.core.security", fromlist=["hash_senha"]).hash_senha(
-        "senha123"
-    )
+    admin_usuario.senha_hash = hash_senha("senha123")
     await db_session.flush()
 
     totp = pyotp.TOTP(secret)
@@ -283,9 +282,7 @@ async def test_login_admin_com_totp_errado_retorna_401(
 
     secret = pyotp.random_base32()
     admin_usuario.totp_secret = encrypt(secret)
-    admin_usuario.senha_hash = __import__("app.core.security", fromlist=["hash_senha"]).hash_senha(
-        "senha123"
-    )
+    admin_usuario.senha_hash = hash_senha("senha123")
     await db_session.flush()
 
     resp = await client.post(
@@ -300,9 +297,7 @@ async def test_login_admin_sem_totp_configurado_funciona(
     client, db_session, guarnicao, admin_usuario
 ):
     """Login do admin sem totp_secret configurado deve funcionar (bootstrap)."""
-    admin_usuario.senha_hash = __import__("app.core.security", fromlist=["hash_senha"]).hash_senha(
-        "senha123"
-    )
+    admin_usuario.senha_hash = hash_senha("senha123")
     admin_usuario.totp_secret = None
     await db_session.flush()
 
@@ -311,3 +306,76 @@ async def test_login_admin_sem_totp_configurado_funciona(
         json={"matricula": "ADMIN001", "senha": "senha123"},
     )
     assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_totp_errado_nao_reseta_fail_counter(
+    client, db_session, guarnicao, admin_usuario
+):
+    """Falha de TOTP com senha correta não deve zerar tentativas_falhas.
+
+    Garante que um atacante com a senha não consiga fazer brute-force de
+    TOTP sem acionar o bloqueio por conta (tentativas_falhas não é zerado
+    quando o TOTP falha — apenas quando ambos passam).
+    """
+
+    from app.core.crypto import encrypt
+
+    secret = pyotp.random_base32()
+    admin_usuario.totp_secret = encrypt(secret)
+    admin_usuario.senha_hash = hash_senha("senha123")
+    admin_usuario.tentativas_falhas = 3
+    await db_session.flush()
+
+    # Senha correta + TOTP errado
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={"matricula": "ADMIN001", "senha": "senha123", "totp_code": "000000"},
+    )
+    assert resp.status_code == 401
+
+    await db_session.refresh(admin_usuario)
+    # tentativas_falhas não deve ter sido zerada (era 3, deve continuar >= 3)
+    assert admin_usuario.tentativas_falhas >= 3
+
+
+@pytest.mark.asyncio
+async def test_totp_setup_gera_audit_log(
+    client, db_session, admin_headers, admin_usuario
+):
+    """POST /admin/2fa/setup deve registrar evento 2FA_SETUP no audit log.
+
+    Args:
+        client: Cliente HTTP assincrónico.
+        db_session: Sessão do banco de testes.
+        admin_headers: Headers de autenticação do admin.
+        admin_usuario: Fixture de usuário admin.
+    """
+    from sqlalchemy import select
+
+    from app.models.audit_log import AuditLog
+
+    await client.post("/api/v1/admin/2fa/setup", headers=admin_headers)
+
+    result = await db_session.execute(
+        select(AuditLog).where(
+            AuditLog.acao == "2FA_SETUP",
+            AuditLog.usuario_id == admin_usuario.id,
+        )
+    )
+    assert result.scalars().first() is not None
+
+
+@pytest.mark.asyncio
+async def test_totp_code_invalido_rejeita_nao_digito(client, usuario):
+    """LoginRequest.totp_code deve rejeitar valor não-numérico.
+
+    Args:
+        client: Cliente HTTP assincrónico.
+        usuario: Fixture de usuário.
+    """
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={"matricula": "TEST001", "senha": "senha123", "totp_code": "abc123"},
+    )
+    assert resp.status_code == 422
