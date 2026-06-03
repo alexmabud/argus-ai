@@ -25,6 +25,7 @@ async def test_login_gera_session_id(mock_db):
     usuario.is_admin = False
     usuario.bloqueado_ate = None
     usuario.tentativas_falhas = 0
+    usuario.senha_expira_em = None  # sem TTL — não deve bloquear
 
     service = AuthService(mock_db)
     service.repo = AsyncMock()
@@ -56,6 +57,7 @@ async def test_login_invalida_senha_apos_uso(mock_db):
     usuario.is_admin = False
     usuario.bloqueado_ate = None
     usuario.tentativas_falhas = 0
+    usuario.senha_expira_em = None  # sem TTL — não deve bloquear
 
     service = AuthService(mock_db)
     service.repo = AsyncMock()
