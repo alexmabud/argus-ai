@@ -242,3 +242,110 @@ class TestPerfil:
             json={"nome": "Hacker"},
         )
         assert response.status_code == 401
+
+
+class TestSenhaProvisoria:
+    """Testes de TTL da senha provisória (Fase A2)."""
+
+    async def test_login_recusa_senha_provisoria_expirada(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        guarnicao,
+    ):
+        """Login com senha provisória expirada deve retornar 401.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+        """
+        from datetime import UTC, datetime, timedelta
+
+        from app.core.security import hash_senha
+        from app.models.usuario import Usuario
+
+        u = Usuario(
+            nome="EXP",
+            matricula="EXP001",
+            senha_hash=hash_senha("Abc123!x"),
+            guarnicao_id=guarnicao.id,
+            session_id=None,
+            senha_expira_em=datetime.now(UTC) - timedelta(hours=1),
+        )
+        db_session.add(u)
+        await db_session.flush()
+
+        r = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "EXP001", "senha": "Abc123!x"},
+        )
+        assert r.status_code == 401
+
+    async def test_login_aceita_senha_com_expiracao_futura(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        guarnicao,
+    ):
+        """Login com senha dentro do TTL (não expirada) deve autenticar.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+        """
+        from datetime import UTC, datetime, timedelta
+
+        from app.core.security import hash_senha
+        from app.models.usuario import Usuario
+
+        u = Usuario(
+            nome="VALID",
+            matricula="VAL001",
+            senha_hash=hash_senha("Abc123!x"),
+            guarnicao_id=guarnicao.id,
+            session_id=None,
+            senha_expira_em=datetime.now(UTC) + timedelta(hours=23),
+        )
+        db_session.add(u)
+        await db_session.flush()
+
+        r = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "VAL001", "senha": "Abc123!x"},
+        )
+        assert r.status_code == 200
+
+    async def test_login_aceita_senha_sem_expiracao(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        guarnicao,
+    ):
+        """Login com senha_expira_em=NULL deve autenticar (retrocompatível).
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+        """
+        from app.core.security import hash_senha
+        from app.models.usuario import Usuario
+
+        u = Usuario(
+            nome="NOEXP",
+            matricula="NOE001",
+            senha_hash=hash_senha("Abc123!x"),
+            guarnicao_id=guarnicao.id,
+            session_id=None,
+            senha_expira_em=None,
+        )
+        db_session.add(u)
+        await db_session.flush()
+
+        r = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "NOE001", "senha": "Abc123!x"},
+        )
+        assert r.status_code == 200

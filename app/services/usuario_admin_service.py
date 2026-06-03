@@ -5,11 +5,12 @@ de acesso e geração de novas senhas. Sem dependências FastAPI.
 """
 
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
 from app.core.security import hash_senha
 from app.models.usuario import Usuario
@@ -122,6 +123,9 @@ class UsuarioAdminService:
             existing.session_id = None
             existing.desativado_em = None
             existing.desativado_por_id = None
+            existing.senha_expira_em = datetime.now(UTC) + timedelta(
+                hours=settings.SENHA_PROVISORIA_EXPIRE_HOURS
+            )
             if guarnicao_id is not None:
                 existing.guarnicao_id = guarnicao_id
             await self.db.flush()
@@ -141,6 +145,8 @@ class UsuarioAdminService:
             senha_hash=hash_senha(senha),
             guarnicao_id=guarnicao_id,
             session_id=None,  # sem sessão até o primeiro login
+            senha_expira_em=datetime.now(UTC)
+            + timedelta(hours=settings.SENHA_PROVISORIA_EXPIRE_HOURS),
         )
         self.db.add(usuario)
         await self.db.flush()
@@ -213,6 +219,9 @@ class UsuarioAdminService:
         usuario.senha_hash = hash_senha(senha)
         usuario.session_id = None  # desconectar sessão atual
         usuario.ativo = True  # reativar se estava pausado
+        usuario.senha_expira_em = datetime.now(UTC) + timedelta(
+            hours=settings.SENHA_PROVISORIA_EXPIRE_HOURS
+        )
 
         await self.audit.log(
             usuario_id=admin_id,

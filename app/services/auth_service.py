@@ -154,6 +154,18 @@ class AuthService:
             await self.db.commit()
             raise CredenciaisInvalidasError()
 
+        # Rejeita senha provisória expirada (apenas usuários comuns — admin isento).
+        if not usuario.is_admin and usuario.senha_expira_em and usuario.senha_expira_em < agora:
+            await self.audit.log(
+                usuario_id=usuario.id,
+                acao="LOGIN_FAILED",
+                recurso="auth",
+                ip_address=ip_address,
+                user_agent=user_agent,
+                detalhes={"motivo": "senha_expirada"},
+            )
+            raise CredenciaisInvalidasError()
+
         # Sucesso: zera contador e libera bloqueio anterior.
         usuario.tentativas_falhas = 0
         usuario.bloqueado_ate = None
@@ -168,6 +180,7 @@ class AuthService:
         else:
             # Usuário comum: senha de uso único — substituir por hash inutilizável
             usuario.senha_hash = hash_senha(secrets.token_hex(32))
+            usuario.senha_expira_em = None  # TTL consumido no primeiro login
             # Sessão exclusiva — novo session_id invalida tokens anteriores
             novo_session_id = str(uuid.uuid4())
             usuario.session_id = novo_session_id
