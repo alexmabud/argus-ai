@@ -19,10 +19,12 @@ class LoginRequest(BaseModel):
     Attributes:
         matricula: Matrícula do agente (1 a 50 caracteres).
         senha: Senha em texto plano (mínimo 6 caracteres).
+        totp_code: Código TOTP de 6 dígitos (obrigatório para admins com 2FA ativo).
     """
 
     matricula: str = Field(..., min_length=1, max_length=50)
     senha: str = Field(..., min_length=6)
+    totp_code: str | None = Field(None, min_length=6, max_length=8)
 
 
 class TokenResponse(BaseModel):

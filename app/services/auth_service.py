@@ -8,9 +8,11 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import pyotp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.crypto import decrypt
 from app.core.exceptions import (
     ContaBloqueadaError,
     CredenciaisInvalidasError,
@@ -59,6 +61,7 @@ class AuthService:
         senha: str,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        totp_code: str | None = None,
     ) -> TokenResponse:
         """Autentica um agente e gera sessão JWT.
 
@@ -113,6 +116,20 @@ class AuthService:
         # Sucesso: zera contador e libera bloqueio anterior.
         usuario.tentativas_falhas = 0
         usuario.bloqueado_ate = None
+
+        # Verificar TOTP: obrigatório para admins com secret configurado.
+        if usuario.is_admin and usuario.totp_secret:
+            if not totp_code:
+                raise CredenciaisInvalidasError()
+            try:
+                secret_plain = decrypt(usuario.totp_secret)
+                totp = pyotp.TOTP(secret_plain)
+                if not totp.verify(totp_code, valid_window=1):
+                    raise CredenciaisInvalidasError()
+            except CredenciaisInvalidasError:
+                raise
+            except Exception:
+                raise CredenciaisInvalidasError()
 
         if usuario.is_admin:
             # Admin: senha permanente e sessão compartilhável entre dispositivos.

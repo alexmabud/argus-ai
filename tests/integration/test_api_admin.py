@@ -221,3 +221,94 @@ async def test_criar_usuario_sem_equipe(client: AsyncClient, admin_headers, db_s
     res = await db_session.execute(select(Usuario).where(Usuario.id == body["usuario_id"]))
     u = res.scalar_one()
     assert u.guarnicao_id is None
+
+
+@pytest.mark.asyncio
+async def test_totp_setup_retorna_uri(client: AsyncClient, admin_headers, admin_usuario):
+    """POST /admin/2fa/setup gera secret TOTP e retorna URI otpauth://.
+
+    O secret é salvo cifrado no banco. A URI é compatível com Google Authenticator.
+    """
+    from sqlalchemy import select
+
+    response = await client.post("/api/v1/admin/2fa/setup", headers=admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert "uri" in body
+    assert body["uri"].startswith("otpauth://totp/")
+    assert "Argus" in body["uri"]
+
+
+@pytest.mark.asyncio
+async def test_totp_setup_sem_admin_retorna_403(client: AsyncClient, auth_headers):
+    """POST /admin/2fa/setup requer admin — usuário comum retorna 403."""
+    response = await client.post("/api/v1/admin/2fa/setup", headers=auth_headers)
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_login_admin_com_totp_correto(
+    client, db_session, guarnicao, admin_usuario
+):
+    """Login do admin com TOTP configurado e código correto deve autenticar."""
+    import pyotp
+
+    from app.core.crypto import decrypt, encrypt
+
+    # Configurar secret TOTP para o admin
+    secret = pyotp.random_base32()
+    admin_usuario.totp_secret = encrypt(secret)
+    admin_usuario.senha_hash = __import__("app.core.security", fromlist=["hash_senha"]).hash_senha(
+        "senha123"
+    )
+    await db_session.flush()
+
+    totp = pyotp.TOTP(secret)
+    code = totp.now()
+
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={"matricula": "ADMIN001", "senha": "senha123", "totp_code": code},
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_login_admin_com_totp_errado_retorna_401(
+    client, db_session, guarnicao, admin_usuario
+):
+    """Login do admin com TOTP configurado e código errado retorna 401."""
+    import pyotp
+
+    from app.core.crypto import encrypt
+
+    secret = pyotp.random_base32()
+    admin_usuario.totp_secret = encrypt(secret)
+    admin_usuario.senha_hash = __import__("app.core.security", fromlist=["hash_senha"]).hash_senha(
+        "senha123"
+    )
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={"matricula": "ADMIN001", "senha": "senha123", "totp_code": "000000"},
+    )
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_login_admin_sem_totp_configurado_funciona(
+    client, db_session, guarnicao, admin_usuario
+):
+    """Login do admin sem totp_secret configurado deve funcionar (bootstrap)."""
+    admin_usuario.senha_hash = __import__("app.core.security", fromlist=["hash_senha"]).hash_senha(
+        "senha123"
+    )
+    admin_usuario.totp_secret = None
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={"matricula": "ADMIN001", "senha": "senha123"},
+    )
+    assert resp.status_code == 200

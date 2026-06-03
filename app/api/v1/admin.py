@@ -7,6 +7,9 @@ com senha de uso único, pausar/excluir acesso e gerar novas senhas.
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import pyotp
+
+from app.core.crypto import encrypt
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
 from app.core.rate_limit import limiter
 from app.database.session import get_db
@@ -542,3 +545,40 @@ async def mover_usuario_equipe(
         tem_sessao=usuario.session_id is not None,
         guarnicao_id=usuario.guarnicao_id,
     )
+
+
+@router.post("/2fa/setup", response_model=dict)
+@limiter.limit("5/minute")
+async def setup_totp(
+    request: Request,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Gera e salva secret TOTP para o admin, retornando URI de enrollment.
+
+    Gera um novo secret TOTP aleatório, cifra com Fernet e persiste no campo
+    totp_secret do usuário. Retorna a URI otpauth:// compatível com Google
+    Authenticator/Authy. Exibir o QR uma única vez (re-chamar regenera o secret).
+
+    Args:
+        request: Requisição HTTP.
+        admin: Administrador autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        dict com 'uri' (otpauth://totp/...) para geração do QR code.
+
+    Raises:
+        HTTPException: 403 se não for administrador.
+
+    Status Code:
+        200: Secret gerado e URI retornada.
+        403: Não é administrador.
+    """
+    secret = pyotp.random_base32()
+    admin.totp_secret = encrypt(secret)
+    await db.commit()
+
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=admin.matricula, issuer_name="Argus AI")
+    return {"uri": uri}

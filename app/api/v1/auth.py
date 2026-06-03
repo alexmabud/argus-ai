@@ -80,6 +80,7 @@ async def login(
             data.senha,
             ip_address=ip,
             user_agent=user_agent,
+            totp_code=data.totp_code,
         )
     except CredenciaisInvalidasError:
         await AuditService(db).log(
