@@ -45,8 +45,17 @@ class ApiClient {
     try {
       const response = await fetch(url, options);
 
-      // Token expirado — tentar refresh silencioso via cookie
+      // Token expirado — tentar refresh silencioso via cookie.
+      // Endpoints de auth não usam refresh: o 401 deles é rejeição de credencial,
+      // não expiração de sessão. Tentar refresh causaria loop e dispararia auth:expired
+      // no meio do fluxo de login, impedindo o campo 2FA de aparecer.
       if (response.status === 401) {
+        const isAuthEndpoint = path === "/auth/login" || path === "/auth/refresh";
+        if (isAuthEndpoint) {
+          const errData = await response.json().catch(() => ({}));
+          const msg = typeof errData.detail === "string" ? errData.detail : "Credenciais inválidas";
+          throw new ApiError(401, msg);
+        }
         const refreshResult = await this._refreshAccessToken();
         if (refreshResult === "ok") {
           const retryResponse = await fetch(url, options);
