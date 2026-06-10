@@ -36,7 +36,14 @@ async def test_argus_app_nao_pode_criar_tabela() -> None:
 
 @pytest.mark.asyncio
 async def test_argus_app_nao_pode_dropar_tabela() -> None:
-    """argus_app não pode DROP de tabela existente."""
+    """argus_app não pode DROP de tabela existente.
+
+    DROP exige ser DONO da tabela (não é um privilégio concedível via GRANT),
+    então o Postgres responde "must be owner of table" — diferente do
+    "permission denied" emitido para CREATE/DML negados. Aceitamos ambas
+    as formas: o que importa é que a operação é recusada por falta de
+    privilégio (InsufficientPrivilegeError).
+    """
     engine = create_async_engine(
         APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
     )
@@ -44,7 +51,8 @@ async def test_argus_app_nao_pode_dropar_tabela() -> None:
         async with engine.begin() as conn:
             with pytest.raises(Exception) as exc:
                 await conn.execute(text("DROP TABLE usuarios"))
-            assert "permission denied" in str(exc.value).lower()
+            msg = str(exc.value).lower()
+            assert "permission denied" in msg or "must be owner" in msg
     finally:
         await engine.dispose()
 
