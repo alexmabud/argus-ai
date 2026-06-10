@@ -11,6 +11,15 @@ def mock_db():
     return AsyncMock()
 
 
+def test_gerar_senha_tem_entropia_minima():
+    """Verifica que a senha gerada tem pelo menos 12 caracteres (token_urlsafe 12)."""
+    from app.services.usuario_admin_service import _gerar_senha
+
+    for _ in range(20):  # múltiplas chamadas para cobrir variabilidade
+        s = _gerar_senha()
+        assert len(s) >= 12, f"Senha gerada tem apenas {len(s)} chars: {s!r}"
+
+
 @pytest.mark.asyncio
 async def test_criar_usuario_retorna_senha_gerada(mock_db):
     """Verifica que criação gera senha aleatória e retorna em plain text."""

@@ -50,6 +50,12 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
         nome_guerra: Nome de guerra do agente (ex: "Silva"). Máx 50 chars.
         foto_url: URL pública da foto de perfil no storage S3-compatible (opcional).
         session_id: UUID da sessão ativa. None = sem sessão. Novo login gera novo UUID.
+        senha_expira_em: Timestamp de expiração da senha provisória. NULL = sem expiração.
+            Senhas geradas pelo admin expiram em SENHA_PROVISORIA_EXPIRE_HOURS horas.
+            Zerado no primeiro login bem-sucedido. Admin é isento de expiração.
+        totp_secret: Secret TOTP cifrado com Fernet (AES-256). NULL = sem 2FA configurado.
+            Apenas admins usam 2FA. Login de admin sem secret funciona normalmente
+            (fase de bootstrap/enrollment). Enrollment via POST /admin/2fa/setup.
         guarnicao_id: ID da Equipe (guarnição) à qual o usuário pertence.
             FK para guarnicoes.id, nullable. Usuários sem equipe aparecem
             na aba "Sem Equipe" do painel admin e têm acesso restrito
@@ -75,9 +81,14 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     tentativas_falhas: Mapped[int] = mapped_column(
         Integer, default=0, server_default="0", nullable=False
     )
-    bloqueado_ate: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    bloqueado_ate: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    senha_expira_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    totp_secret: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    @property
+    def totp_ativo(self) -> bool:
+        """Indica se o 2FA TOTP está configurado para este usuário."""
+        return self.totp_secret is not None
 
     guarnicao = relationship(
         "Guarnicao",

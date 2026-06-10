@@ -44,15 +44,6 @@ def test_perfil_update_normaliza_nome_para_maiuscula():
     assert schema.nome == "JOÃO DA SILVA"
 
 
-def test_register_normaliza_nome_para_maiuscula():
-    """RegisterRequest converte o nome do agente para maiúsculas."""
-    from app.schemas.auth import RegisterRequest
-
-    schema = RegisterRequest(nome="maria souza", matricula="PM123", senha="Abcd@1234")
-    assert schema.nome == "MARIA SOUZA"
-    assert schema.matricula == "PM123"  # matrícula intacta
-
-
 def test_admin_create_apenas_matricula():
     """Verifica que UsuarioAdminCreate aceita apenas matrícula."""
     schema = UsuarioAdminCreate(matricula="PM001")

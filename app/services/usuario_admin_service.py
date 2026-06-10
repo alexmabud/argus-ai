@@ -5,27 +5,30 @@ de acesso e geração de novas senhas. Sem dependências FastAPI.
 """
 
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
 from app.core.security import hash_senha
 from app.models.usuario import Usuario
 from app.repositories.usuario_repo import UsuarioRepository
+from app.services import notification_service
 from app.services.audit_service import AuditService
 
 
 def _gerar_senha() -> str:
-    """Gera senha aleatória segura de 10 caracteres.
+    """Gera senha aleatória segura com entropia mínima de 12 caracteres.
 
-    Usa secrets.token_urlsafe para garantir aleatoriedade criptográfica.
+    Usa secrets.token_urlsafe(12) que produz ≈16 chars URL-safe (base64),
+    sem truncar, para garantir entropia criptográfica adequada.
 
     Returns:
-        Senha em texto plano com 10 caracteres URL-safe.
+        Senha em texto plano com ≥12 caracteres URL-safe.
     """
-    return secrets.token_urlsafe(8)[:10]
+    return secrets.token_urlsafe(12)
 
 
 class UsuarioAdminService:
@@ -121,6 +124,9 @@ class UsuarioAdminService:
             existing.session_id = None
             existing.desativado_em = None
             existing.desativado_por_id = None
+            existing.senha_expira_em = datetime.now(UTC) + timedelta(
+                hours=settings.SENHA_PROVISORIA_EXPIRE_HOURS
+            )
             if guarnicao_id is not None:
                 existing.guarnicao_id = guarnicao_id
             await self.db.flush()
@@ -140,6 +146,8 @@ class UsuarioAdminService:
             senha_hash=hash_senha(senha),
             guarnicao_id=guarnicao_id,
             session_id=None,  # sem sessão até o primeiro login
+            senha_expira_em=datetime.now(UTC)
+            + timedelta(hours=settings.SENHA_PROVISORIA_EXPIRE_HOURS),
         )
         self.db.add(usuario)
         await self.db.flush()
@@ -184,6 +192,7 @@ class UsuarioAdminService:
             recurso_id=usuario_id,
             detalhes={"acao": "pausar", "admin_id": admin_id},
         )
+        await notification_service.alerta_sessao_revogada(usuario.matricula, admin_id)
 
         return usuario
 
@@ -212,6 +221,9 @@ class UsuarioAdminService:
         usuario.senha_hash = hash_senha(senha)
         usuario.session_id = None  # desconectar sessão atual
         usuario.ativo = True  # reativar se estava pausado
+        usuario.senha_expira_em = datetime.now(UTC) + timedelta(
+            hours=settings.SENHA_PROVISORIA_EXPIRE_HOURS
+        )
 
         await self.audit.log(
             usuario_id=admin_id,

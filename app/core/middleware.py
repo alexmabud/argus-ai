@@ -40,6 +40,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(self), microphone=(self)"
+        # Defense-in-depth: HSTS no app-layer (Caddy já seta em prod).
+        # Só tem efeito sob HTTPS; ignorado em http://.
+        if not settings.DEBUG:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         # Em dev liberamos http://localhost:9000 para servir fotos do MinIO
         # diretamente; em prod o storage passa pela API (mesmo origin).
         img_extra = " http://localhost:9000" if settings.DEBUG else ""

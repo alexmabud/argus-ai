@@ -4,7 +4,6 @@ Define estruturas de requisição e resposta para login, registro, refresh de to
 e leitura de dados de usuários e guarnições.
 """
 
-import re
 from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
@@ -14,74 +13,19 @@ from app.schemas.bpm import BpmRead
 from app.schemas.validators import UpperStr, UpperStrReq
 from app.services.storage_service import normalize_storage_url
 
-#: Regex para validação de complexidade de senha.
-_SENHA_PATTERN = re.compile(
-    r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]).{8,}$"
-)
-
-
-def _validar_complexidade_senha(v: str) -> str:
-    """Valida complexidade de senha: 8+ chars, maiúscula, minúscula, dígito, especial.
-
-    Args:
-        v: Senha a validar.
-
-    Returns:
-        Senha validada.
-
-    Raises:
-        ValueError: Se senha não atender requisitos de complexidade.
-    """
-    if not _SENHA_PATTERN.match(v):
-        raise ValueError(
-            "Senha deve ter no mínimo 8 caracteres, incluindo: "
-            "1 maiúscula, 1 minúscula, 1 dígito e 1 caractere especial"
-        )
-    return v
-
 
 class LoginRequest(BaseModel):
     """Requisição de autenticação (login).
 
     Attributes:
-        matricula: Matrícula do agente (1 a 50 caracteres).
+        matricula: Matrícula do agente (1 a 50 caracteres, alfanumérico + ._-).
         senha: Senha em texto plano (mínimo 6 caracteres).
+        totp_code: Código TOTP de 6 dígitos (obrigatório para admins com 2FA ativo).
     """
 
-    matricula: str = Field(..., min_length=1, max_length=50)
+    matricula: str = Field(..., min_length=1, max_length=50, pattern=r"^[A-Za-z0-9._-]+$")
     senha: str = Field(..., min_length=6)
-
-
-class RegisterRequest(BaseModel):
-    """Requisição de registro de novo agente.
-
-    Attributes:
-        nome: Nome completo do agente (2 a 200 caracteres).
-        matricula: Matrícula do agente (1 a 50 caracteres, único no sistema).
-        senha: Senha em texto plano (mínimo 8 chars com complexidade).
-        email: Email do agente (opcional, máximo 200 caracteres).
-    """
-
-    nome: UpperStrReq = Field(..., min_length=2, max_length=200)
-    matricula: str = Field(..., min_length=1, max_length=50)
-    senha: str = Field(..., min_length=8)
-    email: str | None = Field(None, max_length=200)
-
-    @field_validator("senha")
-    @classmethod
-    def validar_senha(cls, v: str) -> str:
-        """Valida complexidade de senha no registro.
-
-        Args:
-            v: Senha a validar.
-
-        Returns:
-            Senha validada.
-
-        Raises:
-            ValueError: Se senha não atender complexidade.
-        """
-        return _validar_complexidade_senha(v)
+    totp_code: str | None = Field(None, min_length=6, max_length=6, pattern=r"^\d{6}$")
 
 
 class TokenResponse(BaseModel):
@@ -101,11 +45,14 @@ class TokenResponse(BaseModel):
 class RefreshRequest(BaseModel):
     """Requisição para renovação de token de acesso.
 
+    Durante a transição para cookie HttpOnly, refresh_token no corpo é
+    opcional — o backend prefere o cookie argus_refresh_token quando presente.
+
     Attributes:
-        refresh_token: Token JWT de refresh válido.
+        refresh_token: Token JWT de refresh válido (opcional — fallback ao corpo).
     """
 
-    refresh_token: str
+    refresh_token: str | None = None
 
 
 class UsuarioRead(BaseModel):
@@ -120,6 +67,7 @@ class UsuarioRead(BaseModel):
         matricula: Matrícula do agente.
         email: Email do agente (opcional).
         is_admin: Indica se o agente é administrador.
+        totp_ativo: Indica se o 2FA TOTP está configurado (True = secret salvo no banco).
         guarnicao_id: Identificador da guarnição do agente.
         posto_graduacao: Posto ou graduação PM (ex: "Sargento").
         nome_guerra: Nome de guerra do agente (ex: "Silva").
@@ -132,6 +80,7 @@ class UsuarioRead(BaseModel):
     matricula: str
     email: str | None = None
     is_admin: bool
+    totp_ativo: bool = False
     guarnicao_id: int | None = None
     posto_graduacao: str | None = None
     nome_guerra: str | None = None
@@ -299,7 +248,7 @@ class UsuarioAdminCreate(BaseModel):
             admin atribui depois pela aba "Sem Equipe" no painel.
     """
 
-    matricula: str = Field(..., min_length=1, max_length=50)
+    matricula: str = Field(..., min_length=1, max_length=50, pattern=r"^[A-Za-z0-9._-]+$")
     guarnicao_id: int | None = Field(None, ge=1)
 
 

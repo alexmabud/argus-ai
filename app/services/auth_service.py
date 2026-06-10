@@ -8,11 +8,12 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy.exc import IntegrityError
+import pyotp
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.crypto import decrypt
 from app.core.exceptions import (
-    ConflitoDadosError,
     ContaBloqueadaError,
     CredenciaisInvalidasError,
 )
@@ -23,9 +24,10 @@ from app.core.security import (
     hash_senha,
     verificar_senha,
 )
-from app.models.usuario import Usuario
+from app.models.audit_log import AuditLog
 from app.repositories.usuario_repo import UsuarioRepository
-from app.schemas.auth import RegisterRequest, TokenResponse
+from app.schemas.auth import TokenResponse
+from app.services import notification_service
 from app.services.audit_service import AuditService
 
 #: Quantidade de falhas consecutivas que dispara bloqueio temporario.
@@ -52,69 +54,13 @@ class AuthService:
         self.repo = UsuarioRepository(db)
         self.audit = AuditService(db)
 
-    async def register(
-        self,
-        data: RegisterRequest,
-        ip_address: str | None = None,
-        user_agent: str | None = None,
-    ) -> Usuario:
-        """Registra um novo agente na guarnição.
-
-        Cria novo usuário com senha hasheada e verificações de duplicação de
-        matrícula e email. Registra evento de auditoria da criação.
-
-        Args:
-            data: Dados de registro (nome, matrícula, senha, email, guarnicao_id).
-            ip_address: Endereço IP da requisição de registro (opcional).
-            user_agent: User-Agent do cliente (opcional).
-
-        Returns:
-            Usuario: Objeto do usuário criado com ID atribuído.
-
-        Raises:
-            ConflitoDadosError: Se matrícula ou email já estão cadastrados.
-        """
-        existing = await self.repo.get_by_matricula(data.matricula)
-        if existing:
-            raise ConflitoDadosError("Matricula ja cadastrada")
-
-        if data.email:
-            existing_email = await self.repo.get_by_email(data.email)
-            if existing_email:
-                raise ConflitoDadosError("Email ja cadastrado")
-
-        usuario = Usuario(
-            nome=data.nome,
-            matricula=data.matricula,
-            senha_hash=hash_senha(data.senha),
-            email=data.email,
-        )
-
-        self.db.add(usuario)
-        try:
-            await self.db.flush()
-        except IntegrityError:
-            await self.db.rollback()
-            raise ConflitoDadosError("Matricula ja cadastrada")
-
-        await self.audit.log(
-            usuario_id=usuario.id,
-            acao="CREATE",
-            recurso="usuario",
-            recurso_id=usuario.id,
-            detalhes={"matricula": data.matricula},
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-
-        return usuario
-
     async def login(
         self,
         matricula: str,
         senha: str,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        totp_code: str | None = None,
     ) -> TokenResponse:
         """Autentica um agente e gera sessão JWT.
 
@@ -154,7 +100,35 @@ class AuthService:
             await self.db.commit()
             raise CredenciaisInvalidasError()
 
-        # Sucesso: zera contador e libera bloqueio anterior.
+        # Rejeita senha provisória expirada (apenas usuários comuns — admin isento).
+        if not usuario.is_admin and usuario.senha_expira_em and usuario.senha_expira_em < agora:
+            await self.audit.log(
+                usuario_id=usuario.id,
+                acao="LOGIN_FAILED",
+                recurso="auth",
+                ip_address=ip_address,
+                user_agent=user_agent,
+                detalhes={"motivo": "senha_expirada"},
+            )
+            raise CredenciaisInvalidasError()
+
+        # Verificar TOTP ANTES de zerar fail counter — evita bypass de lockout:
+        # senha correta + TOTP errado não deve resetar tentativas_falhas,
+        # pois um atacante com a senha poderia fazer brute-force do TOTP sem bloqueio.
+        if usuario.is_admin and usuario.totp_secret:
+            if not totp_code:
+                raise CredenciaisInvalidasError()
+            try:
+                secret_plain = decrypt(usuario.totp_secret)
+                totp = pyotp.TOTP(secret_plain)
+                if not totp.verify(totp_code, valid_window=1):
+                    raise CredenciaisInvalidasError()
+            except CredenciaisInvalidasError:
+                raise
+            except Exception:
+                raise CredenciaisInvalidasError()
+
+        # Sucesso completo (senha + TOTP): zera contador e libera bloqueio.
         usuario.tentativas_falhas = 0
         usuario.bloqueado_ate = None
 
@@ -168,6 +142,7 @@ class AuthService:
         else:
             # Usuário comum: senha de uso único — substituir por hash inutilizável
             usuario.senha_hash = hash_senha(secrets.token_hex(32))
+            usuario.senha_expira_em = None  # TTL consumido no primeiro login
             # Sessão exclusiva — novo session_id invalida tokens anteriores
             novo_session_id = str(uuid.uuid4())
             usuario.session_id = novo_session_id
@@ -190,6 +165,22 @@ class AuthService:
             ip_address=ip_address,
             user_agent=user_agent,
         )
+
+        # Alerta de IP novo: verificar se o IP já apareceu em LOGINs anteriores.
+        if ip_address:
+            result = await self.db.execute(
+                select(AuditLog)
+                .where(
+                    AuditLog.usuario_id == usuario.id,
+                    AuditLog.acao == "LOGIN",
+                    AuditLog.ip_address == ip_address,
+                )
+                .limit(2)
+            )
+            historico = result.scalars().all()
+            # Se só há 1 registro (o recém-inserido pelo flush acima), é IP novo
+            if len(historico) <= 1:
+                await notification_service.alerta_login_ip_novo(usuario.matricula, ip_address)
 
         return TokenResponse(
             access_token=access_token,

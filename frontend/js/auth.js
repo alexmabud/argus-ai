@@ -1,8 +1,9 @@
 /**
  * Gerenciador de autenticação Argus AI.
  *
- * Controla login, logout, refresh e estado do usuário
- * autenticado via JWT armazenado em localStorage.
+ * Controla login, logout, refresh e estado do usuário.
+ * Autenticação via cookie HttpOnly (argus_access_token).
+ * argus_user (perfil não-credencial) persiste em localStorage para UX offline.
  */
 class AuthManager {
   constructor() {
@@ -22,15 +23,19 @@ class AuthManager {
   }
 
   isAuthenticated() {
-    return !!api.token && !!this.user;
+    // api.token é só in-memory (não persiste). Após reload, cookie HttpOnly
+    // garante a autenticação; argus_user (localStorage) indica sessão ativa.
+    return !!this.user;
   }
 
   getUser() {
     return this.user;
   }
 
-  async login(matricula, senha) {
-    const data = await api.post("/auth/login", { matricula, senha });
+  async login(matricula, senha, totpCode = null) {
+    const payload = { matricula, senha };
+    if (totpCode) payload.totp_code = totpCode;
+    const data = await api.post("/auth/login", payload);
     api.setTokens(data.access_token, data.refresh_token);
 
     // Buscar dados do usuário

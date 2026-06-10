@@ -115,6 +115,15 @@ def create_app() -> FastAPI:
         allow_headers=["Authorization", "Content-Type", "Accept"],
     )
 
+    # Handler 404 JSON customizado (default do FastAPI já é JSON, mas este é mais limpo)
+    @app.exception_handler(404)
+    async def not_found_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        """Retorna 404 JSON sem expor tecnologia ou path interno."""
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "Recurso não encontrado."},
+        )
+
     # Handler global para exceções não-tratadas — garante resposta JSON em vez de plain text
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:

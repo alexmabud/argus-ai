@@ -7,35 +7,33 @@
 class ApiClient {
   constructor() {
     this.baseUrl = "/api/v1";
-    this.token = localStorage.getItem("argus_token");
-    this.refreshToken = localStorage.getItem("argus_refresh_token");
+    // Tokens não ficam em localStorage — autenticação via cookie HttpOnly.
+    // argus_user (perfil não-credencial) permanece em localStorage para UX offline.
+    this.token = null;
     this._refreshPromise = null;
   }
 
-  setTokens(access, refresh) {
+  setTokens(access, _refresh) {
+    // Mantém token em memória para requests síncronos do ciclo de vida atual.
+    // Cookie argus_access_token (HttpOnly) é a fonte canônica — não persiste em localStorage.
     this.token = access;
-    this.refreshToken = refresh;
-    localStorage.setItem("argus_token", access);
-    localStorage.setItem("argus_refresh_token", refresh);
   }
 
   clearTokens() {
     this.token = null;
-    this.refreshToken = null;
+    localStorage.removeItem("argus_user");
+    // Limpar vestígios de versões anteriores que salvavam tokens em localStorage
     localStorage.removeItem("argus_token");
     localStorage.removeItem("argus_refresh_token");
-    localStorage.removeItem("argus_user");
   }
 
   async request(method, path, body = null, retries = 2) {
     const url = `${this.baseUrl}${path}`;
     const headers = {};
 
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
-    }
-
-    const options = { method, headers };
+    // Cookie HttpOnly (argus_access_token) é enviado automaticamente via
+    // credentials: "same-origin" — sem header Authorization explícito.
+    const options = { method, headers, credentials: "same-origin" };
 
     if (body && !(body instanceof FormData)) {
       headers["Content-Type"] = "application/json";
@@ -47,18 +45,11 @@ class ApiClient {
     try {
       const response = await fetch(url, options);
 
-      // Token expirado — tentar refresh
-      if (response.status === 401 && !this.refreshToken) {
-        // Sem refresh token: sessão inválida, forçar re-login
-        this.clearTokens();
-        window.dispatchEvent(new Event("auth:expired"));
-        throw new ApiError(401, "Sessão expirada");
-      }
-      if (response.status === 401 && this.refreshToken) {
+      // Token expirado — tentar refresh silencioso via cookie
+      if (response.status === 401) {
         const refreshResult = await this._refreshAccessToken();
         if (refreshResult === "ok") {
-          headers["Authorization"] = `Bearer ${this.token}`;
-          const retryResponse = await fetch(url, { ...options, headers });
+          const retryResponse = await fetch(url, options);
           if (retryResponse.ok) return await retryResponse.json();
           const retryErr = await retryResponse.json().catch(() => ({}));
           const retryDetail = retryErr.detail;
@@ -71,8 +62,7 @@ class ApiClient {
           window.dispatchEvent(new Event("auth:expired"));
           throw new ApiError(401, "Sessão expirada");
         }
-        // refreshResult === "network_error" — rede instável, NÃO destruir tokens
-        // Os tokens permanecem no localStorage para tentar novamente depois
+        // refreshResult === "network_error" — rede instável, não destruir sessão
         throw new ApiError(0, "Sem conexão com o servidor");
       }
 
@@ -124,14 +114,16 @@ class ApiClient {
       const maxRetries = 3;
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
+          // Corpo vazio — o backend lê o refresh token do cookie HttpOnly.
           const response = await fetch(`${this.baseUrl}/auth/refresh`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh_token: this.refreshToken }),
+            body: JSON.stringify({}),
+            credentials: "same-origin",
           });
           if (response.ok) {
             const data = await response.json();
-            this.setTokens(data.access_token, data.refresh_token);
+            this.setTokens(data.access_token, null);
             return "ok";
           }
           // 401 = sessão realmente inválida no servidor, não adianta tentar de novo
@@ -144,7 +136,7 @@ class ApiClient {
           await this._sleep(1000 * (attempt + 1));
         }
       }
-      // Esgotou tentativas sem resposta do servidor — preservar tokens
+      // Esgotou tentativas sem resposta do servidor — preservar sessão
       return "network_error";
     })();
 

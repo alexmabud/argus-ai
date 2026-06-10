@@ -347,3 +347,46 @@ class TestConsultaIsolamento:
         assert response.status_code == 200
         data = response.json()
         assert len(data["abordagens"]) == 0
+
+
+class TestConsultaAudit:
+    """Testes de auditoria de consultas (Fase C2 — LGPD)."""
+
+    async def test_consulta_unificada_gera_audit_search(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        auth_headers: dict,
+        usuario: Usuario,
+    ):
+        """Consulta unificada deve gerar registro de auditoria acao=SEARCH.
+
+        O termo de busca não deve aparecer em claro nos detalhes (LGPD).
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            db_session: Sessão do banco de testes.
+            auth_headers: Headers com token de autenticação.
+            usuario: Fixture de usuário.
+        """
+        from sqlalchemy import select
+
+        from app.models.audit_log import AuditLog
+
+        await client.get(
+            "/api/v1/consultas/?q=termodeteste",
+            headers=auth_headers,
+        )
+
+        result = await db_session.execute(
+            select(AuditLog).where(
+                AuditLog.acao == "SEARCH",
+                AuditLog.recurso == "consulta",
+                AuditLog.usuario_id == usuario.id,
+            )
+        )
+        registros = result.scalars().all()
+        assert len(registros) >= 1
+        # O termo não deve aparecer em claro nos detalhes
+        detalhes = registros[0].detalhes or {}
+        assert "termodeteste" not in str(detalhes)

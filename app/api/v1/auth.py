@@ -8,9 +8,17 @@ contra abuso.
 from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth_cookie import ACCESS_TOKEN_COOKIE, clear_access_cookie, set_access_cookie
-from app.core.exceptions import CredenciaisInvalidasError
-from app.core.rate_limit import limiter
+from app.core.auth_cookie import (
+    ACCESS_TOKEN_COOKIE,
+    REFRESH_TOKEN_COOKIE,
+    clear_access_cookie,
+    clear_refresh_cookie,
+    set_access_cookie,
+    set_refresh_cookie,
+)
+from app.core.exceptions import ContaBloqueadaError, CredenciaisInvalidasError
+from app.core.login_guard import ip_bloqueado, registrar_falha_ip, resetar_ip
+from app.core.rate_limit import _get_real_client_ip, limiter
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_imagem
 from app.database.session import get_db
 from app.dependencies import get_current_user
@@ -22,6 +30,7 @@ from app.schemas.auth import (
     TokenResponse,
     UsuarioRead,
 )
+from app.services import notification_service
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
 from app.services.storage_service import StorageService
@@ -64,15 +73,21 @@ async def login(
         O access_token deve ser incluído no header Authorization (Bearer)
         para requisições subsequentes.
     """
-    service = AuthService(db)
-    ip = request.client.host if request.client else None
+    ip = _get_real_client_ip(request)
     user_agent = request.headers.get("user-agent")
+
+    if await ip_bloqueado(ip):
+        await notification_service.alerta_ip_bloqueado(ip)
+        raise ContaBloqueadaError("IP temporariamente bloqueado por excesso de tentativas")
+
+    service = AuthService(db)
     try:
         tokens = await service.login(
             data.matricula,
             data.senha,
             ip_address=ip,
             user_agent=user_agent,
+            totp_code=data.totp_code,
         )
     except CredenciaisInvalidasError:
         await AuditService(db).log(
@@ -84,10 +99,12 @@ async def login(
             user_agent=user_agent,
         )
         await db.commit()
+        await registrar_falha_ip(ip)
         raise
-    # Cookie HTTPOnly permite que <img src="/storage/..."> autentique
-    # automaticamente, mantendo o token oculto de XSS.
+    await resetar_ip(ip)
+    # Cookies HTTPOnly: access (path=/) e refresh (path restrito ao /refresh).
     set_access_cookie(response, tokens.access_token)
+    set_refresh_cookie(response, tokens.refresh_token)
     return tokens
 
 
@@ -122,9 +139,14 @@ async def refresh(
         400: Refresh token inválido ou usuário não existe.
         429: Muitas requisições no período (rate limit: 30/minuto).
     """
+    # Preferir cookie (HttpOnly) ao corpo — fallback para compatibilidade
+    token = request.cookies.get(REFRESH_TOKEN_COOKIE) or data.refresh_token
+    if not token:
+        raise CredenciaisInvalidasError()
     service = AuthService(db)
-    tokens = await service.refresh(data.refresh_token)
+    tokens = await service.refresh(token)
     set_access_cookie(response, tokens.access_token)
+    set_refresh_cookie(response, tokens.refresh_token)
     return tokens
 
 
@@ -159,6 +181,7 @@ async def logout(
     user.session_id = None
     await db.commit()
     clear_access_cookie(response)
+    clear_refresh_cookie(response)
 
 
 @router.get("/me", response_model=UsuarioRead)
