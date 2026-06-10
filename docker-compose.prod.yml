@@ -20,6 +20,10 @@ services:
       -c wal_buffers=32MB
       -c random_page_cost=1.2
       -c effective_io_concurrency=100
+      -c log_connections=on
+      -c log_disconnections=on
+      -c log_statement=ddl
+      -c log_line_prefix='%m [%p] %u@%d '
     environment:
       POSTGRES_USER: ${DB_USER:-argus}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
