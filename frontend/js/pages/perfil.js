@@ -2,6 +2,7 @@
  * Página de perfil do usuário.
  *
  * Permite atualizar nome, posto/graduação e foto.
+ * Admins têm seção de configuração de 2FA TOTP.
  * Contém o botão Sair com aviso de nova senha necessária.
  */
 
@@ -96,6 +97,64 @@ function renderPerfil(_appState) {
         </template>
       </div>
 
+      <!-- Seção 2FA (somente admins) -->
+      <template x-if="isAdmin">
+        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--color-border);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <div>
+              <p style="font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--color-text); margin: 0;">Autenticação em 2 Fatores</p>
+              <p style="font-family: var(--font-body); font-size: 12px; color: var(--color-text-muted); margin: 4px 0 0 0;">Google Authenticator ou Authy</p>
+            </div>
+            <span x-show="totp2fa.ativo"
+                  style="font-size: 11px; font-family: var(--font-data); font-weight: 600; color: #22c55e; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); border-radius: 4px; padding: 2px 8px;">
+              ATIVO
+            </span>
+            <span x-show="!totp2fa.ativo"
+                  style="font-size: 11px; font-family: var(--font-data); font-weight: 600; color: var(--color-text-dim); background: var(--color-surface-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 2px 8px;">
+              INATIVO
+            </span>
+          </div>
+
+          <!-- Botão configurar -->
+          <template x-if="!totp2fa.uri">
+            <button @click="totp2fa.configurar()" :disabled="totp2fa.carregando" class="btn btn-secondary" style="width: 100%;">
+              <span x-show="!totp2fa.carregando" x-text="totp2fa.ativo ? 'Reconfigurar 2FA' : 'Configurar 2FA'"></span>
+              <span x-show="totp2fa.carregando">Gerando QR Code...</span>
+            </button>
+          </template>
+
+          <!-- QR Code + confirmação -->
+          <template x-if="totp2fa.uri">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <p style="font-size: 12px; color: var(--color-text-muted); font-family: var(--font-body); margin: 0;">
+                Escaneie o QR Code com o Google Authenticator ou Authy.
+              </p>
+              <div style="display: flex; justify-content: center;">
+                <div id="totp-qrcode" style="background: #fff; padding: 12px; border-radius: 8px; display: inline-block;"></div>
+              </div>
+              <div>
+                <p style="font-size: 11px; color: var(--color-text-dim); font-family: var(--font-data); margin: 0 0 4px 0;">Código manual:</p>
+                <code style="font-size: 13px; color: var(--color-primary); font-family: var(--font-data); letter-spacing: 2px; word-break: break-all;" x-text="totp2fa.secret"></code>
+              </div>
+              <div>
+                <label class="login-field-label">Digite o código do app para confirmar</label>
+                <input type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+                       x-model="totp2fa.codigoConfirm"
+                       style="letter-spacing: 4px; text-align: center; font-family: var(--font-data); font-size: 20px;"
+                       @keydown.enter="totp2fa.confirmar()" />
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button @click="totp2fa.cancelar()" class="btn btn-secondary" style="flex: 1;">Cancelar</button>
+                <button @click="totp2fa.confirmar()" :disabled="totp2fa.confirmando || totp2fa.codigoConfirm.length < 6" class="btn btn-primary" style="flex: 1;">
+                  <span x-show="!totp2fa.confirmando">Confirmar</span>
+                  <span x-show="totp2fa.confirmando">Verificando...</span>
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
       <!-- Botão Sair -->
       <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--color-border);">
         <button @click="mostrarModalSaida()"
@@ -118,6 +177,70 @@ function perfilPage() {
     salvando: false,
     uploadando: false,
     isAdmin: user.is_admin || false,
+
+    totp2fa: {
+      ativo: user.totp_ativo || false,
+      uri: null,
+      secret: null,
+      codigoConfirm: "",
+      carregando: false,
+      confirmando: false,
+
+      async configurar() {
+        this.carregando = true;
+        try {
+          const res = await api.post("/admin/2fa/setup", {});
+          this.uri = res.uri;
+          const match = /secret=([^&]+)/.exec(res.uri);
+          this.secret = match ? match[1] : "";
+          this.codigoConfirm = "";
+          await this.$nextTick();
+          this._renderQr();
+        } catch (e) {
+          showToast("Erro ao gerar QR Code", "error");
+        } finally {
+          this.carregando = false;
+        }
+      },
+
+      _renderQr() {
+        const el = document.getElementById("totp-qrcode");
+        if (!el || !this.uri) return;
+        el.innerHTML = "";
+        new QRCode(el, { text: this.uri, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
+      },
+
+      async confirmar() {
+        if (this.codigoConfirm.length < 6) return;
+        this.confirmando = true;
+        try {
+          const res = await api.post("/admin/2fa/verify", { code: this.codigoConfirm });
+          if (res.valido) {
+            this.ativo = true;
+            this.uri = null;
+            this.secret = null;
+            this.codigoConfirm = "";
+            const updated = { ...auth.getUser(), totp_ativo: true };
+            auth.user = updated;
+            localStorage.setItem("argus_user", JSON.stringify(updated));
+            showToast("2FA configurado com sucesso!", "success");
+          } else {
+            showToast("Código inválido. Verifique o app e tente novamente.", "error");
+            this.codigoConfirm = "";
+          }
+        } catch (e) {
+          showToast("Erro ao verificar código", "error");
+        } finally {
+          this.confirmando = false;
+        }
+      },
+
+      cancelar() {
+        this.uri = null;
+        this.secret = null;
+        this.codigoConfirm = "";
+      },
+    },
 
     async salvar() {
       this.salvando = true;

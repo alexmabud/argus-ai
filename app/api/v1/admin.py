@@ -8,7 +8,7 @@ import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.crypto import encrypt
+from app.core.crypto import decrypt, encrypt
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
 from app.core.rate_limit import limiter
 from app.database.session import get_db
@@ -590,3 +590,49 @@ async def setup_totp(
     totp = pyotp.TOTP(secret)
     uri = totp.provisioning_uri(name=admin.matricula, issuer_name="Argus AI")
     return {"uri": uri}
+
+
+@router.post("/2fa/verify", response_model=dict)
+@limiter.limit("10/minute")
+async def verify_totp(
+    request: Request,
+    data: dict,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Verifica se um código TOTP está correto para o admin autenticado.
+
+    Usado durante o enrollment para confirmar que o admin escaneou o QR
+    corretamente antes de depender do 2FA no login.
+
+    Args:
+        request: Requisição HTTP.
+        data: Dict com campo 'code' (6 dígitos).
+        admin: Administrador autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        dict com 'valido' (bool).
+
+    Raises:
+        HTTPException: 400 se 2FA não estiver configurado.
+        HTTPException: 422 se 'code' não for enviado.
+    """
+    if not admin.totp_secret:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="2FA não configurado")
+    code = str(data.get("code", ""))
+    if not code:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="code obrigatório"
+        )
+    secret_plain = decrypt(admin.totp_secret)
+    valido = pyotp.TOTP(secret_plain).verify(code, valid_window=1)
+    await AuditService(db).log(
+        usuario_id=admin.id,
+        acao="2FA_VERIFY",
+        recurso="usuario",
+        recurso_id=admin.id,
+        ip_address=request.client.host if request.client else None,
+        detalhes={"valido": valido},
+    )
+    return {"valido": valido}

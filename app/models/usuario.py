@@ -4,7 +4,7 @@ Define o usuário (oficial de patrulhamento) do sistema, com autenticação,
 perfil (posto, nome de guerra, foto) e controle de sessão exclusiva.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -81,13 +81,14 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     tentativas_falhas: Mapped[int] = mapped_column(
         Integer, default=0, server_default="0", nullable=False
     )
-    bloqueado_ate: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    senha_expira_em: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    bloqueado_ate: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    senha_expira_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     totp_secret: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    @property
+    def totp_ativo(self) -> bool:
+        """Indica se o 2FA TOTP está configurado para este usuário."""
+        return self.totp_secret is not None
 
     guarnicao = relationship(
         "Guarnicao",

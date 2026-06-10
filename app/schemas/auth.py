@@ -67,6 +67,7 @@ class UsuarioRead(BaseModel):
         matricula: Matrícula do agente.
         email: Email do agente (opcional).
         is_admin: Indica se o agente é administrador.
+        totp_ativo: Indica se o 2FA TOTP está configurado (True = secret salvo no banco).
         guarnicao_id: Identificador da guarnição do agente.
         posto_graduacao: Posto ou graduação PM (ex: "Sargento").
         nome_guerra: Nome de guerra do agente (ex: "Silva").
@@ -79,6 +80,7 @@ class UsuarioRead(BaseModel):
     matricula: str
     email: str | None = None
     is_admin: bool
+    totp_ativo: bool = False
     guarnicao_id: int | None = None
     posto_graduacao: str | None = None
     nome_guerra: str | None = None
