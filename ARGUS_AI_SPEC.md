@@ -1096,9 +1096,11 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
 
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str                       # runtime (em prod: papel só-DML argus_app)
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
+    # Migrations rodam como dono (argus). Default: cai para DATABASE_URL (dev/test).
+    MIGRATION_DATABASE_URL: str | None = None  # use effective_migration_url no alembic
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
@@ -3380,7 +3382,12 @@ DEBUG=true
 # ══════════════════════════════════
 # DATABASE
 # ══════════════════════════════════
-DATABASE_URL=postgresql://argus:argus_dev@localhost:5432/argus_db
+# Runtime da aplicação (em prod: papel DML-only argus_app)
+DATABASE_URL=postgresql://argus_app:CHANGE_ME@localhost:5432/argus_db
+# Migrations (papel dono argus — só usado por alembic). Em dev pode ficar vazio.
+MIGRATION_DATABASE_URL=postgresql://argus:CHANGE_ME@localhost:5432/argus_db
+APP_DB_USER=argus_app
+APP_DB_PASSWORD=CHANGE_ME
 
 # ══════════════════════════════════
 # REDIS

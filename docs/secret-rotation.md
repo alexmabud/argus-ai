@@ -103,6 +103,32 @@ MEK sem precisar re-cifrar os dados (o OCI faz transparentemente).
 
 ---
 
+## 7. Senha do banco — papel `argus_app` (runtime só-DML)
+
+**Impacto:** baixo — apenas reconecta a aplicação. `argus_app` é o usuário de
+runtime (só-DML); o dono `argus` (migrations) não é afetado.
+
+```bash
+# 1. Gerar nova senha (na VM)
+NEW_PWD=$(openssl rand -hex 24)
+
+# 2. Atualizar a senha do papel no Postgres (como dono)
+docker compose -f docker-compose.prod.yml exec -T db \
+  psql -U argus -d argus_db -c "ALTER ROLE argus_app WITH LOGIN PASSWORD '$NEW_PWD'"
+
+# 3. Atualizar APP_DB_PASSWORD no .env do servidor (chmod 600)
+sed -i "s|^APP_DB_PASSWORD=.*|APP_DB_PASSWORD=$NEW_PWD|" .env
+
+# 4. Reiniciar só o runtime (migrations não usam este papel)
+docker compose -f docker-compose.prod.yml up -d api worker worker-2
+```
+
+> O script `scripts/create_app_role.sql` é idempotente e também redefine a senha
+> (`ALTER ROLE ... PASSWORD`) — pode substituir o passo 2. Detalhes e rollback em
+> `docs/runbook-argus-app-role.md`. Guardar a nova senha no Cryptomator.
+
+---
+
 ## Checklist de Rotação
 
 - [ ] Gerar nova chave/credencial

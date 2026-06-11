@@ -441,7 +441,9 @@ Copie `.env.example` e configure:
 
 | Variavel | Descricao | Exemplo |
 |----------|-----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://argus:pass@localhost/argus_db` |
+| `DATABASE_URL` | Conexao do runtime (em prod, papel so-DML `argus_app`) | `postgresql+asyncpg://argus_app:pass@localhost/argus_db` |
+| `MIGRATION_DATABASE_URL` | Conexao das migrations (dono `argus`). Opcional em dev (cai para `DATABASE_URL`) | `postgresql://argus:pass@localhost/argus_db` |
+| `APP_DB_USER` / `APP_DB_PASSWORD` | Usuario/senha do papel `argus_app` (usados pela compose de prod) | `argus_app` / `<senha-forte>` |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
 | `SECRET_KEY` | Chave JWT | `openssl rand -hex 32` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Expiracao do access token | `480` |

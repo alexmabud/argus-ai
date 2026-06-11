@@ -75,8 +75,12 @@ Para migrar para Cloudflare R2 (caso queira no futuro):
 # App
 DEBUG=false
 
-# Database (Neon)
-DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+# Database — runtime conecta como papel só-DML (argus_app); migrations como dono (argus).
+# Provisionar o papel argus_app antes do 1º deploy: ver docs/runbook-argus-app-role.md
+DATABASE_URL=postgresql://argus_app:pass@host/db?sslmode=require
+MIGRATION_DATABASE_URL=postgresql://argus:pass@host/db?sslmode=require
+APP_DB_USER=argus_app
+APP_DB_PASSWORD=<senha-forte>
 
 # Redis (Upstash)
 REDIS_URL=rediss://default:token@host:port
