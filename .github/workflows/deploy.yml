@@ -92,8 +92,10 @@ jobs:
             docker compose -f docker-compose.prod.yml rm -f minio-init || true
             docker compose -f docker-compose.prod.yml up -d --build
 
-            echo "══════ Rodando migrations ══════"
+            echo "══════ Rodando migrations (como DONO via MIGRATION_DATABASE_URL) ══════"
             sleep 5
+            # alembic/env.py usa settings.effective_migration_url (dono argus),
+            # não a DATABASE_URL de runtime (argus_app só-DML).
             docker compose -f docker-compose.prod.yml exec -T api python -m alembic upgrade head
 
             echo "══════ Aguardando health check ══════"

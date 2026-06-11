@@ -73,6 +73,22 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
 
+    # URL de migrations — usuário DONO (argus) com DDL. Default: DATABASE_URL
+    # (em dev/test o mesmo usuário faz tudo). Em prod, aponta para o dono
+    # enquanto DATABASE_URL aponta para argus_app (runtime, só-DML).
+    MIGRATION_DATABASE_URL: str | None = None
+
+    @property
+    def effective_migration_url(self) -> str:
+        """URL a ser usada por Alembic (dono do schema).
+
+        Returns:
+            MIGRATION_DATABASE_URL quando definida; caso contrário,
+            DATABASE_URL (compatível com dev/test onde o mesmo usuário
+            faz runtime e migrations).
+        """
+        return self.MIGRATION_DATABASE_URL or self.DATABASE_URL
+
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
 

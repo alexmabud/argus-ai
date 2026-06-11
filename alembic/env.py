@@ -17,10 +17,11 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-# Sobrescrever URL do alembic.ini com a do .env
+# Sobrescrever URL do alembic.ini com a do .env — usa a URL de MIGRATION
+# (dono do schema), não a de runtime (que pode ser o argus_app só-DML).
 config.set_main_option(
     "sqlalchemy.url",
-    settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+    settings.effective_migration_url.replace("postgresql://", "postgresql+asyncpg://"),
 )
 
 # Tabelas do PostGIS/Tiger geocoder que devem ser ignoradas pelo autogenerate

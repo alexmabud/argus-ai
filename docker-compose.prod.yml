@@ -20,6 +20,10 @@ services:
       -c wal_buffers=32MB
       -c random_page_cost=1.2
       -c effective_io_concurrency=100
+      -c log_connections=on
+      -c log_disconnections=on
+      -c log_statement=ddl
+      -c log_line_prefix='%m [%p] %u@%d '
     environment:
       POSTGRES_USER: ${DB_USER:-argus}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -62,7 +66,8 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
+      DATABASE_URL: postgresql://${APP_DB_USER:-argus_app}:${APP_DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
+      MIGRATION_DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD obrigatório em produção}@redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
@@ -96,7 +101,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
+      DATABASE_URL: postgresql://${APP_DB_USER:-argus_app}:${APP_DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD obrigatório em produção}@redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
@@ -128,7 +133,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
+      DATABASE_URL: postgresql://${APP_DB_USER:-argus_app}:${APP_DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD obrigatório em produção}@redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage

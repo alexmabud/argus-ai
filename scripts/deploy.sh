@@ -83,7 +83,8 @@ cmd_setup() {
     log "Iniciando serviços..."
     docker compose -f "$COMPOSE_FILE" up -d
 
-    # 8. Rodar migrations
+    # 8. Rodar migrations (como DONO via MIGRATION_DATABASE_URL; alembic/env.py
+    #    usa settings.effective_migration_url, não a DATABASE_URL de runtime argus_app).
     log "Aguardando banco ficar pronto..."
     sleep 10
     docker compose -f "$COMPOSE_FILE" exec api python -m alembic upgrade head || \
@@ -115,7 +116,7 @@ cmd_update() {
     log "Reiniciando serviços..."
     docker compose -f "$COMPOSE_FILE" up -d
 
-    # Migrations
+    # Migrations (como DONO via MIGRATION_DATABASE_URL — ver alembic/env.py)
     log "Executando migrations..."
     docker compose -f "$COMPOSE_FILE" exec api python -m alembic upgrade head || \
         log "AVISO: Migrations falharam."
