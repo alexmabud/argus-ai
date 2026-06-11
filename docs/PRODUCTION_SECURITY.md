@@ -29,6 +29,16 @@ cpf_hash = hash_for_search("123.456.789-10")  # SHA-256 para busca
 
 **Garantia:** Mesmo se alguém roubar o banco de dados, os CPFs estarão criptografados.
 
+### 1b. **Criptografia de Disco (OCI Vault)**
+
+Os Block Volumes do servidor (`argus-banco` 50GB e `argus-fotos` 100GB) usam **customer-managed key** no OCI Vault:
+
+- Vault: `argus-vault` — região `sa-saopaulo-1`
+- Chave: `argus-disk-key` — AES-256, Software protection
+- OCID da chave e vault armaenadas
+
+**Garantia:** Acesso físico ao servidor ou ao storage da Oracle não é suficiente para ler os dados — a chave está sob controle exclusivo do administrador do sistema.
+
 ### 2. **Criptografia em Trânsito (HTTPS)**
 
 ```nginx
