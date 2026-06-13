@@ -33,8 +33,8 @@ def gerar_thumbnail(
     Raises:
         PIL.UnidentifiedImageError: Se os bytes não forem imagem válida.
     """
-    with Image.open(io.BytesIO(image_bytes)) as img:
-        img = ImageOps.exif_transpose(img)
+    with Image.open(io.BytesIO(image_bytes)) as src:
+        img = ImageOps.exif_transpose(src)
         if img.mode not in ("RGB", "L"):
             img = img.convert("RGB")
 
