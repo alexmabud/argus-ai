@@ -19,7 +19,7 @@ function renderAbordagemNova() {
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;position:relative;z-index:10;">
         <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Pessoas abordadas</span>
 
-        <div x-data="autocompleteComponent('pessoa')"
+        <div x-data="autocompleteComponent('pessoa')" data-autocomplete="pessoa"
              x-effect="if (_limparBusca > 0) { query = ''; results = []; _allResults = []; showDropdown = false; noResults = false; }"
              style="position:relative;">
           <input type="text" :value="query"
@@ -288,7 +288,7 @@ function renderAbordagemNova() {
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
         <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Veículo envolvido na abordagem</span>
 
-        <div x-data="autocompleteComponent('veiculo')" style="position:relative;">
+        <div x-data="autocompleteComponent('veiculo')" data-autocomplete="veiculo" style="position:relative;">
           <input type="text" :value="query" @input="query = formatarPlaca($event.target.value); onInput()"
                  @focus="showDropdown = results.length > 0 || noResults"
                  placeholder="Buscar por placa..." maxlength="8"
@@ -624,6 +624,19 @@ function abordagemForm() {
         this.pessoasSelecionadas = e.detail.selected;
         // Remover de novasPessoas qualquer entrada que foi desselecionada
         this.novasPessoas = this.novasPessoas.filter(p => currentIds.includes(p.id));
+        // Descartar fotos de pessoas removidas — senão o submit envia
+        // pessoa_id inexistente/temporário e o backend rejeita (gt=0)
+        this.fotosPessoas = Object.fromEntries(
+          Object.entries(this.fotosPessoas).filter(([id]) => currentIds.includes(parseInt(id)))
+        );
+        // Desvincular veículos apontando para pessoas removidas — o card
+        // volta a "sem vínculo" e o submit exige re-vincular; senão o
+        // backend cria AbordagemVeiculo com pessoa_id fora da abordagem
+        this.veiculoPorPessoa = Object.fromEntries(
+          Object.entries(this.veiculoPorPessoa).map(
+            ([vId, pId]) => [vId, currentIds.includes(pId) ? pId : null]
+          )
+        );
         // Buscar endereços apenas de pessoas já existentes no banco (id > 0)
         for (const p of e.detail.selected) {
           if (p.id > 0 && !this.pessoaEnderecos[p.id]) {
@@ -634,6 +647,13 @@ function abordagemForm() {
       this.$el.addEventListener("veiculo-selected", (e) => {
         this.veiculoIds = e.detail.selected.map((s) => s.id);
         this.veiculosSelecionados = e.detail.selected;
+        // Descartar fotos e vínculos de veículos removidos da seleção
+        this.fotosVeiculos = Object.fromEntries(
+          Object.entries(this.fotosVeiculos).filter(([id]) => this.veiculoIds.includes(parseInt(id)))
+        );
+        this.veiculoPorPessoa = Object.fromEntries(
+          Object.entries(this.veiculoPorPessoa).filter(([id]) => this.veiculoIds.includes(parseInt(id)))
+        );
       });
 
       // Escutar pedido de abrir cadastro de veículo (vindo do autocomplete)
@@ -697,7 +717,8 @@ function abordagemForm() {
       this.anCidadeSugestoes = []; this.anCidadeCadastrarNovo = false;
       this.anBairroId = null; this.anBairroTexto = '';
       this.$nextTick(() => {
-        const el = this.$el.querySelector('[placeholder="Bairro"]');
+        // $root (não $el): aqui $el é a div da sugestão clicada, já fora do DOM
+        const el = this.$root.querySelector('[placeholder="Bairro"]');
         if (el) this.anBairroDropdownStyle = this.anPosicionarDropdown(el);
         this.anBuscarBairros();
       });
@@ -756,14 +777,15 @@ function abordagemForm() {
       this.pessoaIds.push(tempId);
       this.pessoasSelecionadas.push(pessoaTemp);
 
-      // Adicionar nas tags do autocomplete (visual opcional)
-      try {
-        const autocompleteEl = this.$el.querySelector("[x-data*='autocompleteComponent']");
-        if (autocompleteEl && window.Alpine) {
-          const acData = window.Alpine.$data(autocompleteEl);
-          if (acData) acData.selected.push(pessoaTemp);
-        }
-      } catch { /* tag visual opcional — pessoa já está em pessoasSelecionadas */ }
+      // Registrar no selected do autocomplete — OBRIGATÓRIO: o listener
+      // pessoa-selected trata esse array como fonte da verdade e descarta
+      // qualquer pessoa fora dele na próxima seleção/remoção.
+      // $root (não $el): aqui $el é o botão "Salvar e adicionar".
+      const autocompleteEl = this.$root.querySelector("[data-autocomplete='pessoa']");
+      if (autocompleteEl && window.Alpine) {
+        const acData = window.Alpine.$data(autocompleteEl);
+        if (acData) acData.selected.push(pessoaTemp);
+      }
 
       // Incrementar dispara o x-effect no div do autocomplete, que limpa query/results
       // dentro do próprio sistema reativo do Alpine — única forma garantida de funcionar
@@ -861,10 +883,13 @@ function abordagemForm() {
         this.veiculoIds.push(veiculo.id);
         this.veiculosSelecionados.push(veiculo);
 
-        // Atualizar tags do autocomplete de veículo (segundo autocomplete na seção)
-        const veiculoAutoEl = this.$el.querySelectorAll("[x-data*='autocompleteComponent']")[1];
-        if (veiculoAutoEl?._x_dataStack) {
-          veiculoAutoEl._x_dataStack[0].selected.push(veiculo);
+        // Registrar no selected do autocomplete de veículo — OBRIGATÓRIO:
+        // o listener veiculo-selected trata esse array como fonte da verdade.
+        // $root (não $el): aqui $el é o botão "Salvar e adicionar" do veículo.
+        const veiculoAutoEl = this.$root.querySelector("[data-autocomplete='veiculo']");
+        if (veiculoAutoEl && window.Alpine) {
+          const acData = window.Alpine.$data(veiculoAutoEl);
+          if (acData) acData.selected.push(veiculo);
         }
 
         // Guardar foto do veículo novo indexada pelo ID

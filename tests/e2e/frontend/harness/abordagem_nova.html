@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Harness e2e — nova abordagem</title>
+<style>[x-cloak]{display:none!important}</style>
+<script>
+// ---- Stubs dos globais consumidos pelos arquivos reais do frontend ----
+// A API é simulada registrando chamadas em window.__calls e replicando as
+// validações do backend relevantes ao bug (Form(gt=0) em /fotos/upload e
+// min_length=1 em pessoa_ids de /abordagens/).
+window.__calls = { posts: [], uploads: [] };
+const EXISTING = { id: 77, nome: "FULANO EXISTENTE", cpf_masked: "***.456.789-**", apelido: null };
+
+window.api = {
+  async get(url) {
+    if (url.startsWith('/localidades?tipo=estado')) return [];
+    if (url.startsWith('/consultas/localidades')) return { bairros: [], cidades: [], estados: [] };
+    if (url.startsWith('/veiculos/localidades')) return { modelos: [], cores: [] };
+    if (url.startsWith('/pessoas/?')) {
+      return decodeURIComponent(url).includes('FULANO') ? [EXISTING] : [];
+    }
+    if (url.startsWith('/pessoas/77')) return { enderecos: [] };
+    return [];
+  },
+  async post(url, body) {
+    window.__calls.posts.push({ url, body: JSON.parse(JSON.stringify(body)) });
+    if (url === '/pessoas/') {
+      const n = window.__calls.posts.filter(p => p.url === '/pessoas/').length;
+      return { id: 100 + n, ...body };
+    }
+    if (url === '/abordagens/') {
+      if (!body.pessoa_ids || body.pessoa_ids.length === 0) {
+        throw new Error('List should have at least 1 item');
+      }
+      return { id: 999 };
+    }
+    return { id: 1 };
+  },
+  async uploadFile(url, file, fields) {
+    window.__calls.uploads.push({ url, fields });
+    // Replica a validacao Form(gt=0) de app/api/v1/fotos.py
+    if (fields.pessoa_id !== undefined && fields.pessoa_id !== null && !(fields.pessoa_id > 0)) {
+      throw new Error('Input should be greater than 0');
+    }
+    if (fields.veiculo_id !== undefined && fields.veiculo_id !== null && !(fields.veiculo_id > 0)) {
+      throw new Error('Input should be greater than 0');
+    }
+    return { id: 1 };
+  },
+};
+window.validarCPF = () => true;
+window.formatarCPF = v => v;
+window.formatarData = v => v;
+window.parseDateBR = () => null;
+window.formatarBuscaQuery = v => v;
+window.formatarPlaca = v => (v || '');
+window.getGPSLocation = async () => ({ latitude: -15.6, longitude: -47.6, endereco_texto: 'LOCAL TESTE' });
+window.getGPSLocationLowAccuracy = window.getGPSLocation;
+window.startVoice = () => false;
+window.stopVoice = () => {};
+window.enqueueSync = async () => {};
+window.searchPessoasLocal = async () => [];
+window.searchVeiculosLocal = async () => [];
+
+// Inspecao de estado Alpine para os asserts do teste
+window.__state = () => {
+  const root = document.querySelector('[x-data*="abordagemForm"]');
+  const d = Alpine.$data(root);
+  const ac = Alpine.$data(document.querySelector('[x-data*="autocompleteComponent"]'));
+  return {
+    pessoaIds: JSON.parse(JSON.stringify(d.pessoaIds)),
+    pessoasSelecionadas: d.pessoasSelecionadas.map(p => p.nome),
+    novasPessoas: d.novasPessoas.map(p => p.nome),
+    acSelected: ac.selected.map(p => p.nome),
+    fotosKeys: Object.keys(d.fotosPessoas),
+    veiculoPorPessoa: JSON.parse(JSON.stringify(d.veiculoPorPessoa)),
+    erro: d.erro,
+    showSuccessModal: d.showSuccessModal,
+  };
+};
+</script>
+<script src="autocomplete.js"></script>
+<script src="abordagem-nova.js"></script>
+</head>
+<body>
+<div id="mount"></div>
+<script>
+document.getElementById('mount').innerHTML = renderAbordagemNova();
+</script>
+<script defer src="alpine.min.js"></script>
+</body>
+</html>
