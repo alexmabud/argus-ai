@@ -66,7 +66,14 @@ class UsuarioRead(BaseModel):
         nome: Nome completo do agente.
         matricula: Matrícula do agente.
         email: Email do agente (opcional).
-        is_admin: Indica se o agente é administrador.
+        is_admin: Indica se o agente é admin delegado.
+        is_super_admin: Indica se o agente é o super-admin (dono).
+        pode_criar_usuario: Permissão granular — criar usuários.
+        pode_gerar_senha: Permissão granular — gerar nova senha.
+        pode_pausar: Permissão granular — pausar usuários.
+        pode_mover_equipe: Permissão granular — mover usuários entre equipes.
+        pode_gerir_equipes: Permissão granular — criar/editar equipes e BPMs.
+        admin_global: Alcance do admin delegado (True = todas as equipes).
         totp_ativo: Indica se o 2FA TOTP está configurado (True = secret salvo no banco).
         guarnicao_id: Identificador da guarnição do agente.
         posto_graduacao: Posto ou graduação PM (ex: "Sargento").
@@ -80,6 +87,13 @@ class UsuarioRead(BaseModel):
     matricula: str
     email: str | None = None
     is_admin: bool
+    is_super_admin: bool = False
+    pode_criar_usuario: bool = False
+    pode_gerar_senha: bool = False
+    pode_pausar: bool = False
+    pode_mover_equipe: bool = False
+    pode_gerir_equipes: bool = False
+    admin_global: bool = False
     totp_ativo: bool = False
     guarnicao_id: int | None = None
     posto_graduacao: str | None = None
@@ -276,7 +290,14 @@ class UsuarioAdminRead(BaseModel):
         posto_graduacao: Posto ou graduação PM.
         nome_guerra: Nome de guerra do agente.
         foto_url: URL da foto de perfil.
-        is_admin: Indica se é administrador.
+        is_admin: Indica se é admin delegado.
+        is_super_admin: Indica se é o super-admin (dono).
+        pode_criar_usuario: Permissão granular — criar usuários.
+        pode_gerar_senha: Permissão granular — gerar nova senha.
+        pode_pausar: Permissão granular — pausar usuários.
+        pode_mover_equipe: Permissão granular — mover usuários entre equipes.
+        pode_gerir_equipes: Permissão granular — criar/editar equipes e BPMs.
+        admin_global: Alcance do admin delegado (True = todas as equipes).
         ativo: Indica se o acesso está ativo.
         tem_sessao: Indica se há sessão ativa (session_id != None).
         guarnicao_id: ID da guarnição.
@@ -289,10 +310,77 @@ class UsuarioAdminRead(BaseModel):
     nome_guerra: str | None = None
     foto_url: str | None = None
     is_admin: bool
+    is_super_admin: bool = False
+    pode_criar_usuario: bool = False
+    pode_gerar_senha: bool = False
+    pode_pausar: bool = False
+    pode_mover_equipe: bool = False
+    pode_gerir_equipes: bool = False
+    admin_global: bool = False
     ativo: bool
     tem_sessao: bool
     guarnicao_id: int | None = None
 
     _normalize_foto = field_validator("foto_url", mode="before")(normalize_storage_url)
+
+    model_config = {"from_attributes": True}
+
+
+class AdminPermissoesUpdate(BaseModel):
+    """Define status de admin e permissões granulares (entrada do super-admin).
+
+    Idempotente: serve para promover, editar toggles e rebaixar. Com
+    is_admin=False, o backend zera todos os toggles. Excluir usuário e
+    promover admin NÃO entram aqui (são exclusivos do super-admin).
+
+    Attributes:
+        is_admin: True torna/mantém admin delegado; False rebaixa.
+        pode_criar_usuario: Pode criar novos usuários.
+        pode_gerar_senha: Pode gerar nova senha de uso único.
+        pode_pausar: Pode pausar (desconectar) usuários.
+        pode_mover_equipe: Pode mover usuários entre equipes.
+        pode_gerir_equipes: Pode criar/editar equipes e BPMs (requer admin_global).
+        admin_global: Alcance — True todas as equipes, False só a própria.
+    """
+
+    is_admin: bool = False
+    pode_criar_usuario: bool = False
+    pode_gerar_senha: bool = False
+    pode_pausar: bool = False
+    pode_mover_equipe: bool = False
+    pode_gerir_equipes: bool = False
+    admin_global: bool = False
+
+
+class AdminRead(BaseModel):
+    """Dados de um admin para a página de admins (saída).
+
+    Attributes:
+        id: ID do usuário.
+        nome: Nome do agente.
+        matricula: Matrícula.
+        guarnicao_id: Equipe atual (mantida ao promover). None = sem equipe.
+        is_super_admin: Indica o dono.
+        is_admin: Indica admin delegado.
+        pode_criar_usuario: Toggle — criar usuários.
+        pode_gerar_senha: Toggle — gerar nova senha.
+        pode_pausar: Toggle — pausar usuários.
+        pode_mover_equipe: Toggle — mover entre equipes.
+        pode_gerir_equipes: Toggle — gerir equipes/BPMs.
+        admin_global: Alcance do admin delegado.
+    """
+
+    id: int
+    nome: str
+    matricula: str
+    guarnicao_id: int | None = None
+    is_super_admin: bool
+    is_admin: bool
+    pode_criar_usuario: bool
+    pode_gerar_senha: bool
+    pode_pausar: bool
+    pode_mover_equipe: bool
+    pode_gerir_equipes: bool
+    admin_global: bool
 
     model_config = {"from_attributes": True}
