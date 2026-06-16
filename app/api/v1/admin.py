@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import decrypt, encrypt
-from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
+from app.core.exceptions import AcessoNegadoError, ConflitoDadosError, NaoEncontradoError
 from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
@@ -44,12 +44,50 @@ def require_admin(user: Usuario = Depends(get_current_user)) -> Usuario:
     Raises:
         HTTPException: 403 se o usuário não for administrador.
     """
-    if not user.is_admin:
+    if not (user.is_admin or user.is_super_admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso restrito a administradores",
         )
     return user
+
+
+def require_super_admin(user: Usuario = Depends(get_current_user)) -> Usuario:
+    """Dependência que exige que o usuário seja o super-admin (dono).
+
+    Args:
+        user: Usuário autenticado (injetado automaticamente).
+
+    Returns:
+        O super-admin autenticado.
+
+    Raises:
+        AcessoNegadoError: 403 se o usuário não for super-admin.
+    """
+    if not user.is_super_admin:
+        raise AcessoNegadoError("Acesso restrito ao super-admin")
+    return user
+
+
+def require_permissao(perm: str):
+    """Fabrica uma dependência que exige uma permissão granular.
+
+    Super-admin sempre passa. Admin delegado passa apenas se tiver a flag
+    `pode_<perm>` ligada.
+
+    Args:
+        perm: Sufixo da flag (ex.: "criar_usuario" → checa `pode_criar_usuario`).
+
+    Returns:
+        Dependência FastAPI que retorna o usuário autenticado ou lança 403.
+    """
+
+    def _dep(user: Usuario = Depends(get_current_user)) -> Usuario:
+        if user.is_super_admin or getattr(user, f"pode_{perm}", False):
+            return user
+        raise AcessoNegadoError("Permissão insuficiente")
+
+    return _dep
 
 
 @router.get("/usuarios", response_model=list[UsuarioAdminRead])

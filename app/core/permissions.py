@@ -56,3 +56,23 @@ class TenantFilter:
         if hasattr(resource, "guarnicao_id") and user.guarnicao_id is not None:
             if resource.guarnicao_id != user.guarnicao_id:
                 raise AcessoNegadoError("Recurso de outra guarnição")
+
+
+def assert_scope(admin, alvo_guarnicao_id: int | None) -> None:
+    """Valida o alcance de um admin delegado sobre uma guarnição alvo.
+
+    Super-admin e admin global passam sempre. Delegado não-global só age sobre
+    a própria guarnição (e nunca quando ele mesmo não tem guarnição).
+
+    Args:
+        admin: Usuário autenticado executando a ação (precisa de is_super_admin,
+            admin_global e guarnicao_id).
+        alvo_guarnicao_id: Guarnição do alvo (ou destino) da ação.
+
+    Raises:
+        AcessoNegadoError: 403 se a ação está fora do alcance do admin.
+    """
+    if admin.is_super_admin or admin.admin_global:
+        return
+    if admin.guarnicao_id is None or alvo_guarnicao_id != admin.guarnicao_id:
+        raise AcessoNegadoError("Fora do alcance da sua equipe")
