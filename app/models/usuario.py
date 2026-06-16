@@ -60,7 +60,17 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
             FK para guarnicoes.id, nullable. Usuários sem equipe aparecem
             na aba "Sem Equipe" do painel admin e têm acesso restrito
             a abordagens (retorna 403 nos endpoints).
-        is_admin: Flag indicando permissões administrativas.
+        is_admin: Flag indicando admin delegado (poderes granulares via flags pode_*).
+        is_super_admin: Dono único do sistema. Faz tudo; é o único que promove/rebaixa
+            admins e exclui usuários. Definido só por script (nunca pela UI).
+        pode_criar_usuario: Admin delegado pode criar novos usuários.
+        pode_gerar_senha: Admin delegado pode gerar nova senha de uso único.
+        pode_pausar: Admin delegado pode pausar (desconectar) usuários.
+        pode_mover_equipe: Admin delegado pode mover usuários entre equipes.
+        pode_gerir_equipes: Admin delegado pode criar/editar equipes e BPMs
+            (só efetivo quando admin_global=True, pois estrutura é global).
+        admin_global: Alcance do admin delegado — True age sobre todas as equipes,
+            False restringe à própria guarnição.
         guarnicao: Relacionamento com Guarnicao (= Equipe na UI).
         abordagens: Relacionamento com Abordagem (não carregado por padrão, lazy=noload).
     """
@@ -78,6 +88,27 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     guarnicao_id: Mapped[int | None] = mapped_column(ForeignKey("guarnicoes.id"), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_super_admin: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    pode_criar_usuario: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    pode_gerar_senha: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    pode_pausar: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    pode_mover_equipe: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    pode_gerir_equipes: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    admin_global: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     tentativas_falhas: Mapped[int] = mapped_column(
         Integer, default=0, server_default="0", nullable=False
     )
