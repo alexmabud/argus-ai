@@ -59,7 +59,9 @@ async def test_criar_usuario_retorna_senha_gerada(mock_db):
     service.audit = AsyncMock()
 
     with patch("app.services.usuario_admin_service.hash_senha", return_value="hash"):
-        usuario, senha = await service.criar_usuario("PM001", admin_id=1)
+        usuario, senha = await service.criar_usuario(
+            "PM001", admin=MagicMock(id=1, is_super_admin=True)
+        )
 
     assert len(senha) >= 8
     assert usuario.matricula == "PM001"
@@ -81,7 +83,7 @@ async def test_criar_usuario_matricula_duplicada_levanta_erro(mock_db):
     service = UsuarioAdminService(mock_db)
 
     with pytest.raises(ConflitoDadosError):
-        await service.criar_usuario("PM001", admin_id=1)
+        await service.criar_usuario("PM001", admin=MagicMock(id=1, is_super_admin=True))
 
 
 @pytest.mark.asyncio
@@ -98,7 +100,7 @@ async def test_pausar_usuario_limpa_session_id(mock_db):
     service.repo.get.return_value = usuario
     service.audit = AsyncMock()
 
-    await service.pausar_usuario(usuario_id=1, admin_id=2)
+    await service.pausar_usuario(usuario_id=1, admin=MagicMock(id=2, is_super_admin=True))
 
     assert usuario.session_id is None
 
@@ -120,7 +122,9 @@ async def test_gerar_nova_senha_invalida_sessao(mock_db):
     service.audit = AsyncMock()
 
     with patch("app.services.usuario_admin_service.hash_senha", return_value="novo_hash"):
-        senha, matricula = await service.gerar_nova_senha(usuario_id=1, admin_id=2)
+        senha, matricula = await service.gerar_nova_senha(
+            usuario_id=1, admin=MagicMock(id=2, is_super_admin=True)
+        )
 
     assert len(senha) >= 8
     assert usuario.session_id is None

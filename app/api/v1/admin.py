@@ -92,6 +92,26 @@ def require_permissao(perm: str):
     return _dep
 
 
+def require_gerir_equipes(user: Usuario = Depends(get_current_user)) -> Usuario:
+    """Exige poder gerir a estrutura organizacional (equipes/BPMs).
+
+    Estrutura é global: passa o super-admin OU o delegado com pode_gerir_equipes
+    E admin_global (não faz sentido gerir estrutura restrito a uma equipe).
+
+    Args:
+        user: Usuário autenticado (injetado automaticamente).
+
+    Returns:
+        Usuário autorizado a gerir equipes/BPMs.
+
+    Raises:
+        AcessoNegadoError: 403 se não tiver poder de gerir equipes globalmente.
+    """
+    if user.is_super_admin or (user.pode_gerir_equipes and user.admin_global):
+        return user
+    raise AcessoNegadoError("Permissão insuficiente para gerir equipes")
+
+
 @router.get("/usuarios", response_model=list[UsuarioAdminRead])
 @limiter.limit("30/minute")
 async def listar_usuarios(
@@ -147,7 +167,7 @@ async def listar_usuarios(
 async def criar_usuario(
     request: Request,
     data: UsuarioAdminCreate,
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_permissao("criar_usuario")),
     db: AsyncSession = Depends(get_db),
 ) -> SenhaGeradaResponse:
     """Cria novo usuário com senha de uso único gerada automaticamente.
@@ -175,7 +195,7 @@ async def criar_usuario(
     try:
         usuario, senha = await service.criar_usuario(
             matricula=data.matricula,
-            admin_id=admin.id,
+            admin=admin,
             guarnicao_id=data.guarnicao_id,
         )
     except ConflitoDadosError as e:
@@ -198,7 +218,7 @@ async def criar_usuario(
 async def pausar_usuario(
     request: Request,
     usuario_id: int,
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_permissao("pausar")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Pausa o acesso do usuário desconectando-o imediatamente.
@@ -224,7 +244,7 @@ async def pausar_usuario(
     """
     service = UsuarioAdminService(db)
     try:
-        await service.pausar_usuario(usuario_id=usuario_id, admin_id=admin.id)
+        await service.pausar_usuario(usuario_id=usuario_id, admin=admin)
     except NaoEncontradoError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
     audit = AuditService(db)
@@ -245,7 +265,7 @@ async def pausar_usuario(
 async def gerar_nova_senha(
     request: Request,
     usuario_id: int,
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_permissao("gerar_senha")),
     db: AsyncSession = Depends(get_db),
 ) -> SenhaGeradaResponse:
     """Gera nova senha de uso único para o usuário, invalidando a sessão atual.
@@ -268,7 +288,7 @@ async def gerar_nova_senha(
     """
     service = UsuarioAdminService(db)
     try:
-        senha, matricula = await service.gerar_nova_senha(usuario_id=usuario_id, admin_id=admin.id)
+        senha, matricula = await service.gerar_nova_senha(usuario_id=usuario_id, admin=admin)
     except NaoEncontradoError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
     audit = AuditService(db)
@@ -289,14 +309,16 @@ async def gerar_nova_senha(
 async def excluir_usuario(
     request: Request,
     usuario_id: int,
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_super_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """Exclui logicamente o usuário (soft delete — dados preservados por LGPD).
 
+    Exclusão nunca é delegável: restrito ao super-admin.
+
     Args:
         usuario_id: ID do usuário a excluir.
-        admin: Administrador autenticado.
+        admin: Super-admin autenticado.
         db: Sessão do banco de dados.
 
     Raises:
@@ -304,7 +326,7 @@ async def excluir_usuario(
 
     Status Code:
         204: Usuário excluído com sucesso (sem corpo).
-        403: Não é administrador.
+        403: Não é super-admin.
         404: Usuário não encontrado.
     """
     service = UsuarioAdminService(db)
@@ -422,7 +444,7 @@ async def listar_bpms(
 async def criar_bpm(
     request: Request,
     data: BpmCreate,
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_gerir_equipes),
     db: AsyncSession = Depends(get_db),
 ) -> BpmRead:
     """Cria novo BPM.
@@ -459,7 +481,7 @@ async def toggle_isolamento_bpm(
     request: Request,
     bpm_id: int,
     data: BpmIsolamentoUpdate,
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_gerir_equipes),
     db: AsyncSession = Depends(get_db),
 ) -> BpmRead:
     """Liga ou desliga o isolamento de abordagens para o BPM.
@@ -530,7 +552,7 @@ async def listar_equipes(
 async def criar_equipe(
     request: Request,
     data: EquipeCreate,
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_gerir_equipes),
     db: AsyncSession = Depends(get_db),
 ) -> EquipeRead:
     """Cria nova equipe (guarnição) com código gerado automaticamente.
@@ -568,7 +590,7 @@ async def toggle_isolamento_equipe(
     request: Request,
     guarnicao_id: int,
     data: EquipeIsolamentoUpdate,
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_gerir_equipes),
     db: AsyncSession = Depends(get_db),
 ) -> EquipeRead:
     """Liga ou desliga o isolamento de abordagens para a equipe.
@@ -614,7 +636,7 @@ async def mover_usuario_equipe(
     request: Request,
     usuario_id: int,
     data: UsuarioMoverEquipe,
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_permissao("mover_equipe")),
     db: AsyncSession = Depends(get_db),
 ) -> UsuarioAdminRead:
     """Move o usuário para outra equipe ou remove de equipe (guarnicao_id=None).
@@ -642,7 +664,7 @@ async def mover_usuario_equipe(
         usuario = await service.mover_equipe(
             usuario_id=usuario_id,
             guarnicao_id_destino=data.guarnicao_id,
-            admin_id=admin.id,
+            admin=admin,
         )
     except NaoEncontradoError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
