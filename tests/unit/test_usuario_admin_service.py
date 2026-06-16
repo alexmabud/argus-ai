@@ -11,6 +11,30 @@ def mock_db():
     return AsyncMock()
 
 
+async def _make_super_admin(db_session):
+    """Cria e persiste um super-admin para uso nos testes.
+
+    Args:
+        db_session: Sessão de teste.
+
+    Returns:
+        Usuario com is_super_admin=True e sessão ativa.
+    """
+    from app.core.security import hash_senha
+    from app.models.usuario import Usuario
+
+    a = Usuario(
+        nome="Dono",
+        matricula="DONO001",
+        senha_hash=hash_senha("x"),
+        is_super_admin=True,
+        session_id="dono-sid",
+    )
+    db_session.add(a)
+    await db_session.flush()
+    return a
+
+
 def test_gerar_senha_tem_entropia_minima():
     """Verifica que a senha gerada tem pelo menos 12 caracteres (token_urlsafe 12)."""
     from app.services.usuario_admin_service import _gerar_senha
@@ -132,3 +156,78 @@ async def test_definir_super_admin_matricula_inexistente(db_session):
     service = UsuarioAdminService(db_session)
     with pytest.raises(NaoEncontradoError):
         await service.definir_super_admin("NAOEXISTE")
+
+
+@pytest.mark.asyncio
+async def test_definir_admin_promove_mantendo_equipe(db_session, usuario):
+    """Promover a admin não altera guarnicao_id e liga os toggles pedidos."""
+    from app.services.usuario_admin_service import UsuarioAdminService
+
+    service = UsuarioAdminService(db_session)
+    admin = await _make_super_admin(db_session)
+
+    flags = {
+        "is_admin": True,
+        "pode_criar_usuario": True,
+        "pode_gerar_senha": False,
+        "pode_pausar": False,
+        "pode_mover_equipe": False,
+        "pode_gerir_equipes": False,
+        "admin_global": False,
+    }
+    guarnicao_antes = usuario.guarnicao_id
+    await service.definir_admin(usuario.id, flags, admin)
+    await db_session.refresh(usuario)
+
+    assert usuario.is_admin is True
+    assert usuario.pode_criar_usuario is True
+    assert usuario.guarnicao_id == guarnicao_antes  # invariante
+
+
+@pytest.mark.asyncio
+async def test_definir_admin_rebaixa_zera_toggles(db_session, usuario):
+    """is_admin=False zera todos os toggles."""
+    from app.services.usuario_admin_service import UsuarioAdminService
+
+    service = UsuarioAdminService(db_session)
+    admin = await _make_super_admin(db_session)
+    usuario.is_admin = True
+    usuario.pode_criar_usuario = True
+    usuario.admin_global = True
+    await db_session.flush()
+
+    flags = {"is_admin": False, "pode_criar_usuario": True, "admin_global": True}
+    await service.definir_admin(usuario.id, flags, admin)
+    await db_session.refresh(usuario)
+
+    assert usuario.is_admin is False
+    assert usuario.pode_criar_usuario is False
+    assert usuario.admin_global is False
+
+
+@pytest.mark.asyncio
+async def test_definir_admin_auto_rebaixamento_bloqueado(db_session):
+    """Super-admin não pode rebaixar a si mesmo (anti-lockout)."""
+    from app.core.exceptions import AcessoNegadoError
+    from app.services.usuario_admin_service import UsuarioAdminService
+
+    service = UsuarioAdminService(db_session)
+    admin = await _make_super_admin(db_session)
+    with pytest.raises(AcessoNegadoError):
+        await service.definir_admin(admin.id, {"is_admin": False}, admin)
+
+
+@pytest.mark.asyncio
+async def test_listar_admins_inclui_super_e_delegado(db_session, usuario):
+    """listar_admins retorna super-admins e delegados, não usuários comuns."""
+    from app.services.usuario_admin_service import UsuarioAdminService
+
+    service = UsuarioAdminService(db_session)
+    admin = await _make_super_admin(db_session)
+    usuario.is_admin = True
+    await db_session.flush()
+
+    admins = await service.listar_admins()
+    ids = {a.id for a in admins}
+    assert admin.id in ids
+    assert usuario.id in ids

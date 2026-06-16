@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
+from app.core.exceptions import AcessoNegadoError, ConflitoDadosError, NaoEncontradoError
 from app.core.security import hash_senha
 from app.models.usuario import Usuario
 from app.repositories.usuario_repo import UsuarioRepository
@@ -43,6 +43,16 @@ class UsuarioAdminService:
         repo: Repositório de usuários.
         audit: Serviço de auditoria.
     """
+
+    #: Toggles granulares aceitos no painel de admins.
+    _TOGGLES = (
+        "pode_criar_usuario",
+        "pode_gerar_senha",
+        "pode_pausar",
+        "pode_mover_equipe",
+        "pode_gerir_equipes",
+        "admin_global",
+    )
 
     def __init__(self, db: AsyncSession):
         """Inicializa o serviço com dependências.
@@ -84,6 +94,69 @@ class UsuarioAdminService:
             detalhes={"acao": "definir_super_admin"},
         )
         return True
+
+    async def listar_admins(self) -> list[Usuario]:
+        """Lista admins (super-admins e delegados), ordenados por nome.
+
+        Returns:
+            Usuários ativos com is_super_admin OU is_admin.
+        """
+        result = await self.db.execute(
+            select(Usuario)
+            .where(
+                Usuario.ativo == True,  # noqa: E712
+                (Usuario.is_super_admin == True) | (Usuario.is_admin == True),  # noqa: E712
+            )
+            .order_by(Usuario.nome)
+        )
+        return list(result.scalars().all())
+
+    async def definir_admin(self, usuario_id: int, flags: dict, admin: Usuario) -> Usuario:
+        """Define status de admin delegado e permissões granulares de um usuário.
+
+        Idempotente: promove, edita toggles ou rebaixa. NÃO altera guarnicao_id.
+        Com is_admin=False, zera todos os toggles. Bloqueia o super-admin de
+        rebaixar a si mesmo (anti-lockout).
+
+        Args:
+            usuario_id: ID do usuário alvo.
+            flags: Dict com is_admin e os toggles (chaves de _TOGGLES).
+            admin: Super-admin autenticado que executa a ação.
+
+        Returns:
+            Usuario atualizado.
+
+        Raises:
+            NaoEncontradoError: Se o usuário não existir.
+            AcessoNegadoError: Se o super-admin tentar rebaixar a si mesmo.
+        """
+        result = await self.db.execute(select(Usuario).where(Usuario.id == usuario_id))
+        usuario = result.scalar_one_or_none()
+        if not usuario or not usuario.ativo:
+            raise NaoEncontradoError("Usuário não encontrado")
+
+        novo_is_admin = bool(flags.get("is_admin", False))
+
+        if usuario.id == admin.id and not novo_is_admin:
+            raise AcessoNegadoError("Super-admin não pode rebaixar a si mesmo")
+
+        usuario.is_admin = novo_is_admin
+        if not novo_is_admin:
+            for toggle in self._TOGGLES:
+                setattr(usuario, toggle, False)
+        else:
+            for toggle in self._TOGGLES:
+                setattr(usuario, toggle, bool(flags.get(toggle, False)))
+
+        await self.db.flush()
+        await self.audit.log(
+            usuario_id=admin.id,
+            acao="UPDATE",
+            recurso="usuario",
+            recurso_id=usuario.id,
+            detalhes={"acao": "definir_admin", "is_admin": novo_is_admin},
+        )
+        return usuario
 
     async def listar_usuarios(self, guarnicao_id: int) -> list[Usuario]:
         """Lista usuários ativos de uma guarnição específica (legado).
