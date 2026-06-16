@@ -9,7 +9,10 @@ description = "Sistema de apoio operacional com IA"
 requires-python = ">=3.11"
 dependencies = [
     # Web
-    "fastapi>=0.110.0",
+    # Cap <0.137: fastapi 0.137 cria _IncludedRouter (sem .path) em include
+    # aninhado, e prometheus-fastapi-instrumentator (<8.0) quebra ao ler
+    # route.path → 500 em toda rota instrumentada. 0.136.1 é o último bom.
+    "fastapi>=0.110.0,<0.137",
     "uvicorn[standard]>=0.27.0",
     "python-multipart>=0.0.27",
     "slowapi>=0.1.9",
