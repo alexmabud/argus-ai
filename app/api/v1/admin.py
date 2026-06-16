@@ -15,6 +15,8 @@ from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.schemas.auth import (
+    AdminPermissoesUpdate,
+    AdminRead,
     EquipeCreate,
     EquipeIsolamentoUpdate,
     EquipeRead,
@@ -319,6 +321,74 @@ async def excluir_usuario(
         ip_address=request.client.host if request.client else None,
     )
     await db.commit()
+
+
+@router.get("/admins", response_model=list[AdminRead])
+@limiter.limit("30/minute")
+async def listar_admins(
+    request: Request,
+    admin: Usuario = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[AdminRead]:
+    """Lista admins (super-admins e delegados) para a página de admins.
+
+    Args:
+        request: Requisição HTTP.
+        admin: Super-admin autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        Lista de AdminRead ordenada por nome.
+
+    Status Code:
+        200: Lista retornada com sucesso.
+        403: Não é super-admin.
+    """
+    service = UsuarioAdminService(db)
+    admins = await service.listar_admins()
+    return [AdminRead.model_validate(a) for a in admins]
+
+
+@router.put("/usuarios/{usuario_id}/admin", response_model=AdminRead)
+@limiter.limit("10/minute")
+async def definir_admin(
+    request: Request,
+    usuario_id: int,
+    data: AdminPermissoesUpdate,
+    admin: Usuario = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+) -> AdminRead:
+    """Promove/rebaixa admin e define permissões granulares (idempotente).
+
+    Mantém o guarnicao_id do usuário (promover não tira da equipe). Rebaixar
+    (is_admin=False) zera todos os toggles. Bloqueia auto-rebaixamento.
+
+    Args:
+        request: Requisição HTTP.
+        usuario_id: ID do usuário alvo.
+        data: Status de admin + toggles granulares.
+        admin: Super-admin autenticado.
+        db: Sessão do banco de dados.
+
+    Returns:
+        AdminRead com o estado atualizado.
+
+    Raises:
+        HTTPException: 404 se o usuário não existir.
+
+    Status Code:
+        200: Atualizado com sucesso.
+        403: Não é super-admin OU tentativa de auto-rebaixamento.
+        404: Usuário não encontrado.
+    """
+    service = UsuarioAdminService(db)
+    try:
+        usuario = await service.definir_admin(usuario_id, data.model_dump(), admin)
+    except NaoEncontradoError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.detail)
+    await db.commit()
+    await db.refresh(usuario)
+    return AdminRead.model_validate(usuario)
 
 
 @router.get("/bpms", response_model=list[BpmRead])
