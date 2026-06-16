@@ -54,6 +54,37 @@ class UsuarioAdminService:
         self.repo = UsuarioRepository(db)
         self.audit = AuditService(db)
 
+    async def definir_super_admin(self, matricula: str) -> bool:
+        """Marca um usuário como super-admin (dono) pela matrícula.
+
+        Operação de bootstrap idempotente e NÃO destrutiva, pensada para rodar
+        no deploy (não há endpoint que exponha isto — super-admin nunca é
+        delegável pela UI).
+
+        Args:
+            matricula: Matrícula do usuário a tornar super-admin.
+
+        Returns:
+            True se o usuário existe e ficou marcado como super-admin.
+
+        Raises:
+            NaoEncontradoError: Se a matrícula não existir.
+        """
+        result = await self.db.execute(select(Usuario).where(Usuario.matricula == matricula))
+        usuario = result.scalar_one_or_none()
+        if not usuario:
+            raise NaoEncontradoError("Usuário não encontrado")
+        usuario.is_super_admin = True
+        await self.db.flush()
+        await self.audit.log(
+            usuario_id=usuario.id,
+            acao="UPDATE",
+            recurso="usuario",
+            recurso_id=usuario.id,
+            detalhes={"acao": "definir_super_admin"},
+        )
+        return True
+
     async def listar_usuarios(self, guarnicao_id: int) -> list[Usuario]:
         """Lista usuários ativos de uma guarnição específica (legado).
 

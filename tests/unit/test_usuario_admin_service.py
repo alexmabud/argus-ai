@@ -102,3 +102,33 @@ async def test_gerar_nova_senha_invalida_sessao(mock_db):
     assert usuario.session_id is None
     assert usuario.senha_hash == "novo_hash"
     assert usuario.ativo is True
+
+
+@pytest.mark.asyncio
+async def test_definir_super_admin_marca_por_matricula(db_session, usuario):
+    """definir_super_admin marca is_super_admin=True pela matrícula (idempotente)."""
+    from app.services.usuario_admin_service import UsuarioAdminService
+
+    service = UsuarioAdminService(db_session)
+
+    alterado = await service.definir_super_admin(usuario.matricula)
+    await db_session.refresh(usuario)
+    assert alterado is True
+    assert usuario.is_super_admin is True
+
+    # idempotente: segunda chamada não quebra e mantém True
+    de_novo = await service.definir_super_admin(usuario.matricula)
+    assert de_novo is True
+    await db_session.refresh(usuario)
+    assert usuario.is_super_admin is True
+
+
+@pytest.mark.asyncio
+async def test_definir_super_admin_matricula_inexistente(db_session):
+    """Matrícula inexistente lança NaoEncontradoError."""
+    from app.core.exceptions import NaoEncontradoError
+    from app.services.usuario_admin_service import UsuarioAdminService
+
+    service = UsuarioAdminService(db_session)
+    with pytest.raises(NaoEncontradoError):
+        await service.definir_super_admin("NAOEXISTE")
