@@ -44,7 +44,7 @@ dependencies = [
     "boto3>=1.34.0",
     "aioboto3>=12.0.0",
     # Worker
-    "arq>=0.26.0",
+    "arq>=0.28.0",
     # Cache
     "redis>=5.0.0",
     # Production server
