@@ -90,6 +90,12 @@ function renderPerfil(_appState) {
           </button>
         </template>
 
+        <template x-if="isSuperAdmin">
+          <button @click="irParaAdmins()" class="btn btn-secondary" style="width: 100%; margin-top: 4px;">
+            Gerenciar admins
+          </button>
+        </template>
+
         <template x-if="isAdmin">
           <button @click="abrirDashboard()" class="btn btn-secondary" style="width: 100%; margin-top: 4px;">
             📊 Dashboard de Performance
@@ -176,7 +182,8 @@ function perfilPage() {
     fotoUrl: user.foto_url || null,
     salvando: false,
     uploadando: false,
-    isAdmin: user.is_admin || false,
+    isAdmin: user.is_admin || user.is_super_admin || false,
+    isSuperAdmin: user.is_super_admin || false,
 
     totp2fa: {
       ativo: user.totp_ativo || false,
@@ -284,6 +291,10 @@ function perfilPage() {
 
     irParaAdmin() {
       window.dispatchEvent(new CustomEvent("navigate", { detail: "admin-usuarios" }));
+    },
+
+    irParaAdmins() {
+      window.dispatchEvent(new CustomEvent("navigate", { detail: "admins" }));
     },
 
     abrirDashboard() {
