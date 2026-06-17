@@ -48,11 +48,12 @@
 | Vinculos manuais | Criacao manual de relacionamentos entre pessoas com tipo e descricao |
 | Observacoes de pessoa | Anotacoes operacionais livres por pessoa com historico cronologico |
 | Consulta unificada | Busca simultanea em pessoas, veiculos e abordagens via unico termo |
-| Ocorrencias PDF | Upload de BOs em PDF com extracao de texto (PyMuPDF) e embedding semantico |
-| RAG | Busca semantica em pgvector + geracao de relatorios via Claude API ou Ollama |
+| Ocorrencias (BOs em PDF) | Upload, extracao de texto (PyMuPDF) e busca por nome/RAP/data. Um embedding (pgvector 384-dim) e gerado e armazenado como base para busca semantica futura (ainda nao exposta em endpoint) |
 | Dashboard analitico | Resumo operacional, pessoas recorrentes, producao diaria/mensal, calendario de atividade |
 | Gestao de usuarios | Painel admin para criacao, pausa, reativacao e exclusao de usuarios; geracao de senha unica |
 | Gestao de BPMs e equipes | Criacao de batalhoes e equipes com controle de isolamento de dados |
+| Admins e permissoes granulares | Super-admin define quem e admin e quais permissoes cada um tem (ex.: gerir equipes) |
+| 2FA (TOTP) | Autenticacao de dois fatores opcional via app autenticador (pyotp) |
 | Perfil do usuario | Edicao de nome, apelido, posto/graduacao e foto de perfil |
 | Sync offline | Fila IndexedDB sincroniza automaticamente ao reconectar (Dexie.js) |
 | Sessoes exclusivas | Apenas uma sessao ativa por usuario (session_id validado no JWT) |
@@ -103,11 +104,11 @@
 |--------|-------------|
 | **Backend** | Python 3.11+, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic v2, arq, Uvicorn |
 | **Banco** | PostgreSQL 16, pgvector, PostGIS, pg_trgm, unaccent |
-| **IA / RAG** | SentenceTransformers (`paraphrase-multilingual-MiniLM-L12-v2`), PyMuPDF, Claude API (Anthropic) / Ollama |
+| **IA / Busca semantica** | SentenceTransformers (`paraphrase-multilingual-MiniLM-L12-v2`), PyMuPDF (extracao de texto de PDF) |
 | **Visao (opcional)** | InsightFace (buffalo_l, 512-dim), EasyOCR, Pillow, ONNX Runtime |
 | **Frontend** | PWA, Alpine.js v3, Tailwind CSS (CDN), Dexie.js (IndexedDB), Web Speech API, Leaflet.js, ApexCharts, Service Worker |
 | **Infra** | Docker Compose, Redis, MinIO (storage S3-compatible), GitHub Actions CI |
-| **Seguranca** | JWT (python-jose), Fernet AES-256 (cryptography), bcrypt (passlib), audit logging, slowapi rate limiting |
+| **Seguranca** | JWT (PyJWT), Fernet AES-256 (cryptography), bcrypt, TOTP 2FA (pyotp), audit logging, slowapi rate limiting |
 
 ---
 
@@ -135,7 +136,7 @@ docker compose up -d
 
 Isso sobe 5 servicos: **db** (PostgreSQL + pgvector + PostGIS), **redis**, **minio** (S3 local), **api** (FastAPI) e **worker** (arq).
 
-### 3. Migrations e seed
+### 3. Migrations
 
 ```bash
 docker compose exec api python scripts/init_db.py
@@ -183,7 +184,7 @@ make worker
 | `make format` | Ruff format (auto-formatacao) |
 | `make migrate` | Aplica migrations pendentes |
 | `make migrate-create msg="desc"` | Cria nova migration Alembic com autogenerate |
-| `make seed` | Popular passagens |
+| `make seed` | Placeholder — nao ha dados de seed no projeto hoje (alvo vestigial) |
 | `make anonimizar` | Anonimizacao LGPD de dados expirados |
 | `make anonimizar-dry` | Simulacao da anonimizacao (sem alterar dados) |
 | `make docker-up` | Sobe todos os servicos via Docker Compose |
@@ -333,6 +334,7 @@ argus-ai/
 
 | Metodo | Rota | Descricao |
 |--------|------|-----------|
+| GET | `/` | Listar veiculos (filtros por placa/modelo/cor) |
 | POST | `/` | Cadastrar veiculo (placa normalizada) |
 | GET | `/localidades` | Modelos e cores distintos (autocomplete) |
 
@@ -361,6 +363,7 @@ argus-ai/
 | Metodo | Rota | Descricao |
 |--------|------|-----------|
 | GET | `/` | Busca unificada (pessoas + veiculos + abordagens por termo) |
+| GET | `/pessoas-por-veiculo` | Pessoas vinculadas a veiculos (placa, modelo ou cor) |
 | GET | `/localidades` | Bairros, cidades, estados distintos (filtros) |
 
 ### Ocorrencias (`/api/v1/ocorrencias`)
@@ -401,12 +404,16 @@ argus-ai/
 | POST | `/usuarios/{id}/gerar-senha` | Gerar nova senha unica para usuario |
 | DELETE | `/usuarios/{id}` | Excluir usuario (soft delete) |
 | PATCH | `/usuarios/{id}/equipe` | Transferir usuario para outra equipe |
+| GET | `/admins` | Listar admins e suas permissoes granulares |
+| PUT | `/usuarios/{id}/admin` | Definir/remover admin e permissoes (controlado por super-admin) |
 | GET | `/bpms` | Listar batalhoes (BPMs) |
 | POST | `/bpms` | Criar novo BPM |
 | PATCH | `/bpms/{id}/toggle-isolamento` | Ativar/desativar isolamento de dados por BPM |
 | GET | `/equipes` | Listar equipes/guarnicoes |
 | POST | `/equipes` | Criar nova equipe |
 | PATCH | `/equipes/{id}/toggle-isolamento` | Ativar/desativar isolamento de dados por equipe |
+| POST | `/2fa/setup` | Iniciar configuracao de 2FA (TOTP) |
+| POST | `/2fa/verify` | Confirmar e ativar 2FA (TOTP) |
 
 ---
 
@@ -453,10 +460,10 @@ Copie `.env.example` e configure:
 | `S3_ACCESS_KEY` | Chave de acesso S3 | — |
 | `S3_SECRET_KEY` | Chave secreta S3 | — |
 | `S3_BUCKET` | Nome do bucket | `argus` |
-| `LLM_PROVIDER` | Provider LLM (`ollama` ou `anthropic`) | `anthropic` |
-| `ANTHROPIC_API_KEY` | API key da Anthropic (se provider = anthropic) | — |
-| `OLLAMA_BASE_URL` | Base URL do Ollama local | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Modelo Ollama para geracao de texto | `deepseek-r1:8b` |
+| `LLM_PROVIDER` | Reservado — presente no `.env.example`, sem servico LLM ativo hoje | `ollama` |
+| `ANTHROPIC_API_KEY` | Reservado — sem uso atual | — |
+| `OLLAMA_BASE_URL` | Reservado — sem uso atual | `http://localhost:11434` |
+| `OLLAMA_MODEL` | Reservado — sem uso atual | `deepseek-r1:8b` |
 | `EMBEDDING_MODEL` | Modelo embeddings (SentenceTransformers) | `paraphrase-multilingual-MiniLM-L12-v2` |
 | `EMBEDDING_DIMENSIONS` | Dimensoes do embedding de texto | `384` |
 | `EMBEDDING_CACHE_TTL` | TTL do cache Redis para embeddings (s) | `3600` |
@@ -483,7 +490,7 @@ Ver `.env.example` para lista completa.
 | **Retencao controlada** | `DATA_RETENTION_DAYS` (padrao 5 anos) + script `anonimizar_dados.py` |
 | **Mascaramento** | CPF exibido apenas com ultimos 2 digitos |
 | **Sessoes exclusivas** | `session_id` no JWT impede sessoes simultaneas |
-| **Rate Limiting** | slowapi protege contra abuso (60/min padrao, 10/min auth e IA) |
+| **Rate Limiting** | slowapi protege contra abuso (60/min padrao, 10/min auth e operacoes pesadas) |
 
 ---
 
@@ -561,13 +568,17 @@ os dois remotes, salvar senha GPG, ativar cron).
 | Documento | Descricao |
 |-----------|-----------|
 | [ARGUS_AI_SPEC.md](ARGUS_AI_SPEC.md) | Especificacao tecnica completa |
+| [docs/MEU_GUIA_DE_ESTUDOS.md](docs/MEU_GUIA_DE_ESTUDOS.md) | Guia didatico de onboarding (camadas, IA, auth, offline, fluxos) |
 | [docs/API.md](docs/API.md) | Referencia de todos os endpoints |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Guia de deploy |
 | [docs/disaster-recovery.md](docs/disaster-recovery.md) | Plano de backup duplo (Oracle + Google Drive) e recuperacao em 5 cenarios |
 | [docs/LGPD.md](docs/LGPD.md) | Compliance LGPD e protecao de dados |
 | [docs/PRODUCTION_SECURITY.md](docs/PRODUCTION_SECURITY.md) | Seguranca em producao |
+| [docs/runbook-argus-app-role.md](docs/runbook-argus-app-role.md) | Provisionamento do papel DB so-DML `argus_app` |
+| [docs/secret-rotation.md](docs/secret-rotation.md) | Rotacao de chaves e segredos |
+| [docs/oci-disk-encryption.md](docs/oci-disk-encryption.md) | Criptografia de disco em repouso (OCI Vault) |
+| [monitoring/MANUAL_MONITORAMENTO.md](monitoring/MANUAL_MONITORAMENTO.md) | Stack de monitoramento (Prometheus + Grafana + alertas) |
 | [docs/DATA_SANITIZATION.md](docs/DATA_SANITIZATION.md) | Sanitizacao de dados para publicacao |
-| [docs/MAKING_PUBLIC.md](docs/MAKING_PUBLIC.md) | Guia para tornar o repositorio publico |
 
 ---
 

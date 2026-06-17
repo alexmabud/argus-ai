@@ -172,7 +172,7 @@ Claude Flare - Argus.txt
 
 # NOTE: Skills (.claude/skills/ e .gemini/skills/) são mantidas localmente
 # Não são versionadas — cada máquina tem sua cópia
-MEU_GUIA_DE_ESTUDOS.md
+# (MEU_GUIA_DE_ESTUDOS.md foi movido para docs/ e agora É versionado, p/ onboarding)
 
 # ══════════════════════════════════
 # PLANOS DE IMPLEMENTAÇÃO

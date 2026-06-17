@@ -49,7 +49,7 @@ secrets.yaml
 ```
 
 ### ❌ Nunca Exponha:
-- Chaves de API (Anthropic, Google Maps, etc.)
+- Chaves de API (Google Maps, token do bot Telegram, credenciais S3/MinIO, etc.)
 - SECRET_KEY do JWT
 - ENCRYPTION_KEY do Fernet
 - Credenciais de banco de dados

@@ -1,9 +1,15 @@
 # ARGUS AI — Especificação Técnica Completa
 
-> **Documento de referência para desenvolvimento com Claude Code**
-> Versão: 1.1 (Production-Ready)
-> Última atualização: Maio 2026
-> Status: ✅ Implementado e em manutenção ativa
+> **Documento de referência técnica do Argus AI**
+> Versão: 2.0 (alinhada ao código em produção)
+> Última atualização: Junho 2026
+> Status: ✅ Em produção e manutenção ativa
+>
+> ⚠️ **Escopo descontinuado:** a geração de texto por LLM (RAG generativo) e os domínios de
+> **Passagem** e **Legislação** foram esboçados em versões iniciais mas **não fazem parte do
+> sistema atual** — foram removidos desta especificação. A IA existente hoje é: reconhecimento
+> facial (InsightFace), OCR de placas (EasyOCR) e geração de embeddings de ocorrências
+> (SentenceTransformers).
 
 ---
 
@@ -16,7 +22,7 @@
 5. [Setup do Ambiente](#5-setup-do-ambiente)
 6. [Banco de Dados](#6-banco-de-dados)
 7. [Backend — FastAPI](#7-backend--fastapi)
-8. [Módulo RAG](#8-módulo-rag)
+8. [Busca Semântica e Embeddings](#8-busca-semântica-e-embeddings)
 9. [Visão Computacional](#9-visão-computacional)
 10. [Frontend PWA](#10-frontend-pwa)
 11. [Modo Offline e Sincronização](#11-modo-offline-e-sincronização)
@@ -37,7 +43,7 @@
 
 ### O que é
 
-**Argus AI** é um sistema de apoio operacional para equipes de patrulhamento que funciona como **memória operacional da guarnição**, permitindo cadastro rápido de abordagens, consulta de histórico, relacionamento automático entre pessoas, armazenamento de ocorrências em PDF, auxílio na escrita de relatórios via RAG e análise geoespacial de padrões.
+**Argus AI** é um sistema de apoio operacional para equipes de patrulhamento que funciona como **memória operacional da guarnição**, permitindo cadastro rápido de abordagens, consulta de histórico, relacionamento automático entre pessoas, armazenamento de ocorrências em PDF e análise geoespacial de padrões.
 
 O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia grega — aquele que tudo vê e nada esquece.
 
@@ -59,7 +65,6 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 |---|---|
 | **Abordagem** | Registro operacional básico feito em campo (pessoas, veículos, local, fotos) |
 | **Ocorrência** | Registro formal — PDF do sistema oficial, vinculado a uma abordagem |
-| **Passagem** | Enquadramento legal (lei + artigo + crime) associado a pessoa numa abordagem |
 | **Relacionamento** | Vínculo materializado entre pessoas que aparecem juntas em abordagens — com frequência calculada |
 | **Guarnição** | Unidade/equipe operacional — define escopo de visibilidade dos dados |
 
@@ -70,11 +75,13 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 ### ✅ Módulos Completos e Funcionais
 
 #### Backend FastAPI
-- ✅ **13 routers** implementados (auth, pessoas, veículos, abordagens, ocorrências, fotos, localidades, analytics, admin, sync, consultas)
-- ✅ **16 models** SQLAlchemy com mixins (Timestamp, SoftDelete, MultiTenant)
-- ✅ **21 services** especializados (auth, pessoa, veículo, abordagem, ocorrência, embedding, face, ocr, sync, analytics, audit)
-- ✅ **Multi-tenancy** operacional (isolamento por guarnição)
-- ✅ **Autenticação JWT** (registro, login, refresh token)
+- ✅ **11 routers** v1 (auth, pessoas, veículos, abordagens, fotos, consultas, ocorrências, analytics, sync, admin, localidades) + `health`
+- ✅ **14 models** SQLAlchemy + `base`, com mixins (Timestamp, SoftDelete, MultiTenant)
+- ✅ **23 services** especializados (auth, pessoa, observação de pessoa, veículo, abordagem, ocorrência, embedding, face, ocr, sync, analytics, audit, bpm, equipe, localidade, relacionamento, geocoding, storage, consulta, notificação, usuário-admin, texto, foto)
+- ✅ **Multi-tenancy** operacional (isolamento por guarnição e por BPM)
+- ✅ **Autenticação JWT** (login, refresh, logout, sessão exclusiva via `session_id`)
+- ✅ **2FA (TOTP)** opcional + guarda de brute-force por IP (Redis)
+- ✅ **Gestão administrativa**: usuários, BPMs, equipes, super-admin + permissões granulares
 - ✅ **Rate limiting** e controle de acesso
 - ✅ **Audit log** completo
 
@@ -89,12 +96,12 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 - ✅ **OCR de placas** (EasyOCR)
 - ✅ **Busca por foto** via similaridade facial
 
-#### RAG (Retrieval-Augmented Generation)
-- ✅ **Embedding multilíngue** (SentenceTransformers)
-- ✅ **PDF processor** assíncrono (PyMuPDF)
-- ✅ **Busca semântica** em pgvector
-- ✅ **Geração de relatórios** via Claude API
+#### Busca Semântica / Embeddings
+- ✅ **Embedding multilíngue** (SentenceTransformers, 384 dim)
+- ✅ **PDF processor** assíncrono (PyMuPDF) — extrai texto e gera o embedding da ocorrência
 - ✅ **Cache de embeddings** em Redis
+- ⚠️ **Busca por similaridade de ocorrências**: o método existe no repositório (`buscar_similares`), porém ainda **não está exposto** em endpoint — a busca atual de ocorrências é textual (nome/RAP/data)
+- ❌ **Geração de relatórios via LLM**: não implementado (não há `llm_service`/`rag_service`)
 
 #### Frontend PWA
 - ✅ **Progressive Web App** (HTML + Alpine.js + Tailwind)
@@ -140,10 +147,11 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 | Uvicorn | 0.27+ | ASGI server |
 | arq | 0.26+ | Worker assíncrono (background tasks) |
 | python-multipart | latest | Upload de arquivos |
-| python-jose | latest | JWT tokens |
-| passlib[bcrypt] | latest | Hash de senhas |
+| PyJWT[crypto] | 2.8+ | JWT tokens |
+| bcrypt | 4.2+ | Hash de senhas |
+| pyotp | 2.9+ | TOTP (autenticação de dois fatores) |
 | httpx | latest | HTTP client async |
-| cryptography | latest | Criptografia de campos sensíveis (Fernet) |
+| cryptography | 48+ | Criptografia de campos sensíveis (Fernet) |
 | slowapi | latest | Rate limiting |
 
 ### Banco de Dados
@@ -156,14 +164,16 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 | pg_trgm | Busca textual fuzzy |
 | unaccent | Normalização de acentos |
 
-### IA / RAG
+### IA / Busca semântica
 
 | Tecnologia | Propósito |
 |---|---|
 | sentence-transformers | Geração de embeddings de texto |
 | Modelo: `paraphrase-multilingual-MiniLM-L12-v2` | Embedding model multilíngue (384 dim) |
 | PyMuPDF (fitz) | Extração de texto de PDFs |
-| LLM via API | Claude API ou Ollama local para geração de texto |
+
+> Não há LLM/geração de texto no sistema. As variáveis `LLM_PROVIDER`, `ANTHROPIC_API_KEY`
+> e `OLLAMA_*` existem no `.env.example` mas estão reservadas/sem uso.
 
 ### Visão Computacional
 
@@ -190,10 +200,12 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 
 | Serviço | Propósito |
 |---|---|
-| Render ou Railway | Backend hosting |
-| Neon ou Supabase | PostgreSQL gerenciado com pgvector + PostGIS |
-| Upstash Redis | Cache + fila do arq worker |
-| MinIO (S3-compatible) | Storage de fotos e PDFs em container Docker — trocável por R2/AWS S3 |
+| Oracle Cloud (VM Always Free) | Hospedagem self-hosted via Docker Compose |
+| PostgreSQL 16 (container) | Banco com pgvector + PostGIS + pg_trgm + unaccent |
+| Redis (container) | Cache + fila do arq worker |
+| MinIO (container, dados em `/mnt/fotos`) | Storage S3-compatible de fotos e PDFs — trocável por R2/AWS S3 |
+| Caddy | Reverse proxy + HTTPS automático |
+| Prometheus + Grafana | Monitoramento e alertas (relatório via Telegram) |
 | GitHub Actions | CI/CD |
 
 ---
@@ -225,34 +237,35 @@ argus-ai/
 │   │   ├── v1/
 │   │   │   ├── __init__.py
 │   │   │   ├── router.py             # Agrupa todos os routers v1
-│   │   │   ├── auth.py               # Login, registro, refresh token
-│   │   │   ├── pessoas.py            # CRUD pessoas
+│   │   │   ├── auth.py               # Login, logout, refresh, perfil
+│   │   │   ├── pessoas.py            # CRUD pessoas, endereços, vínculos manuais, observações
 │   │   │   ├── veiculos.py           # CRUD veículos
-│   │   │   ├── abordagens.py         # CRUD abordagens
-│   │   │   ├── ocorrencias.py        # Upload PDF, vinculação
-│   │   │   ├── fotos.py              # Upload e busca por foto
-│   │   │   ├── consultas.py          # Busca unificada, histórico
-│   │   │   ├── relacionamentos.py    # Consulta de vínculos entre pessoas
-│   │   │   ├── rag.py                # Geração de relatório
-│   │   │   ├── legislacao.py         # Consulta de legislação
+│   │   │   ├── localidades.py        # Autocomplete de bairros/cidades/estados
+│   │   │   ├── abordagens.py         # Registro e listagem de abordagens
+│   │   │   ├── ocorrencias.py        # Upload PDF, listagem, busca textual
+│   │   │   ├── fotos.py              # Upload, busca facial, OCR de placa
+│   │   │   ├── consultas.py          # Busca unificada cross-domain
 │   │   │   ├── analytics.py          # Dashboard analítico
-│   │   │   └── sync.py               # Endpoint de sincronização offline
+│   │   │   ├── sync.py               # Sincronização offline (batch)
+│   │   │   └── admin.py              # Usuários, BPMs, equipes, admins, 2FA
 │   │   └── health.py
 │   │
 │   ├── models/
 │   │   ├── __init__.py
-│   │   ├── base.py                   # Base + mixins (Timestamp, SoftDelete, Audit)
-│   │   ├── usuario.py
-│   │   ├── guarnicao.py              # Multi-tenancy
+│   │   ├── base.py                   # Base + mixins (Timestamp, SoftDelete, MultiTenant)
+│   │   ├── usuario.py                # Usuário (flags de admin/permissões, 2FA)
+│   │   ├── guarnicao.py              # Equipe/guarnição (multi-tenancy)
+│   │   ├── bpm.py                    # Batalhão (agrupa equipes)
 │   │   ├── pessoa.py
+│   │   ├── pessoa_observacao.py      # Observações livres por pessoa
 │   │   ├── endereco.py
 │   │   ├── veiculo.py
+│   │   ├── localidade.py             # Hierarquia estado/cidade/bairro
 │   │   ├── abordagem.py
-│   │   ├── foto.py
-│   │   ├── passagem.py
-│   │   ├── ocorrencia.py
-│   │   ├── legislacao.py
+│   │   ├── foto.py                   # Embedding facial (Vector 512)
+│   │   ├── ocorrencia.py             # Embedding de texto (Vector 384)
 │   │   ├── relacionamento.py         # Tabela materializada de vínculos
+│   │   ├── vinculo_manual.py         # Vínculo manual pessoa-pessoa
 │   │   └── audit_log.py              # Log de auditoria
 │   │
 │   ├── schemas/
@@ -265,30 +278,37 @@ argus-ai/
 │   │   ├── ocorrencia.py
 │   │   ├── consulta.py
 │   │   ├── relacionamento.py
-│   │   ├── rag.py
-│   │   ├── legislacao.py
-│   │   ├── analytics.py
+│   │   ├── vinculo_manual.py
+│   │   ├── pessoa_observacao.py
+│   │   ├── bpm.py
+│   │   ├── localidade.py
+│   │   ├── validators.py
 │   │   └── sync.py
 │   │
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── auth_service.py
+│   │   ├── usuario_admin_service.py  # Gestão de usuários/admins/permissões
+│   │   ├── bpm_service.py            # BPMs
+│   │   ├── equipe_service.py         # Equipes/guarnições
 │   │   ├── pessoa_service.py
+│   │   ├── pessoa_observacao_service.py
 │   │   ├── veiculo_service.py
+│   │   ├── localidade_service.py
 │   │   ├── abordagem_service.py
 │   │   ├── relacionamento_service.py # Materialização de vínculos
+│   │   ├── consulta_service.py       # Busca unificada cross-domain
 │   │   ├── ocorrencia_service.py     # Upload PDF + extração
-│   │   ├── rag_service.py            # Pipeline RAG completo
 │   │   ├── embedding_service.py      # Geração de embeddings (com cache)
 │   │   ├── face_service.py           # Reconhecimento facial
 │   │   ├── ocr_service.py            # OCR de placas
+│   │   ├── foto_service.py
 │   │   ├── storage_service.py        # Upload/download S3
-│   │   ├── legislacao_service.py
-│   │   ├── llm_service.py            # Abstração da LLM
 │   │   ├── analytics_service.py      # Agregações para dashboard
-│   │   ├── crypto_service.py         # Criptografia de campos sensíveis
 │   │   ├── audit_service.py          # Log de auditoria
 │   │   ├── geocoding_service.py      # Geocodificação reversa
+│   │   ├── notification_service.py   # Notificações
+│   │   ├── text_utils.py             # Normalização/limpeza de texto
 │   │   └── sync_service.py           # Sincronização offline
 │   │
 │   ├── repositories/
@@ -300,29 +320,35 @@ argus-ai/
 │   │   ├── ocorrencia_repo.py
 │   │   ├── foto_repo.py
 │   │   ├── relacionamento_repo.py
-│   │   ├── legislacao_repo.py
-│   │   └── audit_repo.py
+│   │   ├── localidade_repo.py
+│   │   └── usuario_repo.py
 │   │
 │   ├── database/
 │   │   ├── __init__.py
-│   │   ├── session.py                # Engine + async session
-│   │   └── init_db.py                # Extensões + seed
+│   │   └── session.py                # Engine + async session
+│   │
+│   ├── utils/
+│   │   ├── imaging.py                # Tratamento de imagens (HEIF, thumbnails)
+│   │   └── s3.py                     # Helpers de URL S3/R2
 │   │
 │   ├── core/
 │   │   ├── __init__.py
-│   │   ├── security.py               # JWT, hashing
-│   │   ├── crypto.py                 # Fernet encrypt/decrypt
+│   │   ├── security.py               # JWT (PyJWT), hashing bcrypt
+│   │   ├── crypto.py                 # Fernet encrypt/decrypt (CPF)
+│   │   ├── auth_cookie.py            # Cookies de autenticação
+│   │   ├── login_guard.py            # Bloqueio de brute-force por IP (Redis)
+│   │   ├── permissions.py            # Permissões (admin, super-admin, granular)
+│   │   ├── upload_validation.py      # Validação de uploads
 │   │   ├── exceptions.py             # Exceções customizadas
-│   │   ├── middleware.py              # Logging, CORS, rate limit, audit
+│   │   ├── middleware.py             # Logging, CORS, rate limit, audit
 │   │   ├── rate_limit.py             # SlowAPI config
-│   │   ├── permissions.py            # Controle de acesso por guarnição
 │   │   └── logging_config.py
 │   │
 │   └── tasks/                        # Background tasks (arq)
 │       ├── __init__.py
 │       ├── pdf_processor.py          # Extração texto + embedding de PDF
 │       ├── face_processor.py         # Embedding facial
-│       └── embedding_generator.py    # Geração batch de embeddings
+│       └── thumbnail_backfill.py     # Reprocessamento de thumbnails
 │
 ├── frontend/
 │   ├── index.html
@@ -342,8 +368,10 @@ argus-ai/
 │   │   │   ├── abordagem-detalhe.js
 │   │   │   ├── consulta.js
 │   │   │   ├── pessoa-detalhe.js
-│   │   │   ├── ocorrencia-upload.js
-│   │   │   ├── rag-relatorio.js
+│   │   │   ├── ocorrencias.js
+│   │   │   ├── perfil.js
+│   │   │   ├── admin-usuarios.js
+│   │   │   ├── admins.js
 │   │   │   └── dashboard.js
 │   │   └── components/
 │   │       ├── camera.js             # Captura direta (getUserMedia)
@@ -356,44 +384,40 @@ argus-ai/
 │   └── icons/
 │
 ├── scripts/
-│   ├── seed_legislacao.py
-│   ├── seed_passagens.py
-│   ├── update_legislacao.py          # Atualizar via LexML
-│   └── generate_encryption_key.py    # Gerar chave Fernet
+│   ├── init_db.py                    # Criação de tabelas + extensões
+│   ├── generate_encryption_key.py    # Gerar chave Fernet
+│   ├── anonimizar_dados.py           # Anonimização LGPD
+│   ├── definir_super_admin.py        # Bootstrap de super-admin
+│   ├── reset_usuario.py              # Reset de senha
+│   ├── backfill_thumbnails.py        # Reprocessar thumbnails
+│   ├── create_app_role.sql           # Provisiona papel DML-only argus_app
+│   ├── backup_to_clouds.sh           # Backup offsite (Oracle + Google Drive)
+│   ├── restore_from_backup.sh        # Restauração interativa
+│   └── setup_oracle.sh / setup_rclone.sh / deploy.sh
 │
 ├── tests/
-│   ├── conftest.py
+│   ├── conftest.py                   # Fixtures + setup do banco de teste
 │   ├── factories.py                  # Factory Boy
-│   ├── unit/
-│   │   ├── test_pessoa_service.py
-│   │   ├── test_abordagem_service.py
-│   │   ├── test_relacionamento.py
-│   │   ├── test_rag_service.py
-│   │   ├── test_embedding.py
-│   │   ├── test_crypto.py
-│   │   ├── test_audit.py
-│   │   └── test_sync.py
-│   ├── integration/
-│   │   ├── test_api_abordagem.py
-│   │   ├── test_api_ocorrencia.py
-│   │   ├── test_api_consulta.py
-│   │   ├── test_api_sync.py
-│   │   └── test_api_analytics.py
-│   └── e2e/
-│       └── test_fluxo_completo.py
+│   ├── unit/                         # Testes unitários (services, crypto, etc.)
+│   ├── integration/                  # Testes de endpoints
+│   ├── repositories/                 # Testes de repositórios
+│   └── e2e/                          # Testes end-to-end
 │
 ├── docs/
+│   ├── MEU_GUIA_DE_ESTUDOS.md        # Guia didático de onboarding
 │   ├── API.md
 │   ├── DEPLOY.md
-│   ├── ARCHITECTURE.md
-│   ├── LGPD.md                       # Política de dados
+│   ├── LGPD.md                       # Compliance LGPD
+│   ├── PRODUCTION_SECURITY.md
+│   ├── DATA_SANITIZATION.md
+│   ├── disaster-recovery.md
+│   ├── runbook-argus-app-role.md     # Papel DB DML-only argus_app
+│   ├── secret-rotation.md
+│   ├── oci-disk-encryption.md
 │   └── adr/                          # Architecture Decision Records
-│       ├── 001-monolito-modular.md
-│       ├── 002-pgvector-vs-faiss.md
-│       ├── 003-pwa-vs-react-native.md
-│       ├── 004-embedding-multilingual.md
-│       ├── 005-offline-first.md
-│       └── 006-multi-tenancy.md
+│       ├── 001-offline-first.md
+│       ├── 002-pgvector-embeddings.md
+│       └── 003-multi-tenancy.md
 │
 ├── .env.example
 ├── .gitignore
@@ -402,7 +426,8 @@ argus-ai/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── Makefile
-├── CLAUDE.md                         # Instruções para Claude Code
+├── CLAUDE.md                         # Instruções p/ agentes (local, não versionado)
+├── GEMINI.md                         # Instruções p/ agentes (local, não versionado)
 └── README.md
 ```
 
@@ -499,8 +524,6 @@ python scripts/generate_encryption_key.py  # gerar ENCRYPTION_KEY
 
 docker compose up -d
 docker compose exec api alembic upgrade head
-docker compose exec api python scripts/seed_legislacao.py
-docker compose exec api python scripts/seed_passagens.py
 ```
 
 ---
@@ -511,7 +534,7 @@ docker compose exec api python scripts/seed_passagens.py
 
 | Extensão | Propósito |
 |---|---|
-| `vector` | Embeddings vetoriais (RAG + face) |
+| `vector` | Embeddings vetoriais (ocorrências 384-dim + face 512-dim) |
 | `postgis` | Queries geoespaciais (abordagens por raio, mapa de calor) |
 | `pg_trgm` | Busca fuzzy em nomes |
 | `unaccent` | Normalização de acentos na busca |
@@ -791,8 +814,6 @@ class Abordagem(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     veiculos = relationship("AbordagemVeiculo", back_populates="abordagem",
                            lazy="selectin", cascade="all, delete-orphan")
     fotos = relationship("Foto", back_populates="abordagem", lazy="selectin")
-    passagens = relationship("AbordagemPassagem", back_populates="abordagem",
-                            lazy="selectin", cascade="all, delete-orphan")
     ocorrencias = relationship("Ocorrencia", back_populates="abordagem", lazy="selectin")
 
     __table_args__ = (
@@ -911,43 +932,6 @@ class RelacionamentoPessoa(Base):
     )
 ```
 
-#### Passagem e vinculação
-
-```python
-# app/models/passagem.py
-from sqlalchemy import String, ForeignKey, Index
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.models.base import Base
-
-
-class Passagem(Base):
-    __tablename__ = "passagens"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    lei: Mapped[str] = mapped_column(String(100), index=True)
-    artigo: Mapped[str] = mapped_column(String(50))
-    nome_crime: Mapped[str] = mapped_column(String(300))
-
-    __table_args__ = (
-        Index("uq_passagem_lei_artigo", "lei", "artigo", unique=True),
-    )
-
-
-class AbordagemPassagem(Base):
-    __tablename__ = "abordagem_passagens"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    abordagem_id: Mapped[int] = mapped_column(
-        ForeignKey("abordagens.id", ondelete="CASCADE"))
-    pessoa_id: Mapped[int] = mapped_column(
-        ForeignKey("pessoas.id", ondelete="CASCADE"))
-    passagem_id: Mapped[int] = mapped_column(ForeignKey("passagens.id"))
-
-    abordagem = relationship("Abordagem", back_populates="passagens")
-    pessoa = relationship("Pessoa")
-    passagem = relationship("Passagem")
-```
-
 #### Ocorrência
 
 ```python
@@ -976,32 +960,12 @@ class Ocorrencia(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     abordagem = relationship("Abordagem", back_populates="ocorrencias")
 ```
 
-#### Legislação
+#### Outros models (resumo)
 
-```python
-# app/models/legislacao.py
-from typing import Optional
-from sqlalchemy import String, Text, Boolean, Index
-from sqlalchemy.orm import Mapped, mapped_column
-from pgvector.sqlalchemy import Vector
-from app.models.base import Base, TimestampMixin
-
-
-class Legislacao(Base, TimestampMixin):
-    __tablename__ = "legislacoes"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    lei: Mapped[str] = mapped_column(String(100), index=True)
-    artigo: Mapped[str] = mapped_column(String(50))
-    nome: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
-    texto: Mapped[str] = mapped_column(Text)
-    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
-    embedding = mapped_column(Vector(384), nullable=True)
-
-    __table_args__ = (
-        Index("uq_legislacao_lei_artigo", "lei", "artigo", unique=True),
-    )
-```
+Além dos acima, o projeto inclui: `bpm` (batalhão que agrupa equipes, com flag de
+isolamento de dados), `localidade` (hierarquia estado/cidade/bairro), `pessoa_observacao`
+(anotações livres por pessoa) e `vinculo_manual` (vínculo manual pessoa-pessoa). Veja
+`app/models/` para os campos completos.
 
 ### Índices críticos
 
@@ -1016,10 +980,6 @@ CREATE INDEX idx_ocorrencia_embedding
 -- Busca vetorial — faces
 CREATE INDEX idx_foto_face_embedding
     ON fotos USING ivfflat (embedding_face vector_cosine_ops) WITH (lists = 100);
-
--- Busca vetorial — legislação
-CREATE INDEX idx_legislacao_embedding
-    ON legislacoes USING ivfflat (embedding vector_cosine_ops) WITH (lists = 50);
 
 -- Geoespacial — abordagens por raio
 CREATE INDEX idx_abordagem_localizacao
@@ -1139,10 +1099,12 @@ class Settings(BaseSettings):
     S3_REGION: str = "auto"
 
     # LLM
-    LLM_PROVIDER: str = "anthropic"  # anthropic | ollama
-    ANTHROPIC_API_KEY: str = ""
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "deepseek-r1:8b"
+    # RESERVADO — não há serviço LLM no código (sem geração de texto). Mantido apenas
+    # por compatibilidade com o .env.example.
+    LLM_PROVIDER: str = "ollama"  # reservado
+    ANTHROPIC_API_KEY: str = ""   # reservado
+    OLLAMA_BASE_URL: str = "http://localhost:11434"  # reservado
+    OLLAMA_MODEL: str = "deepseek-r1:8b"  # reservado
 
     # Embeddings
     EMBEDDING_MODEL: str = "paraphrase-multilingual-MiniLM-L12-v2"
@@ -1159,7 +1121,7 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_DEFAULT: str = "60/minute"
     RATE_LIMIT_AUTH: str = "10/minute"
-    RATE_LIMIT_HEAVY: str = "10/minute"  # endpoints de IA
+    RATE_LIMIT_HEAVY: str = "10/minute"  # endpoints pesados (upload, face, OCR)
 
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
@@ -1685,24 +1647,20 @@ class RelacionamentoService:
 
 ---
 
-## 8. MÓDULO RAG
+## 8. BUSCA SEMÂNTICA E EMBEDDINGS
 
-### Pipeline completo
+### Pipeline de indexação (implementado)
 
 ```
 PDF Upload → arq worker enfileira
 → PyMuPDF extrai texto
 → Chunking semântico (por seção do BO)
-→ paraphrase-multilingual-MiniLM-L12-v2 gera embeddings
-→ pgvector armazena
-
-Query:
-→ embedding da pergunta (com cache Redis)
-→ busca cosine similarity top-k no pgvector
-→ Contexto + dados da abordagem + legislação → prompt
-→ LLM gera relatório
-→ Log de qualidade (feedback do usuário)
+→ paraphrase-multilingual-MiniLM-L12-v2 gera embedding (384-dim)
+→ pgvector armazena (coluna Ocorrencia.embedding)
 ```
+
+> O passo de *retrieval* (busca por similaridade) e a geração por LLM **não estão expostos
+> hoje** — ver a nota ao fim desta seção. A busca de ocorrências disponível é textual.
 
 ### Embedding Service (com cache)
 
@@ -1825,204 +1783,17 @@ def chunk_text_paragrafos(
     return chunks
 ```
 
-### RAG Service
+### Busca por similaridade (retrieval) — estado atual
 
-```python
-# app/services/rag_service.py
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-from app.services.embedding_service import EmbeddingService
-from app.services.llm_service import LLMService
+O `embedding_service` acima gera e armazena o embedding (384-dim) de cada ocorrência, e o
+`ocorrencia_repo` já possui um método de busca por distância cosseno (`buscar_similares`,
+operador `<=>`). Porém **essa busca ainda não está conectada a nenhum endpoint** — a busca
+de ocorrências exposta hoje é textual (nome/RAP/data), em `GET /ocorrencias/buscar`.
 
-
-class RAGService:
-    def __init__(self, db: AsyncSession, embedding_service: EmbeddingService):
-        self.db = db
-        self.embedding_svc = embedding_service
-        self.llm = LLMService()
-
-    async def buscar_contexto(self, query: str, top_k: int = 5) -> list[dict]:
-        """Busca ocorrências similares no pgvector."""
-        query_embedding = await self.embedding_svc.gerar_embedding_cached(query)
-
-        sql = text("""
-            SELECT
-                id, numero_ocorrencia, texto_extraido,
-                1 - (embedding <=> :embedding::vector) as similarity
-            FROM ocorrencias
-            WHERE embedding IS NOT NULL AND ativo = true
-            ORDER BY embedding <=> :embedding::vector
-            LIMIT :limit
-        """)
-
-        result = await self.db.execute(sql, {
-            "embedding": str(query_embedding),
-            "limit": top_k,
-        })
-
-        return [
-            {
-                "id": row.id,
-                "numero": row.numero_ocorrencia,
-                "texto": row.texto_extraido[:2000],
-                "similaridade": round(row.similarity, 3),
-            }
-            for row in result.fetchall()
-            if row.similarity > 0.3  # Threshold mínimo de relevância
-        ]
-
-    async def buscar_legislacao(self, query: str, top_k: int = 3) -> list[dict]:
-        """Busca artigos de lei relevantes."""
-        query_embedding = await self.embedding_svc.gerar_embedding_cached(query)
-
-        sql = text("""
-            SELECT
-                lei, artigo, nome, texto,
-                1 - (embedding <=> :embedding::vector) as similarity
-            FROM legislacoes
-            WHERE embedding IS NOT NULL AND ativo = true
-            ORDER BY embedding <=> :embedding::vector
-            LIMIT :limit
-        """)
-
-        result = await self.db.execute(sql, {
-            "embedding": str(query_embedding),
-            "limit": top_k,
-        })
-
-        return [
-            {
-                "lei": row.lei,
-                "artigo": row.artigo,
-                "nome": row.nome,
-                "texto": row.texto[:1000],
-                "similaridade": round(row.similarity, 3),
-            }
-            for row in result.fetchall()
-        ]
-
-    async def gerar_relatorio(
-        self, abordagem_id: int, instrucao: str = ""
-    ) -> dict:
-        """Gera relatório baseado nos dados da abordagem + contexto RAG.
-        Retorna texto + metadados de fontes usadas."""
-
-        # 1. Carregar dados da abordagem
-        abordagem_data = await self._carregar_abordagem(abordagem_id)
-
-        # 2. Buscar contexto similar
-        query = f"{abordagem_data.get('observacao', '')} {abordagem_data.get('passagens_texto', '')}"
-        contexto_ocorrencias = await self.buscar_contexto(query)
-        contexto_legislacao = await self.buscar_legislacao(query)
-
-        # 3. Montar prompt
-        prompt = self._montar_prompt(
-            abordagem_data, contexto_ocorrencias, contexto_legislacao, instrucao
-        )
-
-        # 4. Gerar com LLM
-        texto_gerado = await self.llm.gerar(prompt)
-
-        return {
-            "relatorio": texto_gerado,
-            "fontes": {
-                "ocorrencias_usadas": [c["numero"] for c in contexto_ocorrencias],
-                "legislacao_usada": [
-                    f"{c['lei']} art. {c['artigo']}" for c in contexto_legislacao
-                ],
-            },
-            "metricas": {
-                "ocorrencias_encontradas": len(contexto_ocorrencias),
-                "melhor_similaridade": (
-                    contexto_ocorrencias[0]["similaridade"]
-                    if contexto_ocorrencias else 0
-                ),
-            }
-        }
-
-    def _montar_prompt(self, abordagem, ocorrencias, legislacao, instrucao) -> str:
-        return f"""Você é um assistente que ajuda a redigir relatórios operacionais policiais.
-
-REGRAS ABSOLUTAS:
-- Use APENAS as informações fornecidas abaixo
-- NÃO invente fatos, nomes, datas ou detalhes
-- Se não há informação suficiente, diga explicitamente
-
-## DADOS DA ABORDAGEM ATUAL
-{self._formatar_abordagem(abordagem)}
-
-## OCORRÊNCIAS SIMILARES ANTERIORES (para referência de estilo e contexto)
-{self._formatar_contexto(ocorrencias)}
-
-## LEGISLAÇÃO POTENCIALMENTE APLICÁVEL
-{self._formatar_legislacao(legislacao)}
-
-## INSTRUÇÃO
-{instrucao or "Gere um relatório curto e objetivo da abordagem, em linguagem técnica policial."}
-
-Responda em português, de forma técnica, objetiva e em terceira pessoa."""
-
-    async def _carregar_abordagem(self, abordagem_id: int) -> dict:
-        """Carrega todos os dados relevantes da abordagem."""
-        # Implementação: query com joins para pessoas, veículos, passagens
-        ...
-
-    def _formatar_abordagem(self, data: dict) -> str: ...
-    def _formatar_contexto(self, ocorrencias: list) -> str: ...
-    def _formatar_legislacao(self, legislacao: list) -> str: ...
-```
-
-### LLM Service (abstração multi-provider)
-
-```python
-# app/services/llm_service.py
-import httpx
-from app.config import settings
-
-
-class LLMService:
-    async def gerar(self, prompt: str, max_tokens: int = 2000) -> str:
-        if settings.LLM_PROVIDER == "anthropic":
-            return await self._gerar_anthropic(prompt, max_tokens)
-        elif settings.LLM_PROVIDER == "ollama":
-            return await self._gerar_ollama(prompt)
-        raise ValueError(f"Provider não suportado: {settings.LLM_PROVIDER}")
-
-    async def _gerar_anthropic(self, prompt: str, max_tokens: int) -> str:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": settings.ANTHROPIC_API_KEY,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": "claude-sonnet-4-20250514",
-                    "max_tokens": max_tokens,
-                    "messages": [{"role": "user", "content": prompt}],
-                },
-                timeout=60.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data["content"][0]["text"]
-
-    async def _gerar_ollama(self, prompt: str) -> str:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{settings.OLLAMA_BASE_URL}/api/generate",
-                json={
-                    "model": settings.OLLAMA_MODEL,
-                    "prompt": prompt,
-                    "stream": False,
-                },
-                timeout=120.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data["response"]
-```
+> ❌ **Não há geração de relatório por LLM.** Os serviços `rag_service` e `llm_service`
+> (com chamada à Claude API / Ollama) foram esboçados em versões iniciais mas **não foram
+> implementados** e não existem no código. As variáveis `LLM_PROVIDER` / `ANTHROPIC_API_KEY`
+> / `OLLAMA_*` permanecem no `.env.example` apenas como reserva, sem uso.
 
 ---
 
@@ -2381,6 +2152,7 @@ db.version(1).stores({
   // Cache local de dados
   pessoas: "id, nome, cpf_hash, apelido",
   veiculos: "id, placa, modelo",
+  // Store vestigial: existe em db.js, mas não há modelo Passagem no backend (sem uso real)
   passagens: "id, lei, artigo, nome_crime",
 });
 
@@ -2608,19 +2380,20 @@ async def sync_batch(
 ```python
 # app/core/security.py
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
-from passlib.context import CryptContext
+import bcrypt
+import jwt  # PyJWT
 from app.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_BCRYPT_ROUNDS = 12  # ~250ms/hash — defesa contra brute-force
 
 
 def hash_senha(senha: str) -> str:
-    return pwd_context.hash(senha)
+    # bcrypt limita a senha a 72 bytes
+    return bcrypt.hashpw(senha.encode("utf-8")[:72], bcrypt.gensalt(_BCRYPT_ROUNDS)).decode()
 
 
 def verificar_senha(senha: str, hash: str) -> bool:
-    return pwd_context.verify(senha, hash)
+    return bcrypt.checkpw(senha.encode("utf-8")[:72], hash.encode())
 
 
 def criar_access_token(data: dict) -> str:
@@ -2716,7 +2489,7 @@ def get_embedding_service(request: Request):
 ### Script de anonimização periódica
 
 ```python
-# scripts/anonymize_expired.py
+# scripts/anonimizar_dados.py
 """Anonimiza dados expirados conforme política de retenção."""
 from datetime import datetime, timedelta
 from sqlalchemy import update, and_
@@ -2811,16 +2584,6 @@ async def pessoas_recorrentes(
     """Top pessoas mais abordadas."""
     svc = AnalyticsService(db)
     return await svc.pessoas_mais_abordadas(user.guarnicao_id, limit)
-
-
-@router.get("/rag-qualidade")
-async def metricas_rag(
-    db: AsyncSession = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
-):
-    """Métricas de qualidade do RAG (similaridade média, uso)."""
-    svc = AnalyticsService(db)
-    return await svc.metricas_rag(user.guarnicao_id)
 ```
 
 ### Analytics Service
@@ -2931,25 +2694,6 @@ class AnalyticsService:
             for row in result.fetchall()
         ]
 
-    async def metricas_rag(self, guarnicao_id: int) -> dict:
-        """Métricas de uso e qualidade do RAG."""
-        # Contar ocorrências com embedding (processadas)
-        from app.models.ocorrencia import Ocorrencia
-        total = await self.db.execute(
-            select(func.count(Ocorrencia.id))
-            .where(Ocorrencia.guarnicao_id == guarnicao_id)
-        )
-        processadas = await self.db.execute(
-            select(func.count(Ocorrencia.id))
-            .where(
-                Ocorrencia.guarnicao_id == guarnicao_id,
-                Ocorrencia.processada == True,
-            )
-        )
-        return {
-            "total_ocorrencias": total.scalar(),
-            "ocorrencias_indexadas": processadas.scalar(),
-        }
 ```
 
 ---
@@ -3127,12 +2871,13 @@ dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     # Auth
-    "python-jose[cryptography]>=3.3.0",
-    "passlib[bcrypt]>=1.7.4",
-    "cryptography>=42.0.0",
+    "pyjwt[crypto]>=2.8.0",
+    "bcrypt>=4.2.0",
+    "pyotp>=2.9",
+    "cryptography>=48.0.0",
     # HTTP
     "httpx>=0.27.0",
-    # AI / RAG
+    # AI / embeddings
     "sentence-transformers>=2.3.0",
     "pymupdf>=1.23.0",
     # Vision
@@ -3267,8 +3012,8 @@ Formato: `tipo(escopo): descrição`
 Tipos: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`, `security`
 
 ```
-feat(abordagem): criar endpoint de busca por raio geoespacial
-fix(rag): corrigir chunking semântico para BOs com tabelas
+feat(admin): página de admins com super-admin e permissões granulares
+fix(ocorrencia): corrigir chunking semântico para BOs com tabelas
 security(pessoa): criptografar CPF em repouso com Fernet
 test(sync): adicionar testes de sincronização offline
 ```
@@ -3368,8 +3113,7 @@ migrate-create:
 	alembic revision --autogenerate -m "$(msg)"
 
 seed:
-	python scripts/seed_legislacao.py
-	python scripts/seed_passagens.py
+	@echo "Sem dados de seed no projeto (alvo placeholder)."
 
 docker-up:
 	docker compose up -d
@@ -3432,7 +3176,7 @@ S3_SECRET_KEY=minioadmin
 S3_BUCKET=argus
 
 # ══════════════════════════════════
-# LLM
+# LLM (RESERVADO — sem uso; não há serviço LLM no código)
 # ══════════════════════════════════
 LLM_PROVIDER=ollama
 ANTHROPIC_API_KEY=
@@ -3479,75 +3223,10 @@ DATA_RETENTION_DAYS=1825
 
 ## 21. CLAUDE.md
 
-Copie o bloco abaixo para o arquivo `CLAUDE.md` na raiz do projeto:
-
-```markdown
-# CLAUDE.md — Argus AI
-
-## Projeto
-Argus AI — Sistema de apoio operacional com IA para equipes de patrulhamento.
-Memória operacional da guarnição: abordagens, ocorrências, RAG, reconhecimento facial, análise geoespacial.
-
-## Stack
-- Python 3.11+ / FastAPI / SQLAlchemy 2.0 async / Alembic
-- PostgreSQL 16 + pgvector + PostGIS + pg_trgm
-- Redis (cache + arq worker)
-- SentenceTransformers (paraphrase-multilingual-MiniLM-L12-v2)
-- InsightFace (reconhecimento facial) + EasyOCR (placas)
-- PWA frontend (HTML + Alpine.js + Tailwind)
-- MinIO (storage S3-compatible em container Docker, dados em `/mnt/fotos` na VM)
-
-## Estrutura
-- `app/api/` — Routers FastAPI (camada HTTP, versionada em v1/)
-- `app/services/` — Lógica de negócio (NUNCA importa FastAPI)
-- `app/repositories/` — Acesso a dados (queries)
-- `app/models/` — SQLAlchemy models (com mixins: Timestamp, SoftDelete, MultiTenant)
-- `app/schemas/` — Pydantic schemas
-- `app/core/` — Security, crypto, exceptions, middleware, rate_limit, permissions
-- `app/tasks/` — Background tasks via arq worker
-- `frontend/` — PWA offline-first
-- `tests/` — pytest async (unit + integration + e2e)
-- `scripts/` — Seed, atualização legislação, geração de chave
-
-## Convenções
-- Router NUNCA contém lógica — delega para Service
-- Service NUNCA importa FastAPI
-- Toda query sensível passa por TenantFilter (multi-tenancy por guarnição)
-- Soft delete em tudo (SoftDeleteMixin) — dados nunca são removidos
-- CPF criptografado (Fernet) + hash SHA-256 para busca
-- Audit log em todas as ações (AuditService)
-- Async em todo o backend (asyncpg + SQLAlchemy async)
-- Tarefas pesadas (PDF, embedding, face) vão para o arq worker
-- Ruff para lint, mypy para types
-- Commits: tipo(escopo): descrição [pt-BR]
-- Código em inglês, domínio/mensagens em português
-
-## Comandos
-- `make dev` — sobe ambiente local
-- `make worker` — sobe arq worker
-- `make test` — roda testes
-- `make lint` — lint + type check
-- `make migrate msg="descricao"` — nova migration
-- `make seed` — popular legislação e passagens
-
-## Banco
-- pgvector: embeddings (384 dim texto, 512 dim face)
-- PostGIS: queries geoespaciais (busca por raio, mapa de calor)
-- pg_trgm: busca fuzzy em nomes
-- Índices IVFFlat para busca vetorial
-- Índice GiST para geography
-
-## Regras de negócio
-- Abordagem ≠ Ocorrência
-- Relacionamento entre pessoas = materializado em tabela própria com UPSERT
-- IA nunca inventa fatos — apenas organiza dados existentes
-- Cadastro de abordagem < 40 segundos
-- Offline-first: IndexedDB + sync automático
-- LGPD: criptografia, audit, soft delete, retenção controlada
-
-## Variáveis de ambiente
-Veja .env.example
-```
+As convenções, stack, comandos e regras de negócio do projeto estão na **seção 17** deste
+documento. Há também arquivos de instrução para agentes de IA — `CLAUDE.md` (Claude Code) e
+`GEMINI.md` (Gemini) — mantidos **localmente em cada máquina** (setup por dev, não versionados
+no repositório).
 
 ---
 

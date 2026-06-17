@@ -4,7 +4,7 @@
 Aceito
 
 ## Contexto
-O sistema precisa de busca por similaridade semântica (textos de ocorrência e legislação) e facial (reconhecimento de pessoas). As opções avaliadas foram: pgvector (PostgreSQL), Pinecone, Weaviate, FAISS.
+O sistema precisa de busca por similaridade semântica (textos de ocorrência) e facial (reconhecimento de pessoas). As opções avaliadas foram: pgvector (PostgreSQL), Pinecone, Weaviate, FAISS.
 
 ## Decisão
 Usar pgvector como banco vetorial integrado ao PostgreSQL, evitando infraestrutura adicional.
@@ -23,3 +23,9 @@ Usar pgvector como banco vetorial integrado ao PostgreSQL, evitando infraestrutu
 - Queries SQL padrão com joins entre vetores e dados relacionais
 - Performance adequada para volumes de guarnição (milhares, não milhões)
 - Limitação: escala massiva exigiria banco vetorial dedicado
+
+## Nota (atualização Jun/2026)
+A busca semântica de **legislação** foi descontinuada (não há modelo `legislacao` no sistema).
+O pgvector permanece em uso para embeddings de **ocorrências** (384-dim) e **faces** (512-dim).
+A busca por similaridade de ocorrências está implementada no repositório, mas ainda não
+exposta em endpoint — a busca de ocorrências disponível hoje é textual.

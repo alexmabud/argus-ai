@@ -12,13 +12,14 @@ Multi-tenancy via coluna `guarnicao_id` em todas as tabelas sensíveis, com mixi
 ### Implementação
 - `MultiTenantMixin`: Adiciona `guarnicao_id` (FK) a todos os models
 - Repositories filtram automaticamente por `guarnicao_id` do usuário autenticado
-- Dados globais (legislação, passagens) não possuem tenant
+- Dados de referência compartilhados (ex.: localidades) e estruturais (guarnições, BPMs, usuários) não usam o filtro por tenant
+- Isolamento adicional: um BPM ou uma equipe pode ativar `isolamento_abordagens` para restringir ainda mais a visibilidade
 
 ### Tabelas com tenant
 Pessoas, veículos, abordagens, fotos, ocorrências, audit logs
 
-### Tabelas globais
-Legislação, passagens, guarnições, usuários
+### Tabelas globais / estruturais
+Guarnições, BPMs, usuários, localidades
 
 ## Consequências
 - Isolamento de dados sem complexidade de schemas separados
