@@ -46,7 +46,7 @@ dependencies = [
     # Worker
     "arq>=0.28.0",
     # Cache
-    "redis>=5.0.0",
+    "redis>=8.0.0",
     # Production server
     "gunicorn>=21.2.0",
 ]
