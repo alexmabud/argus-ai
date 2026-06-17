@@ -24,6 +24,7 @@ async def admin_eq(db_session, guarnicao):
         senha_hash=hash_senha("senha123"),
         guarnicao_id=guarnicao.id,
         is_admin=True,
+        is_super_admin=True,
         session_id="admin-eq-session",
     )
     db_session.add(u)
