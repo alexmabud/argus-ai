@@ -93,9 +93,7 @@ async def test_criar_em_outra_equipe_bloqueado(
 
 
 @pytest.mark.asyncio
-async def test_sem_pode_gerar_senha_bloqueado(
-    client: AsyncClient, db_session, guarnicao, usuario
-):
+async def test_sem_pode_gerar_senha_bloqueado(client: AsyncClient, db_session, guarnicao, usuario):
     """Delegado sem pode_gerar_senha → 403 ao gerar senha."""
     delegado = await _delegado(db_session, guarnicao.id, pode_criar_usuario=True)
     resp = await client.post(
@@ -129,9 +127,7 @@ async def test_excluir_apenas_super_admin(client: AsyncClient, db_session, guarn
         pode_gerir_equipes=True,
         admin_global=True,
     )
-    resp = await client.delete(
-        f"/api/v1/admin/usuarios/{usuario.id}", headers=_headers(delegado)
-    )
+    resp = await client.delete(f"/api/v1/admin/usuarios/{usuario.id}", headers=_headers(delegado))
     assert resp.status_code == 403
 
 

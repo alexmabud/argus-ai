@@ -88,9 +88,7 @@ async def test_mover_equipe_atualiza_guarnicao_id(
 
 
 @pytest.mark.asyncio
-async def test_mover_equipe_para_none_remove_equipe(
-    db_session: AsyncSession, usuario, super_admin
-):
+async def test_mover_equipe_para_none_remove_equipe(db_session: AsyncSession, usuario, super_admin):
     """mover_equipe com destino=None remove o usuário da equipe."""
     service = UsuarioAdminService(db_session)
     u = await service.mover_equipe(
@@ -133,7 +131,5 @@ async def test_criar_usuario_com_guarnicao_id_none_fica_sem_equipe(
 ):
     """criar_usuario com guarnicao_id=None cria usuário sem equipe."""
     service = UsuarioAdminService(db_session)
-    novo, _ = await service.criar_usuario(
-        matricula="PMSE01", admin=super_admin, guarnicao_id=None
-    )
+    novo, _ = await service.criar_usuario(matricula="PMSE01", admin=super_admin, guarnicao_id=None)
     assert novo.guarnicao_id is None
