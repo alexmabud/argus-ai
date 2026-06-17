@@ -121,6 +121,21 @@ Após deploy, executar migrations:
 alembic upgrade head
 ```
 
+### 5.1. Bootstrap do super-admin (primeira subida)
+
+Há **um único super-admin (dono)**: o único que promove/rebaixa admins e exclui
+usuários. Os demais admins são delegados, com permissões granulares definidas
+pelo dono na página "Gerenciar admins". A migration adiciona as colunas com
+default `false` (ninguém vira super-admin sozinho).
+
+Logo após o `alembic upgrade head`, marque o dono pela matrícula (idempotente,
+não-destrutivo, seguro em produção):
+```bash
+python -m scripts.definir_super_admin --matricula <matricula_do_dono>
+```
+Admins já existentes (`is_admin=True`) seguem como delegados sem nenhum toggle
+ligado — o dono re-habilita o que cada um pode fazer pela tela.
+
 ## 6. Seed de Dados
 
 ```bash

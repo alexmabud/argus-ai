@@ -604,10 +604,27 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
     email: Mapped[Optional[str]] = mapped_column(String(200), unique=True, nullable=True)
     senha_hash: Mapped[str] = mapped_column(String(200))
     guarnicao_id: Mapped[int] = mapped_column(ForeignKey("guarnicoes.id"))
-    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)  # admin delegado
+    # Super-admin (dono único): promove/rebaixa admins e exclui usuários.
+    is_super_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Permissões granulares do admin delegado (definidas pelo super-admin):
+    pode_criar_usuario: Mapped[bool] = mapped_column(Boolean, default=False)
+    pode_gerar_senha: Mapped[bool] = mapped_column(Boolean, default=False)
+    pode_pausar: Mapped[bool] = mapped_column(Boolean, default=False)
+    pode_mover_equipe: Mapped[bool] = mapped_column(Boolean, default=False)
+    pode_gerir_equipes: Mapped[bool] = mapped_column(Boolean, default=False)
+    admin_global: Mapped[bool] = mapped_column(Boolean, default=False)  # alcance
 
     guarnicao = relationship("Guarnicao", back_populates="membros")
 ```
+
+**Níveis de administração:** há um **super-admin** (dono único, marcado via
+`scripts/definir_super_admin.py`) e **admins delegados** (`is_admin`), cujos
+poderes são configurados por pessoa na página "Gerenciar admins" pelos 6 toggles
+acima. Excluir usuário e promover/rebaixar admin são exclusivos do super-admin.
+O alcance (`admin_global`) restringe o delegado à própria guarnição quando
+`False`. Enforcement: `require_super_admin`/`require_permissao` (router) +
+`assert_scope` (`app/core/permissions.py`).
 
 #### Audit Log
 

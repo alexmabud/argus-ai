@@ -207,6 +207,14 @@ function app() {
       if (auth.isAuthenticated()) {
         this.authenticated = true;
         this.user = auth.getUser();
+        // Atualiza o usuário em background (flags de admin podem ter mudado no
+        // servidor desde o último login); não bloqueia o render inicial.
+        auth.fetchMe().then((u) => {
+          if (u) {
+            this.user = u;
+            window.dispatchEvent(new CustomEvent("user:updated", { detail: u }));
+          }
+        });
         this.currentPage = "home";
         this.renderPage("home");
         document.body.style.overflow = "hidden";
@@ -317,6 +325,7 @@ function app() {
         dashboard: renderDashboard,
         perfil: renderPerfil,
         "admin-usuarios": renderAdminUsuarios,
+        admins: renderAdmins,
       };
 
       // Destrói gráficos ApexCharts antes de trocar de página para evitar

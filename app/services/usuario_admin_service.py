@@ -11,7 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
+from app.core.exceptions import AcessoNegadoError, ConflitoDadosError, NaoEncontradoError
+from app.core.permissions import assert_scope
 from app.core.security import hash_senha
 from app.models.usuario import Usuario
 from app.repositories.usuario_repo import UsuarioRepository
@@ -44,6 +45,16 @@ class UsuarioAdminService:
         audit: Serviço de auditoria.
     """
 
+    #: Toggles granulares aceitos no painel de admins.
+    _TOGGLES = (
+        "pode_criar_usuario",
+        "pode_gerar_senha",
+        "pode_pausar",
+        "pode_mover_equipe",
+        "pode_gerir_equipes",
+        "admin_global",
+    )
+
     def __init__(self, db: AsyncSession):
         """Inicializa o serviço com dependências.
 
@@ -53,6 +64,100 @@ class UsuarioAdminService:
         self.db = db
         self.repo = UsuarioRepository(db)
         self.audit = AuditService(db)
+
+    async def definir_super_admin(self, matricula: str) -> bool:
+        """Marca um usuário como super-admin (dono) pela matrícula.
+
+        Operação de bootstrap idempotente e NÃO destrutiva, pensada para rodar
+        no deploy (não há endpoint que exponha isto — super-admin nunca é
+        delegável pela UI).
+
+        Args:
+            matricula: Matrícula do usuário a tornar super-admin.
+
+        Returns:
+            True se o usuário existe e ficou marcado como super-admin.
+
+        Raises:
+            NaoEncontradoError: Se a matrícula não existir.
+        """
+        result = await self.db.execute(select(Usuario).where(Usuario.matricula == matricula))
+        usuario = result.scalar_one_or_none()
+        if not usuario:
+            raise NaoEncontradoError("Usuário não encontrado")
+        usuario.is_super_admin = True
+        await self.db.flush()
+        await self.audit.log(
+            usuario_id=usuario.id,
+            acao="UPDATE",
+            recurso="usuario",
+            recurso_id=usuario.id,
+            detalhes={"acao": "definir_super_admin"},
+        )
+        return True
+
+    async def listar_admins(self) -> list[Usuario]:
+        """Lista admins (super-admins e delegados), ordenados por nome.
+
+        Returns:
+            Usuários ativos com is_super_admin OU is_admin.
+        """
+        result = await self.db.execute(
+            select(Usuario)
+            .where(
+                Usuario.ativo == True,  # noqa: E712
+                (Usuario.is_super_admin == True) | (Usuario.is_admin == True),  # noqa: E712
+            )
+            .order_by(Usuario.nome)
+        )
+        return list(result.scalars().all())
+
+    async def definir_admin(self, usuario_id: int, flags: dict, admin: Usuario) -> Usuario:
+        """Define status de admin delegado e permissões granulares de um usuário.
+
+        Idempotente: promove, edita toggles ou rebaixa. NÃO altera guarnicao_id.
+        Com is_admin=False, zera todos os toggles. Bloqueia o super-admin de
+        rebaixar a si mesmo (anti-lockout).
+
+        Args:
+            usuario_id: ID do usuário alvo.
+            flags: Dict com is_admin e os toggles (chaves de _TOGGLES).
+            admin: Super-admin autenticado que executa a ação.
+
+        Returns:
+            Usuario atualizado.
+
+        Raises:
+            NaoEncontradoError: Se o usuário não existir.
+            AcessoNegadoError: Se o super-admin tentar rebaixar a si mesmo.
+        """
+        result = await self.db.execute(select(Usuario).where(Usuario.id == usuario_id))
+        usuario = result.scalar_one_or_none()
+        if not usuario or not usuario.ativo:
+            raise NaoEncontradoError("Usuário não encontrado")
+
+        novo_is_admin = bool(flags.get("is_admin", False))
+
+        if usuario.id == admin.id and not novo_is_admin:
+            raise AcessoNegadoError("Super-admin não pode rebaixar a si mesmo")
+
+        usuario.is_admin = novo_is_admin
+        if not novo_is_admin:
+            for toggle in self._TOGGLES:
+                setattr(usuario, toggle, False)
+        else:
+            for toggle in self._TOGGLES:
+                setattr(usuario, toggle, bool(flags.get(toggle, False)))
+
+        await self.db.flush()
+        await self.audit.log(
+            usuario_id=admin.id,
+            acao="UPDATE",
+            recurso="usuario",
+            recurso_id=usuario.id,
+            detalhes={"acao": "definir_admin", "is_admin": novo_is_admin},
+        )
+        return usuario
 
     async def listar_usuarios(self, guarnicao_id: int) -> list[Usuario]:
         """Lista usuários ativos de uma guarnição específica (legado).
@@ -91,7 +196,7 @@ class UsuarioAdminService:
     async def criar_usuario(
         self,
         matricula: str,
-        admin_id: int,
+        admin: Usuario,
         guarnicao_id: int | None = None,
     ) -> tuple[Usuario, str]:
         """Cria novo usuário com senha de uso único gerada automaticamente.
@@ -102,7 +207,7 @@ class UsuarioAdminService:
 
         Args:
             matricula: Matrícula do novo agente (deve ser única).
-            admin_id: ID do admin que está criando (para auditoria).
+            admin: Admin autenticado que está criando (auditoria + scope).
             guarnicao_id: ID da guarnição do novo usuário.
 
         Returns:
@@ -110,7 +215,11 @@ class UsuarioAdminService:
 
         Raises:
             ConflitoDadosError: Se matrícula já cadastrada.
+            AcessoNegadoError: Se a guarnição-destino estiver fora do alcance do admin.
         """
+        if guarnicao_id is not None:
+            assert_scope(admin, guarnicao_id)
+        admin_id = admin.id
         result = await self.db.execute(select(Usuario).where(Usuario.matricula == matricula))
         existing = result.scalar_one_or_none()
 
@@ -162,7 +271,7 @@ class UsuarioAdminService:
 
         return usuario, senha
 
-    async def pausar_usuario(self, usuario_id: int, admin_id: int) -> Usuario:
+    async def pausar_usuario(self, usuario_id: int, admin: Usuario) -> Usuario:
         """Pausa o acesso do usuário limpando o session_id.
 
         A limpeza do session_id garante desconexão imediata: qualquer token
@@ -170,18 +279,21 @@ class UsuarioAdminService:
 
         Args:
             usuario_id: ID do usuário a pausar.
-            admin_id: ID do admin (para auditoria).
+            admin: Admin autenticado (auditoria + scope).
 
         Returns:
             Usuario pausado.
 
         Raises:
             NaoEncontradoError: Se usuário não existe ou já foi excluído.
+            AcessoNegadoError: Se o alvo estiver fora do alcance do admin.
         """
         usuario = await self.repo.get(usuario_id)
         if not usuario or not usuario.ativo:
             raise NaoEncontradoError("Usuário não encontrado")
 
+        assert_scope(admin, usuario.guarnicao_id)
+        admin_id = admin.id
         usuario.session_id = None
         await self.db.flush()
 
@@ -196,7 +308,7 @@ class UsuarioAdminService:
 
         return usuario
 
-    async def gerar_nova_senha(self, usuario_id: int, admin_id: int) -> tuple[str, str]:
+    async def gerar_nova_senha(self, usuario_id: int, admin: Usuario) -> tuple[str, str]:
         """Gera nova senha de uso único para o usuário, invalidando a sessão atual.
 
         Limpa session_id (desconecta imediatamente se havia sessão ativa),
@@ -204,19 +316,22 @@ class UsuarioAdminService:
 
         Args:
             usuario_id: ID do usuário.
-            admin_id: ID do admin (para auditoria).
+            admin: Admin autenticado (auditoria + scope).
 
         Returns:
             Tupla (senha_plain_text, matricula) — exibir senha UMA vez.
 
         Raises:
             NaoEncontradoError: Se usuário não existe.
+            AcessoNegadoError: Se o alvo estiver fora do alcance do admin.
         """
         result = await self.db.execute(select(Usuario).where(Usuario.id == usuario_id))
         usuario = result.scalar_one_or_none()
         if not usuario:
             raise NaoEncontradoError("Usuário não encontrado")
 
+        assert_scope(admin, usuario.guarnicao_id)
+        admin_id = admin.id
         senha = _gerar_senha()
         usuario.senha_hash = hash_senha(senha)
         usuario.session_id = None  # desconectar sessão atual
@@ -269,7 +384,7 @@ class UsuarioAdminService:
         self,
         usuario_id: int,
         guarnicao_id_destino: int | None,
-        admin_id: int,
+        admin: Usuario,
     ) -> Usuario:
         """Move o usuário para outra equipe ou remove da equipe atual.
 
@@ -279,19 +394,23 @@ class UsuarioAdminService:
         Args:
             usuario_id: ID do usuário a mover.
             guarnicao_id_destino: ID da equipe de destino, ou None para remover.
-            admin_id: ID do admin (para auditoria).
+            admin: Admin autenticado (auditoria + scope).
 
         Returns:
             Usuario com guarnicao_id atualizado.
 
         Raises:
             NaoEncontradoError: Se usuário não existe.
+            AcessoNegadoError: Se origem ou destino estiverem fora do alcance do admin.
         """
         result = await self.db.execute(select(Usuario).where(Usuario.id == usuario_id))
         usuario = result.scalar_one_or_none()
         if not usuario:
             raise NaoEncontradoError("Usuário não encontrado")
 
+        assert_scope(admin, usuario.guarnicao_id)  # origem
+        assert_scope(admin, guarnicao_id_destino)  # destino
+        admin_id = admin.id
         usuario.guarnicao_id = guarnicao_id_destino
         await self.db.flush()
 

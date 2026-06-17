@@ -21,7 +21,7 @@ function renderAdminUsuarios() {
                   style="color: var(--color-success); font-size: 14px; font-weight: 700; text-shadow: 0 0 8px rgba(0,255,136,0.7), 0 0 20px rgba(0,255,136,0.35);"></span>
           </p>
         </div>
-        <button @click="abrirCriarUsuario()" class="btn btn-primary" style="font-size: 0.8125rem; padding: 0.375rem 0.75rem;">
+        <button @click="abrirCriarUsuario()" x-show="podeCriar" class="btn btn-primary" style="font-size: 0.8125rem; padding: 0.375rem 0.75rem;">
           + Novo usuário
         </button>
       </div>
@@ -44,6 +44,7 @@ function renderAdminUsuarios() {
           ></button>
         </template>
         <button
+          x-show="podeGerirEquipes"
           @click="abaAtiva = 'novo-bpm'; bpmAtivo = null; equipeAtiva = null"
           :style="abaAtiva === 'novo-bpm' ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
           style="padding: 0.5rem 0.75rem; font-family: var(--font-data); font-size: 0.8125rem; background: transparent; border: 0; cursor: pointer;"
@@ -64,6 +65,7 @@ function renderAdminUsuarios() {
             ></button>
           </template>
           <button
+            x-show="podeGerirEquipes"
             @click="equipeAtiva = 'nova-equipe'"
             :style="equipeAtiva === 'nova-equipe' ? 'border-bottom: 2px solid #4FC3F7; color: #4FC3F7;' : 'color: var(--color-text-muted);'"
             style="padding: 0.375rem 0.625rem; font-family: var(--font-data); font-size: 0.75rem; background: transparent; border: 0; cursor: pointer;"
@@ -92,7 +94,7 @@ function renderAdminUsuarios() {
               <template x-for="u in usuariosSemEquipe" :key="u.id">
                 <div class="glass-card" style="padding: 1rem;" x-data="{ destinoId: '' }">
                   ${cardUsuario('u')}
-                  <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
+                  <div x-show="podeMover" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
                     <select x-model="destinoId" style="flex: 1; padding: 0.375rem 0.5rem; font-size: 0.75rem; font-family: var(--font-data); background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text);">
                       <option value="">Selecionar equipe...</option>
                       <template x-for="e in equipes" :key="e.id">
@@ -132,7 +134,7 @@ function renderAdminUsuarios() {
             <template x-if="bpmAtivoObj">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(0,0,0,0.15); border-radius: 4px; border: 1px solid var(--color-border);">
                 <p style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem; margin: 0;" x-text="bpmAtivoObj.nome"></p>
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <label x-show="podeGerirEquipes" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                   <span style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;">Ver apenas abordagens do BPM</span>
                   <input
                     type="checkbox"
@@ -173,7 +175,7 @@ function renderAdminUsuarios() {
                     <p style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem;" x-text="equipeAtivaObj.nome"></p>
                     <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;" x-text="equipeAtivaObj.bpm.nome"></p>
                   </div>
-                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                  <label x-show="podeGerirEquipes" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                     <span style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem;">Ver apenas abordagens da equipe</span>
                     <input
                       type="checkbox"
@@ -191,17 +193,18 @@ function renderAdminUsuarios() {
                       ${cardUsuario('u')}
                       <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
                         <button @click="pausarUsuario(u)"
-                                x-show="u.tem_sessao"
+                                x-show="podePausar && u.tem_sessao"
                                 style="flex: 1; font-size: 0.75rem; font-family: var(--font-data); padding: 0.375rem 0.5rem; border-radius: 4px; background: rgba(255,165,0,0.15); color: #FFA500; border: 1px solid rgba(255,165,0,0.3); cursor: pointer;">
                           Pausar acesso
                         </button>
-                        <button @click="gerarSenha(u)" class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 0.375rem 0.5rem;">
+                        <button @click="gerarSenha(u)" x-show="podeGerarSenha" class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 0.375rem 0.5rem;">
                           Gerar nova senha
                         </button>
-                        <button @click="modalMover = true" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
+                        <button @click="modalMover = true" x-show="podeMover" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
                           Mover
                         </button>
                         <button @click="excluirUsuario(u)"
+                                x-show="isSuperAdmin"
                                 style="font-size: 0.75rem; font-family: var(--font-data); padding: 0.375rem 0.75rem; border-radius: 4px; background: rgba(255,107,0,0.15); color: var(--color-danger); border: 1px solid rgba(255,107,0,0.3); cursor: pointer;">
                           Excluir
                         </button>
@@ -313,6 +316,8 @@ function cardUsuario(varName) {
 }
 
 function adminUsuariosPage() {
+  const me = (typeof auth !== "undefined" && auth.getUser()) || {};
+  const isSuper = !!me.is_super_admin;
   return {
     usuarios: [],
     equipes: [],
@@ -321,6 +326,16 @@ function adminUsuariosPage() {
     equipeAtiva: null,
     abaAtiva: "sem-equipe",
     carregando: true,
+
+    // Permissões do usuário logado (gating de botões). Super-admin pode tudo.
+    _meGuarnicaoId: me.guarnicao_id ?? null,
+    isSuperAdmin: isSuper,
+    adminGlobal: isSuper || !!me.admin_global,
+    podeCriar: isSuper || !!me.pode_criar_usuario,
+    podeGerarSenha: isSuper || !!me.pode_gerar_senha,
+    podePausar: isSuper || !!me.pode_pausar,
+    podeMover: isSuper || !!me.pode_mover_equipe,
+    podeGerirEquipes: isSuper || (!!me.pode_gerir_equipes && !!me.admin_global),
     mostrarFormCriacao: false,
     novaMatricula: "",
     novaEquipeId: "",
@@ -348,7 +363,10 @@ function adminUsuariosPage() {
           "Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente",
           "Aspirante", "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel",
         ];
-        this.usuarios = usuarios.sort((a, b) => {
+        const visiveis = this.adminGlobal
+          ? usuarios
+          : usuarios.filter((x) => x.guarnicao_id === this._meGuarnicaoId);
+        this.usuarios = visiveis.sort((a, b) => {
           const ra = ordemRank.indexOf(a.posto_graduacao ?? "");
           const rb = ordemRank.indexOf(b.posto_graduacao ?? "");
           if (rb !== ra) return rb - ra;

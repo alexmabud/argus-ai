@@ -19,6 +19,7 @@ import app.models  # noqa: F401 — registra todos os models no metadata
 from app.config import settings
 from app.core.security import hash_senha
 from app.models.audit_log import AuditLog
+from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.models.usuario import Usuario
 
@@ -62,11 +63,18 @@ async def main() -> None:
         await session.execute(delete(Usuario))
         await session.flush()
 
-        # 2. Garantir guarnição padrão (exigida pelo schema — NOT NULL no banco)
+        # 2. Garantir BPM e guarnição padrão (exigidos pelo schema — NOT NULL no banco)
+        result_bpm = await session.execute(select(Bpm).limit(1))
+        bpm = result_bpm.scalar_one_or_none()
+        if not bpm:
+            bpm = Bpm(nome="BPM Dev")
+            session.add(bpm)
+            await session.flush()
+
         result = await session.execute(select(Guarnicao).limit(1))
         guarnicao = result.scalar_one_or_none()
         if not guarnicao:
-            guarnicao = Guarnicao(nome="Padrão", unidade="DEV", codigo="DEV-001")
+            guarnicao = Guarnicao(nome="Guarnição Dev", codigo="DEV-001", bpm_id=bpm.id)
             session.add(guarnicao)
             await session.flush()
 
@@ -81,6 +89,7 @@ async def main() -> None:
                 senha_hash=hash_senha(senha),
                 guarnicao_id=guarnicao.id,
                 is_admin=True,
+                is_super_admin=True,
             )
         )
         await session.commit()
