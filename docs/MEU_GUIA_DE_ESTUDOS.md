@@ -547,6 +547,10 @@ make init-db      # Cria as tabelas diretamente (sem Alembic)
 make anonimizar   # LGPD: anonimiza dados com +5 anos
 ```
 
+> 📖 Para entender a fundo os modos de execução (`make dev` x `docker compose up`),
+> como os volumes guardam os dados, e como sincronizar a base da VM para testar
+> localmente, veja **[docs/ambiente-local.md](ambiente-local.md)**.
+
 ---
 
 ## Fluxo Completo: Registrar uma Abordagem

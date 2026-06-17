@@ -569,6 +569,7 @@ os dois remotes, salvar senha GPG, ativar cron).
 |-----------|-----------|
 | [ARGUS_AI_SPEC.md](ARGUS_AI_SPEC.md) | Especificacao tecnica completa |
 | [docs/MEU_GUIA_DE_ESTUDOS.md](docs/MEU_GUIA_DE_ESTUDOS.md) | Guia didatico de onboarding (camadas, IA, auth, offline, fluxos) |
+| [docs/ambiente-local.md](docs/ambiente-local.md) | Rodar local (make dev x docker compose), volumes e sync de dados da VM |
 | [docs/API.md](docs/API.md) | Referencia de todos os endpoints |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Guia de deploy |
 | [docs/disaster-recovery.md](docs/disaster-recovery.md) | Plano de backup duplo (Oracle + Google Drive) e recuperacao em 5 cenarios |
