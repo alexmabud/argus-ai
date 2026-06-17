@@ -62,7 +62,7 @@ dev = [
     "pre-commit>=3.6.0",
     "factory-boy>=3.3.0",
     # Supply chain hardening: pip-tools para gerar lock, pip-audit para CVEs.
-    "pip-tools>=7.4.0",
+    "pip-tools>=7.5.3",
     "pip-audit>=2.7.0",
 ]
 vision = [
