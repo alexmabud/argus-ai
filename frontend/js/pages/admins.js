@@ -22,31 +22,36 @@ const ADMIN_TOGGLES = [
 function renderAdmins() {
   const togglesHtml = ADMIN_TOGGLES.map(
     ([campo, rotulo]) => `
-      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-family: var(--font-data); font-size: 0.8125rem; color: var(--color-text-muted);">
-        <input type="checkbox" x-model="a.${campo}" />
-        <span>${rotulo}</span>
+      <label style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid var(--color-border); border-radius: 6px; cursor: pointer; user-select: none;">
+        <span style="font-size: 0.8125rem; font-family: var(--font-data); color: var(--color-text-muted);">${rotulo}</span>
+        <input type="checkbox" x-model="a.${campo}" style="width: 1rem; height: 1rem; accent-color: var(--color-primary); cursor: pointer; flex-shrink: 0;" />
       </label>`
   ).join("");
 
   return `
     <div style="padding: 1rem;" x-data="adminsPage()" x-init="init()">
       <!-- Cabeçalho -->
-      <div style="margin-bottom: 1rem;">
+      <div style="margin-bottom: 1.25rem;">
         <h2 style="color: var(--color-text); font-family: var(--font-display); font-weight: 600; font-size: 1.125rem; text-transform: uppercase; letter-spacing: 0.05em;">GERENCIAR ADMINS</h2>
         <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.75rem; margin-top: 0.125rem;">Promova usuários a admin e defina as permissões de cada um</p>
       </div>
 
-      <!-- Tornar admin -->
+      <!-- Promover admin -->
       <div class="glass-card" style="padding: 1rem; margin-bottom: 1rem;">
-        <label class="login-field-label">Tornar usuário admin</label>
-        <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.25rem;">
-          <select x-model="novoAdminId" style="flex: 1; padding: 0.5rem; font-size: 0.8125rem; font-family: var(--font-data); background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text);">
-            <option value="">Selecionar usuário...</option>
-            <template x-for="u in candidatos" :key="u.id">
-              <option :value="u.id" x-text="nomeUsuario(u) + ' · ' + nomeEquipe(u.guarnicao_id)"></option>
-            </template>
-          </select>
-          <button @click="tornarAdmin()" :disabled="!novoAdminId || salvando" class="btn btn-primary" style="font-size: 0.8125rem; padding: 0.5rem 0.75rem;">
+        <label class="login-field-label" style="display: block; margin-bottom: 0.5rem;">Promover usuário a admin</label>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <div style="position: relative;">
+            <select x-model="novoAdminId"
+              :disabled="candidatos.length === 0"
+              style="width: 100%; padding: 0.5rem 2.25rem 0.5rem 0.75rem; font-size: 0.8125rem; font-family: var(--font-data); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-text); appearance: none; -webkit-appearance: none; cursor: pointer;">
+              <option value="">Selecionar usuário...</option>
+              <template x-for="u in candidatos" :key="u.id">
+                <option :value="u.id" x-text="nomeUsuario(u) + '  —  ' + nomeEquipe(u.guarnicao_id)"></option>
+              </template>
+            </select>
+            <svg style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--color-primary);" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <button @click="tornarAdmin()" :disabled="!novoAdminId || salvando" class="btn btn-primary" style="font-size: 0.8125rem; padding: 0.5rem; width: 100%;">
             Tornar admin
           </button>
         </div>
@@ -78,7 +83,7 @@ function renderAdmins() {
               </span>
             </div>
 
-            <!-- Super-admin (você): sem edição -->
+            <!-- Super-admin: sem edição -->
             <template x-if="a.is_super_admin">
               <p style="color: var(--color-text-dim); font-family: var(--font-data); font-size: 0.75rem; margin-top: 0.5rem;">
                 Super-admin tem acesso total e não pode ser editado por aqui.
@@ -88,15 +93,16 @@ function renderAdmins() {
             <!-- Admin delegado: toggles + ações -->
             <template x-if="!a.is_super_admin">
               <div style="margin-top: 0.75rem;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.375rem 0.75rem; margin-bottom: 0.75rem;">
+                <p style="color: var(--color-text-muted); font-family: var(--font-data); font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem;">Permissões</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.375rem; margin-bottom: 0.75rem;">
                   ${togglesHtml}
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                  <button @click="salvarPermissoes(a)" :disabled="salvando" class="btn btn-primary" style="flex: 1; font-size: 0.75rem; padding: 0.375rem 0.5rem;">
+                  <button @click="salvarPermissoes(a)" :disabled="salvando" class="btn btn-primary" style="flex: 1; font-size: 0.75rem; padding: 0.5rem;">
                     Salvar permissões
                   </button>
                   <button @click="rebaixar(a)" :disabled="salvando"
-                          style="font-size: 0.75rem; font-family: var(--font-data); padding: 0.375rem 0.75rem; border-radius: 4px; background: rgba(255,107,0,0.15); color: var(--color-danger); border: 1px solid rgba(255,107,0,0.3); cursor: pointer;">
+                          style="font-size: 0.75rem; font-family: var(--font-data); padding: 0.5rem 1rem; border-radius: 6px; background: rgba(255,107,0,0.15); color: var(--color-danger); border: 1px solid rgba(255,107,0,0.3); cursor: pointer; white-space: nowrap;">
                     Rebaixar
                   </button>
                 </div>
