@@ -1,0 +1,29 @@
+# CODEOWNERS — exige revisão do dono nestes caminhos sensíveis.
+#
+# Só tem efeito se a branch protection do `main` estiver com
+# "Require review from Code Owners" LIGADO (ver passo a passo de onboarding).
+# Sintaxe: <padrão>   <@dono>
+#
+# Obs.: CLAUDE.md / GEMINI.md não entram aqui porque não são versionados.
+
+# CI, automações e Dependabot
+/.github/                        @alexmabud
+
+# Deploy e infra (Docker / Caddy)
+/docker/                         @alexmabud
+/docker-compose.yml              @alexmabud
+/docker-compose.prod.yml         @alexmabud
+/docker-compose.monitoring.yml   @alexmabud
+/Dockerfile.prod                 @alexmabud
+
+# Scripts (deploy, backup, admin, anonimização)
+/scripts/                        @alexmabud
+
+# Migrations de banco
+/alembic/                        @alexmabud
+
+# Segurança e o que controla o versionamento
+/.gitignore                      @alexmabud
+/SECURITY.md                     @alexmabud
+/docs/PRODUCTION_SECURITY.md     @alexmabud
+/docs/secret-rotation.md         @alexmabud
