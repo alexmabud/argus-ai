@@ -132,7 +132,9 @@ services:
   # (PDF parsing, embeddings, face recognition, etc)
   # ═══════════════════════════════════════════════════════════════════════
   worker:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
     container_name: argus-worker
     command: arq app.worker.WorkerSettings
     env_file:
