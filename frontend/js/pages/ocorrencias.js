@@ -94,6 +94,39 @@ function renderOcorrencias() {
         </div>
       </div>
 
+      <!-- Mapa de localização -->
+      <div x-show="!loading && (diaSelecionado || filtro)"
+           class="glass-card"
+           style="padding:16px;border-radius:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin:0;">
+            Localização das Abordagens
+          </h3>
+          <div x-show="pontosMapa.length > 0" style="display:flex;gap:0.25rem;">
+            <button
+              @click="toggleModoMapaAnalitico('marcadores')"
+              style="font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:4px;border:none;cursor:pointer;transition:all 0.2s;"
+              :style="modoMapaAnalitico === 'marcadores' ? 'background:#14B8A6;color:var(--color-bg);' : 'background:var(--color-surface);color:var(--color-text-muted);border:1px solid var(--color-border);'"
+            >Marcadores</button>
+            <button
+              @click="toggleModoMapaAnalitico('calor')"
+              style="font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:4px;border:none;cursor:pointer;transition:all 0.2s;"
+              :style="modoMapaAnalitico === 'calor' ? 'background:#14B8A6;color:var(--color-bg);' : 'background:var(--color-surface);color:var(--color-text-muted);border:1px solid var(--color-border);'"
+            >Calor</button>
+          </div>
+        </div>
+
+        <div x-show="pontosMapa.length === 0"
+             style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-align:center;padding:16px 0;text-transform:uppercase;letter-spacing:0.08em;">
+          Sem dados de localização.
+        </div>
+
+        <div x-show="pontosMapa.length > 0">
+          <div id="mapa-relatorio-dia"
+               style="width:100%;height:280px;border-radius:4px;background:var(--color-surface);z-index:1;"></div>
+        </div>
+      </div>
+
       <!-- Loading -->
       <div x-show="loading" style="text-align:center;padding:32px 0;">
         <div style="width:24px;height:24px;border:2px solid var(--color-border);border-top-color:var(--color-primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto;"></div>
@@ -209,6 +242,13 @@ function ocorrenciasPage() {
     _mesSelec: agora.getMonth() + 1,
     diasComAbordagem: [],
 
+    // Mapa de localização (pontos derivados de this.abordagens)
+    mapaAnaliticoInst: null,
+    _mapaAnaliticoObserver: null,
+    modoMapaAnalitico: 'marcadores',
+    clusterAnalitico: null,
+    heatAnalitico: null,
+
     get total() {
       return this.abordagens.length;
     },
@@ -227,6 +267,16 @@ function ocorrenciasPage() {
         return `${String(this.diaSelecionado).padStart(2,'0')}/${String(this._mesSelec).padStart(2,'0')}/${this._anoSelec}`;
       }
       return '—';
+    },
+
+    get pontosMapa() {
+      return this.abordagens
+        .filter(a => a.latitude != null && a.longitude != null)
+        .map(a => ({
+          lat: a.latitude,
+          lng: a.longitude,
+          horario: this.formatarHorario(a.data_hora),
+        }));
     },
 
     get mesAtualLabel() {
@@ -286,6 +336,7 @@ function ocorrenciasPage() {
       }
       this.diaSelecionado = null;
       this.abordagens = [];
+      this.destroyMapaAnalitico();
       await this.carregarDiasComAbordagem();
     },
 
@@ -298,6 +349,7 @@ function ocorrenciasPage() {
       }
       this.diaSelecionado = null;
       this.abordagens = [];
+      this.destroyMapaAnalitico();
       await this.carregarDiasComAbordagem();
     },
 
@@ -325,6 +377,7 @@ function ocorrenciasPage() {
           this.carregarAbordagensDoDia(dataStr);
         } else {
           this.abordagens = [];
+          this._refreshMapa();
         }
       }
     },
@@ -340,6 +393,7 @@ function ocorrenciasPage() {
       } finally {
         this.loading = false;
       }
+      await this._refreshMapa();
     },
 
     async carregarAbordagensDoDia(dataStr) {
@@ -352,6 +406,102 @@ function ocorrenciasPage() {
       } finally {
         this.loading = false;
       }
+      await this._refreshMapa();
+    },
+
+    async _refreshMapa() {
+      this.destroyMapaAnalitico();
+      if (this.pontosMapa.length > 0) {
+        await this.$nextTick();
+        await this.setupMapaAnaliticoObserver();
+      }
+    },
+
+    async setupMapaAnaliticoObserver() {
+      if (this._mapaAnaliticoObserver) {
+        this._mapaAnaliticoObserver.disconnect();
+        this._mapaAnaliticoObserver = null;
+      }
+      await new Promise(r => setTimeout(r, 0));
+      const div = document.getElementById('mapa-relatorio-dia');
+      if (!div) return;
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          observer.disconnect();
+          this.initMapaAnalitico();
+        }
+      }, { threshold: 0.1 });
+      observer.observe(div);
+      this._mapaAnaliticoObserver = observer;
+    },
+
+    initMapaAnalitico() {
+      const div = document.getElementById('mapa-relatorio-dia');
+      if (!div || this.mapaAnaliticoInst) return;
+      if (typeof L === 'undefined') return;
+
+      this.mapaAnaliticoInst = L.map(div, { zoomControl: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19,
+      }).addTo(this.mapaAnaliticoInst);
+
+      const pontos = this.pontosMapa;
+
+      this.clusterAnalitico = L.markerClusterGroup();
+      pontos.forEach(p => {
+        const marker = L.marker([p.lat, p.lng]);
+        const popupEl = document.createElement('span');
+        popupEl.style.cssText = 'font-family:monospace;font-size:12px;';
+        popupEl.textContent = p.horario;
+        marker.bindPopup(popupEl);
+        this.clusterAnalitico.addLayer(marker);
+      });
+
+      const heatPontos = pontos.map(p => [p.lat, p.lng, 1]);
+      this.heatAnalitico = L.heatLayer(heatPontos, { radius: 30, blur: 20, maxZoom: 17 });
+
+      this.mapaAnaliticoInst.addLayer(this.clusterAnalitico);
+
+      if (pontos.length === 1) {
+        this.mapaAnaliticoInst.setView([pontos[0].lat, pontos[0].lng], 15);
+      } else if (pontos.length > 1) {
+        const bounds = L.latLngBounds(pontos.map(p => [p.lat, p.lng]));
+        this.mapaAnaliticoInst.fitBounds(bounds, { padding: [30, 30] });
+      }
+
+      requestAnimationFrame(() => {
+        this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false });
+        setTimeout(() => this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false }), 200);
+        setTimeout(() => this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false }), 500);
+      });
+    },
+
+    toggleModoMapaAnalitico(modo) {
+      if (!this.mapaAnaliticoInst || modo === this.modoMapaAnalitico) return;
+      this.modoMapaAnalitico = modo;
+      if (modo === 'marcadores') {
+        this.mapaAnaliticoInst.removeLayer(this.heatAnalitico);
+        this.mapaAnaliticoInst.addLayer(this.clusterAnalitico);
+      } else {
+        this.mapaAnaliticoInst.removeLayer(this.clusterAnalitico);
+        this.mapaAnaliticoInst.addLayer(this.heatAnalitico);
+      }
+    },
+
+    destroyMapaAnalitico() {
+      if (this._mapaAnaliticoObserver) {
+        this._mapaAnaliticoObserver.disconnect();
+        this._mapaAnaliticoObserver = null;
+      }
+      if (this.mapaAnaliticoInst) {
+        this.mapaAnaliticoInst.closePopup();
+        this.mapaAnaliticoInst.remove();
+        this.mapaAnaliticoInst = null;
+        this.clusterAnalitico = null;
+        this.heatAnalitico = null;
+      }
+      this.modoMapaAnalitico = 'marcadores';
     },
 
     abrirDetalhe(id) {
@@ -380,6 +530,12 @@ function ocorrenciasPage() {
     formatarDataHora(dt) {
       const d = new Date(dt);
       return d.toLocaleDateString('pt-BR') + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    },
+
+    formatarHorario(dt) {
+      if (!dt) return '';
+      const d = new Date(dt);
+      return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     },
   };
 }
