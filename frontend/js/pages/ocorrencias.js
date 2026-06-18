@@ -27,18 +27,18 @@ function renderOcorrencias() {
       </div>
 
       <!-- Contagem do conjunto exibido -->
-      <div class="glass-card" style="padding:16px;border-radius:4px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="glass-card" style="padding:10px 16px;border-radius:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
           <span style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;" x-text="labelContagem"></span>
           <span class="status-dot status-dot-online"></span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div>
-            <p style="font-family:var(--font-data);font-size:28px;font-weight:700;color:var(--color-primary);line-height:1;" x-text="total"></p>
+            <p style="font-family:var(--font-data);font-size:22px;font-weight:700;color:var(--color-primary);line-height:1;" x-text="total"></p>
             <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Abordagens</p>
           </div>
           <div>
-            <p style="font-family:var(--font-data);font-size:28px;font-weight:700;color:var(--color-success);line-height:1;" x-text="totalPessoas"></p>
+            <p style="font-family:var(--font-data);font-size:22px;font-weight:700;color:var(--color-success);line-height:1;" x-text="totalPessoas"></p>
             <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Pessoas</p>
           </div>
         </div>
@@ -275,7 +275,12 @@ function ocorrenciasPage() {
         .map(a => ({
           lat: a.latitude,
           lng: a.longitude,
-          horario: this.formatarHorario(a.data_hora),
+          id: a.id,
+          dataHora: a.data_hora
+            ? new Date(a.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+            : '—',
+          endereco: a.endereco_texto || '',
+          nomes: (a.pessoas || []).map(p => p.nome),
         }));
     },
 
@@ -451,9 +456,31 @@ function ocorrenciasPage() {
       this.clusterAnalitico = L.markerClusterGroup();
       pontos.forEach(p => {
         const marker = L.marker([p.lat, p.lng]);
-        const popupEl = document.createElement('span');
-        popupEl.style.cssText = 'font-family:monospace;font-size:12px;';
-        popupEl.textContent = p.horario;
+        const popupEl = document.createElement('div');
+        popupEl.style.cssText = 'font-family:monospace;font-size:12px;line-height:1.4;';
+
+        const linhaId = document.createElement('div');
+        linhaId.style.fontWeight = '700';
+        linhaId.textContent = `#${p.id} · ${p.dataHora}`;
+        popupEl.appendChild(linhaId);
+
+        const linhaEndereco = document.createElement('div');
+        linhaEndereco.textContent = p.endereco || 'Endereço não informado';
+        popupEl.appendChild(linhaEndereco);
+
+        p.nomes.forEach((nome, i) => {
+          const linhaNome = document.createElement('div');
+          if (i === 0) linhaNome.style.marginTop = '4px';
+          linhaNome.textContent = nome;
+          popupEl.appendChild(linhaNome);
+        });
+
+        const btnAbrir = document.createElement('button');
+        btnAbrir.textContent = 'Abrir abordagem';
+        btnAbrir.style.cssText = 'margin-top:8px;font-size:0.75rem;padding:0.3rem 0.6rem;border-radius:4px;border:none;cursor:pointer;background:#14B8A6;color:var(--color-bg);font-family:var(--font-data);font-weight:600;';
+        btnAbrir.addEventListener('click', () => this.abrirDetalhe(p.id));
+        popupEl.appendChild(btnAbrir);
+
         marker.bindPopup(popupEl);
         this.clusterAnalitico.addLayer(marker);
       });
@@ -530,12 +557,6 @@ function ocorrenciasPage() {
     formatarDataHora(dt) {
       const d = new Date(dt);
       return d.toLocaleDateString('pt-BR') + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    },
-
-    formatarHorario(dt) {
-      if (!dt) return '';
-      const d = new Date(dt);
-      return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     },
   };
 }
