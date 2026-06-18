@@ -96,9 +96,7 @@ class TestGetPessoasPorVeiculo:
         db.execute.return_value = mock_result
 
         repo = VeiculoRepository(db)
-        await repo.get_pessoas_por_veiculo(
-            placa=None, modelo="Golf ", cor=None, guarnicao_id=None
-        )
+        await repo.get_pessoas_por_veiculo(placa=None, modelo="Golf ", cor=None, guarnicao_id=None)
 
         db.execute.assert_called_once()
         call_args = db.execute.call_args
@@ -124,9 +122,7 @@ class TestGetPessoasPorVeiculo:
         await repo.get_pessoas_por_veiculo(placa=None, modelo="Gol", cor=None, guarnicao_id=None)
 
         db.execute.assert_called_once()
-        compiled = str(
-            db.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True})
-        )
+        compiled = str(db.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
         # Extrai todos os padrões ILIKE gerados
         import re as _re
 
