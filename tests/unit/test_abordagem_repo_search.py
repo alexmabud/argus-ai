@@ -4,10 +4,13 @@ Cobre a busca por atributos de veículo (modelo, cor, tipo) no campo `q`
 da página de Relatórios, além da placa já suportada.
 """
 
+from datetime import UTC, datetime
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.abordagem import AbordagemVeiculo
+from app.models.abordagem import Abordagem, AbordagemVeiculo
+from app.models.veiculo import Veiculo
 from app.repositories.abordagem_repo import AbordagemRepository
 
 
@@ -61,3 +64,55 @@ async def test_search_by_texto_por_placa_ainda_funciona(
     repo = AbordagemRepository(db_session)
     result = await repo.search_by_texto(q="ABC1D23", guarnicao_id=guarnicao.id)
     assert abordagem_com_veiculo.id in [a.id for a in result]
+
+
+@pytest.fixture
+async def abordagem_com_golf(db_session: AsyncSession, guarnicao, usuario):
+    """Segunda abordagem com veículo modelo 'Golf' (para testar gol ≠ golf).
+
+    Endereço/cor/tipo/placa deliberadamente sem o termo 'gol' para que o
+    único vetor de match de 'Gol' seja o modelo.
+
+    Args:
+        db_session: Sessão do banco de testes.
+        guarnicao: Guarnição da abordagem/veículo.
+        usuario: Usuário que registrou a abordagem.
+
+    Returns:
+        Abordagem: Abordagem com veículo modelo 'Golf' vinculado.
+    """
+    ab = Abordagem(
+        data_hora=datetime.now(UTC),
+        endereco_texto="Rua das Flores, 50",
+        usuario_id=usuario.id,
+        guarnicao_id=guarnicao.id,
+    )
+    db_session.add(ab)
+    await db_session.flush()
+    v = Veiculo(
+        placa="GLF2E34", modelo="Golf", cor="Preto", tipo="Carro", guarnicao_id=guarnicao.id
+    )
+    db_session.add(v)
+    await db_session.flush()
+    db_session.add(AbordagemVeiculo(abordagem_id=ab.id, veiculo_id=v.id))
+    await db_session.flush()
+    return ab
+
+
+@pytest.mark.asyncio
+async def test_search_modelo_gol_nao_corresponde_golf(
+    db_session: AsyncSession, guarnicao, abordagem_com_veiculo, abordagem_com_golf
+):
+    """Busca 'Gol' retorna a abordagem do Gol, mas não a do Golf (word-boundary).
+
+    Args:
+        db_session: Sessão do banco de testes.
+        guarnicao: Guarnição das abordagens.
+        abordagem_com_veiculo: Abordagem com veículo modelo 'Gol'.
+        abordagem_com_golf: Abordagem com veículo modelo 'Golf'.
+    """
+    repo = AbordagemRepository(db_session)
+    result = await repo.search_by_texto(q="Gol", guarnicao_id=guarnicao.id)
+    ids = [a.id for a in result]
+    assert abordagem_com_veiculo.id in ids
+    assert abordagem_com_golf.id not in ids

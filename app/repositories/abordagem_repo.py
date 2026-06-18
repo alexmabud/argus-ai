@@ -7,7 +7,7 @@ carregamento eager de relacionamentos e deduplicação por client_id.
 from collections.abc import Sequence
 from datetime import date
 
-from sqlalchemy import cast, func, or_, select
+from sqlalchemy import cast, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.types import Date
@@ -21,6 +21,32 @@ from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
+from app.services.text_utils import escape_like
+
+
+def _modelo_word_boundary(q: str):
+    """Casa o termo como palavra completa no modelo do veículo.
+
+    Evita que "gol" retorne "golf" (problema do ILIKE substring). Usa quatro
+    condições OR — termo exato, no início, no fim ou no meio de modelos
+    compostos — espelhando a busca da consulta (veiculo_repo).
+
+    Args:
+        q: Termo de busca livre informado pelo usuário.
+
+    Returns:
+        Expressão booleana SQLAlchemy para o filtro de modelo; falsa quando
+        o termo é vazio após strip.
+    """
+    m = escape_like(q.strip())
+    if not m:
+        return false()
+    return (
+        Veiculo.modelo.ilike(m)
+        | Veiculo.modelo.ilike(f"{m} %")
+        | Veiculo.modelo.ilike(f"% {m}")
+        | Veiculo.modelo.ilike(f"% {m} %")
+    )
 
 
 class AbordagemRepository(BaseRepository[Abordagem]):
@@ -304,7 +330,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 or_(
                     Pessoa.nome.ilike(termo),
                     Veiculo.placa.ilike(termo),
-                    Veiculo.modelo.ilike(termo),
+                    _modelo_word_boundary(q),
                     Veiculo.cor.ilike(termo),
                     Veiculo.tipo.ilike(termo),
                     Abordagem.endereco_texto.ilike(termo),
@@ -421,7 +447,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 or_(
                     Pessoa.nome.ilike(termo),
                     Veiculo.placa.ilike(termo),
-                    Veiculo.modelo.ilike(termo),
+                    _modelo_word_boundary(q),
                     Veiculo.cor.ilike(termo),
                     Veiculo.tipo.ilike(termo),
                     Abordagem.endereco_texto.ilike(termo),
@@ -542,7 +568,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 or_(
                     Pessoa.nome.ilike(termo),
                     Veiculo.placa.ilike(termo),
-                    Veiculo.modelo.ilike(termo),
+                    _modelo_word_boundary(q),
                     Veiculo.cor.ilike(termo),
                     Veiculo.tipo.ilike(termo),
                     Abordagem.endereco_texto.ilike(termo),
