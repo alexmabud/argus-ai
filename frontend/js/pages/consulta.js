@@ -322,7 +322,7 @@ function renderConsulta() {
       </div>
 
       <!-- Filtros por Endereco (cascade por id) -->
-      <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
+      <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;position:relative;z-index:30;">
         <div>
           <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Filtros por Endereço</span>
           <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Selecione estado (e opcionalmente cidade/bairro) e clique em Filtrar.</p>
