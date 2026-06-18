@@ -754,7 +754,7 @@ function consultaPage() {
     onInputVeiculo() {
       clearTimeout(this._timerVeiculo);
       const placaRaw = this.filtroPlaca.replace("-", "");
-      const temFiltro = placaRaw.length >= 2 || this.filtroModelo.length >= 2;
+      const temFiltro = placaRaw.length >= 2 || this.filtroModelo.trim().length >= 2;
       if (!temFiltro) {
         this.pessoasVeiculo = [];
         this.searchedVeiculo = false;
@@ -820,8 +820,8 @@ function consultaPage() {
       try {
         const params = new URLSearchParams();
         if (this.filtroPlaca.length >= 2) params.append("placa", this.filtroPlaca.toUpperCase());
-        if (this.filtroModelo.length >= 2) params.append("modelo", this.filtroModelo);
-        if (this.filtroCor.length >= 1) params.append("cor", this.filtroCor);
+        if (this.filtroModelo.trim().length >= 2) params.append("modelo", this.filtroModelo.trim());
+        if (this.filtroCor.trim().length >= 1) params.append("cor", this.filtroCor.trim());
         params.append("limit", "200");
         const r = await api.get(`/consultas/pessoas-por-veiculo?${params}`);
         this.pessoasVeiculo = Array.isArray(r) ? r : [];
@@ -870,8 +870,8 @@ function consultaPage() {
       try {
         const params = new URLSearchParams();
         if (this.filtroPlaca.length >= 2) params.append("placa", this.filtroPlaca.toUpperCase());
-        if (this.filtroModelo.length >= 2) params.append("modelo", this.filtroModelo);
-        if (this.filtroCor.length >= 1) params.append("cor", this.filtroCor);
+        if (this.filtroModelo.trim().length >= 2) params.append("modelo", this.filtroModelo.trim());
+        if (this.filtroCor.trim().length >= 1) params.append("cor", this.filtroCor.trim());
         params.append("limit", "200");
         const r = await api.get(`/consultas/pessoas-por-veiculo?${params}`);
         this.pessoasVeiculo = Array.isArray(r) ? r : [];

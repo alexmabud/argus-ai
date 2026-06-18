@@ -59,9 +59,11 @@ class TestGetPessoasPorVeiculo:
         assert "LIKE" in compiled.upper()
 
     async def test_get_pessoas_por_veiculo_por_modelo(self):
-        """Aplica filtro ILIKE quando modelo é informado.
+        """Aplica filtros ILIKE de word-boundary quando modelo é informado.
 
-        Verifica que a query SQL compilada contém o modelo em cláusula LIKE.
+        Verifica que a query SQL compilada usa OR com múltiplos padrões ILIKE
+        (exato, prefixo, sufixo, meio) em vez de substring %modelo%.
+        Isso garante que "Gol" não corresponda a "Golf".
         """
         db = AsyncMock()
         mock_result = MagicMock()
@@ -77,6 +79,65 @@ class TestGetPessoasPorVeiculo:
         compiled = str(query.compile(compile_kwargs={"literal_binds": True}))
         assert "Gol" in compiled
         assert "LIKE" in compiled.upper()
+        # Verifica padrão word-boundary: não deve usar substring genérica %Gol%
+        assert "%Gol%" not in compiled
+        # Deve ter múltiplos padrões OR para cobrir posição do modelo
+        assert "Gol %" in compiled or "% Gol" in compiled
+
+    async def test_get_pessoas_por_veiculo_modelo_trim(self):
+        """Remove espaços do modelo antes de aplicar o filtro.
+
+        Verifica que "Golf " (com espaço trailing) gera o mesmo SQL que "Golf",
+        corrigindo o bug em que espaço trailing eliminava todos os resultados.
+        """
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        db.execute.return_value = mock_result
+
+        repo = VeiculoRepository(db)
+        await repo.get_pessoas_por_veiculo(
+            placa=None, modelo="Golf ", cor=None, guarnicao_id=None
+        )
+
+        db.execute.assert_called_once()
+        call_args = db.execute.call_args
+        query = call_args[0][0]
+        compiled = str(query.compile(compile_kwargs={"literal_binds": True}))
+        # Com trim, o padrão de prefixo é 'Golf %' (um espaço).
+        # Sem trim, seria 'Golf  %' (dois espaços). Verifica que trim foi aplicado.
+        assert "Golf  " not in compiled
+        assert "Golf" in compiled
+
+    async def test_modelo_gol_nao_corresponde_golf(self):
+        """Padrões word-boundary para "Gol" não cobrem a string "Golf".
+
+        Garante o invariante central do fix: buscar "Gol" não deve retornar
+        veículos com modelo "Golf". Verifica diretamente os padrões SQL gerados.
+        """
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        db.execute.return_value = mock_result
+
+        repo = VeiculoRepository(db)
+        await repo.get_pessoas_por_veiculo(placa=None, modelo="Gol", cor=None, guarnicao_id=None)
+
+        db.execute.assert_called_once()
+        compiled = str(
+            db.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True})
+        )
+        # Extrai todos os padrões ILIKE gerados
+        import re as _re
+
+        patterns = _re.findall(r"ILIKE '([^']*)'", compiled, _re.IGNORECASE)
+        # Nenhum padrão deve cobrir a string "Golf" (a não ser que Golf seja o exato termo buscado)
+        for pat in patterns:
+            # Converte padrão ILIKE em regex: % → .*, _ → .
+            regex = pat.replace("%", ".*").replace("_", ".")
+            assert not _re.fullmatch(regex, "Golf", _re.IGNORECASE), (
+                f"Padrão ILIKE '{pat}' cobre indevidamente 'Golf'"
+            )
 
     async def test_get_pessoas_por_veiculo_com_cor(self):
         """Aplica filtros ILIKE de modelo e cor quando ambos são informados.

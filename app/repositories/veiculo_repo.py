@@ -182,7 +182,15 @@ class VeiculoRepository(BaseRepository[Veiculo]):
             normalized = placa.upper().replace("-", "").replace(" ", "")
             query = query.where(Veiculo.placa.ilike(f"%{escape_like(normalized)}%"))
         if modelo:
-            query = query.where(Veiculo.modelo.ilike(f"%{escape_like(modelo)}%"))
+            modelo_clean = modelo.strip()
+            if modelo_clean:
+                m = escape_like(modelo_clean)
+                query = query.where(
+                    Veiculo.modelo.ilike(m)
+                    | Veiculo.modelo.ilike(f"{m} %")
+                    | Veiculo.modelo.ilike(f"% {m}")
+                    | Veiculo.modelo.ilike(f"% {m} %")
+                )
         if cor:
             query = query.where(Veiculo.cor.ilike(f"%{escape_like(cor)}%"))
         if guarnicao_id is not None:
