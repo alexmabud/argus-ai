@@ -15,9 +15,6 @@ function renderOcorrencias() {
         <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--color-text);text-transform:uppercase;letter-spacing:0.1em;margin:0;">
           RELATÓRIO DE ABORDAGENS
         </h2>
-        <p style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;margin-top:4px;"
-           x-text="loading ? 'CARREGANDO...' : total + ' ABORDAGENS'">
-        </p>
       </div>
 
       <!-- Busca local -->
@@ -25,8 +22,26 @@ function renderOcorrencias() {
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-text-dim);flex-shrink:0;">
           <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
         </svg>
-        <input type="search" x-model="filtro" @input="onFiltroInput()" placeholder="Buscar por nome, placa, endereço em todas as datas..."
+        <input type="search" x-model="filtro" @input="onFiltroInput()" placeholder="Buscar por nome, placa, veículo, endereço em todas as datas..."
           style="background:none;border:none;outline:none;color:var(--color-text);font-family:var(--font-data);font-size:13px;width:100%;">
+      </div>
+
+      <!-- Contagem do conjunto exibido -->
+      <div class="glass-card" style="padding:10px 16px;border-radius:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;" x-text="labelContagem"></span>
+          <span class="status-dot status-dot-online"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <p style="font-family:var(--font-data);font-size:22px;font-weight:700;color:var(--color-primary);line-height:1;" x-text="total"></p>
+            <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Abordagens</p>
+          </div>
+          <div>
+            <p style="font-family:var(--font-data);font-size:22px;font-weight:700;color:var(--color-success);line-height:1;" x-text="totalPessoas"></p>
+            <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Pessoas</p>
+          </div>
+        </div>
       </div>
 
       <!-- Calendário -->
@@ -76,6 +91,39 @@ function renderOcorrencias() {
               <span class="cal-led" x-show="diaTemAbordagem(dia)"></span>
             </button>
           </template>
+        </div>
+      </div>
+
+      <!-- Mapa de localização -->
+      <div x-show="!loading && (diaSelecionado || filtro)"
+           class="glass-card"
+           style="padding:16px;border-radius:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin:0;">
+            Localização das Abordagens
+          </h3>
+          <div x-show="pontosMapa.length > 0" style="display:flex;gap:0.25rem;">
+            <button
+              @click="toggleModoMapaAnalitico('marcadores')"
+              style="font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:4px;border:none;cursor:pointer;transition:all 0.2s;"
+              :style="modoMapaAnalitico === 'marcadores' ? 'background:#14B8A6;color:var(--color-bg);' : 'background:var(--color-surface);color:var(--color-text-muted);border:1px solid var(--color-border);'"
+            >Marcadores</button>
+            <button
+              @click="toggleModoMapaAnalitico('calor')"
+              style="font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:4px;border:none;cursor:pointer;transition:all 0.2s;"
+              :style="modoMapaAnalitico === 'calor' ? 'background:#14B8A6;color:var(--color-bg);' : 'background:var(--color-surface);color:var(--color-text-muted);border:1px solid var(--color-border);'"
+            >Calor</button>
+          </div>
+        </div>
+
+        <div x-show="pontosMapa.length === 0"
+             style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-align:center;padding:16px 0;text-transform:uppercase;letter-spacing:0.08em;">
+          Sem dados de localização.
+        </div>
+
+        <div x-show="pontosMapa.length > 0">
+          <div id="mapa-relatorio-dia"
+               style="width:100%;height:280px;border-radius:4px;background:var(--color-surface);z-index:1;"></div>
         </div>
       </div>
 
@@ -194,8 +242,46 @@ function ocorrenciasPage() {
     _mesSelec: agora.getMonth() + 1,
     diasComAbordagem: [],
 
+    // Mapa de localização (pontos derivados de this.abordagens)
+    mapaAnaliticoInst: null,
+    _mapaAnaliticoObserver: null,
+    modoMapaAnalitico: 'marcadores',
+    clusterAnalitico: null,
+    heatAnalitico: null,
+
     get total() {
       return this.abordagens.length;
+    },
+
+    get totalPessoas() {
+      const ids = new Set();
+      for (const ab of this.abordagens) {
+        for (const p of (ab.pessoas || [])) ids.add(p.id);
+      }
+      return ids.size;
+    },
+
+    get labelContagem() {
+      if (this.filtro && this.filtro.trim()) return 'Resultados da busca';
+      if (this.diaSelecionado) {
+        return `${String(this.diaSelecionado).padStart(2,'0')}/${String(this._mesSelec).padStart(2,'0')}/${this._anoSelec}`;
+      }
+      return '—';
+    },
+
+    get pontosMapa() {
+      return this.abordagens
+        .filter(a => a.latitude != null && a.longitude != null)
+        .map(a => ({
+          lat: a.latitude,
+          lng: a.longitude,
+          id: a.id,
+          dataHora: a.data_hora
+            ? new Date(a.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+            : '—',
+          endereco: a.endereco_texto || '',
+          nomes: (a.pessoas || []).map(p => p.nome),
+        }));
     },
 
     get mesAtualLabel() {
@@ -255,6 +341,7 @@ function ocorrenciasPage() {
       }
       this.diaSelecionado = null;
       this.abordagens = [];
+      this.destroyMapaAnalitico();
       await this.carregarDiasComAbordagem();
     },
 
@@ -267,6 +354,7 @@ function ocorrenciasPage() {
       }
       this.diaSelecionado = null;
       this.abordagens = [];
+      this.destroyMapaAnalitico();
       await this.carregarDiasComAbordagem();
     },
 
@@ -294,6 +382,7 @@ function ocorrenciasPage() {
           this.carregarAbordagensDoDia(dataStr);
         } else {
           this.abordagens = [];
+          this._refreshMapa();
         }
       }
     },
@@ -309,6 +398,7 @@ function ocorrenciasPage() {
       } finally {
         this.loading = false;
       }
+      await this._refreshMapa();
     },
 
     async carregarAbordagensDoDia(dataStr) {
@@ -321,6 +411,124 @@ function ocorrenciasPage() {
       } finally {
         this.loading = false;
       }
+      await this._refreshMapa();
+    },
+
+    async _refreshMapa() {
+      this.destroyMapaAnalitico();
+      if (this.pontosMapa.length > 0) {
+        await this.$nextTick();
+        await this.setupMapaAnaliticoObserver();
+      }
+    },
+
+    async setupMapaAnaliticoObserver() {
+      if (this._mapaAnaliticoObserver) {
+        this._mapaAnaliticoObserver.disconnect();
+        this._mapaAnaliticoObserver = null;
+      }
+      await new Promise(r => setTimeout(r, 0));
+      const div = document.getElementById('mapa-relatorio-dia');
+      if (!div) return;
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          observer.disconnect();
+          this.initMapaAnalitico();
+        }
+      }, { threshold: 0.1 });
+      observer.observe(div);
+      this._mapaAnaliticoObserver = observer;
+    },
+
+    initMapaAnalitico() {
+      const div = document.getElementById('mapa-relatorio-dia');
+      if (!div || this.mapaAnaliticoInst) return;
+      if (typeof L === 'undefined') return;
+
+      this.mapaAnaliticoInst = L.map(div, { zoomControl: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19,
+      }).addTo(this.mapaAnaliticoInst);
+
+      const pontos = this.pontosMapa;
+
+      this.clusterAnalitico = L.markerClusterGroup();
+      pontos.forEach(p => {
+        const marker = L.marker([p.lat, p.lng]);
+        const popupEl = document.createElement('div');
+        popupEl.style.cssText = 'font-family:monospace;font-size:12px;line-height:1.4;';
+
+        const linhaId = document.createElement('div');
+        linhaId.style.fontWeight = '700';
+        linhaId.textContent = `#${p.id} · ${p.dataHora}`;
+        popupEl.appendChild(linhaId);
+
+        const linhaEndereco = document.createElement('div');
+        linhaEndereco.textContent = p.endereco || 'Endereço não informado';
+        popupEl.appendChild(linhaEndereco);
+
+        p.nomes.forEach((nome, i) => {
+          const linhaNome = document.createElement('div');
+          if (i === 0) linhaNome.style.marginTop = '4px';
+          linhaNome.textContent = nome;
+          popupEl.appendChild(linhaNome);
+        });
+
+        const btnAbrir = document.createElement('button');
+        btnAbrir.textContent = 'Abrir abordagem';
+        btnAbrir.style.cssText = 'margin-top:8px;font-size:0.75rem;padding:0.3rem 0.6rem;border-radius:4px;border:none;cursor:pointer;background:#14B8A6;color:var(--color-bg);font-family:var(--font-data);font-weight:600;';
+        btnAbrir.addEventListener('click', () => this.abrirDetalhe(p.id));
+        popupEl.appendChild(btnAbrir);
+
+        marker.bindPopup(popupEl);
+        this.clusterAnalitico.addLayer(marker);
+      });
+
+      const heatPontos = pontos.map(p => [p.lat, p.lng, 1]);
+      this.heatAnalitico = L.heatLayer(heatPontos, { radius: 30, blur: 20, maxZoom: 17 });
+
+      this.mapaAnaliticoInst.addLayer(this.clusterAnalitico);
+
+      if (pontos.length === 1) {
+        this.mapaAnaliticoInst.setView([pontos[0].lat, pontos[0].lng], 15);
+      } else if (pontos.length > 1) {
+        const bounds = L.latLngBounds(pontos.map(p => [p.lat, p.lng]));
+        this.mapaAnaliticoInst.fitBounds(bounds, { padding: [30, 30] });
+      }
+
+      requestAnimationFrame(() => {
+        this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false });
+        setTimeout(() => this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false }), 200);
+        setTimeout(() => this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false }), 500);
+      });
+    },
+
+    toggleModoMapaAnalitico(modo) {
+      if (!this.mapaAnaliticoInst || modo === this.modoMapaAnalitico) return;
+      this.modoMapaAnalitico = modo;
+      if (modo === 'marcadores') {
+        this.mapaAnaliticoInst.removeLayer(this.heatAnalitico);
+        this.mapaAnaliticoInst.addLayer(this.clusterAnalitico);
+      } else {
+        this.mapaAnaliticoInst.removeLayer(this.clusterAnalitico);
+        this.mapaAnaliticoInst.addLayer(this.heatAnalitico);
+      }
+    },
+
+    destroyMapaAnalitico() {
+      if (this._mapaAnaliticoObserver) {
+        this._mapaAnaliticoObserver.disconnect();
+        this._mapaAnaliticoObserver = null;
+      }
+      if (this.mapaAnaliticoInst) {
+        this.mapaAnaliticoInst.closePopup();
+        this.mapaAnaliticoInst.remove();
+        this.mapaAnaliticoInst = null;
+        this.clusterAnalitico = null;
+        this.heatAnalitico = null;
+      }
+      this.modoMapaAnalitico = 'marcadores';
     },
 
     abrirDetalhe(id) {

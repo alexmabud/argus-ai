@@ -321,88 +321,68 @@ function renderConsulta() {
         <div style="flex:1;height:1px;background:var(--color-border);"></div>
       </div>
 
-      <!-- Filtros por Endereco -->
-      <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;">
+      <!-- Filtros por Endereco (cascade por id) -->
+      <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;position:relative;z-index:30;">
         <div>
           <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Filtros por Endereço</span>
-          <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Filtre abordados pelo local de residência cadastrado.</p>
+          <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Selecione estado (e opcionalmente cidade/bairro) e clique em Filtrar.</p>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:10px;">
           <div>
-            <label class="login-field-label">Bairro</label>
-            <input type="text" list="lista-bairros-c" x-model="filtroBairro" @input="onInputEndereco()"
-                   placeholder="Bairro..." style="padding:12px 14px;">
-          </div>
-          <div>
-            <label class="login-field-label">Cidade</label>
-            <input type="text" list="lista-cidades-c" x-model="filtroCidade" @input="onInputEndereco()"
-                   placeholder="Cidade..." style="padding:12px 14px;">
-          </div>
-          <div>
             <label class="login-field-label">Estado (UF)</label>
-            <input type="text" list="lista-estados-c" x-model="filtroEstado" @input="onInputEndereco()"
-                   placeholder="DF" maxlength="2" style="padding:12px 14px;text-transform:uppercase;">
-          </div>
-        </div>
-
-        <datalist id="lista-bairros-c">
-          <template x-for="b in localidades.bairros" :key="b"><option :value="b"></option></template>
-        </datalist>
-        <datalist id="lista-cidades-c">
-          <template x-for="c in localidades.cidades" :key="c"><option :value="c"></option></template>
-        </datalist>
-        <datalist id="lista-estados-c">
-          <template x-for="e in localidades.estados" :key="e"><option :value="e"></option></template>
-        </datalist>
-
-        <!-- Resultados por endereco -->
-        <div x-show="searchedEndereco && pessoasEndereco.length > 0" style="display:flex;flex-direction:column;gap:6px;">
-          <p style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;">
-            Pessoas neste endereço (<span x-text="pessoasEndereco.length"></span>)
-          </p>
-          <template x-for="p in pessoasEndereco.slice(0, 10)" :key="'e-' + p.id">
-            <div @click="viewPessoa(p.id)"
-                 class="hov-list-card"
-                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;">
-              <template x-if="p.foto_principal_url">
-                <img :src="p.foto_principal_thumb_url || p.foto_principal_url"
-                     @click.stop="openPhotoModal(p.foto_principal_url, p.id, p)" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);cursor:pointer;">
+            <select x-model="fEstadoId" @change="onFiltroEstadoChange()"
+                    style="width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:12px 14px;font-size:13px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
+              <option value="">Selecione...</option>
+              <template x-for="est in fEstados" :key="est.id">
+                <option :value="est.id" x-text="est.sigla + ' — ' + est.nome_exibicao"></option>
               </template>
-              <template x-if="!p.foto_principal_url">
-                <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
-                  <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-                  </svg>
+            </select>
+          </div>
+
+          <div style="position:relative;">
+            <label class="login-field-label">Cidade (opcional)</label>
+            <input type="text" x-model="fCidadeTexto" :disabled="!fEstadoId"
+                   @focus="fBuscarCidades()" @input.debounce.300ms="onFiltroCidadeInput()"
+                   @blur.debounce.200ms="fCidadeSugestoes=[]" placeholder="Cidade" style="padding:12px 14px;">
+            <div x-show="fCidadeSugestoes.length > 0"
+                 style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
+              <template x-for="c in fCidadeSugestoes" :key="c.id">
+                <div @mousedown.prevent="fSelecionarCidade(c)" class="hov-row-surface"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);">
+                  <span x-text="c.nome_exibicao"></span>
                 </div>
               </template>
-              <div style="flex:1;min-width:0;">
-                <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
-                <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
-                <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
-                <p x-show="p.nome_mae" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Mãe: ' + p.nome_mae"></p>
-                <p x-show="p.endereco_criado_em" style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);"
-                   x-text="'Cadastrado em ' + new Date(p.endereco_criado_em).toLocaleDateString('pt-BR')"></p>
-              </div>
-              <svg width="16" height="16" style="color:var(--color-text-dim);flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-              </svg>
             </div>
-          </template>
-          <button x-show="pessoasEndereco.length > 10" @click="abrirVerMaisEndereco()"
-                  style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0; align-self: center;">
-            Ver mais resultados
+          </div>
+
+          <div style="position:relative;">
+            <label class="login-field-label">Bairro (opcional)</label>
+            <input type="text" x-model="fBairroTexto" :disabled="!fCidadeId"
+                   @focus="fBuscarBairros()" @input.debounce.300ms="onFiltroBairroInput()"
+                   @blur.debounce.200ms="fBairroSugestoes=[]" placeholder="Bairro" style="padding:12px 14px;">
+            <div x-show="fBairroSugestoes.length > 0"
+                 style="position:absolute;z-index:100;width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;margin-top:2px;max-height:180px;overflow-y:auto;">
+              <template x-for="b in fBairroSugestoes" :key="b.id">
+                <div @mousedown.prevent="fSelecionarBairro(b)" class="hov-row-surface"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--color-text);">
+                  <span x-text="b.nome_exibicao"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <button @click="searchPorEndereco()" :disabled="!fEstadoId || loadingEndereco"
+                  class="btn btn-primary" style="width:100%;">
+            <span x-show="!loadingEndereco">Filtrar</span>
+            <span x-show="loadingEndereco">Filtrando...</span>
           </button>
         </div>
 
         <p x-show="searchedEndereco && !loadingEndereco && pessoasEndereco.length === 0"
            style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.05em;">
-          Nenhuma pessoa encontrada neste endereço.
+          Nenhuma pessoa encontrada para este filtro.
         </p>
-
-        <div x-show="loadingEndereco" style="display:flex;justify-content:center;padding:8px 0;">
-          <span class="spinner"></span>
-        </div>
       </div>
 
       <!-- Separador -->
@@ -635,14 +615,18 @@ function consultaPage() {
     fotoSearchDone: false,
     fotoServicoIndisponivel: false,
 
-    // Estado — endereco
-    filtroBairro: "",
-    filtroCidade: "",
-    filtroEstado: "",
+    // Estado — endereco (cascade por id)
+    fEstados: [],
+    fEstadoId: "",
+    fCidadeId: null,
+    fCidadeTexto: "",
+    fCidadeSugestoes: [],
+    fBairroId: null,
+    fBairroTexto: "",
+    fBairroSugestoes: [],
     pessoasEndereco: [],
     loadingEndereco: false,
     searchedEndereco: false,
-    _timerEndereco: null,
 
     // Estado — veiculo
     filtroPlaca: "",
@@ -658,9 +642,6 @@ function consultaPage() {
     modalVerMaisEndereco: false,
     modalVerMaisVeiculo: false,
     loadingVerMais: false,
-
-    // Dados auxiliares
-    localidades: { bairros: [], cidades: [], estados: [] },
 
     // Cadastro nova pessoa
     showCadastroPessoa: false,
@@ -685,7 +666,7 @@ function consultaPage() {
 
     async init() {
       try {
-        this.localidades = await api.get("/consultas/localidades");
+        this.fEstados = await api.get("/localidades?tipo=estado");
       } catch {
         /* silencioso */
       }
@@ -740,15 +721,64 @@ function consultaPage() {
       this.$refs.fotoInput.value = "";
     },
 
-    onInputEndereco() {
-      clearTimeout(this._timerEndereco);
-      const temFiltro = this.filtroBairro.length >= 2 || this.filtroCidade.length >= 2 || this.filtroEstado.length >= 1;
-      if (!temFiltro) {
-        this.pessoasEndereco = [];
-        this.searchedEndereco = false;
-        return;
-      }
-      this._timerEndereco = setTimeout(() => this.searchPorEndereco(), 400);
+    _limparResultadoEndereco() {
+      this.pessoasEndereco = [];
+      this.searchedEndereco = false;
+    },
+
+    onFiltroEstadoChange() {
+      this.fCidadeId = null; this.fCidadeTexto = ""; this.fCidadeSugestoes = [];
+      this.fBairroId = null; this.fBairroTexto = ""; this.fBairroSugestoes = [];
+      this._limparResultadoEndereco();
+    },
+
+    onFiltroCidadeInput() {
+      // Digitar invalida a seleção anterior (precisa re-selecionar para ter id).
+      this.fCidadeId = null;
+      this.fBairroId = null; this.fBairroTexto = ""; this.fBairroSugestoes = [];
+      this._limparResultadoEndereco();
+      this.fBuscarCidades();
+    },
+
+    onFiltroBairroInput() {
+      this.fBairroId = null;
+      this._limparResultadoEndereco();
+      this.fBuscarBairros();
+    },
+
+    async fBuscarCidades() {
+      if (!this.fEstadoId) { this.fCidadeSugestoes = []; return; }
+      const q = this.fCidadeTexto.trim();
+      try {
+        const url = q.length >= 1
+          ? `/localidades?tipo=cidade&parent_id=${this.fEstadoId}&q=${encodeURIComponent(q)}`
+          : `/localidades?tipo=cidade&parent_id=${this.fEstadoId}`;
+        this.fCidadeSugestoes = await api.get(url);
+      } catch (e) { console.error(e); }
+    },
+
+    fSelecionarCidade(c) {
+      this.fCidadeId = c.id; this.fCidadeTexto = c.nome_exibicao;
+      this.fCidadeSugestoes = [];
+      this.fBairroId = null; this.fBairroTexto = "";
+      this._limparResultadoEndereco();
+    },
+
+    async fBuscarBairros() {
+      if (!this.fCidadeId) { this.fBairroSugestoes = []; return; }
+      const q = this.fBairroTexto.trim();
+      try {
+        const url = q.length >= 1
+          ? `/localidades?tipo=bairro&parent_id=${this.fCidadeId}&q=${encodeURIComponent(q)}`
+          : `/localidades?tipo=bairro&parent_id=${this.fCidadeId}`;
+        this.fBairroSugestoes = await api.get(url);
+      } catch (e) { console.error(e); }
+    },
+
+    fSelecionarBairro(b) {
+      this.fBairroId = b.id; this.fBairroTexto = b.nome_exibicao;
+      this.fBairroSugestoes = [];
+      this._limparResultadoEndereco();
     },
 
     onInputVeiculo() {
@@ -799,15 +829,16 @@ function consultaPage() {
     },
 
     async searchPorEndereco() {
+      if (!this.fEstadoId) return;
       this.loadingEndereco = true;
       try {
-        let url = `/consultas/?q=&tipo=pessoa&limit=200`;
-        if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
-        if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
-        if (this.filtroEstado.length >= 1) url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
+        let url = `/consultas/?q=&tipo=pessoa&estado_id=${this.fEstadoId}`;
+        if (this.fCidadeId) url += `&cidade_id=${this.fCidadeId}`;
+        if (this.fBairroId) url += `&bairro_id=${this.fBairroId}`;
         const r = await api.get(url);
         this.pessoasEndereco = r.pessoas || [];
         this.searchedEndereco = true;
+        if (this.pessoasEndereco.length > 0) this.modalVerMaisEndereco = true;
       } catch {
         showToast("Erro no filtro por endereço", "error");
       } finally {
@@ -840,23 +871,6 @@ function consultaPage() {
         const url = `/consultas/?q=${encodeURIComponent(this.query)}&tipo=pessoa&limit=200`;
         const r = await api.get(url);
         this.pessoasTexto = r.pessoas || [];
-      } catch {
-        showToast("Erro ao carregar todos os resultados", "error");
-      } finally {
-        this.loadingVerMais = false;
-      }
-    },
-
-    async abrirVerMaisEndereco() {
-      this.modalVerMaisEndereco = true;
-      this.loadingVerMais = true;
-      try {
-        let url = `/consultas/?q=&tipo=pessoa&limit=200`;
-        if (this.filtroBairro.length >= 2) url += `&bairro=${encodeURIComponent(this.filtroBairro)}`;
-        if (this.filtroCidade.length >= 2) url += `&cidade=${encodeURIComponent(this.filtroCidade)}`;
-        if (this.filtroEstado.length >= 1) url += `&estado=${encodeURIComponent(this.filtroEstado.toUpperCase())}`;
-        const r = await api.get(url);
-        this.pessoasEndereco = r.pessoas || [];
       } catch {
         showToast("Erro ao carregar todos os resultados", "error");
       } finally {

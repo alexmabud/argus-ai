@@ -292,8 +292,8 @@ class AbordagemService:
     ) -> Sequence[Abordagem]:
         """Busca abordagens por texto em todas as datas.
 
-        Pesquisa por nome de pessoa abordada, placa de veículo ou
-        endereço em texto livre, sem restrição de data.
+        Pesquisa por nome de pessoa abordada, placa, atributos do veículo
+        (modelo, cor, tipo) ou endereço em texto livre, sem restrição de data.
         Prioridade: guarnicao_id > bpm_id > global.
 
         Args:

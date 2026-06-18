@@ -29,6 +29,18 @@ from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.models.veiculo import Veiculo
 
+# Trava de segurança: o fixture autouse `setup_db` faz DROP/CREATE e TRUNCATE de
+# TODAS as tabelas. Se a DATABASE_URL não apontar para um banco de testes, isso
+# destrói o banco de dev/produção. Abortamos a coleta para impedir rodar `pytest`
+# direto contra `argus_db` — use `make test`, que aponta para `argus_test`.
+_db_name = settings.DATABASE_URL.rsplit("/", 1)[-1].split("?")[0]
+if not _db_name.endswith("_test"):
+    raise RuntimeError(
+        f"Testes abortados: DATABASE_URL aponta para o banco '{_db_name}', que não "
+        "termina com '_test'. Os testes destroem/truncam todas as tabelas. Rode "
+        "`make test` (usa argus_test) ou defina DATABASE_URL=postgresql://.../<nome>_test."
+    )
+
 
 @pytest.fixture
 def test_engine():

@@ -114,119 +114,6 @@ function renderDashboard() {
             <div id="chart-por-mes"></div>
           </div>
 
-          <!-- Calendario + Pessoas do Dia -->
-          <div class="glass-card" style="padding:16px;border-radius:4px;">
-            <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">
-              Pessoas Abordadas por Dia
-            </h3>
-
-            <!-- Navegação do calendário -->
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <button @click="mesMenos()"
-                      style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
-                      class="hov-tab-pill"
-              >&#8249;</button>
-              <span style="font-family:var(--font-data);font-size:14px;font-weight:600;color:var(--color-text);" x-text="mesAtualLabel"></span>
-              <button @click="mesMais()"
-                      style="color:var(--color-text-muted);background:transparent;border:1px solid var(--color-border);border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 150ms;"
-                      class="hov-tab-pill"
-              >&#8250;</button>
-            </div>
-
-            <!-- Header dias da semana -->
-            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-bottom:2px;">
-              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">D</span>
-              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">S</span>
-              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">T</span>
-              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">Q</span>
-              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">Q</span>
-              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">S</span>
-              <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);font-weight:600;text-transform:uppercase;">S</span>
-            </div>
-
-            <!-- Grid de dias -->
-            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-bottom:12px;">
-              <template x-for="v in primeiroDiaSemana" :key="'v' + v">
-                <div></div>
-              </template>
-              <template x-for="dia in diasDoMes" :key="dia">
-                <button
-                  class="cal-day"
-                  :class="{
-                    'is-selecionado': isDiaSelecionado(dia),
-                    'is-hoje': diaEHoje(dia)
-                  }"
-                  @click="selecionarDia(dia)">
-                  <span class="cal-day-num" x-text="dia"></span>
-                  <span class="cal-led" x-show="diaTemAbordagem(dia)"></span>
-                </button>
-              </template>
-            </div>
-
-            <!-- Loading pessoas do dia -->
-            <div x-show="loadingPessoas" style="display:flex;justify-content:center;padding:16px 0;">
-              <span class="spinner"></span>
-            </div>
-
-            <!-- Lista de pessoas do dia -->
-            <div x-show="!loadingPessoas">
-              <div x-show="pessoasDoDia.length === 0"
-                   style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-align:center;padding:16px 0;text-transform:uppercase;letter-spacing:0.08em;">
-                Nenhuma abordagem neste dia.
-              </div>
-              <div style="display:flex;flex-direction:column;gap:4px;">
-                <template x-for="p in pessoasDoDia" :key="p.id">
-                  <div @click="if(p.foto_url) openPhotoModal(p.foto_url, p.id, p); else viewPessoa(p.id)"
-                       style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 150ms;"
-                       class="hov-dash-card">
-                    <img :src="p.foto_url || '/icons/icon-192.png'"
-                         style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);"
-                         :alt="p.nome">
-                    <div style="min-width:0;flex:1;">
-                      <p style="font-family:var(--font-body);font-size:13px;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="p.nome"></p>
-                      <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="p.cpf || '\u2014'"></p>
-                    </div>
-                  </div>
-                </template>
-              </div>
-            </div>
-          </div>
-
-          <!-- Mapa de Abordagens do Dia -->
-          <div x-show="diaSelecionado !== null && !loadingPessoas"
-               class="glass-card"
-               style="padding:16px;border-radius:4px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin:0;">
-                Localização das Abordagens
-              </h3>
-              <div x-show="pontosMapaDia.length > 0" style="display:flex;gap:0.25rem;">
-                <button
-                  @click="toggleModoMapaAnalitico('marcadores')"
-                  style="font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:4px;border:none;cursor:pointer;transition:all 0.2s;"
-                  :style="modoMapaAnalitico === 'marcadores' ? 'background:#14B8A6;color:var(--color-bg);' : 'background:var(--color-surface);color:var(--color-text-muted);border:1px solid var(--color-border);'"
-                >Marcadores</button>
-                <button
-                  @click="toggleModoMapaAnalitico('calor')"
-                  style="font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:4px;border:none;cursor:pointer;transition:all 0.2s;"
-                  :style="modoMapaAnalitico === 'calor' ? 'background:#14B8A6;color:var(--color-bg);' : 'background:var(--color-surface);color:var(--color-text-muted);border:1px solid var(--color-border);'"
-                >Calor</button>
-              </div>
-            </div>
-
-            <!-- Sem localização -->
-            <div x-show="pontosMapaDia.length === 0"
-                 style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);text-align:center;padding:16px 0;text-transform:uppercase;letter-spacing:0.08em;">
-              Sem dados de localização para este dia.
-            </div>
-
-            <!-- Mapa -->
-            <div x-show="pontosMapaDia.length > 0">
-              <div id="mapa-analitico-dia"
-                   style="width:100%;height:280px;border-radius:4px;background:var(--color-surface);z-index:1;"></div>
-            </div>
-          </div>
-
           <!-- Pessoas Recorrentes -->
           <div class="glass-card" style="padding:16px;border-radius:4px;">
             <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">
@@ -275,16 +162,12 @@ function renderDashboard() {
  * Carrega dados via API e renderiza gráficos ApexCharts com tema tático.
  */
 function dashboardPage() {
-  const agora = new Date();
   return {
-    // Spread no objeto retornado (não no x-data) para preservar os getters
-    // reativos do calendário — o spread no x-data congelaria mesAtualLabel,
-    // diasDoMes e primeiroDiaSemana em valores estáticos. personPhotoModal()
-    // só tem dados/métodos (sem getters), então pode ser mesclado aqui.
+    // personPhotoModal() só tem dados/métodos (sem getters), então pode ser
+    // mesclado diretamente aqui.
     ...personPhotoModal(),
 
     loading: true,
-    loadingPessoas: false,
 
     // Resumos
     hoje: {},
@@ -295,210 +178,8 @@ function dashboardPage() {
     porDia: [],
     porMes: [],
 
-    // Calendario
-    anoCalendarioAtual: agora.getFullYear(),
-    mesCalendarioAtual: agora.getMonth() + 1,
-    anoHoje: agora.getFullYear(),
-    mesHoje: agora.getMonth() + 1,
-    diaHoje: agora.getDate(),
-    diaSelecionado: agora.getDate(),
-    _anoSelec: agora.getFullYear(),
-    _mesSelec: agora.getMonth() + 1,
-    diasComAbordagem: [],
-    pessoasDoDia: [],
-
-    // Mapa do dia
-    pontosMapaDia: [],
-    mapaAnaliticoInst: null,
-    _mapaAnaliticoObserver: null,
-    modoMapaAnalitico: 'marcadores',
-    clusterAnalitico: null,
-    heatAnalitico: null,
-
     // Recorrentes
     recorrentes: [],
-
-    get mesAtualLabel() {
-      const meses = ['Janeiro','Fevereiro','Mar\u00e7o','Abril','Maio','Junho',
-                     'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-      return `${meses[this.mesCalendarioAtual - 1]} ${this.anoCalendarioAtual}`;
-    },
-
-    get primeiroDiaSemana() {
-      const d = new Date(this.anoCalendarioAtual, this.mesCalendarioAtual - 1, 1);
-      return Array.from({ length: d.getDay() }, (_, i) => i);
-    },
-
-    get diasDoMes() {
-      const total = new Date(this.anoCalendarioAtual, this.mesCalendarioAtual, 0).getDate();
-      return Array.from({ length: total }, (_, i) => i + 1);
-    },
-
-    diaTemAbordagem(dia) {
-      return this.diasComAbordagem.includes(dia);
-    },
-
-    isDiaSelecionado(dia) {
-      return (
-        this.diaSelecionado === dia &&
-        this._mesSelec === this.mesCalendarioAtual &&
-        this._anoSelec === this.anoCalendarioAtual
-      );
-    },
-
-    diaEHoje(dia) {
-      return (
-        dia === this.diaHoje &&
-        this.mesCalendarioAtual === this.mesHoje &&
-        this.anoCalendarioAtual === this.anoHoje
-      );
-    },
-
-    async mesMenos() {
-      if (this.mesCalendarioAtual === 1) {
-        this.mesCalendarioAtual = 12;
-        this.anoCalendarioAtual--;
-      } else {
-        this.mesCalendarioAtual--;
-      }
-      this.destroyMapaAnalitico();
-      this.diaSelecionado = null;
-      await this.carregarDiasComAbordagem();
-    },
-
-    async mesMais() {
-      if (this.mesCalendarioAtual === 12) {
-        this.mesCalendarioAtual = 1;
-        this.anoCalendarioAtual++;
-      } else {
-        this.mesCalendarioAtual++;
-      }
-      this.destroyMapaAnalitico();
-      this.diaSelecionado = null;
-      await this.carregarDiasComAbordagem();
-    },
-
-    async selecionarDia(dia) {
-      this.diaSelecionado = dia;
-      this._mesSelec = this.mesCalendarioAtual;
-      this._anoSelec = this.anoCalendarioAtual;
-      const dataStr = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
-      this.destroyMapaAnalitico();
-      await Promise.all([
-        this.carregarPessoasDoDia(dataStr),
-        this.carregarPontosMapaDia(dataStr),
-      ]);
-    },
-
-    async carregarDiasComAbordagem() {
-      const mes = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}`;
-      this.diasComAbordagem = await api.get(`/analytics/dias-com-abordagem?mes=${mes}`).catch(() => []);
-    },
-
-    async carregarPessoasDoDia(data) {
-      this.loadingPessoas = true;
-      try {
-        this.pessoasDoDia = await api.get(`/analytics/pessoas-do-dia?data=${data}`).catch(() => []);
-      } finally {
-        this.loadingPessoas = false;
-      }
-    },
-
-    async carregarPontosMapaDia(data) {
-      this.pontosMapaDia = await api.get(`/analytics/abordagens-do-dia?data=${data}`).catch(() => []);
-      if (this.pontosMapaDia.length > 0) {
-        await this.$nextTick();
-        await this.setupMapaAnaliticoObserver();
-      }
-    },
-
-    async setupMapaAnaliticoObserver() {
-      if (this._mapaAnaliticoObserver) {
-        this._mapaAnaliticoObserver.disconnect();
-        this._mapaAnaliticoObserver = null;
-      }
-      await new Promise(r => setTimeout(r, 0));
-      const div = document.getElementById('mapa-analitico-dia');
-      if (!div) return;
-      const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-          observer.disconnect();
-          this.initMapaAnalitico();
-        }
-      }, { threshold: 0.1 });
-      observer.observe(div);
-      this._mapaAnaliticoObserver = observer;
-    },
-
-    initMapaAnalitico() {
-      const div = document.getElementById('mapa-analitico-dia');
-      if (!div || this.mapaAnaliticoInst) return;
-      if (typeof L === 'undefined') return;
-
-      this.mapaAnaliticoInst = L.map(div, { zoomControl: true });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
-        maxZoom: 19,
-      }).addTo(this.mapaAnaliticoInst);
-
-      const pontos = this.pontosMapaDia;
-
-      this.clusterAnalitico = L.markerClusterGroup();
-      pontos.forEach(p => {
-        const marker = L.marker([p.lat, p.lng]);
-        const popupEl = document.createElement('span');
-        popupEl.style.cssText = 'font-family:monospace;font-size:12px;';
-        popupEl.textContent = p.horario;
-        marker.bindPopup(popupEl);
-        this.clusterAnalitico.addLayer(marker);
-      });
-
-      const heatPontos = pontos.map(p => [p.lat, p.lng, 1]);
-      this.heatAnalitico = L.heatLayer(heatPontos, { radius: 30, blur: 20, maxZoom: 17 });
-
-      this.mapaAnaliticoInst.addLayer(this.clusterAnalitico);
-
-      if (pontos.length === 1) {
-        this.mapaAnaliticoInst.setView([pontos[0].lat, pontos[0].lng], 15);
-      } else {
-        const bounds = L.latLngBounds(pontos.map(p => [p.lat, p.lng]));
-        this.mapaAnaliticoInst.fitBounds(bounds, { padding: [30, 30] });
-      }
-
-      requestAnimationFrame(() => {
-        this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false });
-        setTimeout(() => this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false }), 200);
-        setTimeout(() => this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false }), 500);
-      });
-    },
-
-    toggleModoMapaAnalitico(modo) {
-      if (!this.mapaAnaliticoInst || modo === this.modoMapaAnalitico) return;
-      this.modoMapaAnalitico = modo;
-      if (modo === 'marcadores') {
-        this.mapaAnaliticoInst.removeLayer(this.heatAnalitico);
-        this.mapaAnaliticoInst.addLayer(this.clusterAnalitico);
-      } else {
-        this.mapaAnaliticoInst.removeLayer(this.clusterAnalitico);
-        this.mapaAnaliticoInst.addLayer(this.heatAnalitico);
-      }
-    },
-
-    destroyMapaAnalitico() {
-      if (this._mapaAnaliticoObserver) {
-        this._mapaAnaliticoObserver.disconnect();
-        this._mapaAnaliticoObserver = null;
-      }
-      if (this.mapaAnaliticoInst) {
-        this.mapaAnaliticoInst.closePopup();
-        this.mapaAnaliticoInst.remove();
-        this.mapaAnaliticoInst = null;
-        this.clusterAnalitico = null;
-        this.heatAnalitico = null;
-      }
-      this.pontosMapaDia = [];
-      this.modoMapaAnalitico = 'marcadores';
-    },
 
     /**
      * Renderiza gráfico de abordagens por dia com tema tático.
@@ -566,19 +247,13 @@ function dashboardPage() {
      */
     async load() {
       try {
-        const dataHoje = `${this.anoHoje}-${String(this.mesHoje).padStart(2,'0')}-${String(this.diaHoje).padStart(2,'0')}`;
-        const mesAtual = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}`;
-
-        const [resumoHoje, resumoMes, resumoTotal, porDia, porMes, diasAbordagem, pessoasHoje, pontosHoje, recorrentes] =
+        const [resumoHoje, resumoMes, resumoTotal, porDia, porMes, recorrentes] =
           await Promise.all([
             api.get('/analytics/resumo-hoje').catch(() => ({})),
             api.get('/analytics/resumo-mes').catch(() => ({})),
             api.get('/analytics/resumo-total').catch(() => ({})),
             api.get('/analytics/por-dia?dias=30').catch(() => []),
             api.get('/analytics/por-mes?meses=12').catch(() => []),
-            api.get(`/analytics/dias-com-abordagem?mes=${mesAtual}`).catch(() => []),
-            api.get(`/analytics/pessoas-do-dia?data=${dataHoje}`).catch(() => []),
-            api.get(`/analytics/abordagens-do-dia?data=${dataHoje}`).catch(() => []),
             api.get('/analytics/pessoas-recorrentes?limit=10').catch(() => []),
           ]);
 
@@ -587,18 +262,12 @@ function dashboardPage() {
         this.total = resumoTotal;
         this.porDia = porDia;
         this.porMes = porMes;
-        this.diasComAbordagem = diasAbordagem;
-        this.pessoasDoDia = pessoasHoje;
-        this.pontosMapaDia = pontosHoje;
         this.recorrentes = recorrentes;
       } catch {
         showToast('Erro ao carregar dashboard', 'error');
       } finally {
         this.loading = false;
         await this.$nextTick();
-        if (this.pontosMapaDia.length > 0) {
-          await this.setupMapaAnaliticoObserver();
-        }
         // Aguarda o browser calcular layout do DOM. x-if insere elementos
         // no nextTick, mas dimensões computadas só existem após o primeiro
         // paint. Dois requestAnimationFrame garantem: 1º = elementos
