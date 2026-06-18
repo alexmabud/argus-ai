@@ -86,6 +86,9 @@ async def consulta_unificada(
     bairro: str | None = Query(None, max_length=200, description="Filtrar pessoas por bairro"),
     cidade: str | None = Query(None, max_length=200, description="Filtrar pessoas por cidade"),
     estado: str | None = Query(None, max_length=2, description="Filtrar pessoas por estado (UF)"),
+    estado_id: int | None = Query(None, description="Filtrar pessoas por id da localidade estado"),
+    cidade_id: int | None = Query(None, description="Filtrar pessoas por id da localidade cidade"),
+    bairro_id: int | None = Query(None, description="Filtrar pessoas por id da localidade bairro"),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
@@ -109,6 +112,9 @@ async def consulta_unificada(
         bairro: Filtrar pessoas por bairro do endereço (opcional).
         cidade: Filtrar pessoas por cidade do endereço (opcional).
         estado: Filtrar pessoas por estado UF do endereço (opcional).
+        estado_id: Filtrar pessoas por id da localidade estado (opcional).
+        cidade_id: Filtrar pessoas por id da localidade cidade (opcional).
+        bairro_id: Filtrar pessoas por id da localidade bairro (opcional).
         skip: Registros a pular por entidade (paginação).
         limit: Máximo de resultados por entidade (1-100, padrão 20).
         db: Sessão do banco de dados.
@@ -118,7 +124,7 @@ async def consulta_unificada(
         ConsultaUnificadaResponse com listas de pessoas, veículos,
         abordagens e total de resultados.
     """
-    filtro_endereco = bairro or cidade or estado
+    filtro_endereco = bairro or cidade or estado or estado_id or cidade_id or bairro_id
     if not filtro_endereco and len(q) < 2:
         raise HTTPException(
             status_code=422,
@@ -135,6 +141,9 @@ async def consulta_unificada(
         bairro=bairro,
         cidade=cidade,
         estado=estado,
+        estado_id=estado_id,
+        cidade_id=cidade_id,
+        bairro_id=bairro_id,
         skip=skip,
         limit=limit,
         user=user,
