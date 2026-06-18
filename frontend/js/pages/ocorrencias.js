@@ -15,9 +15,6 @@ function renderOcorrencias() {
         <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--color-text);text-transform:uppercase;letter-spacing:0.1em;margin:0;">
           RELATÓRIO DE ABORDAGENS
         </h2>
-        <p style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;margin-top:4px;"
-           x-text="loading ? 'CARREGANDO...' : total + ' ABORDAGENS'">
-        </p>
       </div>
 
       <!-- Busca local -->
@@ -27,6 +24,24 @@ function renderOcorrencias() {
         </svg>
         <input type="search" x-model="filtro" @input="onFiltroInput()" placeholder="Buscar por nome, placa, endereço em todas as datas..."
           style="background:none;border:none;outline:none;color:var(--color-text);font-family:var(--font-data);font-size:13px;width:100%;">
+      </div>
+
+      <!-- Contagem do conjunto exibido -->
+      <div class="glass-card" style="padding:16px;border-radius:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <span style="font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;" x-text="labelContagem"></span>
+          <span class="status-dot status-dot-online"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <p style="font-family:var(--font-data);font-size:28px;font-weight:700;color:var(--color-primary);line-height:1;" x-text="total"></p>
+            <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Abordagens</p>
+          </div>
+          <div>
+            <p style="font-family:var(--font-data);font-size:28px;font-weight:700;color:var(--color-success);line-height:1;" x-text="totalPessoas"></p>
+            <p style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">Pessoas</p>
+          </div>
+        </div>
       </div>
 
       <!-- Calendário -->
@@ -196,6 +211,22 @@ function ocorrenciasPage() {
 
     get total() {
       return this.abordagens.length;
+    },
+
+    get totalPessoas() {
+      const ids = new Set();
+      for (const ab of this.abordagens) {
+        for (const p of (ab.pessoas || [])) ids.add(p.id);
+      }
+      return ids.size;
+    },
+
+    get labelContagem() {
+      if (this.filtro && this.filtro.trim()) return 'Resultados da busca';
+      if (this.diaSelecionado) {
+        return `${String(this.diaSelecionado).padStart(2,'0')}/${String(this._mesSelec).padStart(2,'0')}/${this._anoSelec}`;
+      }
+      return '—';
     },
 
     get mesAtualLabel() {
