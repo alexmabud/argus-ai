@@ -67,6 +67,9 @@ class ConsultaService:
         bairro: str | None = None,
         cidade: str | None = None,
         estado: str | None = None,
+        estado_id: int | None = None,
+        cidade_id: int | None = None,
+        bairro_id: int | None = None,
         skip: int = 0,
         limit: int = 20,
         user: Usuario | None = None,
@@ -115,10 +118,18 @@ class ConsultaService:
         veiculos = []
         abordagens = []
 
-        filtro_local = bairro or cidade or estado
+        filtro_local_id = estado_id or cidade_id or bairro_id
+        filtro_local = bool(filtro_local_id or bairro or cidade or estado)
 
         if tipo is None or tipo == "pessoa":
-            if filtro_local:
+            if filtro_local_id:
+                pessoas = await self.pessoa_repo.search_by_localidade_ids_com_endereco(
+                    estado_id=estado_id,
+                    cidade_id=cidade_id,
+                    bairro_id=bairro_id,
+                    guarnicao_id=guarnicao_id_pessoa,
+                )
+            elif bairro or cidade or estado:
                 pessoas = await self.pessoa_repo.search_by_bairro_cidade_com_endereco(
                     bairro=bairro,
                     cidade=cidade,
