@@ -265,9 +265,10 @@ class AbordagemRepository(BaseRepository[Abordagem]):
         guarnicao_id: int,
         limit: int = 100,
     ) -> Sequence[Abordagem]:
-        """Busca abordagens por texto em nome de pessoa, placa ou endereço.
+        """Busca abordagens por texto em nome, placa, veículo ou endereço.
 
-        Faz outer join com Pessoa e Veiculo para cobrir todos os campos,
+        Cobre nome de pessoa, placa, atributos do veículo (modelo, cor, tipo)
+        e endereço. Faz outer join com Pessoa e Veiculo para cobrir os campos,
         retornando abordagens de qualquer data que contenham o termo.
 
         Args:
@@ -303,6 +304,9 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 or_(
                     Pessoa.nome.ilike(termo),
                     Veiculo.placa.ilike(termo),
+                    Veiculo.modelo.ilike(termo),
+                    Veiculo.cor.ilike(termo),
+                    Veiculo.tipo.ilike(termo),
                     Abordagem.endereco_texto.ilike(termo),
                 ),
             )
@@ -417,6 +421,9 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 or_(
                     Pessoa.nome.ilike(termo),
                     Veiculo.placa.ilike(termo),
+                    Veiculo.modelo.ilike(termo),
+                    Veiculo.cor.ilike(termo),
+                    Veiculo.tipo.ilike(termo),
                     Abordagem.endereco_texto.ilike(termo),
                 ),
             )
@@ -494,8 +501,9 @@ class AbordagemRepository(BaseRepository[Abordagem]):
     ) -> Sequence[Abordagem]:
         """Busca abordagens por texto dentro de um BPM.
 
-        Pesquisa por nome de pessoa, placa ou endereço. Filtra por bpm_id via
-        subquery para evitar conflito com JOINs de pessoa e veículo.
+        Pesquisa por nome, placa, veículo (modelo/cor/tipo) ou endereço.
+        Filtra por bpm_id via subquery para evitar conflito com JOINs de
+        pessoa e veículo.
 
         Args:
             bpm_id: ID do BPM para filtro.
@@ -534,6 +542,9 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 or_(
                     Pessoa.nome.ilike(termo),
                     Veiculo.placa.ilike(termo),
+                    Veiculo.modelo.ilike(termo),
+                    Veiculo.cor.ilike(termo),
+                    Veiculo.tipo.ilike(termo),
                     Abordagem.endereco_texto.ilike(termo),
                 ),
             )

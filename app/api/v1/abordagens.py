@@ -113,7 +113,7 @@ async def listar_abordagens(
         None,
         min_length=1,
         max_length=200,
-        description="Busca por nome, placa ou endereço em todas as datas.",
+        description="Busca por nome, placa, veículo (modelo/cor/tipo) ou endereço.",
     ),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -121,8 +121,9 @@ async def listar_abordagens(
     """Lista abordagens da guarnição com paginação, filtro por data ou busca textual.
 
     Prioridade dos filtros: `q` > `data` > paginação padrão.
-    Quando `q` é informado, busca por nome de pessoa, placa ou endereço
-    em todas as datas, ignorando `data` e `skip`/`limit`.
+    Quando `q` é informado, busca por nome de pessoa, placa, veículo
+    (modelo/cor/tipo) ou endereço em todas as datas, ignorando `data` e
+    `skip`/`limit`.
     Quando apenas `data` é informado, retorna todas as abordagens do dia.
     Sem filtros, retorna lista paginada.
 

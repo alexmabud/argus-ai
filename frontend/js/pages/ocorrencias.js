@@ -22,7 +22,7 @@ function renderOcorrencias() {
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-text-dim);flex-shrink:0;">
           <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
         </svg>
-        <input type="search" x-model="filtro" @input="onFiltroInput()" placeholder="Buscar por nome, placa, endereço em todas as datas..."
+        <input type="search" x-model="filtro" @input="onFiltroInput()" placeholder="Buscar por nome, placa, veículo, endereço em todas as datas..."
           style="background:none;border:none;outline:none;color:var(--color-text);font-family:var(--font-data);font-size:13px;width:100%;">
       </div>
 
