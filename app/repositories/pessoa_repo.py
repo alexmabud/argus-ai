@@ -225,6 +225,50 @@ class PessoaRepository(BaseRepository[Pessoa]):
         result = await self.db.execute(query)
         return list(result.all())  # type: ignore[arg-type]
 
+    async def search_by_localidade_ids_com_endereco(
+        self,
+        estado_id: int | None,
+        cidade_id: int | None,
+        bairro_id: int | None,
+        guarnicao_id: int | None,
+    ) -> list[tuple[Pessoa, datetime]]:
+        """Busca pessoas pelos ids de localidade (estado/cidade/bairro) do endereço.
+
+        Espelha search_by_bairro_cidade_com_endereco, mas filtra pelas FKs
+        estado_id/cidade_id/bairro_id do EnderecoPessoa (igualdade exata) em vez
+        de texto ILIKE. SEM limite — retorna todas as pessoas que casam.
+
+        Args:
+            estado_id: ID da localidade estado (opcional).
+            cidade_id: ID da localidade cidade (opcional).
+            bairro_id: ID da localidade bairro (opcional).
+            guarnicao_id: ID da guarnição para filtro multi-tenant (None = global).
+
+        Returns:
+            Lista de tuplas (Pessoa, endereco_criado_em). Uma linha por pessoa
+            (o endereço mais recente que casa o filtro, criado_em DESC).
+        """
+        query = (
+            select(Pessoa, EnderecoPessoa.criado_em)
+            .join(EnderecoPessoa, EnderecoPessoa.pessoa_id == Pessoa.id)
+            .where(
+                Pessoa.ativo == True,  # noqa: E712
+                EnderecoPessoa.ativo == True,  # noqa: E712
+            )
+        )
+        if estado_id is not None:
+            query = query.where(EnderecoPessoa.estado_id == estado_id)
+        if cidade_id is not None:
+            query = query.where(EnderecoPessoa.cidade_id == cidade_id)
+        if bairro_id is not None:
+            query = query.where(EnderecoPessoa.bairro_id == bairro_id)
+        if guarnicao_id is not None:
+            query = query.where(Pessoa.guarnicao_id == guarnicao_id)
+
+        query = query.order_by(Pessoa.id, EnderecoPessoa.criado_em.desc()).distinct(Pessoa.id)
+        result = await self.db.execute(query)
+        return list(result.all())  # type: ignore[arg-type]
+
     async def get_localidades(self, guarnicao_id: int | None) -> dict:
         """Retorna valores distintos de bairro, cidade e estado cadastrados.
 
