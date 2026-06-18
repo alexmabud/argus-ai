@@ -1108,10 +1108,12 @@ function pessoaDetalhePage(pessoaId) {
           .map(ab => ({
             lat: ab.latitude,
             lng: ab.longitude,
+            id: ab.id,
             dataHora: ab.data_hora
               ? new Date(ab.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
               : (ab.criado_em ? new Date(ab.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'),
             endereco: ab.endereco_texto || '',
+            nomes: (ab.pessoas || []).map(p => p.nome),
           }));
 
       } catch { /* silencioso */ }
@@ -1160,7 +1162,27 @@ function pessoaDetalhePage(pessoaId) {
       this.clusterLayer = L.markerClusterGroup();
       for (const p of pontos) {
         const marker = L.marker([p.lat, p.lng]);
-        marker.bindPopup(`<b>${p.dataHora}</b><br>${p.endereco || 'Endereço não informado'}`);
+
+        const popupEl = document.createElement('div');
+        popupEl.style.cssText = 'font-family:monospace;font-size:12px;line-height:1.4;';
+
+        const linhaId = document.createElement('div');
+        linhaId.style.fontWeight = '700';
+        linhaId.textContent = `#${p.id} · ${p.dataHora}`;
+        popupEl.appendChild(linhaId);
+
+        const linhaEndereco = document.createElement('div');
+        linhaEndereco.textContent = p.endereco || 'Endereço não informado';
+        popupEl.appendChild(linhaEndereco);
+
+        p.nomes.forEach((nome, i) => {
+          const linhaNome = document.createElement('div');
+          if (i === 0) linhaNome.style.marginTop = '4px';
+          linhaNome.textContent = nome;
+          popupEl.appendChild(linhaNome);
+        });
+
+        marker.bindPopup(popupEl);
         this.clusterLayer.addLayer(marker);
       }
 
