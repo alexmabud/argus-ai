@@ -60,3 +60,22 @@ def test_burn_watermark_nao_imagem_levanta_unidentified():
     """Bytes que não são imagem propagam UnidentifiedImageError (sniff)."""
     with pytest.raises(UnidentifiedImageError):
         burn_watermark(b"%PDF-1.7 not an image", "GM-12345")
+
+
+def test_burn_watermark_marca_heic_de_iphone():
+    """Foto HEIC (iPhone) é marcada e re-codificada em JPEG.
+
+    Regressão: o decoder HEIF precisa estar registrado no próprio imaging.py
+    (a marca roda no proxy /storage, fora do fluxo de upload). Sem isso, fotos
+    de iPhone armazenadas como HEIC eram servidas sem marca d'água.
+    """
+    pytest.importorskip("pillow_heif")
+    buf = io.BytesIO()
+    Image.new("RGB", (400, 300), (70, 90, 110)).save(buf, format="HEIF")
+    heic_bytes = buf.getvalue()
+
+    marcada = burn_watermark(heic_bytes, "GM-12345")
+    assert marcada != heic_bytes
+    img = Image.open(io.BytesIO(marcada))
+    assert img.format == "JPEG"  # servido como image/jpeg
+    assert img.size == (400, 300)

@@ -11,6 +11,17 @@ import io
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
+# Registra o decoder HEIF/HEIC no Pillow para que thumbnails e marca d'água
+# consigam abrir fotos de iPhone diretamente, sem depender de outro módulo
+# tê-lo registrado antes (a marca d'água roda no proxy /storage, fora do
+# fluxo de upload). Idempotente — registrar duas vezes é inofensivo.
+try:
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+except Exception:  # pragma: no cover - ambiente sem pillow-heif
+    pass
+
 
 def gerar_thumbnail(
     image_bytes: bytes,
@@ -110,7 +121,9 @@ def burn_watermark(
     composited = Image.alpha_composite(base, layer)
 
     out = io.BytesIO()
-    if original_format in ("JPEG", "JPG"):
+    if original_format in ("JPEG", "JPG", "HEIF", "HEIC"):
+        # HEIC/HEIF é servido como image/jpeg (browsers não exibem HEIC nativo),
+        # então re-codifica em JPEG — também evita PNG gigante de foto de iPhone.
         composited.convert("RGB").save(out, format="JPEG", quality=85, optimize=True)
     elif original_format == "WEBP":
         composited.save(out, format="WEBP", quality=85)
