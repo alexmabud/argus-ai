@@ -100,13 +100,16 @@ def burn_watermark(
     layer = Image.new("RGBA", (diag, diag), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
 
-    step_x = max(font_size * 8, 160)
+    label = f"{matricula} · ARGUS"
+    # Espaçamento horizontal acompanha a largura do texto p/ não sobrepor o tile.
+    text_w = int(draw.textlength(label, font=font))
+    step_x = max(text_w + font_size * 3, 160)
     step_y = max(font_size * 5, 90)
     for y in range(0, diag, step_y):
         for x in range(0, diag, step_x):
             draw.text(
                 (x, y),
-                matricula,
+                label,
                 font=font,
                 fill=(255, 255, 255, opacity),
                 stroke_width=1,

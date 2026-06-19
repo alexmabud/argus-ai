@@ -23,7 +23,8 @@ from app.utils.imaging import burn_watermark
 logger = logging.getLogger("argus")
 
 #: Prefixo versionado do cache. Bump (v2, ...) invalida tudo se o estilo mudar.
-WM_PREFIX = "wm/v1"
+#: v2: marca passou a incluir "· ARGUS" no texto queimado.
+WM_PREFIX = "wm/v2"
 
 #: Content-types tratados como imagem direta (fast-path de marcação).
 IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}

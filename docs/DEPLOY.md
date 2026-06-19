@@ -57,8 +57,9 @@ Para o setup atual (MinIO em container):
 ### Cache de watermark (prefixo `wm/`)
 
 O sistema de watermark rastreável (camada 2) armazena variantes pré-marcadas sob o
-prefixo `wm/v1/` no mesmo bucket. Para evitar crescimento indefinido, configure a
-regra de expiração após o primeiro deploy com a feature ativa:
+prefixo versionado `wm/<versão>/` (ex.: `wm/v2/`) no mesmo bucket. Um bump da versão
+em `WM_PREFIX` invalida o cache (regenera as marcas no próximo acesso). Para evitar
+crescimento indefinido, configure a regra de expiração após o primeiro deploy:
 
 ```bash
 # No servidor, dentro do container MinIO ou via mc configurado:
