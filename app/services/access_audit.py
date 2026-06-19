@@ -32,6 +32,25 @@ logger = logging.getLogger("argus")
 #: TTL da chave de de-dupe do VIEW no Redis (10 minutos).
 VIEW_DEDUP_TTL = 600
 
+#: Pool Redis compartilhado — criado na primeira chamada (lazy).
+_redis_client: aioredis.Redis | None = None
+
+
+def _get_redis_client() -> aioredis.Redis:
+    """Retorna o cliente Redis compartilhado, criando-o na primeira chamada.
+
+    Usa o pool de conexões do aioredis (lazy connection). Não fecha o pool
+    após cada uso — reutiliza conexões TCP entre chamadas. Thread-safe no
+    contexto asyncio (event loop único).
+
+    Returns:
+        Cliente Redis configurado com ``REDIS_URL``.
+    """
+    global _redis_client
+    if _redis_client is None:
+        _redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+    return _redis_client
+
 
 async def _audit_background(
     usuario_id: int,
@@ -87,10 +106,9 @@ async def _dedup_view(matricula: str, asset_key: str) -> bool:
     """
     dedup_key = f"wm:view:{matricula}:{asset_key}"
     try:
-        redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-        async with redis:
-            was_set = await redis.set(dedup_key, "1", nx=True, ex=VIEW_DEDUP_TTL)
-            return bool(was_set)
+        redis = _get_redis_client()
+        was_set = await redis.set(dedup_key, "1", nx=True, ex=VIEW_DEDUP_TTL)
+        return bool(was_set)
     except Exception:
         logger.warning("Redis indisponível para de-dupe de VIEW; emitindo log de %s", asset_key)
         return True

@@ -119,3 +119,37 @@ async def test_render_falha_em_imagem_propaga_failclosed(fake_storage, monkeypat
     svc = WatermarkService()
     with pytest.raises(RuntimeError):
         await svc.get_or_create("fotos/uuid_x.jpg", "GM-1", "image/jpeg")
+
+
+async def test_mark_buffered_bytes_marca_e_cacheia(fake_storage):
+    """mark_buffered_bytes queima marca nos bytes e faz upload do resultado."""
+    original = _img()
+    fake_storage.upload = AsyncMock()
+    svc = WatermarkService()
+    result = await svc.mark_buffered_bytes("fotos/x.jpg", "GM-1", original, "image/jpeg")
+    assert result.is_image is True
+    assert result.body != original
+    assert result.content_type == "image/jpeg"
+    fake_storage.upload.assert_awaited_once()
+
+
+async def test_mark_buffered_bytes_nao_imagem_faz_passthrough(fake_storage):
+    """mark_buffered_bytes de não-imagem devolve bytes originais (sniff via PIL)."""
+    pdf = b"%PDF-1.7 fake"
+    fake_storage.upload = AsyncMock()
+    svc = WatermarkService()
+    result = await svc.mark_buffered_bytes("docs/x.pdf", "GM-1", pdf, "application/pdf")
+    assert result.is_image is False
+    assert result.body == pdf
+    fake_storage.upload.assert_not_awaited()
+
+
+async def test_mark_buffered_bytes_upload_falha_ainda_retorna_marcada(fake_storage):
+    """Falha no upload do cache não impede servir a imagem marcada."""
+    original = _img()
+    fake_storage.upload = AsyncMock(side_effect=RuntimeError("MinIO down"))
+    svc = WatermarkService()
+    result = await svc.mark_buffered_bytes("fotos/x.jpg", "GM-1", original, "image/jpeg")
+    # Upload falhou, mas a imagem marcada ainda é retornada (degradação graciosa).
+    assert result.is_image is True
+    assert result.body != original

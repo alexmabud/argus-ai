@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 from dataclasses import dataclass
 
 from botocore.exceptions import ClientError
@@ -18,6 +19,8 @@ from PIL import UnidentifiedImageError
 
 from app.services.storage_service import StorageService
 from app.utils.imaging import burn_watermark
+
+logger = logging.getLogger("argus")
 
 #: Prefixo versionado do cache. Bump (v2, ...) invalida tudo se o estilo mudar.
 WM_PREFIX = "wm/v1"
@@ -121,4 +124,41 @@ class WatermarkService:
 
         out_ct = orig_ct if (orig_ct or "").lower() in IMAGE_CONTENT_TYPES else "image/jpeg"
         await storage.upload(marcada, ckey, content_type=out_ct)
+        return WatermarkResult(body=marcada, content_type=out_ct, is_image=True)
+
+    async def mark_buffered_bytes(
+        self,
+        original_key: str,
+        matricula: str,
+        body_bytes: bytes,
+        content_type: str | None,
+    ) -> WatermarkResult:
+        """Queima a marca em bytes já bufferizados e cacheia o resultado.
+
+        Usado pelo proxy /storage quando o body já foi consumido via
+        ``stream_with_meta`` (streaming com ETag). Evita re-download do
+        original — apenas processa os bytes e armazena a variante marcada.
+
+        Args:
+            original_key: Key do objeto original no bucket (para a cache key).
+            matricula: Matrícula do usuário autenticado.
+            body_bytes: Bytes já lidos do S3.
+            content_type: Content-type informado pelo storage.
+
+        Returns:
+            WatermarkResult com bytes marcados e ``is_image=True``, ou
+            passthrough com ``is_image=False`` se o sniff revelar não-imagem.
+        """
+        storage = StorageService.get()
+        ckey = self.cache_key(matricula, original_key)
+        try:
+            marcada = await asyncio.to_thread(burn_watermark, body_bytes, matricula)
+        except UnidentifiedImageError:
+            return WatermarkResult(body=body_bytes, content_type=content_type or "", is_image=False)
+        ct = (content_type or "").lower()
+        out_ct = ct if ct in IMAGE_CONTENT_TYPES else "image/jpeg"
+        try:
+            await storage.upload(marcada, ckey, content_type=out_ct)
+        except Exception:
+            logger.warning("Falha ao cachear variante wm/ para %s", original_key)
         return WatermarkResult(body=marcada, content_type=out_ct, is_image=True)

@@ -92,12 +92,13 @@ async def test_log_view_redis_indisponivel_loga_mesmo_assim(monkeypatch):
     """
     mock_audit = AsyncMock()
     monkeypatch.setattr(mod, "_audit_background", mock_audit)
+    monkeypatch.setattr(mod, "_redis_client", None)
 
-    def _redis_broken(*_a, **_kw):
+    def _redis_broken():
         """Stub que simula Redis indisponível."""
         raise ConnectionError("Redis down")
 
-    monkeypatch.setattr(mod.aioredis, "from_url", _redis_broken)
+    monkeypatch.setattr(mod, "_get_redis_client", _redis_broken)
 
     bt = BackgroundTasks()
     log_view(bt, usuario_id=1, matricula="GM-1", asset_key="fotos/x.jpg")

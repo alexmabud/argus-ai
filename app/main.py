@@ -6,7 +6,6 @@ modelos de ML e ciclo de vida de conexões com banco de dados. Inclui
 proxy reverso para storage S3/MinIO para evitar mixed-content em HTTPS.
 """
 
-import asyncio
 import logging
 import traceback
 from contextlib import asynccontextmanager
@@ -16,7 +15,6 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, s
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from PIL import UnidentifiedImageError
 from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import or_, select
@@ -36,8 +34,7 @@ from app.models.ocorrencia import Ocorrencia
 from app.models.usuario import Usuario
 from app.services.access_audit import log_view
 from app.services.storage_service import StorageService
-from app.services.watermark_service import IMAGE_CONTENT_TYPES, WatermarkService
-from app.utils.imaging import burn_watermark
+from app.services.watermark_service import WatermarkService
 
 logger = logging.getLogger("argus")
 
@@ -182,8 +179,9 @@ def create_app() -> FastAPI:
 
         Args:
             path: Caminho ``{bucket}/{key}`` recebido na URL.
-            request: Request HTTP — usado para ler ``If-None-Match``.
-            _: Usuário autenticado (JWT via header ou cookie).
+            request: Request HTTP — usado para ler ``If-None-Match`` e IP/UA.
+            background_tasks: FastAPI BackgroundTasks — usado para audit log.
+            user: Usuário autenticado (JWT via header ou cookie).
 
         Returns:
             ``StreamingResponse`` com o conteúdo do arquivo e headers de
@@ -251,8 +249,11 @@ def create_app() -> FastAPI:
                 media_type=cached_ct,
                 headers={"Cache-Control": "private, max-age=3600"},
             )
-        except Exception:
-            pass  # cache miss → segue para fetch do original
+        except ClientError as exc:
+            miss_codes = {"NoSuchKey", "404", "NoSuchBucket"}
+            if exc.response.get("Error", {}).get("Code") not in miss_codes:
+                logger.warning("Erro inesperado ao ler cache wm/ para %s: %s", key, exc)
+            # cache miss (ou erro operacional logado) → segue para fetch do original
 
         if_none_match = request.headers.get("if-none-match")
 
@@ -278,7 +279,7 @@ def create_app() -> FastAPI:
                 status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao acessar storage"
             ) from exc
 
-        # Camada 2 — imagens: bufferiza, queima a marca e cacheia no MinIO.
+        # Camada 2 — imagens: bufferiza e delega marca + cache ao WatermarkService.
         if WatermarkService.deve_tentar_marcar(content_type):
             body_bytes = bytearray()
             try:
@@ -290,34 +291,22 @@ def create_app() -> FastAPI:
                     _res = _close()
                     if hasattr(_res, "__await__"):
                         await _res
-            try:
-                marked = await asyncio.to_thread(burn_watermark, bytes(body_bytes), user.matricula)
-                is_known_img = content_type.lower() in IMAGE_CONTENT_TYPES
-                out_ct = content_type if is_known_img else "image/jpeg"
-                try:
-                    await storage.upload(marked, wm_ckey, content_type=out_ct)
-                except Exception:
-                    logger.warning("Falha ao cachear variante wm/ para %s", key)
-                log_view(
-                    background_tasks,
-                    usuario_id=user.id,
-                    matricula=user.matricula,
-                    asset_key=key,
-                    ip_address=request.client.host if request.client else None,
-                    user_agent=request.headers.get("user-agent"),
-                )
-                return Response(
-                    content=marked,
-                    media_type=out_ct,
-                    headers={"Cache-Control": "private, max-age=3600"},
-                )
-            except UnidentifiedImageError:
-                # Sniff revelou que não era imagem (ex.: octet-stream = PDF).
-                return Response(
-                    content=bytes(body_bytes),
-                    media_type=content_type,
-                    headers={"Cache-Control": "private, max-age=3600"},
-                )
+            result = await WatermarkService().mark_buffered_bytes(
+                key, user.matricula, bytes(body_bytes), content_type
+            )
+            log_view(
+                background_tasks,
+                usuario_id=user.id,
+                matricula=user.matricula,
+                asset_key=key,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+            return Response(
+                content=result.body,
+                media_type=result.content_type or content_type,
+                headers={"Cache-Control": "private, max-age=3600"},
+            )
 
         # Não-imagem (PDF, vídeo): streaming com ETag/304.
         headers = {"Cache-Control": "private, max-age=3600"}

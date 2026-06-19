@@ -423,3 +423,36 @@ async def test_storage_proxy_rejeita_prefixo_wm(client, auth_headers, fake_stora
     )
     assert resp.status_code == 404
     fake_storage.get_object.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_cache_hit_retorna_sem_chamar_original(
+    client, auth_headers, fake_storage
+):
+    """No fast-path (cache hit no MinIO), o original não é baixado do S3.
+
+    get_object deve ser chamado exatamente uma vez (para a chave wm/),
+    e a resposta deve conter os bytes cacheados, não reprocessar a imagem.
+    """
+    import io
+
+    from PIL import Image
+
+    pre_marked = io.BytesIO()
+    Image.new("RGB", (200, 200), (10, 20, 30)).save(pre_marked, format="JPEG")
+    pre_marked_bytes = pre_marked.getvalue()
+
+    # get_object retorna bytes pré-marcados para qualquer key (simula cache hit).
+    fake_body = _FakeStreamingBody([pre_marked_bytes])
+    fake_storage.get_object = AsyncMock(
+        return_value={"Body": fake_body, "ContentType": "image/jpeg"}
+    )
+
+    resp = await client.get(
+        f"/storage/{settings.S3_BUCKET}/fotos/cached.jpg",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    assert resp.content == pre_marked_bytes
+    # Exatamente uma chamada: a do cache wm/, não do original
+    assert fake_storage.get_object.call_count == 1
