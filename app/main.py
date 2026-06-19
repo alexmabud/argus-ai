@@ -11,7 +11,7 @@ import traceback
 from contextlib import asynccontextmanager
 
 from botocore.exceptions import ClientError
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -32,7 +32,9 @@ from app.dependencies import get_current_user
 from app.models.foto import Foto
 from app.models.ocorrencia import Ocorrencia
 from app.models.usuario import Usuario
+from app.services.access_audit import log_view
 from app.services.storage_service import StorageService
+from app.services.watermark_service import WatermarkService
 
 logger = logging.getLogger("argus")
 
@@ -153,6 +155,7 @@ def create_app() -> FastAPI:
     async def storage_proxy(
         path: str,
         request: Request,
+        background_tasks: BackgroundTasks,
         user: Usuario = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> Response:
@@ -176,8 +179,9 @@ def create_app() -> FastAPI:
 
         Args:
             path: Caminho ``{bucket}/{key}`` recebido na URL.
-            request: Request HTTP — usado para ler ``If-None-Match``.
-            _: Usuário autenticado (JWT via header ou cookie).
+            request: Request HTTP — usado para ler ``If-None-Match`` e IP/UA.
+            background_tasks: FastAPI BackgroundTasks — usado para audit log.
+            user: Usuário autenticado (JWT via header ou cookie).
 
         Returns:
             ``StreamingResponse`` com o conteúdo do arquivo e headers de
@@ -189,6 +193,13 @@ def create_app() -> FastAPI:
         """
         bucket, _sep, key = path.partition("/")
         if not key or bucket != settings.S3_BUCKET:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Arquivo não encontrado",
+            )
+
+        # Bloqueia acesso direto ao cache interno de watermark (prefixo wm/).
+        if key.startswith("wm/"):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Arquivo não encontrado",
@@ -219,21 +230,40 @@ def create_app() -> FastAPI:
             if ocorrencia is not None:
                 TenantFilter.check_ownership(ocorrencia, user)
 
-        if_none_match = request.headers.get("if-none-match")
+        storage = StorageService.get()
+        wm_ckey = WatermarkService.cache_key(user.matricula, key)
 
+        # Camada 2 — fast path: tenta servir variante marcada já cacheada no MinIO.
         try:
-            body, content_type, etag, length = await StorageService.get().stream_with_meta(
-                key, if_none_match=if_none_match
+            cached_bytes, cached_ct = await storage.download_with_meta(wm_ckey)
+            log_view(
+                background_tasks,
+                usuario_id=user.id,
+                matricula=user.matricula,
+                asset_key=key,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
             )
+            return Response(
+                content=cached_bytes,
+                media_type=cached_ct,
+                headers={"Cache-Control": "private, max-age=3600"},
+            )
+        except ClientError as exc:
+            miss_codes = {"NoSuchKey", "404", "NoSuchBucket"}
+            if exc.response.get("Error", {}).get("Code") not in miss_codes:
+                logger.warning("Erro inesperado ao ler cache wm/ para %s: %s", key, exc)
+            # cache miss (ou erro operacional logado) → segue para fetch do original
+
+        # Busca o original SEM repassar If-None-Match. O proxy pode transformar os
+        # bytes (marca d'água), então o ETag do objeto original não é validador
+        # válido para o que servimos: honrar 304 faria o browser servir a cópia
+        # antiga (sem marca) cacheada antes do watermark. Sempre 200 com bytes frescos.
+        try:
+            body, content_type, etag, length = await storage.stream_with_meta(key)
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")
             status_code = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-            if code in {"304", "NotModified"} or status_code == 304:
-                # S3 confirmou que o ETag do cliente ainda é válido — poupa transferência.
-                headers_304 = {"Cache-Control": "private, max-age=3600"}
-                if if_none_match:
-                    headers_304["ETag"] = if_none_match
-                return Response(status_code=304, headers=headers_304)
             if code in {"NoSuchKey", "404"} or status_code == 404:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND, detail="Arquivo não encontrado"
@@ -243,6 +273,38 @@ def create_app() -> FastAPI:
                 status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao acessar storage"
             ) from exc
 
+        # Camada 2 — imagens: bufferiza e delega marca + cache ao WatermarkService.
+        if WatermarkService.deve_tentar_marcar(content_type):
+            body_bytes = bytearray()
+            try:
+                async for chunk in body.iter_chunks(STORAGE_PROXY_CHUNK_SIZE):
+                    body_bytes += chunk
+            finally:
+                _close = getattr(body, "close", None)
+                if _close is not None:
+                    _res = _close()
+                    if hasattr(_res, "__await__"):
+                        await _res
+            result = await WatermarkService().mark_buffered_bytes(
+                key, user.matricula, bytes(body_bytes), content_type
+            )
+            log_view(
+                background_tasks,
+                usuario_id=user.id,
+                matricula=user.matricula,
+                asset_key=key,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+            return Response(
+                content=result.body,
+                media_type=result.content_type or content_type,
+                headers={"Cache-Control": "private, max-age=3600"},
+            )
+
+        # Não-imagem (PDF, vídeo): streaming dos bytes originais. Mantém o ETag
+        # (válido pois o conteúdo não é transformado), mas o proxy não honra
+        # requisições condicionais — sempre devolve 200 (ver fetch acima).
         headers = {"Cache-Control": "private, max-age=3600"}
         if etag:
             headers["ETag"] = etag

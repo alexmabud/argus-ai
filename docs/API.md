@@ -53,7 +53,7 @@ Autenticação: Bearer JWT (`Authorization: Bearer <access_token>`).
 | Método | Path | Descrição | Auth | Rate |
 |--------|------|-----------|------|------|
 | POST | `/abordagens/` | Criar abordagem (com pessoas/veículos + auto-relacionamento) | Sim | 30/min |
-| GET | `/abordagens/` | Listar paginado (com filtros) | Sim | 30/min |
+| GET | `/abordagens/` | Listar paginado; busca textual (`q`) por nome de pessoa, placa e veículo (modelo/cor/tipo), ou filtro por `data` | Sim | 30/min |
 | GET | `/abordagens/{id}` | Detalhe com pessoas, veículos e fotos | Sim | 60/min |
 
 ## Fotos (`/fotos`)
@@ -66,13 +66,13 @@ Autenticação: Bearer JWT (`Authorization: Bearer <access_token>`).
 | GET | `/fotos/abordagem/{id}` | Mídias de uma abordagem | Sim | 30/min |
 | POST | `/fotos/buscar-rosto` | Busca facial (pgvector 512-dim, distância cosseno) | Sim | 10/min |
 | POST | `/fotos/ocr-placa` | OCR de placa (EasyOCR) | Sim | 10/min |
-| GET | `/fotos/{id}/download` | Download via URL assinada (S3 presigned) | Sim | 30/min |
+| GET | `/fotos/{id}/download` | Download forçado via proxy do backend (`Content-Disposition: attachment`); imagens recebem marca d'água queimada com a matrícula e o acesso é auditado (`DOWNLOAD_MIDIA`) | Sim | 30/min |
 
 ## Consultas (`/consultas`)
 
 | Método | Path | Descrição | Auth | Rate |
 |--------|------|-----------|------|------|
-| GET | `/consultas/` | Busca unificada por termo (pessoas + veículos + abordagens) | Sim | 30/min |
+| GET | `/consultas/` | Busca unificada por termo (pessoas + veículos + abordagens); filtra pessoas por endereço via texto (`bairro`/`cidade`/`estado`) ou por id de localidade em cascata (`estado_id`/`cidade_id`/`bairro_id`) | Sim | 30/min |
 | GET | `/consultas/pessoas-por-veiculo` | Pessoas vinculadas a veículos (placa/modelo/cor) | Sim | 30/min |
 | GET | `/consultas/localidades` | Bairros, cidades, estados distintos (filtros) | Sim | 30/min |
 

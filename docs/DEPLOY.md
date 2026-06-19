@@ -54,6 +54,23 @@ Para o setup atual (MinIO em container):
 3. As credenciais são definidas via `MINIO_ROOT_USER` e `MINIO_ROOT_PASSWORD`
    no `.env`.
 
+### Cache de watermark (prefixo `wm/`)
+
+O sistema de watermark rastreável (camada 2) armazena variantes pré-marcadas sob o
+prefixo `wm/v1/` no mesmo bucket. Para evitar crescimento indefinido, configure a
+regra de expiração após o primeiro deploy com a feature ativa:
+
+```bash
+# No servidor, dentro do container MinIO ou via mc configurado:
+docker exec -it argus_minio_1 mc ilm rule add argus/argus \
+  --prefix "wm/" --expire-days 14
+```
+
+> **Por quê 14 dias?** Sessões longas de patrulha dificilmente passam de 2 semanas.
+> Após 14 dias, o cache é regenerado automaticamente no próximo acesso.
+> Se quiser evitar a regra, o prefixo `wm/` cresce ~1 variante por (usuário × foto)
+> — geralmente inofensivo, mas boa prática limpar.
+
 Para migrar para Cloudflare R2 (caso queira no futuro):
 
 1. Criar bucket `argus` no [Cloudflare R2](https://dash.cloudflare.com)

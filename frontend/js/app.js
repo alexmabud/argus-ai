@@ -375,6 +375,7 @@ function app() {
     async onLogin(user) {
       this.authenticated = true;
       this.user = user;
+      window.dispatchEvent(new CustomEvent("wm:start", { detail: { matricula: user.matricula } }));
       this.navigate("home");
       if (this._perfilIncompleto(user)) {
         this.$nextTick(() => this._mostrarModalCompletarPerfil());
@@ -459,6 +460,7 @@ function app() {
      */
     logout() {
       auth.logout();
+      window.dispatchEvent(new CustomEvent("wm:stop"));
       this.authenticated = false;
       this.user = null;
       this.currentPage = "login";
