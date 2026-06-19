@@ -10,6 +10,28 @@ from PIL import Image
 from app.services.watermark_service import WatermarkService
 
 
+@pytest.mark.parametrize(
+    "content_type,esperado",
+    [
+        ("image/jpeg", True),
+        ("image/png", True),
+        ("image/webp", True),
+        ("image/jpg", True),  # MIME não-padrão (iOS/alguns browsers)
+        ("image/heic", True),
+        ("IMAGE/JPEG", True),  # case-insensitive
+        ("application/octet-stream", True),  # ambíguo → sniff
+        ("", True),
+        (None, True),
+        ("application/pdf", False),
+        ("video/mp4", False),
+        ("text/plain", False),
+    ],
+)
+def test_deve_tentar_marcar_aceita_qualquer_imagem(content_type, esperado):
+    """deve_tentar_marcar aceita qualquer image/* e tipos ambíguos; nega PDF/vídeo."""
+    assert WatermarkService.deve_tentar_marcar(content_type) is esperado
+
+
 def _img(size: tuple[int, int] = (800, 600)) -> bytes:
     """Gera bytes de imagem JPEG sólida para os testes.
 

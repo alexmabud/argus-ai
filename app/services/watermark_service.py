@@ -66,7 +66,13 @@ class WatermarkService:
 
     @staticmethod
     def deve_tentar_marcar(content_type: str | None) -> bool:
-        """Indica se vale tentar marcar (imagem conhecida ou ambígua).
+        """Indica se vale tentar marcar (qualquer imagem ou tipo ambíguo).
+
+        Aceita qualquer ``image/*`` — não só jpeg/png/webp — porque clientes
+        enviam MIMEs não-padrão (``image/jpg``, ``image/heic``) que eram
+        gravados verbatim no upload; restringir a um conjunto fixo deixava
+        esses originais sem marca. O ``burn_watermark`` faz o sniff real via
+        PIL e devolve passthrough se não for imagem decodificável.
 
         PDFs e vídeos conhecidos retornam False e seguem o streaming normal,
         sem baixar bytes à toa.
@@ -75,10 +81,10 @@ class WatermarkService:
             content_type: Content-type informado pelo storage.
 
         Returns:
-            True para tipos de imagem ou ambíguos; False caso contrário.
+            True para qualquer ``image/*`` ou tipo ambíguo; False caso contrário.
         """
         ct = (content_type or "").lower()
-        return ct in IMAGE_CONTENT_TYPES or ct in AMBIGUOUS_CONTENT_TYPES
+        return ct.startswith("image/") or ct in AMBIGUOUS_CONTENT_TYPES
 
     async def get_or_create(
         self, original_key: str, matricula: str, content_type: str | None

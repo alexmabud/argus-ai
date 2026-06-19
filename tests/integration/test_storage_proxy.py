@@ -413,6 +413,38 @@ async def test_storage_proxy_marca_imagem_inline(client, auth_headers, fake_stor
 
 
 @pytest.mark.asyncio
+async def test_storage_proxy_marca_imagem_com_content_type_jpg_nao_padrao(
+    client, auth_headers, fake_storage
+):
+    """Imagem com content-type não-padrão (image/jpg) também é marcada.
+
+    Regressão: clientes (iOS, alguns browsers) enviam `image/jpg` em vez de
+    `image/jpeg`. O upload gravava esse MIME verbatim e o proxy não marcava,
+    deixando o original exibido sem marca d'água ao ampliar.
+    """
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (800, 600), (100, 100, 100)).save(buf, format="JPEG")
+    original = buf.getvalue()
+
+    body = _FakeStreamingBody([original])
+    fake_storage.get_object = _get_obj_routing(
+        {"Body": body, "ContentType": "image/jpg", "ETag": '"jpg"'}
+    )
+    fake_storage.upload = AsyncMock()
+
+    resp = await client.get(
+        f"/storage/{settings.S3_BUCKET}/fotos/uuid_jpg.jpg",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    assert resp.content != original  # marcado apesar do content-type não-padrão
+
+
+@pytest.mark.asyncio
 async def test_storage_proxy_rejeita_prefixo_wm(client, auth_headers, fake_storage):
     """Path com prefixo wm/ (cache interno) é rejeitado com 404."""
     fake_storage.get_object = AsyncMock()

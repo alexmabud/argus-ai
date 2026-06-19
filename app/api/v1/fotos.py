@@ -565,7 +565,7 @@ async def download_midia(
     try:
         storage = StorageService.get()
         key = extrair_key_da_url(foto.arquivo_url)
-        if media_type in {"image/jpeg", "image/png", "image/webp"}:
+        if WatermarkService.deve_tentar_marcar(media_type):
             wm = await WatermarkService().get_or_create(key, user.matricula, media_type)
             file_bytes = wm.body
             media_type = wm.content_type
