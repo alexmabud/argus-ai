@@ -2,8 +2,9 @@
 
 Valida streaming dos bytes do S3 (sem buffer em memória), propagação de
 ``ETag``/``If-None-Match`` para 304 nativo do S3, tratamento de erros
-(404 para NoSuchKey, 502 para outros erros) e enforcement de tenant
-para midias de abordagem/PDFs de ocorrencia.
+(404 para NoSuchKey, 502 para outros erros), enforcement de tenant
+para midias de abordagem/PDFs de ocorrencia, e marca d'água nas imagens
+(camada 2 do watermark rastreável).
 """
 
 from datetime import datetime
@@ -55,6 +56,17 @@ class _FakeStreamingBody:
 
         return _gen()
 
+    async def read(self) -> bytes:
+        """Materializa todos os chunks em bytes.
+
+        Compatível com ``download_with_meta``, que usa ``Body.read()``
+        em vez de ``iter_chunks`` para acesso sem streaming.
+
+        Returns:
+            Concatenação de todos os chunks.
+        """
+        return b"".join(self._chunks)
+
 
 @pytest.fixture(autouse=True)
 def _reset_storage_singleton():
@@ -102,14 +114,38 @@ async def fake_storage(monkeypatch):
         await service.shutdown()
 
 
+def _get_obj_routing(return_value: dict) -> AsyncMock:
+    """Cria mock de get_object que retorna NoSuchKey para keys wm/ e dados para outras.
+
+    Necessário porque o proxy tenta o cache de watermark (prefixo wm/) antes
+    de baixar o original: a primeira chamada deve falhar e a segunda retornar
+    os dados esperados pelo teste.
+
+    Args:
+        return_value: Dict retornado para keys que não começam com ``wm/``.
+
+    Returns:
+        AsyncMock configurado com side_effect de roteamento por prefixo.
+    """
+
+    async def _side(**kwargs: object) -> dict:
+        """Roteia get_object: wm/ → NoSuchKey; outros → dados do teste."""
+        if str(kwargs.get("Key", "")).startswith("wm/"):
+            raise ClientError({"Error": {"Code": "NoSuchKey"}}, "GetObject")
+        return return_value
+
+    return AsyncMock(side_effect=_side)
+
+
 @pytest.mark.asyncio
 async def test_storage_proxy_streama_chunks_do_s3(client, auth_headers, fake_storage):
-    """Proxy deve usar StreamingResponse e iter_chunks (não baixar tudo)."""
+    """Proxy deve usar StreamingResponse e iter_chunks para conteúdo não-imagem (PDF)."""
     body = _FakeStreamingBody([b"hello ", b"world"])
-    fake_storage.get_object = AsyncMock(
-        return_value={
+    # Usa application/pdf: não-imagem preserva o path de streaming (sem marcação).
+    fake_storage.get_object = _get_obj_routing(
+        {
             "Body": body,
-            "ContentType": "image/jpeg",
+            "ContentType": "application/pdf",
             "ETag": '"abc"',
             "ContentLength": 11,
         }
@@ -121,7 +157,7 @@ async def test_storage_proxy_streama_chunks_do_s3(client, auth_headers, fake_sto
     )
 
     assert response.status_code == 200
-    assert response.headers["content-type"].startswith("image/jpeg")
+    assert response.headers["content-type"].startswith("application/pdf")
     assert response.headers["etag"] == '"abc"'
     assert response.headers["cache-control"] == "private, max-age=3600"
     assert response.content == b"hello world"
@@ -131,10 +167,11 @@ async def test_storage_proxy_streama_chunks_do_s3(client, auth_headers, fake_sto
 
 @pytest.mark.asyncio
 async def test_storage_proxy_repassa_if_none_match_para_s3(client, auth_headers, fake_storage):
-    """If-None-Match do cliente deve virar IfNoneMatch no get_object."""
+    """If-None-Match do cliente deve virar IfNoneMatch no get_object (path streaming PDF)."""
     body = _FakeStreamingBody([b"x"])
-    fake_storage.get_object = AsyncMock(
-        return_value={"Body": body, "ContentType": "image/jpeg", "ETag": '"abc"'}
+    # Usa application/pdf: não-imagem preserva ETag/If-None-Match no streaming.
+    fake_storage.get_object = _get_obj_routing(
+        {"Body": body, "ContentType": "application/pdf", "ETag": '"abc"'}
     )
 
     await client.get(
@@ -142,6 +179,7 @@ async def test_storage_proxy_repassa_if_none_match_para_s3(client, auth_headers,
         headers={**auth_headers, "If-None-Match": '"abc"'},
     )
 
+    # call_args é a última chamada → stream_with_meta com IfNoneMatch.
     kwargs = fake_storage.get_object.call_args.kwargs
     assert kwargs.get("IfNoneMatch") == '"abc"'
 
@@ -339,9 +377,49 @@ async def test_storage_proxy_libera_midia_de_abordagem_propria(
     fake_storage.get_object = AsyncMock(
         return_value={"Body": body, "ContentType": "image/jpeg", "ETag": '"x"'}
     )
+    fake_storage.upload = AsyncMock()
 
     response = await client.get(
         f"/storage/{settings.S3_BUCKET}/fotos/minha_midia.jpg",
         headers=auth_headers,
     )
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_marca_imagem_inline(client, auth_headers, fake_storage):
+    """Imagem servida pelo proxy volta marcada (bytes != original)."""
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (800, 600), (100, 100, 100)).save(buf, format="JPEG")
+    original = buf.getvalue()
+
+    body = _FakeStreamingBody([original])
+    # cache miss (wm/ → NoSuchKey) + original retorna imagem real
+    fake_storage.get_object = _get_obj_routing(
+        {"Body": body, "ContentType": "image/jpeg", "ETag": '"img"'}
+    )
+    fake_storage.upload = AsyncMock()
+
+    resp = await client.get(
+        f"/storage/{settings.S3_BUCKET}/fotos/uuid_x.jpg",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    assert resp.content != original  # marcado
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_rejeita_prefixo_wm(client, auth_headers, fake_storage):
+    """Path com prefixo wm/ (cache interno) é rejeitado com 404."""
+    fake_storage.get_object = AsyncMock()
+
+    resp = await client.get(
+        f"/storage/{settings.S3_BUCKET}/wm/v1/abc/fotos/x.jpg",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 404
+    fake_storage.get_object.assert_not_called()

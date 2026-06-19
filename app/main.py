@@ -6,6 +6,7 @@ modelos de ML e ciclo de vida de conexões com banco de dados. Inclui
 proxy reverso para storage S3/MinIO para evitar mixed-content em HTTPS.
 """
 
+import asyncio
 import logging
 import traceback
 from contextlib import asynccontextmanager
@@ -15,6 +16,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from PIL import UnidentifiedImageError
 from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import or_, select
@@ -33,6 +35,8 @@ from app.models.foto import Foto
 from app.models.ocorrencia import Ocorrencia
 from app.models.usuario import Usuario
 from app.services.storage_service import StorageService
+from app.services.watermark_service import IMAGE_CONTENT_TYPES, WatermarkService
+from app.utils.imaging import burn_watermark
 
 logger = logging.getLogger("argus")
 
@@ -194,6 +198,13 @@ def create_app() -> FastAPI:
                 detail="Arquivo não encontrado",
             )
 
+        # Bloqueia acesso direto ao cache interno de watermark (prefixo wm/).
+        if key.startswith("wm/"):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Arquivo não encontrado",
+            )
+
         # Tenant check seletivo: fotos vinculadas a pessoa permanecem globais
         # (BNMP, modelo de produto); midias de abordagem e PDFs de ocorrencia
         # respeitam o isolamento BPM/equipe. Assets nao registrados em banco
@@ -219,10 +230,24 @@ def create_app() -> FastAPI:
             if ocorrencia is not None:
                 TenantFilter.check_ownership(ocorrencia, user)
 
+        storage = StorageService.get()
+        wm_ckey = WatermarkService.cache_key(user.matricula, key)
+
+        # Camada 2 — fast path: tenta servir variante marcada já cacheada no MinIO.
+        try:
+            cached_bytes, cached_ct = await storage.download_with_meta(wm_ckey)
+            return Response(
+                content=cached_bytes,
+                media_type=cached_ct,
+                headers={"Cache-Control": "private, max-age=3600"},
+            )
+        except Exception:
+            pass  # cache miss → segue para fetch do original
+
         if_none_match = request.headers.get("if-none-match")
 
         try:
-            body, content_type, etag, length = await StorageService.get().stream_with_meta(
+            body, content_type, etag, length = await storage.stream_with_meta(
                 key, if_none_match=if_none_match
             )
         except ClientError as exc:
@@ -243,6 +268,40 @@ def create_app() -> FastAPI:
                 status_code=status.HTTP_502_BAD_GATEWAY, detail="Erro ao acessar storage"
             ) from exc
 
+        # Camada 2 — imagens: bufferiza, queima a marca e cacheia no MinIO.
+        if WatermarkService.deve_tentar_marcar(content_type):
+            body_bytes = bytearray()
+            try:
+                async for chunk in body.iter_chunks(STORAGE_PROXY_CHUNK_SIZE):
+                    body_bytes += chunk
+            finally:
+                _close = getattr(body, "close", None)
+                if _close is not None:
+                    _res = _close()
+                    if hasattr(_res, "__await__"):
+                        await _res
+            try:
+                marked = await asyncio.to_thread(burn_watermark, bytes(body_bytes), user.matricula)
+                is_known_img = content_type.lower() in IMAGE_CONTENT_TYPES
+                out_ct = content_type if is_known_img else "image/jpeg"
+                try:
+                    await storage.upload(marked, wm_ckey, content_type=out_ct)
+                except Exception:
+                    logger.warning("Falha ao cachear variante wm/ para %s", key)
+                return Response(
+                    content=marked,
+                    media_type=out_ct,
+                    headers={"Cache-Control": "private, max-age=3600"},
+                )
+            except UnidentifiedImageError:
+                # Sniff revelou que não era imagem (ex.: octet-stream = PDF).
+                return Response(
+                    content=bytes(body_bytes),
+                    media_type=content_type,
+                    headers={"Cache-Control": "private, max-age=3600"},
+                )
+
+        # Não-imagem (PDF, vídeo): streaming com ETag/304.
         headers = {"Cache-Control": "private, max-age=3600"}
         if etag:
             headers["ETag"] = etag
