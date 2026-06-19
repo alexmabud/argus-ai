@@ -37,6 +37,7 @@ from app.services.audit_service import AuditService
 from app.services.foto_service import FotoService
 from app.services.pessoa_service import PessoaService
 from app.services.storage_service import StorageService
+from app.services.watermark_service import WatermarkService
 
 logger = logging.getLogger("argus")
 
@@ -548,11 +549,16 @@ async def download_midia(
     }
     media_type = content_type_map.get(ext, "application/octet-stream")
 
-    # Download dos bytes do MinIO
+    # Download dos bytes do MinIO com marcação para imagens (camada 2).
     try:
         storage = StorageService.get()
         key = extrair_key_da_url(foto.arquivo_url)
-        file_bytes = await storage.download(key)
+        if media_type in {"image/jpeg", "image/png", "image/webp"}:
+            wm = await WatermarkService().get_or_create(key, user.matricula, media_type)
+            file_bytes = wm.body
+            media_type = wm.content_type
+        else:
+            file_bytes = await storage.download(key)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
