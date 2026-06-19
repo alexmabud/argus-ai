@@ -37,21 +37,30 @@
   }
 
   function _buildBg(matricula) {
-    var label = _esc(matricula) + " \xB7 " + _now();
-    // Tile grande o bastante p/ conter o texto rotacionado; o texto é
+    // Linha 1: matrícula · data hora ; Linha 2: ARGUS.
+    var data = new Date().toLocaleDateString("pt-BR");
+    var line1 = _esc(matricula) + " \xB7 " + data + " " + _now();
+    var line2 = "ARGUS";
+    // Tile grande o bastante p/ conter o bloco rotacionado de 2 linhas; texto
     // centralizado (text-anchor=middle) e girado em torno do próprio centro,
-    // então qualquer comprimento de matrícula cabe sem ser clipado.
-    var W = 300, H = 140, cx = W / 2, cy = H / 2;
+    // então qualquer comprimento de linha cabe sem ser clipado.
+    var W = 340, H = 180, cx = W / 2, cy = H / 2;
     var t = "rotate(-30 " + cx + " " + cy + ")";
+    function bloco(fill, sombra) {
+      return (
+        '<text x="' + cx + '" y="' + cy + '" font-size="13" fill="' + fill + '"' +
+        ' font-family="monospace" font-weight="bold" text-anchor="middle"' +
+        ' transform="' + t + (sombra ? " translate(1 1)" : "") + '">' +
+        '<tspan x="' + cx + '" dy="-3">' + line1 + "</tspan>" +
+        '<tspan x="' + cx + '" dy="17">' + line2 + "</tspan>" +
+        "</text>"
+      );
+    }
     // Dupla camada (sombra escura + branco) para visibilidade em fundo claro e escuro.
     var svg =
       '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">' +
-      '<text x="' + cx + '" y="' + cy + '" font-size="13" fill="rgba(0,0,0,0.045)"' +
-      ' font-family="monospace" font-weight="bold" text-anchor="middle"' +
-      ' transform="' + t + ' translate(1 1)">' + label + "</text>" +
-      '<text x="' + cx + '" y="' + cy + '" font-size="13" fill="rgba(255,255,255,0.06)"' +
-      ' font-family="monospace" font-weight="bold" text-anchor="middle"' +
-      ' transform="' + t + '">' + label + "</text>" +
+      bloco("rgba(0,0,0,0.045)", true) +
+      bloco("rgba(255,255,255,0.06)", false) +
       "</svg>";
     var b64 = btoa(unescape(encodeURIComponent(svg)));
     return 'url("data:image/svg+xml;base64,' + b64 + '")';
