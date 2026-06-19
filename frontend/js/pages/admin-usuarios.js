@@ -27,27 +27,29 @@ function renderAdminUsuarios() {
       </div>
 
       <!-- Nível 1: abas por BPM -->
-      <div x-show="!carregando" style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-bottom: 0; border-bottom: 1px solid var(--color-border); background: rgba(0, 212, 255, 0.04); padding: 0 0.5rem;">
-        <button
-          @click="abaAtiva = 'sem-equipe'; bpmAtivo = null; equipeAtiva = null"
-          :style="abaAtiva === 'sem-equipe' ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
-          style="padding: 0.5rem 0.75rem; font-family: var(--font-data); font-size: 0.8125rem; background: transparent; border: 0; cursor: pointer;"
-        >
-          Sem Equipe (<span x-text="usuariosSemEquipe.length"></span>)
-        </button>
-        <template x-for="b in bpms" :key="b.id">
+      <div x-show="!carregando" style="display: flex; align-items: stretch; justify-content: space-between; border-bottom: 1px solid var(--color-border); background: rgba(0, 212, 255, 0.04); padding: 0 0.5rem; margin-bottom: 0;">
+        <div style="display: flex; align-items: center; gap: 0; flex-wrap: wrap;">
+          <span style="font-family: var(--font-data); font-size: 0.6875rem; font-weight: 700; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; padding: 0 0.5rem 0 0.25rem; white-space: nowrap;">BPM</span>
           <button
-            @click="selecionarBpm(b.id)"
-            :style="bpmAtivo === b.id ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
+            @click="abaAtiva = 'sem-equipe'; bpmAtivo = null; equipeAtiva = null"
+            :style="abaAtiva === 'sem-equipe' ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
             style="padding: 0.5rem 0.75rem; font-family: var(--font-data); font-size: 0.8125rem; background: transparent; border: 0; cursor: pointer;"
-            x-text="b.nome + ' (' + usuariosDoBpm(b.id).length + ')'"
-          ></button>
-        </template>
+          >
+            Sem Equipe (<span x-text="usuariosSemEquipe.length"></span>)
+          </button>
+          <template x-for="b in bpms" :key="b.id">
+            <button
+              @click="selecionarBpm(b.id)"
+              :style="bpmAtivo === b.id ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
+              style="padding: 0.5rem 0.75rem; font-family: var(--font-data); font-size: 0.8125rem; background: transparent; border: 0; cursor: pointer;"
+              x-text="b.nome + ' (' + usuariosDoBpm(b.id).length + ')'"
+            ></button>
+          </template>
+        </div>
         <button
           x-show="podeGerirEquipes"
           @click="abaAtiva = 'novo-bpm'; bpmAtivo = null; equipeAtiva = null"
-          :style="abaAtiva === 'novo-bpm' ? 'border-bottom: 2px solid var(--color-primary); color: var(--color-primary);' : 'color: var(--color-text-muted);'"
-          style="padding: 0.5rem 0.75rem; font-family: var(--font-data); font-size: 0.8125rem; background: transparent; border: 0; cursor: pointer;"
+          style="font-family: var(--font-data); font-size: 0.75rem; padding: 0.375rem 0.75rem; margin: 0.375rem 0; border-radius: 4px; background: rgba(0,212,255,0.08); color: var(--color-primary); border: 1px dashed rgba(0,212,255,0.35); cursor: pointer; white-space: nowrap; align-self: center;"
         >
           + Novo BPM
         </button>
@@ -55,20 +57,22 @@ function renderAdminUsuarios() {
 
       <!-- Nível 2: abas de equipes dentro do BPM ativo -->
       <template x-if="bpmAtivo !== null">
-        <div x-show="!carregando" style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-bottom: 1rem; border-bottom: 1px solid rgba(58,80,104,0.4); background: rgba(26, 41, 64, 0.45); padding: 0.125rem 1rem;">
-          <template x-for="e in equipesDoBpm(bpmAtivo)" :key="e.id">
-            <button
-              @click="equipeAtiva = e.id"
-              :style="equipeAtiva === e.id ? 'border-bottom: 2px solid #4FC3F7; color: #4FC3F7;' : 'color: var(--color-text-muted);'"
-              style="padding: 0.375rem 0.625rem; font-family: var(--font-data); font-size: 0.75rem; background: transparent; border: 0; cursor: pointer;"
-              x-text="e.nome + ' (' + usuariosDaEquipe(e.id).length + ')'"
-            ></button>
-          </template>
+        <div x-show="!carregando" style="display: flex; align-items: stretch; justify-content: space-between; border-bottom: 1px solid rgba(58,80,104,0.4); background: rgba(26, 41, 64, 0.45); padding: 0 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0; flex-wrap: wrap;">
+            <span style="font-family: var(--font-data); font-size: 0.6875rem; font-weight: 700; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.1em; padding: 0 0.5rem 0 0; white-space: nowrap;">Equipe</span>
+            <template x-for="e in equipesDoBpm(bpmAtivo)" :key="e.id">
+              <button
+                @click="equipeAtiva = e.id"
+                :style="equipeAtiva === e.id ? 'border-bottom: 2px solid #4FC3F7; color: #4FC3F7;' : 'color: var(--color-text-muted);'"
+                style="padding: 0.375rem 0.625rem; font-family: var(--font-data); font-size: 0.75rem; background: transparent; border: 0; cursor: pointer;"
+                x-text="e.nome + ' (' + usuariosDaEquipe(e.id).length + ')'"
+              ></button>
+            </template>
+          </div>
           <button
             x-show="podeGerirEquipes"
             @click="equipeAtiva = 'nova-equipe'"
-            :style="equipeAtiva === 'nova-equipe' ? 'border-bottom: 2px solid #4FC3F7; color: #4FC3F7;' : 'color: var(--color-text-muted);'"
-            style="padding: 0.375rem 0.625rem; font-family: var(--font-data); font-size: 0.75rem; background: transparent; border: 0; cursor: pointer;"
+            style="font-family: var(--font-data); font-size: 0.6875rem; padding: 0.25rem 0.625rem; margin: 0.3rem 0; border-radius: 4px; background: rgba(79,195,247,0.08); color: #4FC3F7; border: 1px dashed rgba(79,195,247,0.35); cursor: pointer; white-space: nowrap; align-self: center;"
           >
             + Nova Equipe
           </button>
