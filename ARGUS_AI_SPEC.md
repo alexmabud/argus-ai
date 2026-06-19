@@ -77,7 +77,8 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 #### Backend FastAPI
 - ✅ **11 routers** v1 (auth, pessoas, veículos, abordagens, fotos, consultas, ocorrências, analytics, sync, admin, localidades) + `health`
 - ✅ **14 models** SQLAlchemy + `base`, com mixins (Timestamp, SoftDelete, MultiTenant)
-- ✅ **23 services** especializados (auth, pessoa, observação de pessoa, veículo, abordagem, ocorrência, embedding, face, ocr, sync, analytics, audit, bpm, equipe, localidade, relacionamento, geocoding, storage, consulta, notificação, usuário-admin, texto, foto)
+- ✅ **24 services** especializados (auth, pessoa, observação de pessoa, veículo, abordagem, ocorrência, embedding, face, ocr, sync, analytics, audit, bpm, equipe, localidade, relacionamento, geocoding, storage, consulta, notificação, usuário-admin, texto, foto, watermark)
+- ✅ **Watermark rastreável** em 3 camadas (overlay client-side, marca queimada server-side com cache, auditoria de visualização/download)
 - ✅ **Multi-tenancy** operacional (isolamento por guarnição e por BPM)
 - ✅ **Autenticação JWT** (login, refresh, logout, sessão exclusiva via `session_id`)
 - ✅ **2FA (TOTP)** opcional + guarda de brute-force por IP (Redis)
@@ -304,6 +305,8 @@ argus-ai/
 │   │   ├── ocr_service.py            # OCR de placas
 │   │   ├── foto_service.py
 │   │   ├── storage_service.py        # Upload/download S3
+│   │   ├── watermark_service.py      # Marca d'água queimada + cache MinIO (wm/)
+│   │   ├── access_audit.py           # Auditoria de view/download de mídia (camada 3)
 │   │   ├── analytics_service.py      # Agregações para dashboard
 │   │   ├── audit_service.py          # Log de auditoria
 │   │   ├── geocoding_service.py      # Geocodificação reversa
@@ -328,7 +331,7 @@ argus-ai/
 │   │   └── session.py                # Engine + async session
 │   │
 │   ├── utils/
-│   │   ├── imaging.py                # Tratamento de imagens (HEIF, thumbnails)
+│   │   ├── imaging.py                # Tratamento de imagens (HEIF, thumbnails, marca d'água)
 │   │   └── s3.py                     # Helpers de URL S3/R2
 │   │
 │   ├── core/
@@ -2466,6 +2469,35 @@ def get_face_service(request: Request):
 def get_embedding_service(request: Request):
     return request.app.state.embedding_service
 ```
+
+### Watermark rastreável (rastreabilidade de exfiltração)
+
+Toda mídia servida ao operador carrega a matrícula de quem a acessou, em três
+camadas complementares — uma deterrente e duas de prova/correlação:
+
+**Camada 1 — Overlay client-side (`frontend/js/components/watermark.js`)**
+Div fixo (`pointer-events: none`) com matrícula + horário em tile diagonal sobre
+toda a tela. Um `MutationObserver` recria o overlay se removido via DevTools, o
+timestamp é atualizado a cada 10s, e a sessão é restaurada no F5 via `localStorage`.
+É deterrente: um screenshot captura a identidade do operador automaticamente.
+
+**Camada 2 — Marca queimada server-side (`watermark_service.py` + `utils/imaging.py`)**
+`burn_watermark()` grava a matrícula nos próprios pixels (Pillow), de forma
+determinística para o par `(asset, matrícula)`. Aplicada tanto na visualização
+inline (proxy `/storage`) quanto no download forçado (`/fotos/{id}/download`).
+As variantes marcadas são cacheadas no MinIO sob o prefixo `wm/v1/`
+(`wm/v1/{sha256_16(matricula)}/{key}`) — escolhido em vez do Redis porque o Redis
+de produção é compartilhado e pequeno (256MB, allkeys-lru). PDFs e vídeos passam
+sem marca (sniff por `UnidentifiedImageError`). O prefixo `wm/` é bloqueado no
+proxy (não é acessível diretamente) e tem expiração de 14 dias (lifecycle MinIO,
+ver `docs/DEPLOY.md`). Falha de marcação em imagem confirmada é fail-closed (500).
+
+**Camada 3 — Auditoria de acesso (`access_audit.py`)**
+Registra em `BackgroundTasks` (com sessão própria, pois a do request pode já estar
+fechada) duas ações no `audit_log`:
+- `VIEW_MIDIA` — visualização inline, de-duplicada por `(matrícula, asset)` via
+  Redis com TTL de 10min (evita ruído de logs); fail-open se o Redis cair.
+- `DOWNLOAD_MIDIA` — download forçado, **sempre** registrado (exfiltração intencional).
 
 ---
 
