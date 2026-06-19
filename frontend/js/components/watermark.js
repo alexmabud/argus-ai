@@ -38,15 +38,20 @@
 
   function _buildBg(matricula) {
     var label = _esc(matricula) + " \xB7 " + _now();
-    // Dupla camada (branco + sombra escura) para visibilidade em fundo claro e escuro.
+    // Tile grande o bastante p/ conter o texto rotacionado; o texto é
+    // centralizado (text-anchor=middle) e girado em torno do próprio centro,
+    // então qualquer comprimento de matrícula cabe sem ser clipado.
+    var W = 300, H = 140, cx = W / 2, cy = H / 2;
+    var t = "rotate(-30 " + cx + " " + cy + ")";
+    // Dupla camada (sombra escura + branco) para visibilidade em fundo claro e escuro.
     var svg =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="110">' +
-      '<text x="10" y="55" font-size="13" fill="rgba(0,0,0,0.07)"' +
-      ' font-family="monospace" font-weight="bold"' +
-      ' transform="rotate(-30 160 55) translate(1 1)">' + label + "</text>" +
-      '<text x="10" y="55" font-size="13" fill="rgba(255,255,255,0.09)"' +
-      ' font-family="monospace" font-weight="bold"' +
-      ' transform="rotate(-30 160 55)">' + label + "</text>" +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">' +
+      '<text x="' + cx + '" y="' + cy + '" font-size="13" fill="rgba(0,0,0,0.045)"' +
+      ' font-family="monospace" font-weight="bold" text-anchor="middle"' +
+      ' transform="' + t + ' translate(1 1)">' + label + "</text>" +
+      '<text x="' + cx + '" y="' + cy + '" font-size="13" fill="rgba(255,255,255,0.06)"' +
+      ' font-family="monospace" font-weight="bold" text-anchor="middle"' +
+      ' transform="' + t + '">' + label + "</text>" +
       "</svg>";
     var b64 = btoa(unescape(encodeURIComponent(svg)));
     return 'url("data:image/svg+xml;base64,' + b64 + '")';
