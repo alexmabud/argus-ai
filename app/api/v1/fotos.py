@@ -8,7 +8,17 @@ por pessoa ou abordagem, busca por similaridade facial
 import logging
 import re
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +43,7 @@ from app.schemas.foto import (
     OCRPlacaResponse,
 )
 from app.services.abordagem_service import AbordagemService
+from app.services.access_audit import log_download
 from app.services.audit_service import AuditService
 from app.services.foto_service import FotoService
 from app.services.pessoa_service import PessoaService
@@ -482,6 +493,7 @@ async def upload_midia_abordagem(
 async def download_midia(
     request: Request,
     foto_id: int,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> StreamingResponse:
@@ -564,6 +576,16 @@ async def download_midia(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao baixar o arquivo do storage.",
         ) from exc
+
+    log_download(
+        background_tasks,
+        usuario_id=user.id,
+        matricula=user.matricula,
+        asset_key=key,
+        foto_id=foto_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
     return StreamingResponse(
         iter([file_bytes]),

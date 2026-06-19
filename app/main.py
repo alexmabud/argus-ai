@@ -12,7 +12,7 @@ import traceback
 from contextlib import asynccontextmanager
 
 from botocore.exceptions import ClientError
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,6 +34,7 @@ from app.dependencies import get_current_user
 from app.models.foto import Foto
 from app.models.ocorrencia import Ocorrencia
 from app.models.usuario import Usuario
+from app.services.access_audit import log_view
 from app.services.storage_service import StorageService
 from app.services.watermark_service import IMAGE_CONTENT_TYPES, WatermarkService
 from app.utils.imaging import burn_watermark
@@ -157,6 +158,7 @@ def create_app() -> FastAPI:
     async def storage_proxy(
         path: str,
         request: Request,
+        background_tasks: BackgroundTasks,
         user: Usuario = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> Response:
@@ -236,6 +238,14 @@ def create_app() -> FastAPI:
         # Camada 2 — fast path: tenta servir variante marcada já cacheada no MinIO.
         try:
             cached_bytes, cached_ct = await storage.download_with_meta(wm_ckey)
+            log_view(
+                background_tasks,
+                usuario_id=user.id,
+                matricula=user.matricula,
+                asset_key=key,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
             return Response(
                 content=cached_bytes,
                 media_type=cached_ct,
@@ -288,6 +298,14 @@ def create_app() -> FastAPI:
                     await storage.upload(marked, wm_ckey, content_type=out_ct)
                 except Exception:
                     logger.warning("Falha ao cachear variante wm/ para %s", key)
+                log_view(
+                    background_tasks,
+                    usuario_id=user.id,
+                    matricula=user.matricula,
+                    asset_key=key,
+                    ip_address=request.client.host if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                )
                 return Response(
                     content=marked,
                     media_type=out_ct,
