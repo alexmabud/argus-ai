@@ -166,46 +166,27 @@ async def test_storage_proxy_streama_chunks_do_s3(client, auth_headers, fake_sto
 
 
 @pytest.mark.asyncio
-async def test_storage_proxy_repassa_if_none_match_para_s3(client, auth_headers, fake_storage):
-    """If-None-Match do cliente deve virar IfNoneMatch no get_object (path streaming PDF)."""
+async def test_storage_proxy_nao_repassa_if_none_match_ao_s3(client, auth_headers, fake_storage):
+    """O proxy NÃO repassa If-None-Match ao S3 e nunca devolve 304.
+
+    Como o proxy pode transformar os bytes (marca d'água), o ETag do original
+    não valida o conteúdo servido. Honrar a requisição condicional fazia o
+    browser servir cópias antigas sem marca. Agora sempre busca e serve 200.
+    """
     body = _FakeStreamingBody([b"x"])
-    # Usa application/pdf: não-imagem preserva ETag/If-None-Match no streaming.
     fake_storage.get_object = _get_obj_routing(
         {"Body": body, "ContentType": "application/pdf", "ETag": '"abc"'}
     )
-
-    await client.get(
-        f"/storage/{settings.S3_BUCKET}/fotos/x.jpg",
-        headers={**auth_headers, "If-None-Match": '"abc"'},
-    )
-
-    # call_args é a última chamada → stream_with_meta com IfNoneMatch.
-    kwargs = fake_storage.get_object.call_args.kwargs
-    assert kwargs.get("IfNoneMatch") == '"abc"'
-
-
-@pytest.mark.asyncio
-async def test_storage_proxy_retorna_304_quando_s3_responde_not_modified(
-    client, auth_headers, fake_storage
-):
-    """Quando S3 lança 304/NotModified, proxy devolve 304 sem body."""
-    error = ClientError(
-        {
-            "Error": {"Code": "304", "Message": "Not Modified"},
-            "ResponseMetadata": {"HTTPStatusCode": 304},
-        },
-        "GetObject",
-    )
-    fake_storage.get_object = AsyncMock(side_effect=error)
 
     response = await client.get(
         f"/storage/{settings.S3_BUCKET}/fotos/x.jpg",
         headers={**auth_headers, "If-None-Match": '"abc"'},
     )
 
-    assert response.status_code == 304
-    assert response.content == b""
-    assert response.headers.get("etag") == '"abc"'
+    assert response.status_code == 200
+    # Nenhuma chamada ao S3 deve carregar IfNoneMatch.
+    for call in fake_storage.get_object.call_args_list:
+        assert "IfNoneMatch" not in call.kwargs
 
 
 @pytest.mark.asyncio
@@ -442,6 +423,48 @@ async def test_storage_proxy_marca_imagem_com_content_type_jpg_nao_padrao(
     )
     assert resp.status_code == 200
     assert resp.content != original  # marcado apesar do content-type não-padrão
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_ignora_if_none_match_de_imagem_e_marca(
+    client, auth_headers, fake_storage
+):
+    """Imagem com If-None-Match (cache antigo) NÃO recebe 304 — é remarcada.
+
+    Regressão: thumbnails cacheados pelo browser antes do watermark guardavam
+    o ETag do original. Ao revalidar, o proxy repassava o If-None-Match ao S3,
+    que respondia 304, e o browser servia a cópia SEM marca para sempre. O proxy
+    não pode honrar o ETag do original para conteúdo que ele transforma (marca).
+    """
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (300, 300), (100, 100, 100)).save(buf, format="JPEG")
+    original = buf.getvalue()
+
+    async def _side(**kwargs: object) -> dict:
+        """wm/ → miss; com IfNoneMatch → 304 do S3; sem → imagem real."""
+        key = str(kwargs.get("Key", ""))
+        if key.startswith("wm/"):
+            raise ClientError({"Error": {"Code": "NoSuchKey"}}, "GetObject")
+        if kwargs.get("IfNoneMatch"):
+            raise ClientError(
+                {"Error": {"Code": "304"}, "ResponseMetadata": {"HTTPStatusCode": 304}},
+                "GetObject",
+            )
+        return {"Body": _FakeStreamingBody([original]), "ContentType": "image/jpeg", "ETag": '"o"'}
+
+    fake_storage.get_object = AsyncMock(side_effect=_side)
+    fake_storage.upload = AsyncMock()
+
+    resp = await client.get(
+        f"/storage/{settings.S3_BUCKET}/thumbs/x_thumb.jpg",
+        headers={**auth_headers, "If-None-Match": '"o"'},
+    )
+    assert resp.status_code == 200  # não 304
+    assert resp.content != original  # marcado
 
 
 @pytest.mark.asyncio

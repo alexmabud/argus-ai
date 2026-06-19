@@ -255,21 +255,15 @@ def create_app() -> FastAPI:
                 logger.warning("Erro inesperado ao ler cache wm/ para %s: %s", key, exc)
             # cache miss (ou erro operacional logado) → segue para fetch do original
 
-        if_none_match = request.headers.get("if-none-match")
-
+        # Busca o original SEM repassar If-None-Match. O proxy pode transformar os
+        # bytes (marca d'água), então o ETag do objeto original não é validador
+        # válido para o que servimos: honrar 304 faria o browser servir a cópia
+        # antiga (sem marca) cacheada antes do watermark. Sempre 200 com bytes frescos.
         try:
-            body, content_type, etag, length = await storage.stream_with_meta(
-                key, if_none_match=if_none_match
-            )
+            body, content_type, etag, length = await storage.stream_with_meta(key)
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")
             status_code = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-            if code in {"304", "NotModified"} or status_code == 304:
-                # S3 confirmou que o ETag do cliente ainda é válido — poupa transferência.
-                headers_304 = {"Cache-Control": "private, max-age=3600"}
-                if if_none_match:
-                    headers_304["ETag"] = if_none_match
-                return Response(status_code=304, headers=headers_304)
             if code in {"NoSuchKey", "404"} or status_code == 404:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND, detail="Arquivo não encontrado"
@@ -308,7 +302,9 @@ def create_app() -> FastAPI:
                 headers={"Cache-Control": "private, max-age=3600"},
             )
 
-        # Não-imagem (PDF, vídeo): streaming com ETag/304.
+        # Não-imagem (PDF, vídeo): streaming dos bytes originais. Mantém o ETag
+        # (válido pois o conteúdo não é transformado), mas o proxy não honra
+        # requisições condicionais — sempre devolve 200 (ver fetch acima).
         headers = {"Cache-Control": "private, max-age=3600"}
         if etag:
             headers["ETag"] = etag
