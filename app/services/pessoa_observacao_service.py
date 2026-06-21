@@ -9,7 +9,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AcessoNegadoError, NaoEncontradoError
+from app.core.exceptions import NaoEncontradoError
 from app.models.pessoa import Pessoa
 from app.models.pessoa_observacao import PessoaObservacao
 from app.models.usuario import Usuario
@@ -153,7 +153,6 @@ class PessoaObservacaoService:
 
         Raises:
             NaoEncontradoError: Se observação não existe ou não pertence à pessoa.
-            AcessoNegadoError: Se observação de outra guarnição.
         """
         obs = await self._get_obs_verificada(obs_id, pessoa_id, user)
         await self.obs_repo.update(obs, {"texto": data.texto})
@@ -187,7 +186,6 @@ class PessoaObservacaoService:
 
         Raises:
             NaoEncontradoError: Se observação não existe ou não pertence à pessoa.
-            AcessoNegadoError: Se observação de outra guarnição.
         """
         obs = await self._get_obs_verificada(obs_id, pessoa_id, user)
         await self.obs_repo.soft_delete(obs, deleted_by_id=user.id)
@@ -216,11 +214,10 @@ class PessoaObservacaoService:
 
         Raises:
             NaoEncontradoError: Se observação não existe ou não pertence à pessoa.
-            AcessoNegadoError: Se observação de outra guarnição.
         """
         obs = await self.obs_repo.get(obs_id)
         if not obs or obs.pessoa_id != pessoa_id:
             raise NaoEncontradoError("Observação não encontrada.")
-        if obs.guarnicao_id != user.guarnicao_id:
-            raise AcessoNegadoError("Acesso negado.")
+        # Pessoas/observações são cadastros globais — qualquer usuário autenticado
+        # pode editar, independente da guarnição.
         return obs

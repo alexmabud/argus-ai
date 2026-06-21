@@ -137,13 +137,13 @@ class PessoaService:
 
         Raises:
             NaoEncontradoError: Se pessoa não existe.
-            AcessoNegadoError: Se pessoa pertence a outra guarnição.
             ConflitoDadosError: Se novo CPF já cadastrado por outra pessoa.
         """
         pessoa = await self.repo.get(pessoa_id)
         if not pessoa:
             raise NaoEncontradoError("Pessoa")
-        TenantFilter.check_ownership(pessoa, user)
+        # Pessoas são cadastros globais — qualquer usuário autenticado pode editar,
+        # independente da guarnição. Isolamento aplica-se apenas a abordagens.
 
         update_data = data.model_dump(exclude_unset=True)
 
@@ -284,12 +284,11 @@ class PessoaService:
 
         Raises:
             NaoEncontradoError: Se pessoa não existe.
-            AcessoNegadoError: Se pessoa pertence a outra guarnição.
         """
         pessoa = await self.repo.get(pessoa_id)
         if not pessoa:
             raise NaoEncontradoError("Pessoa")
-        TenantFilter.check_ownership(pessoa, user)
+        # Pessoas são cadastros globais — sem isolamento de guarnição.
 
         await self.repo.soft_delete(pessoa, deleted_by_id=user.id)
 
@@ -326,12 +325,11 @@ class PessoaService:
 
         Raises:
             NaoEncontradoError: Se pessoa não existe.
-            AcessoNegadoError: Se pessoa pertence a outra guarnição.
         """
         pessoa = await self.repo.get(pessoa_id)
         if not pessoa:
             raise NaoEncontradoError("Pessoa")
-        TenantFilter.check_ownership(pessoa, user)
+        # Pessoas são cadastros globais — sem isolamento de guarnição.
 
         localizacao = None
         if data.latitude is not None and data.longitude is not None:
@@ -390,12 +388,11 @@ class PessoaService:
 
         Raises:
             NaoEncontradoError: Se pessoa ou endereço não existe.
-            AcessoNegadoError: Se pessoa pertence a outra guarnição.
         """
         pessoa = await self.repo.get(pessoa_id)
         if not pessoa:
             raise NaoEncontradoError("Pessoa")
-        TenantFilter.check_ownership(pessoa, user)
+        # Pessoas são cadastros globais — sem isolamento de guarnição.
 
         result = await self.db.execute(
             select(EnderecoPessoa).where(

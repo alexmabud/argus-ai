@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.core.exceptions import AcessoNegadoError, NaoEncontradoError
+from app.core.exceptions import NaoEncontradoError
 from app.models.pessoa import Pessoa
 from app.models.pessoa_observacao import PessoaObservacao
 from app.models.usuario import Usuario
@@ -245,8 +245,11 @@ class TestAtualizarObservacao:
         with pytest.raises(NaoEncontradoError):
             await service.atualizar(obs_id=999, pessoa_id=1, data=data, user=make_user())
 
-    async def test_obs_outra_guarnicao(self, service):
-        """Testa que AcessoNegadoError é levantado se observação é de outra guarnição.
+    async def test_edita_obs_de_outra_guarnicao(self, service):
+        """Testa que observação de outra guarnição pode ser editada.
+
+        Pessoas/observações são cadastros globais — qualquer usuário autenticado
+        pode editar, independente da guarnição.
 
         Args:
             service: PessoaObservacaoService com mocks.
@@ -256,8 +259,10 @@ class TestAtualizarObservacao:
         service.obs_repo.get = AsyncMock(return_value=obs)
         data = PessoaObservacaoUpdate(texto="Texto qualquer")
 
-        with pytest.raises(AcessoNegadoError):
-            await service.atualizar(obs_id=5, pessoa_id=1, data=data, user=user)
+        result = await service.atualizar(obs_id=5, pessoa_id=1, data=data, user=user)
+
+        assert result is obs
+        service.obs_repo.update.assert_awaited_once()
 
     async def test_obs_de_outra_pessoa(self, service):
         """Testa que NaoEncontradoError é levantado se obs não pertence à pessoa.
