@@ -215,6 +215,12 @@ function renderOcorrencias() {
   `;
 }
 
+// Estado preservado entre montagens do componente. Como a página é recriada do
+// zero a cada navegação (renderPage faz innerHTML novo), guardamos aqui o dia
+// selecionado para restaurá-lo quando o usuário volta de uma ficha/abordagem.
+// Em entrada nova (pelo menu) o estado é descartado e volta para hoje.
+let _diaPreservado = null;
+
 /**
  * Componente Alpine.js da página de Relatório de Abordagens.
  *
@@ -325,6 +331,23 @@ function ocorrenciasPage() {
     },
 
     async init() {
+      // Retorno via voltar (header/celular): restaura o dia que estava selecionado.
+      if (window.__argusNavDir === "back" && _diaPreservado) {
+        const { ano, mes, dia } = _diaPreservado;
+        this.anoCalendarioAtual = ano;
+        this.mesCalendarioAtual = mes;
+        this._anoSelec = ano;
+        this._mesSelec = mes;
+        this.diaSelecionado = dia;
+        const dataStr = `${ano}-${String(mes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+        await Promise.all([
+          this.carregarDiasComAbordagem(),
+          this.carregarAbordagensDoDia(dataStr),
+        ]);
+        return;
+      }
+      // Entrada nova (pelo menu): descarta estado e mostra hoje.
+      _diaPreservado = null;
       const dataHoje = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}-${String(this.diaHoje).padStart(2,'0')}`;
       await Promise.all([
         this.carregarDiasComAbordagem(),
@@ -362,6 +385,8 @@ function ocorrenciasPage() {
       this.diaSelecionado = dia;
       this._mesSelec = this.mesCalendarioAtual;
       this._anoSelec = this.anoCalendarioAtual;
+      // Preserva o dia escolhido para restaurar ao voltar de uma ficha.
+      _diaPreservado = { ano: this._anoSelec, mes: this._mesSelec, dia };
       const dataStr = `${this.anoCalendarioAtual}-${String(this.mesCalendarioAtual).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
       await this.carregarAbordagensDoDia(dataStr);
     },

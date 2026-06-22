@@ -265,6 +265,10 @@ function app() {
      *     page: Nome da página destino.
      */
     navigate(page) {
+      // Sinaliza direção da navegação para que páginas com estado (ex.: dia
+      // selecionado no relatório) saibam se devem resetar (entrada nova) ou
+      // restaurar (retorno via voltar). Ver ocorrencias.js.
+      window.__argusNavDir = "forward";
       if (this.currentPage && this.currentPage !== page) {
         this.navHistory.push(this.currentPage);
       }
@@ -283,6 +287,8 @@ function app() {
      * Fallback para 'home' se o histórico estiver vazio.
      */
     goBack() {
+      // Marca retorno: páginas com estado restauram o que estava selecionado.
+      window.__argusNavDir = "back";
       const prev = this.navHistory.pop() || "home";
       this.currentPage = prev;
       this.renderPage(prev);
