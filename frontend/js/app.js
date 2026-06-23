@@ -287,6 +287,15 @@ function app() {
      * Fallback para 'home' se o histórico estiver vazio.
      */
     goBack() {
+      // Deixa a página atual tratar o "voltar" internamente (ex.: fechar um modal
+      // aberto) antes de sair da página. Se a página tratou (retornou true),
+      // reempurra o estado atual no histórico para "cancelar" o back e permanece
+      // nela; o próximo back fecha o nível seguinte ou enfim navega.
+      const data = this._currentPageData();
+      if (data && typeof data.interceptBack === "function" && data.interceptBack()) {
+        window.history.pushState({ page: this.currentPage }, "", `#${this.currentPage}`);
+        return;
+      }
       // Marca retorno: páginas com estado restauram o que estava selecionado.
       window.__argusNavDir = "back";
       const prev = this.navHistory.pop() || "home";
@@ -295,6 +304,20 @@ function app() {
       window.history.replaceState({ page: prev }, "", `#${prev}`);
       document.body.style.overflow = prev === "home" ? "hidden" : "";
       window.scrollTo(0, 0);
+    },
+
+    /**
+     * Retorna o objeto de dados Alpine da página atualmente renderizada.
+     *
+     * Usado por goBack() para consultar o hook opcional interceptBack() da
+     * página. Retorna null se não houver componente montado.
+     *
+     * @returns {object|null} Dados Alpine do componente raiz da página.
+     */
+    _currentPageData() {
+      const container = document.getElementById("page-content");
+      const el = container?.querySelector("[x-data]");
+      return el?._x_dataStack?.[0] || null;
     },
 
     /**

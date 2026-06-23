@@ -394,7 +394,7 @@ function renderAbordagemNova() {
         <div x-show="showNovoVeiculo" x-cloak style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <h3 style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--color-text);margin:0;">Cadastrar novo veículo</h3>
-            <button @click="showNovoVeiculo = false; novoVeiculo = {placa:'',modelo:'',cor:'',ano:''}"
+            <button @click="showNovoVeiculo = false; novoVeiculo = {placa:'',modelo:'',cor:'',ano:''}; corDropdown=''"
                     style="color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;font-family:var(--font-data);font-size:11px;">Cancelar</button>
           </div>
 
@@ -423,7 +423,13 @@ function renderAbordagemNova() {
             </div>
             <div>
               <label class="login-field-label">Cor</label>
-              <input type="text" class="input-upper" list="lista-cores-veiculo" x-model="novoVeiculo.cor" placeholder="Ex: Branco">
+              <select x-model="corDropdown" @change="onCorChange()"
+                      style="width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:12px 14px;font-size:13px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
+                <option value="">Selecione...</option>
+                <template x-for="c in coresVeiculo" :key="c"><option :value="c" x-text="c"></option></template>
+                <option value="__outra__">Outra...</option>
+              </select>
+              <input x-show="corDropdown === '__outra__'" type="text" class="input-upper" x-model="novoVeiculo.cor" placeholder="Digite a cor" style="margin-top:8px;">
             </div>
             <div>
               <label class="login-field-label">Ano</label>
@@ -431,12 +437,9 @@ function renderAbordagemNova() {
             </div>
           </div>
 
-          <!-- Datalists para autocomplete de veículo -->
+          <!-- Datalist para autocomplete de modelo (cor usa dropdown fixo) -->
           <datalist id="lista-modelos-veiculo">
             <template x-for="m in veiculoLocalidades.modelos" :key="m"><option :value="m"></option></template>
-          </datalist>
-          <datalist id="lista-cores-veiculo">
-            <template x-for="c in veiculoLocalidades.cores" :key="c"><option :value="c"></option></template>
           </datalist>
 
           <button @click="criarVeiculo()" class="btn btn-primary" :disabled="salvandoVeiculo || !novoVeiculo.placa.trim()">
@@ -577,6 +580,9 @@ function abordagemForm() {
     novoVeiculo: { placa: "", modelo: "", cor: "", ano: "" },
     salvandoVeiculo: false,
     erroVeiculo: null,
+    // Dropdown de cor: lista fixa + opção "Outra" (texto livre)
+    coresVeiculo: window.CORES_VEICULO || [],
+    corDropdown: "",
 
     // Endereço de pessoa existente
     pessoaEnderecos: {},
@@ -861,6 +867,11 @@ function abordagemForm() {
       return idade;
     },
 
+    onCorChange() {
+      // "Outra" libera campo de texto livre; demais opções definem a cor direto.
+      this.novoVeiculo.cor = this.corDropdown === "__outra__" ? "" : this.corDropdown;
+    },
+
     async criarVeiculo() {
       const placa = this.novoVeiculo.placa.trim();
       if (!placa) {
@@ -899,6 +910,7 @@ function abordagemForm() {
         }
 
         this.novoVeiculo = { placa: "", modelo: "", cor: "", ano: "" };
+        this.corDropdown = "";
         this.showNovoVeiculo = false;
       } catch (err) {
         this.erroVeiculo = err.message || "Erro ao cadastrar veículo.";
@@ -1140,6 +1152,7 @@ function abordagemForm() {
       this.anEstadoId = null; this.anCidadeId = null; this.anCidadeTexto = "";
       this.anBairroId = null; this.anBairroTexto = "";
       this.novoVeiculo = { placa: "", modelo: "", cor: "", ano: "" };
+      this.corDropdown = "";
       this.salvandoEndereco = {};
       this.erroEndereco = {};
       this.erroPessoa = null;

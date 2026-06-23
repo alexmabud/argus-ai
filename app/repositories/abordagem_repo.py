@@ -7,7 +7,7 @@ carregamento eager de relacionamentos e deduplicação por client_id.
 from collections.abc import Sequence
 from datetime import date
 
-from sqlalchemy import cast, false, func, or_, select
+from sqlalchemy import and_, cast, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.types import Date
@@ -21,7 +21,26 @@ from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
-from app.services.text_utils import escape_like
+from app.services.text_utils import cor_variantes, escape_like
+
+
+def _cor_match(q: str):
+    """Casa a cor do veículo aceitando flexão de gênero (masculino/feminino).
+
+    Ex.: "branco" também encontra "branca"; "vermelha" também encontra
+    "vermelho". Cores sem flexão (azul, cinza) casam apenas o próprio termo.
+
+    Args:
+        q: Termo de busca livre informado pelo usuário.
+
+    Returns:
+        Expressão booleana SQLAlchemy (OR de ILIKEs) para o filtro de cor;
+        falsa quando o termo é vazio após strip.
+    """
+    clauses = [Veiculo.cor.ilike(f"%{escape_like(v)}%") for v in cor_variantes(q)]
+    if not clauses:
+        return false()
+    return or_(*clauses)
 
 
 def _modelo_word_boundary(q: str):
@@ -47,6 +66,41 @@ def _modelo_word_boundary(q: str):
         | Veiculo.modelo.ilike(f"% {m}")
         | Veiculo.modelo.ilike(f"% {m} %")
     )
+
+
+def _texto_match(q: str):
+    """Casa a busca textual livre por palavras (AND entre palavras).
+
+    Quebra o termo em palavras e exige que CADA palavra case em ALGUM dos campos
+    (nome, placa, modelo com word-boundary, cor com flexão de gênero, tipo,
+    endereço). Assim "gol branca" exige modelo~gol E cor~branca (encontrando
+    "Branco"), enquanto "branca" sozinho casa todos os veículos brancos. Cada
+    palavra é escapada para LIKE para neutralizar wildcards do usuário.
+
+    Args:
+        q: Termo de busca livre informado pelo usuário.
+
+    Returns:
+        Expressão booleana SQLAlchemy (AND de ORs por palavra); falsa quando o
+        termo é vazio após split.
+    """
+    palavras = q.split()
+    if not palavras:
+        return false()
+    clausulas = []
+    for palavra in palavras:
+        termo = f"%{escape_like(palavra)}%"
+        clausulas.append(
+            or_(
+                Pessoa.nome.ilike(termo),
+                Veiculo.placa.ilike(termo),
+                _modelo_word_boundary(palavra),
+                _cor_match(palavra),
+                Veiculo.tipo.ilike(termo),
+                Abordagem.endereco_texto.ilike(termo),
+            )
+        )
+    return and_(*clausulas)
 
 
 class AbordagemRepository(BaseRepository[Abordagem]):
@@ -305,7 +359,6 @@ class AbordagemRepository(BaseRepository[Abordagem]):
         Returns:
             Sequência de Abordagens ordenadas por data_hora decrescente.
         """
-        termo = f"%{q}%"
         query = (
             select(Abordagem)
             .options(
@@ -327,14 +380,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
             .where(
                 Abordagem.guarnicao_id == guarnicao_id,
                 Abordagem.ativo == True,  # noqa: E712
-                or_(
-                    Pessoa.nome.ilike(termo),
-                    Veiculo.placa.ilike(termo),
-                    _modelo_word_boundary(q),
-                    Veiculo.cor.ilike(termo),
-                    Veiculo.tipo.ilike(termo),
-                    Abordagem.endereco_texto.ilike(termo),
-                ),
+                _texto_match(q),
             )
             .distinct()
             .order_by(Abordagem.data_hora.desc())
@@ -423,7 +469,6 @@ class AbordagemRepository(BaseRepository[Abordagem]):
         Returns:
             Sequência de Abordagens ordenadas por data_hora decrescente.
         """
-        termo = f"%{q}%"
         query = (
             select(Abordagem)
             .options(
@@ -444,14 +489,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
             .outerjoin(Veiculo, Veiculo.id == AbordagemVeiculo.veiculo_id)
             .where(
                 Abordagem.ativo == True,  # noqa: E712
-                or_(
-                    Pessoa.nome.ilike(termo),
-                    Veiculo.placa.ilike(termo),
-                    _modelo_word_boundary(q),
-                    Veiculo.cor.ilike(termo),
-                    Veiculo.tipo.ilike(termo),
-                    Abordagem.endereco_texto.ilike(termo),
-                ),
+                _texto_match(q),
             )
             .distinct()
             .order_by(Abordagem.data_hora.desc())
@@ -539,7 +577,6 @@ class AbordagemRepository(BaseRepository[Abordagem]):
         Returns:
             Sequência de Abordagens com correspondência no BPM.
         """
-        termo = f"%{q}%"
         guarnicao_ids_bpm = select(Guarnicao.id).where(
             Guarnicao.bpm_id == bpm_id,
             Guarnicao.ativo == True,  # noqa: E712
@@ -565,14 +602,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
             .where(
                 Abordagem.ativo == True,  # noqa: E712
                 Abordagem.guarnicao_id.in_(guarnicao_ids_bpm),
-                or_(
-                    Pessoa.nome.ilike(termo),
-                    Veiculo.placa.ilike(termo),
-                    _modelo_word_boundary(q),
-                    Veiculo.cor.ilike(termo),
-                    Veiculo.tipo.ilike(termo),
-                    Abordagem.endereco_texto.ilike(termo),
-                ),
+                _texto_match(q),
             )
             .distinct()
             .order_by(Abordagem.data_hora.desc())
