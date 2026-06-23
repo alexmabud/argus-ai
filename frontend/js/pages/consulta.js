@@ -597,6 +597,13 @@ function renderConsulta() {
   `;
 }
 
+// Estado preservado entre montagens do componente. Como a página é recriada do
+// zero a cada navegação (renderPage faz innerHTML novo), guardamos aqui a busca
+// e os resultados para restaurá-los quando o usuário volta da ficha de uma
+// pessoa. Em entrada nova (pelo menu) o estado é descartado e a consulta abre
+// limpa.
+let _consultaPreservada = null;
+
 /**
  * Componente Alpine.js da página de consulta.
  *
@@ -679,6 +686,13 @@ function consultaPage() {
       } catch {
         /* silencioso */
       }
+      // Retorno via voltar (header/celular): restaura a busca que estava na tela.
+      if (window.__argusNavDir === "back" && _consultaPreservada) {
+        Object.assign(this, _consultaPreservada);
+        return;
+      }
+      // Entrada nova (pelo menu): descarta o estado preservado.
+      _consultaPreservada = null;
     },
 
     _isCPF(value) {
@@ -914,9 +928,58 @@ function consultaPage() {
     viewPessoa(id) {
       const appEl = document.querySelector("[x-data]");
       if (appEl?._x_dataStack) {
+        // Preserva a busca/resultados para restaurar ao voltar da ficha.
+        _consultaPreservada = this._snapshotConsulta();
         appEl._x_dataStack[0]._pessoaId = id;
         appEl._x_dataStack[0].navigate("pessoa-detalhe");
       }
+    },
+
+    /**
+     * Captura o estado de busca dos quatro modos (texto, foto, endereço,
+     * veículo) para restaurar ao voltar da ficha de uma pessoa. Não inclui
+     * modais, loadings nem o formulário de cadastro (transitórios).
+     */
+    _snapshotConsulta() {
+      return {
+        query: this.query,
+        pessoasTexto: this.pessoasTexto,
+        searched: this.searched,
+        buscouPessoa: this.buscouPessoa,
+        fotoFile: this.fotoFile,
+        fotoPreviewUrl: this.fotoPreviewUrl,
+        pessoasFoto: this.pessoasFoto,
+        fotoSearchDone: this.fotoSearchDone,
+        fotoServicoIndisponivel: this.fotoServicoIndisponivel,
+        fEstadoId: this.fEstadoId,
+        fCidadeId: this.fCidadeId,
+        fCidadeTexto: this.fCidadeTexto,
+        fBairroId: this.fBairroId,
+        fBairroTexto: this.fBairroTexto,
+        pessoasEndereco: this.pessoasEndereco,
+        searchedEndereco: this.searchedEndereco,
+        filtroPlaca: this.filtroPlaca,
+        filtroModelo: this.filtroModelo,
+        filtroCor: this.filtroCor,
+        corDropdown: this.corDropdown,
+        pessoasVeiculo: this.pessoasVeiculo,
+        searchedVeiculo: this.searchedVeiculo,
+      };
+    },
+
+    /**
+     * Trata o "voltar" internamente: fecha o nível aberto (modal de foto, "ver
+     * mais" ou cadastro) um por vez, do topo para a base. Chamado por
+     * app.goBack(). Retorna true se fechou algo (permanece na página); false
+     * para deixar o voltar sair da consulta.
+     */
+    interceptBack() {
+      if (this.showPhotoModal) { this.closePhotoModal(); return true; }
+      if (this.modalVerMaisTexto) { this.modalVerMaisTexto = false; return true; }
+      if (this.modalVerMaisEndereco) { this.modalVerMaisEndereco = false; return true; }
+      if (this.modalVerMaisVeiculo) { this.modalVerMaisVeiculo = false; return true; }
+      if (this.showCadastroPessoa) { this.showCadastroPessoa = false; return true; }
+      return false;
     },
 
     async cpCarregarEstados() {
