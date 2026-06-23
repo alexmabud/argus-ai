@@ -4,7 +4,11 @@ Valida chunking semântico por seções de BO e chunking por parágrafos
 com overlap e controle de tokens.
 """
 
-from app.services.text_utils import chunk_text_paragrafos, chunk_text_semantico
+from app.services.text_utils import (
+    chunk_text_paragrafos,
+    chunk_text_semantico,
+    cor_variantes,
+)
 
 
 class TestChunkTextSemantico:
@@ -64,3 +68,37 @@ class TestChunkTextParagrafos:
         texto = "Texto curto que cabe em um chunk."
         chunks = chunk_text_paragrafos(texto, max_tokens=500, overlap=50)
         assert len(chunks) == 1
+
+
+class TestCorVariantes:
+    """Testes para flexão de gênero em busca por cor de veículo."""
+
+    def test_masculino_gera_feminino(self):
+        """Deve incluir a forma feminina ao buscar a masculina."""
+        assert cor_variantes("branco") == ["branco", "branca"]
+        assert cor_variantes("vermelho") == ["vermelho", "vermelha"]
+
+    def test_feminino_gera_masculino(self):
+        """Deve incluir a forma masculina ao buscar a feminina."""
+        assert cor_variantes("branca") == ["branca", "branco"]
+        assert cor_variantes("preta") == ["preta", "preto"]
+
+    def test_caixa_ignorada_termo_preservado(self):
+        """Deve casar ignorando caixa, mas preservar o termo original."""
+        assert cor_variantes("Vermelho") == ["Vermelho", "vermelha"]
+        assert cor_variantes("AMARELA") == ["AMARELA", "amarelo"]
+
+    def test_cor_invariavel_retorna_unico(self):
+        """Cores sem flexão retornam apenas o próprio termo."""
+        assert cor_variantes("azul") == ["azul"]
+        assert cor_variantes("cinza") == ["cinza"]
+        assert cor_variantes("prata") == ["prata"]
+
+    def test_termo_nao_cor_retorna_unico(self):
+        """Termo que não é cor conhecida retorna apenas ele mesmo."""
+        assert cor_variantes("gol") == ["gol"]
+
+    def test_termo_vazio_retorna_lista_vazia(self):
+        """Termo vazio (ou só espaços) retorna lista vazia."""
+        assert cor_variantes("") == []
+        assert cor_variantes("   ") == []

@@ -26,6 +26,47 @@ def escape_like(valor: str) -> str:
     return valor.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+# Cores de veículo com flexão de gênero (masculino ↔ feminino). Permite que
+# uma busca por "branco" também encontre "branca" e vice-versa. Cores sem
+# flexão (azul, cinza, verde, prata, vinho, bege, marrom, rosa, laranja) não
+# entram no mapa — retornam apenas o próprio termo.
+_CORES_GENERO_BASE = {
+    "branco": "branca",
+    "preto": "preta",
+    "amarelo": "amarela",
+    "vermelho": "vermelha",
+    "roxo": "roxa",
+    "dourado": "dourada",
+    "prateado": "prateada",
+}
+#: Mapa bidirecional cor → flexão de gênero (masculino↔feminino).
+_CORES_GENERO = {**_CORES_GENERO_BASE, **{v: k for k, v in _CORES_GENERO_BASE.items()}}
+
+
+def cor_variantes(termo: str) -> list[str]:
+    """Gera variantes de gênero (masculino/feminino) para busca por cor.
+
+    Permite que uma busca por cor encontre tanto a forma masculina quanto a
+    feminina. Ex.: "branco" também casa "branca"; "vermelha" também casa
+    "vermelho". Cores sem flexão (azul, cinza, verde, prata) retornam apenas o
+    próprio termo. A comparação ignora caixa, mas o termo original é preservado.
+
+    Args:
+        termo: Cor informada na busca (uma palavra; qualquer caixa).
+
+    Returns:
+        Lista com o termo original e, quando houver flexão, sua variante de
+        gênero. Lista vazia se o termo for vazio após strip.
+    """
+    base = termo.strip()
+    if not base:
+        return []
+    variante = _CORES_GENERO.get(base.lower())
+    if variante is None:
+        return [base]
+    return [base, variante]
+
+
 def chunk_text_semantico(texto: str) -> list[dict]:
     """Divide texto de BO por seções semânticas estruturais.
 

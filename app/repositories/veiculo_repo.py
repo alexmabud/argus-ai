@@ -7,7 +7,7 @@ com filtros multi-tenant e soft delete.
 import logging
 from collections.abc import Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.abordagem import AbordagemPessoa, AbordagemVeiculo
@@ -15,7 +15,7 @@ from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
-from app.services.text_utils import escape_like
+from app.services.text_utils import cor_variantes, escape_like
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +192,10 @@ class VeiculoRepository(BaseRepository[Veiculo]):
                     | Veiculo.modelo.ilike(f"% {m} %")
                 )
         if cor:
-            query = query.where(Veiculo.cor.ilike(f"%{escape_like(cor)}%"))
+            # Flexão de gênero: "branco" também casa "branca" e vice-versa.
+            cor_clauses = [Veiculo.cor.ilike(f"%{escape_like(v)}%") for v in cor_variantes(cor)]
+            if cor_clauses:
+                query = query.where(or_(*cor_clauses))
         if guarnicao_id is not None:
             # Pessoas são sempre globais per spec do projeto — NÃO filtrar por guarnicao_id.
             # Filtrar apenas veículos por tenant para restringir o escopo da busca.

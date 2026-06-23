@@ -21,7 +21,26 @@ from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
-from app.services.text_utils import escape_like
+from app.services.text_utils import cor_variantes, escape_like
+
+
+def _cor_match(q: str):
+    """Casa a cor do veículo aceitando flexão de gênero (masculino/feminino).
+
+    Ex.: "branco" também encontra "branca"; "vermelha" também encontra
+    "vermelho". Cores sem flexão (azul, cinza) casam apenas o próprio termo.
+
+    Args:
+        q: Termo de busca livre informado pelo usuário.
+
+    Returns:
+        Expressão booleana SQLAlchemy (OR de ILIKEs) para o filtro de cor;
+        falsa quando o termo é vazio após strip.
+    """
+    clauses = [Veiculo.cor.ilike(f"%{escape_like(v)}%") for v in cor_variantes(q)]
+    if not clauses:
+        return false()
+    return or_(*clauses)
 
 
 def _modelo_word_boundary(q: str):
@@ -331,7 +350,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                     Pessoa.nome.ilike(termo),
                     Veiculo.placa.ilike(termo),
                     _modelo_word_boundary(q),
-                    Veiculo.cor.ilike(termo),
+                    _cor_match(q),
                     Veiculo.tipo.ilike(termo),
                     Abordagem.endereco_texto.ilike(termo),
                 ),
@@ -448,7 +467,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                     Pessoa.nome.ilike(termo),
                     Veiculo.placa.ilike(termo),
                     _modelo_word_boundary(q),
-                    Veiculo.cor.ilike(termo),
+                    _cor_match(q),
                     Veiculo.tipo.ilike(termo),
                     Abordagem.endereco_texto.ilike(termo),
                 ),
@@ -569,7 +588,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                     Pessoa.nome.ilike(termo),
                     Veiculo.placa.ilike(termo),
                     _modelo_word_boundary(q),
-                    Veiculo.cor.ilike(termo),
+                    _cor_match(q),
                     Veiculo.tipo.ilike(termo),
                     Abordagem.endereco_texto.ilike(termo),
                 ),
