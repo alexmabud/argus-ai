@@ -116,3 +116,44 @@ async def test_search_modelo_gol_nao_corresponde_golf(
     ids = [a.id for a in result]
     assert abordagem_com_veiculo.id in ids
     assert abordagem_com_golf.id not in ids
+
+
+@pytest.mark.asyncio
+async def test_search_cor_feminina_encontra_masculina(
+    db_session: AsyncSession, guarnicao, abordagem_com_veiculo
+):
+    """Busca por 'branca' (feminino) encontra o veículo cadastrado como 'Branco'.
+
+    Regressão da flexão de gênero aplicada no nível do repositório.
+
+    Args:
+        db_session: Sessão do banco de testes.
+        guarnicao: Guarnição da abordagem/veículo.
+        abordagem_com_veiculo: Abordagem com veículo cor 'Branco'.
+    """
+    repo = AbordagemRepository(db_session)
+    result = await repo.search_by_texto(q="branca", guarnicao_id=guarnicao.id)
+    assert abordagem_com_veiculo.id in [a.id for a in result]
+
+
+@pytest.mark.asyncio
+async def test_search_modelo_e_cor_tokenizado(
+    db_session: AsyncSession, guarnicao, abordagem_com_veiculo, abordagem_com_golf
+):
+    """Busca 'gol branca' casa cada palavra em algum campo (modelo E cor).
+
+    O Gol branco casa: 'gol' no modelo (word-boundary) E 'branca' na cor (flexão
+    encontra 'Branco'). O Golf preto NÃO casa: 'gol' não é palavra em 'Golf' e
+    'branca' não casa 'Preto'.
+
+    Args:
+        db_session: Sessão do banco de testes.
+        guarnicao: Guarnição das abordagens.
+        abordagem_com_veiculo: Abordagem do Gol branco.
+        abordagem_com_golf: Abordagem do Golf preto.
+    """
+    repo = AbordagemRepository(db_session)
+    result = await repo.search_by_texto(q="gol branca", guarnicao_id=guarnicao.id)
+    ids = [a.id for a in result]
+    assert abordagem_com_veiculo.id in ids
+    assert abordagem_com_golf.id not in ids

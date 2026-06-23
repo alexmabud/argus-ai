@@ -414,8 +414,14 @@ function renderConsulta() {
           </div>
           <div x-show="filtroModelo.length > 0">
             <label class="login-field-label">Cor <span style="color:var(--color-text-dim);">(opcional)</span></label>
-            <input type="text" x-model="filtroCor" @input="onInputVeiculo()"
-                   placeholder="Cor do veículo..." style="padding:12px 14px;">
+            <select x-model="corDropdown" @change="onCorChangeVeiculo()"
+                    style="width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:12px 14px;font-size:13px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
+              <option value="">Todas</option>
+              <template x-for="c in coresVeiculo" :key="c"><option :value="c" x-text="c"></option></template>
+              <option value="__outra__">Outra...</option>
+            </select>
+            <input x-show="corDropdown === '__outra__'" type="text" x-model="filtroCor" @input="onInputVeiculo()"
+                   placeholder="Cor do veículo..." style="padding:12px 14px;margin-top:8px;">
           </div>
         </div>
 
@@ -632,6 +638,9 @@ function consultaPage() {
     filtroPlaca: "",
     filtroModelo: "",
     filtroCor: "",
+    // Dropdown de cor: lista fixa + opção "Outra" (texto livre)
+    coresVeiculo: window.CORES_VEICULO || [],
+    corDropdown: "",
     pessoasVeiculo: [],
     loadingVeiculo: false,
     searchedVeiculo: false,
@@ -779,6 +788,12 @@ function consultaPage() {
       this.fBairroId = b.id; this.fBairroTexto = b.nome_exibicao;
       this.fBairroSugestoes = [];
       this._limparResultadoEndereco();
+    },
+
+    onCorChangeVeiculo() {
+      // "Outra" libera campo de texto livre; demais opções filtram pela cor escolhida.
+      this.filtroCor = this.corDropdown === "__outra__" ? "" : this.corDropdown;
+      this.onInputVeiculo();
     },
 
     onInputVeiculo() {
