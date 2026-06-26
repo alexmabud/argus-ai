@@ -515,15 +515,28 @@ function ocorrenciasPage() {
 
       this.mapaAnaliticoInst.addLayer(this.clusterAnalitico);
 
-      if (pontos.length === 1) {
-        this.mapaAnaliticoInst.setView([pontos[0].lat, pontos[0].lng], 15);
-      } else if (pontos.length > 1) {
-        const bounds = L.latLngBounds(pontos.map(p => [p.lat, p.lng]));
-        this.mapaAnaliticoInst.fitBounds(bounds, { padding: [30, 30] });
-      }
+      const _fitView = () => {
+        if (!this.mapaAnaliticoInst) return;
+        if (pontos.length === 1) {
+          this.mapaAnaliticoInst.setView([pontos[0].lat, pontos[0].lng], 15);
+        } else if (pontos.length > 1) {
+          this.mapaAnaliticoInst.fitBounds(
+            L.latLngBounds(pontos.map(p => [p.lat, p.lng])),
+            { padding: [30, 30] }
+          );
+        }
+      };
 
+      _fitView();
+
+      // invalidateSize corrige o tamanho se o div estava com display:none na
+      // inicialização (x-show do Alpine ainda não aplicado). _fitView() em
+      // seguida reposiciona o viewport caso o fitBounds inicial tenha falhado
+      // com tamanho zero — sem isso os pingos existem mas ficam fora da tela.
       requestAnimationFrame(() => {
-        this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false });
+        if (!this.mapaAnaliticoInst) return;
+        this.mapaAnaliticoInst.invalidateSize({ animate: false });
+        _fitView();
         setTimeout(() => this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false }), 200);
         setTimeout(() => this.mapaAnaliticoInst && this.mapaAnaliticoInst.invalidateSize({ animate: false }), 500);
       });
