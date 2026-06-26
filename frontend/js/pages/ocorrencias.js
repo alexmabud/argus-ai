@@ -250,7 +250,6 @@ function ocorrenciasPage() {
 
     // Mapa de localização (pontos derivados de this.abordagens)
     mapaAnaliticoInst: null,
-    _mapaAnaliticoObserver: null,
     modoMapaAnalitico: 'marcadores',
     clusterAnalitico: null,
     heatAnalitico: null,
@@ -443,26 +442,13 @@ function ocorrenciasPage() {
       this.destroyMapaAnalitico();
       if (this.pontosMapa.length > 0) {
         await this.$nextTick();
-        await this.setupMapaAnaliticoObserver();
+        // Constrói o mapa direto (sem IntersectionObserver) para garantir que ele
+        // reflita SEMPRE o dia selecionado, mesmo quando está fora da viewport.
+        // O lazy-load por observer fazia o mapa não atualizar ao trocar de dia
+        // enquanto o usuário estava no calendário (mapa abaixo da dobra).
+        await new Promise(r => setTimeout(r, 0));
+        this.initMapaAnalitico();
       }
-    },
-
-    async setupMapaAnaliticoObserver() {
-      if (this._mapaAnaliticoObserver) {
-        this._mapaAnaliticoObserver.disconnect();
-        this._mapaAnaliticoObserver = null;
-      }
-      await new Promise(r => setTimeout(r, 0));
-      const div = document.getElementById('mapa-relatorio-dia');
-      if (!div) return;
-      const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-          observer.disconnect();
-          this.initMapaAnalitico();
-        }
-      }, { threshold: 0.1 });
-      observer.observe(div);
-      this._mapaAnaliticoObserver = observer;
     },
 
     initMapaAnalitico() {
@@ -542,10 +528,6 @@ function ocorrenciasPage() {
     },
 
     destroyMapaAnalitico() {
-      if (this._mapaAnaliticoObserver) {
-        this._mapaAnaliticoObserver.disconnect();
-        this._mapaAnaliticoObserver = null;
-      }
       if (this.mapaAnaliticoInst) {
         this.mapaAnaliticoInst.closePopup();
         this.mapaAnaliticoInst.remove();
