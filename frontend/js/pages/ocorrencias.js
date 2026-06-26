@@ -249,6 +249,8 @@ function ocorrenciasPage() {
     diasComAbordagem: [],
 
     // Mapa de localização (pontos derivados de this.abordagens)
+    _initCalled: false,
+    _el: null,
     mapaAnaliticoInst: null,
     modoMapaAnalitico: 'marcadores',
     clusterAnalitico: null,
@@ -330,6 +332,13 @@ function ocorrenciasPage() {
     },
 
     async init() {
+      // Alpine chama init() como lifecycle hook E x-init="init()" também o chama —
+      // este guard garante execução única.
+      if (this._initCalled) return;
+      this._initCalled = true;
+      // Captura o root element ANTES do primeiro await para que initMapaAnalitico()
+      // use querySelector escopado (evita race cross-component após navegação).
+      this._el = this.$el;
       // Retorno via voltar (header/celular): restaura o dia que estava selecionado.
       if (window.__argusNavDir === "back" && _diaPreservado) {
         const { ano, mes, dia } = _diaPreservado;
@@ -452,7 +461,12 @@ function ocorrenciasPage() {
     },
 
     initMapaAnalitico() {
-      const div = document.getElementById('mapa-relatorio-dia');
+      // Usa querySelector escopado ao root deste componente (this._el), não
+      // document.getElementById, para que uma chain assíncrona órfã de um
+      // componente antigo (já desconectado do DOM) não inicialize o mapa no div
+      // do componente novo e cause "Map container is already initialized".
+      const root = this._el ?? document;
+      const div = root.querySelector('#mapa-relatorio-dia');
       if (!div || this.mapaAnaliticoInst) return;
       if (typeof L === 'undefined') return;
 
