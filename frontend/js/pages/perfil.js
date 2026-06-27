@@ -36,7 +36,7 @@ function renderPerfil(_appState) {
               <img :src="fotoUrl" style="width: 100%; height: 100%; object-fit: cover;" />
             </template>
             <template x-if="!fotoUrl">
-              <span>${iniciais}</span>
+              <span>${escapeHtml(iniciais)}</span>
             </template>
           </div>
           <button @click="$refs.fotoInput.click()"
@@ -75,7 +75,7 @@ function renderPerfil(_appState) {
 
         <div>
           <label class="login-field-label">Matrícula</label>
-          <input type="text" value="${user.matricula || ""}" disabled
+          <input type="text" value="${escapeHtml(user.matricula || "")}" disabled
                  style="background: var(--color-bg); color: var(--color-text-dim); cursor: not-allowed;" />
         </div>
 
