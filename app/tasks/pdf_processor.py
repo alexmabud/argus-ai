@@ -132,4 +132,6 @@ async def processar_pdf_task(ctx: dict, ocorrencia_id: int) -> dict:
         except Exception:
             await db.rollback()
             logger.exception("Erro ao processar PDF da ocorrência %d", ocorrencia_id)
-            return {"status": "erro", "motivo": "Erro no processamento"}
+            # Relança para o arq reprocessar (max_tries) em vez de mascarar como
+            # sucesso — senão a ocorrência fica sem texto/embedding (#9 auditoria).
+            raise
