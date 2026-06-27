@@ -206,6 +206,8 @@ function app() {
       // Verificar autenticacao existente
       if (auth.isAuthenticated()) {
         this.authenticated = true;
+        // Sessão ativa após F5: reativa a criptografia do IndexedDB.
+        if (typeof ensureCryptoReady === "function") ensureCryptoReady().catch(() => {});
         this.user = auth.getUser();
         // Atualiza o usuário em background (flags de admin podem ter mudado no
         // servidor desde o último login); não bloqueia o render inicial.

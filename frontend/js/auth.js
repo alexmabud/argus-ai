@@ -42,6 +42,10 @@ class AuthManager {
     const user = await api.get("/auth/me");
     this.user = user;
     localStorage.setItem("argus_user", JSON.stringify(user));
+    // Ativa a criptografia do IndexedDB antes de qualquer cache de PII.
+    if (typeof ensureCryptoReady === "function") {
+      await ensureCryptoReady().catch(() => {});
+    }
     return user;
   }
 
@@ -52,6 +56,17 @@ class AuthManager {
     api.clearTokens();
     this.user = null;
     localStorage.removeItem("argus_user");
+    // Limpa dados sensíveis locais (PII no IndexedDB + respostas de API
+    // cacheadas no Service Worker) — evita vazamento em dispositivo compartilhado.
+    if (typeof clearLocalDB === "function") clearLocalDB().catch(() => {});
+    if (self.caches) {
+      caches
+        .keys()
+        .then((keys) =>
+          Promise.all(keys.filter((k) => k.startsWith("argus-")).map((k) => caches.delete(k))),
+        )
+        .catch(() => {});
+    }
   }
 
   async fetchMe() {

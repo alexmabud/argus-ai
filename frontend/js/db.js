@@ -43,6 +43,49 @@ async function initCryptoKey(secret) {
 }
 
 /**
+ * Garante que a chave de criptografia do IndexedDB está ativa.
+ *
+ * Sem isto, _cryptoKey ficava null e encryptField/decryptField devolviam
+ * texto puro — PII em claro no IndexedDB. Deriva a chave de um segredo
+ * aleatório por instalação (argus_db_secret em localStorage), gerado no
+ * primeiro login e apagado no logout (ver clearLocalDB). Sobrevive a F5.
+ */
+async function ensureCryptoReady() {
+  let secret = localStorage.getItem("argus_db_secret");
+  if (!secret) {
+    secret = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
+    localStorage.setItem("argus_db_secret", secret);
+  }
+  return initCryptoKey(secret);
+}
+
+/**
+ * Apaga todos os dados locais sensíveis (logout em dispositivo compartilhado).
+ *
+ * Remove o banco IndexedDB (PII de pessoas + fila offline) e o segredo/salt
+ * de criptografia. O Cache Storage do Service Worker é limpo separadamente
+ * em auth.logout(). Best-effort: nunca lança.
+ */
+async function clearLocalDB() {
+  _cryptoKey = null;
+  try {
+    if (db) {
+      db.close();
+      db = null;
+    }
+    if (typeof Dexie !== "undefined") {
+      await Dexie.delete("argus");
+    } else if (self.indexedDB) {
+      indexedDB.deleteDatabase("argus");
+    }
+  } catch {
+    /* best-effort */
+  }
+  localStorage.removeItem("argus_db_secret");
+  localStorage.removeItem("argus_db_salt");
+}
+
+/**
  * Criptografa string com AES-256-GCM. Retorna base64(iv + ciphertext).
  */
 async function encryptField(plaintext) {
