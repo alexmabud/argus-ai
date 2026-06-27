@@ -157,11 +157,14 @@ async function initDB() {
 /**
  * Adiciona item à fila de sincronização offline.
  */
-async function enqueueSync(tipo, dados) {
+async function enqueueSync(tipo, dados, fotos = []) {
   const database = await initDB();
+  // `fotos` (Blob/File) é persistido nativamente pelo IndexedDB para que a
+  // mídia não se perca ao sincronizar uma abordagem criada offline (#5 auditoria).
   return database.syncQueue.add({
     tipo,
     dados,
+    fotos,
     status: "pending",
     criadoEm: new Date().toISOString(),
     tentativas: 0,

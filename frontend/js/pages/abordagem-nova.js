@@ -1112,8 +1112,16 @@ function abordagemForm() {
           this.resetForm();
           this.showSuccessModal = true;
         } else {
-          // Salvar offline
-          await enqueueSync("abordagem", payload);
+          // Salvar offline — persiste também as fotos (Blob) para upload na
+          // sincronização; antes elas eram descartadas (perda irreversível, #5).
+          const fotos = [];
+          for (const [pessoaId, file] of Object.entries(this.fotosPessoas)) {
+            if (file) fotos.push({ blob: file, tipo: "rosto", pessoa_id: parseInt(pessoaId) });
+          }
+          for (const [veiculoIdStr, file] of Object.entries(this.fotosVeiculos)) {
+            if (file) fotos.push({ blob: file, tipo: "veiculo", veiculo_id: parseInt(veiculoIdStr) });
+          }
+          await enqueueSync("abordagem", payload, fotos);
           // Atualizar contador de pendentes
           const appEl = document.querySelector("[x-data]");
           if (appEl?._x_dataStack) appEl._x_dataStack[0]._updateSyncCount();
