@@ -124,6 +124,7 @@ async def consulta_unificada(
         ConsultaUnificadaResponse com listas de pessoas, veículos,
         abordagens e total de resultados.
     """
+    q = q.strip()
     filtro_endereco = bairro or cidade or estado or estado_id or cidade_id or bairro_id
     if not filtro_endereco and len(q) < 2:
         raise HTTPException(
@@ -198,6 +199,8 @@ async def pessoas_por_veiculo(
     Raises:
         HTTPException 400: Se nenhum parâmetro de busca for informado.
     """
+    placa = placa.strip() if placa else None
+    modelo = modelo.strip() if modelo else None
     if not placa and not modelo:
         raise HTTPException(status_code=400, detail="Informe placa ou modelo para buscar.")
 

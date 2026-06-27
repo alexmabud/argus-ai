@@ -78,6 +78,9 @@ class VeiculoRepository(BaseRepository[Veiculo]):
             Sequência de Veículos que contêm a placa parcial.
         """
         normalized = placa_partial.upper().replace("-", "").replace(" ", "")
+        # Termo que normaliza para vazio não deve virar ILIKE '%%' (busca global).
+        if not normalized:
+            return []
         query = select(Veiculo).where(
             Veiculo.ativo == True,  # noqa: E712
             Veiculo.placa.ilike(f"%{escape_like(normalized)}%"),
@@ -178,9 +181,12 @@ class VeiculoRepository(BaseRepository[Veiculo]):
             )
         )
 
+        aplicou_filtro = False
         if placa:
             normalized = placa.upper().replace("-", "").replace(" ", "")
-            query = query.where(Veiculo.placa.ilike(f"%{escape_like(normalized)}%"))
+            if normalized:
+                query = query.where(Veiculo.placa.ilike(f"%{escape_like(normalized)}%"))
+                aplicou_filtro = True
         if modelo:
             modelo_clean = modelo.strip()
             if modelo_clean:
@@ -191,11 +197,16 @@ class VeiculoRepository(BaseRepository[Veiculo]):
                     | Veiculo.modelo.ilike(f"% {m}")
                     | Veiculo.modelo.ilike(f"% {m} %")
                 )
+                aplicou_filtro = True
         if cor:
             # Flexão de gênero: "branco" também casa "branca" e vice-versa.
             cor_clauses = [Veiculo.cor.ilike(f"%{escape_like(v)}%") for v in cor_variantes(cor)]
             if cor_clauses:
                 query = query.where(or_(*cor_clauses))
+                aplicou_filtro = True
+        # Nenhum filtro efetivo (ex.: placa que normaliza para vazio) → sem match-all.
+        if not aplicou_filtro:
+            return []
         if guarnicao_id is not None:
             # Pessoas são sempre globais per spec do projeto — NÃO filtrar por guarnicao_id.
             # Filtrar apenas veículos por tenant para restringir o escopo da busca.
