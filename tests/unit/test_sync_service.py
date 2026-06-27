@@ -66,6 +66,27 @@ class TestProcessBatch:
         assert len(results) == 1
         assert results[0].status == "ok"
 
+    async def test_erro_item_retorna_msg_generica_e_rollback(self, service, mock_user):
+        """Erro ao processar item: mensagem genérica (sem vazar str(e)) + rollback (#6).
+
+        O detalhe interno (SQL, FK, etc.) só vai para o log; o cliente recebe
+        mensagem genérica. O rollback limpa a transação envenenada para que os
+        próximos itens do batch ainda possam ser processados.
+        """
+        service.db.rollback = AsyncMock()
+        service._process_item = AsyncMock(
+            side_effect=RuntimeError("detalhe interno secreto: tabela xyz FK abc")
+        )
+
+        items = [SyncItem(client_id="uuid-err", tipo="abordagem", dados={})]
+        results = await service.process_batch(items, mock_user)
+
+        assert len(results) == 1
+        assert results[0].status == "error"
+        assert results[0].error == "Falha ao processar item"
+        assert "secreto" not in (results[0].error or "")
+        service.db.rollback.assert_awaited_once()
+
     async def test_deduplicacao_client_id(self, service, mock_user):
         """Deve retornar ok sem recriar se client_id já existe."""
         mock_result = MagicMock()
