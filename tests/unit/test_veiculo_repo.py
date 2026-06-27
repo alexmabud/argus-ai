@@ -162,7 +162,7 @@ class TestGetPessoasPorVeiculo:
         """Retorna lista de tuplas quando banco tem resultados.
 
         Verifica que o método repassa o resultado de result.all() diretamente
-        como lista de tuplas (Pessoa, Veiculo).
+        como lista de tuplas (Pessoa, Veiculo) quando há um filtro válido.
         """
         db = AsyncMock()
         mock_result = MagicMock()
@@ -172,16 +172,17 @@ class TestGetPessoasPorVeiculo:
 
         repo = VeiculoRepository(db)
         result = await repo.get_pessoas_por_veiculo(
-            placa=None, modelo=None, cor=None, guarnicao_id=None
+            placa="ABC1D23", modelo=None, cor=None, guarnicao_id=None
         )
 
         assert len(result) == 1
         assert result[0] is tupla_fake
 
-    async def test_get_pessoas_por_veiculo_sem_filtros(self):
-        """Executa query sem filtros opcionais quando todos são None.
+    async def test_get_pessoas_por_veiculo_sem_filtros_nao_casa_tudo(self):
+        """Sem nenhum filtro efetivo, retorna [] SEM executar query (#2 auditoria).
 
-        Verifica que db.execute é chamado uma vez mesmo sem nenhum filtro.
+        Guarda defensiva: ausência de filtro não pode virar busca global
+        (match-all). O método deve curto-circuitar antes de tocar o banco.
         """
         db = AsyncMock()
         mock_result = MagicMock()
@@ -194,4 +195,23 @@ class TestGetPessoasPorVeiculo:
         )
 
         assert result == []
-        db.execute.assert_called_once()
+        db.execute.assert_not_called()
+
+    async def test_get_pessoas_por_veiculo_placa_normaliza_vazio_nao_casa_tudo(self):
+        """Placa que normaliza para vazio (ex.: '--') não pode virar match-all (#2).
+
+        '--' perde os traços na normalização e viraria ILIKE '%%'. A guarda
+        deve curto-circuitar e retornar [] sem executar query.
+        """
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        db.execute.return_value = mock_result
+
+        repo = VeiculoRepository(db)
+        result = await repo.get_pessoas_por_veiculo(
+            placa="--", modelo=None, cor=None, guarnicao_id=None
+        )
+
+        assert result == []
+        db.execute.assert_not_called()
