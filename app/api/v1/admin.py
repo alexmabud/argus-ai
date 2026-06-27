@@ -119,10 +119,11 @@ async def listar_usuarios(
     admin: Usuario = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[UsuarioAdminRead]:
-    """Lista todos os usuários ativos do sistema (todas as equipes e sem equipe).
+    """Lista usuários ativos conforme o alcance do admin.
 
-    Retorna todos os usuários, não apenas os da equipe do admin. O frontend
-    agrupa por guarnicao_id (incluindo None = "Sem Equipe").
+    Super-admin e admin global veem todas as equipes (e sem equipe); admin
+    delegado vê apenas usuários da própria guarnição. O frontend agrupa por
+    guarnicao_id (incluindo None = "Sem Equipe").
 
     Args:
         request: Requisição HTTP.
@@ -137,7 +138,11 @@ async def listar_usuarios(
         403: Usuário não é administrador.
     """
     service = UsuarioAdminService(db)
-    usuarios = await service.listar_todos()
+    # Super-admin e admin global veem todas as equipes; delegado só a própria.
+    escopo_global = admin.is_super_admin or admin.admin_global
+    usuarios = await service.listar_todos(
+        guarnicao_id=admin.guarnicao_id, escopo_global=escopo_global
+    )
     return [
         UsuarioAdminRead(
             id=u.id,

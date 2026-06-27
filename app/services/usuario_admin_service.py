@@ -177,20 +177,27 @@ class UsuarioAdminService:
         )
         return list(result.scalars().all())
 
-    async def listar_todos(self) -> list[Usuario]:
-        """Lista todos os usuários ativos do sistema (todas equipes + sem equipe).
+    async def listar_todos(
+        self, guarnicao_id: int | None = None, escopo_global: bool = True
+    ) -> list[Usuario]:
+        """Lista usuários ativos do sistema.
 
-        Usado pelo admin para gerenciar usuários globalmente. O frontend
-        agrupa por guarnicao_id (incluindo None = "Sem Equipe").
+        Por padrão (escopo_global=True) retorna todas as equipes + sem equipe —
+        usado por super-admin / admin global. Quando escopo_global=False, restringe
+        à guarnicao_id informada (admin delegado só vê a própria equipe).
+
+        Args:
+            guarnicao_id: Guarnição a filtrar quando escopo_global=False.
+            escopo_global: Se True, ignora o filtro de guarnição.
 
         Returns:
             Lista de Usuario com ativo=True, ordenada por nome.
         """
-        result = await self.db.execute(
-            select(Usuario)
-            .where(Usuario.ativo == True)  # noqa: E712
-            .order_by(Usuario.nome)
-        )
+        query = select(Usuario).where(Usuario.ativo == True)  # noqa: E712
+        if not escopo_global:
+            query = query.where(Usuario.guarnicao_id == guarnicao_id)
+        query = query.order_by(Usuario.nome)
+        result = await self.db.execute(query)
         return list(result.scalars().all())
 
     async def criar_usuario(
