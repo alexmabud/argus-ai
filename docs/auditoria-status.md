@@ -30,7 +30,21 @@ healthcheck redis verificado por container; `bash -n` em scripts; `node --check`
 **Itens correlatos adiados (grupo Important):** reprocessamento automático de itens `failed`
 na fila offline; documentar variáveis obrigatórias em `.env.production.example`.
 
-## Grupo 2 — Important: Segurança/autorização/multi-tenancy ⏳ PENDENTE
+## Grupo 2 — Important: Segurança/autorização/multi-tenancy 🔄 EM ANDAMENTO
+
+Plano: `docs/plans/2026-06-27-auditoria-grupo2-seguranca.md` (gitignored).
+Decisões: D-G2-1 fail-open + log error · D-G2-2 CPF global · D-G2-3 manter "Geral" (trade-off aceito) · D-G2-4 proxy de geocoding.
+
+**Sub-lote 2A ✅**
+
+| # | Achado | Commit |
+|---|--------|--------|
+| 2 | admin delegado via usuários de todas as equipes | `aad5c91` |
+| 6 | sync vaza `str(e)` + sessão envenenada (sem rollback) | `bd2d8fc` |
+| 9 | tasks face/pdf engoliam exceção → sem retry arq | `7fe73b7` |
+| 10 | XSS em perfil (`iniciais`/`matrícula` sem escape) | `c22380a` |
+
+**Pendente:** 2B (#3+#4 cascata de isolamento em fotos/storage; #5 rotação de sid; #1 fail-open log; #7 confirmar CPF global) · 2C (#11 guard rota admin; #12 proxy geocoding; #13 sync_from_prod; #14 anonimizar). Verificação: testes-alvo verdes por achado; suíte completa pendente ao fim do grupo.
 ## Grupo 3 — Important: Frontend/offline/PWA ⏳ PENDENTE
 ## Grupo 4 — Important: Migrations/banco (Alembic) ⏳ PENDENTE
 ## Grupo 5 — Important: Deploy/restore/scripts ⏳ PENDENTE
