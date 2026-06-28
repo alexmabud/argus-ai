@@ -138,7 +138,27 @@ container DB `argus-ai-db-1` (o `deploy.yml` faz `cd ~/argus-ai`; o deploy real
 > agora marcado como deprecado — remoção pode ir pro Grupo 10).
 
 
-## Grupo 6 — Important: Docker/infra/supply-chain ⏳ PENDENTE
+## Grupo 6 — Important: Docker/infra/supply-chain ✅ CONCLUÍDO
+
+Decisão (usuário): **subir runtime para Python 3.12** (alinha lock + dev + prod).
+Verificação: `docker compose config` OK (dev, prod, prod+monitoring); lock
+regenerado e inspecionado. ⚠️ O **build da imagem de prod** (G6-2 `--require-hashes`
++ torch cpu) não é validável localmente sem rebuild pesado — o gate é o build da
+CI no deploy (uma falha aborta o deploy; prod segue na imagem antiga).
+
+| # | Achado | Resolução | Commit |
+|---|--------|-----------|--------|
+| G6-1 | Lock desalinhado (cryptography 48 vs >=49; Python 3.12 vs runtime 3.11) | Runtime → 3.12; `make lock` com `--extra vision`; lock regenerado (cryptography→49, inclui vision) | `9e5977e` `7ef7325` |
+| G6-2 | `Dockerfile.prod` instalava `.[vision]` ignorando o lock com hashes | `pip install --require-hashes -r requirements.lock` (copia o lock) | `9e5977e` |
+| G6-3 | torch/torchvision sem pin; dev sem `[vision]` | torch/torchvision pinados (cpu, == lock); api dev instala `.[vision]` | `9e5977e` |
+| G6-4 | `db.Dockerfile` base sem digest | Pin por digest (manifest-list multi-arch) | `9717bef` |
+| G6-5 | Volume InsightFace em `/root/.insightface` (worker roda como appuser) | → `/home/appuser/.insightface`. MinIO público no dev mantido (intencional; prod já privado) | `4cf526f` |
+| G6-6 | Grafana embedding; postgres-exporter `DB_PASSWORD` opcional; bind mounts `/mnt/banco` quebram local | `GF_SECURITY_ALLOW_EMBEDDING=false`; `DB_PASSWORD` obrigatório (`:?`); device dos volumes configurável | `4cf526f` `7ef7325` |
+| G6-7 | `make monitoring` aplicava `chmod 777` | `chown` aos UIDs dos containers (65534/472) | `7ef7325` |
+| G6-8 | `.env.production.example` sem vars obrigatórias | Adiciona APP_DB_*, MIGRATION_DATABASE_URL, REDIS_PASSWORD, DOMAIN, GF_*, TELEGRAM_*; marca LLM como legado | `84b1f2c` |
+| G6-9 | `supercronic` baixado sem checksum | Verifica sha256 (`sha256sum -c`) com ARG de versão/hash | `9717bef` |
+
+
 ## Grupo 7 — Important: Observabilidade ⏳ PENDENTE
 ## Grupo 8 — Important: Performance ⏳ PENDENTE
 ## Grupo 9 — Important: Testes/cobertura ⏳ PENDENTE
