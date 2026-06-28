@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 
@@ -12,10 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY . .
 
-# Torch CPU-only evita baixar versão CUDA (~3GB) e o pacote triton (~400MB)
+# Torch CPU-only (pinado igual ao lock) evita baixar CUDA (~3GB) e triton (~400MB).
+# Dev instala o extra [vision] (insightface/easyocr/onnxruntime) para ter
+# reconhecimento facial e OCR também em desenvolvimento.
 RUN python -m pip install --no-cache-dir --upgrade pip && \
-    python -m pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
-    python -m pip install --no-cache-dir "."
+    python -m pip install --no-cache-dir torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/cpu && \
+    python -m pip install --no-cache-dir ".[vision]"
 
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser

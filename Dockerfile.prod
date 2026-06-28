@@ -2,7 +2,7 @@
 # Dockerfile de produção para o Argus AI (multi-stage build)
 
 # ── Stage 1: Build ──────────────────────────────────────────────
-FROM python:3.11-slim-bookworm AS builder
+FROM python:3.12-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -11,17 +11,21 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends && apt-get inst
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml .
+COPY pyproject.toml requirements.lock ./
 
-# Instalar deps em /build/venv para copiar depois
-# Torch CPU-only primeiro (evita baixar versão CUDA de ~3GB)
+# Instalar deps em /build/venv para copiar depois.
+# 1) Torch/torchvision CPU-only (evita baixar versão CUDA de ~3GB). Versões
+#    fixadas idênticas ao requirements.lock para que o --require-hashes abaixo
+#    as considere já satisfeitas (não rebaixa para a wheel CUDA do PyPI).
+# 2) Demais deps (incl. extra vision) a partir do lock com hashes verificados,
+#    em vez de resolver de pyproject.toml sem hashes.
 RUN python -m venv /build/venv && \
     /build/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    /build/venv/bin/pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
-    /build/venv/bin/pip install --no-cache-dir ".[vision]"
+    /build/venv/bin/pip install --no-cache-dir torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/cpu && \
+    /build/venv/bin/pip install --no-cache-dir --require-hashes -r requirements.lock
 
 # ── Stage 2: Runtime ───────────────────────────────────────────
-FROM python:3.11-slim-bookworm AS runtime
+FROM python:3.12-slim-bookworm AS runtime
 
 LABEL maintainer="alexmabud"
 LABEL description="Argus AI - Sistema de apoio operacional com IA"
