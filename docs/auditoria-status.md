@@ -117,7 +117,27 @@ do autogenerate. Validado com `alembic upgrade head` em **banco limpo descartáv
 > adiada para o Grupo 10 (Minor) se desejado.
 
 
-## Grupo 5 — Important: Deploy/restore/scripts ⏳ PENDENTE
+## Grupo 5 — Important: Deploy/restore/scripts ✅ CONCLUÍDO
+
+Verificação: `bash -n` em todos os scripts editados + sintaxe Python + teste do
+auto-detect de container. Ground truth de prod (confirmada): dir `~/argus-ai`,
+container DB `argus-ai-db-1` (o `deploy.yml` faz `cd ~/argus-ai`; o deploy real
+é via CI, não pelo `deploy.sh`).
+
+| # | Achado | Resolução | Commit |
+|---|--------|-----------|--------|
+| G5-1 | `restore_from_backup.sh`: `set -e` encerrava antes de religar api/worker se `pg_restore` falhasse | Captura o rc do `pg_restore`; sempre religa api/worker; falha depois | `38175a6` |
+| G5-2 | Restore do Grafana movia o dir ativo antes do `tar`; falha deixava Grafana sem dados | Extrai para staging e só troca o dir ativo se o `tar` funcionar | `38175a6` |
+| G5-3 | `backup_rclone.sh`: retenção remota por ordenação textual (`ls\|sort\|head`) | `rclone delete --min-age Nd` (por data, como o `backup_to_clouds.sh` vivo) + marca o script como deprecado | `bdc8f25` |
+| G5-4 | Nomes/paths divergentes (`argus-db` vs `argus-ai-db-1`, `~/argus_ai`/`/opt/argus_ai` vs `~/argus-ai`) | `deploy.sh`/`setup_oracle.sh` → `~/argus-ai`; `security_check.sh` auto-detecta o container (dev/prod) | `c0e6af5` |
+| G5-5 | `setup_oracle.sh` referencia `python -m scripts.seed` (inexistente) | Próximos-passos corrigidos: `alembic upgrade head` + `definir_super_admin`; aponta `setup_rclone.sh` | `c0e6af5` |
+| G5-6 | `reset_usuario.py` destrutivo sem confirmação explícita | Confirmação interativa ("digite 'apagar'") além do guard de ambiente; `--yes` p/ automação | `fe47d1d` |
+
+> Nota: o script vivo de backup offsite (`backup_to_clouds.sh`) já fazia retenção
+> correta por `--min-age`; o bug do G5-3 estava só no `backup_rclone.sh` (duplicado,
+> agora marcado como deprecado — remoção pode ir pro Grupo 10).
+
+
 ## Grupo 6 — Important: Docker/infra/supply-chain ⏳ PENDENTE
 ## Grupo 7 — Important: Observabilidade ⏳ PENDENTE
 ## Grupo 8 — Important: Performance ⏳ PENDENTE
