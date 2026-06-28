@@ -75,9 +75,16 @@ class AuthManager {
       this.user = user;
       localStorage.setItem("argus_user", JSON.stringify(user));
       return user;
-    } catch {
-      this.logout();
-      return null;
+    } catch (err) {
+      // Só desloga em falha de AUTENTICAÇÃO (401). Erro de rede/offline (status
+      // 0) ou erro do servidor (5xx) NÃO pode deslogar nem apagar a fila offline
+      // — deslogar no boot offline causaria perda de dados de campo não
+      // sincronizados. Mantém a sessão existente (cookie HttpOnly + argus_user).
+      if (err && err.status === 401) {
+        this.logout();
+        return null;
+      }
+      return this.user;
     }
   }
 }
