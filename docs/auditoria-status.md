@@ -95,7 +95,28 @@ Frontend sem harness de teste JS → verificação por `node --check` + smoke HT
 > Decisão G3-1 (usuário): self-host/vendoring (resolve offline-first + supply-chain).
 > Tiles do mapa (OSM) seguem externos por natureza (não vendoráveis).
 
-## Grupo 4 — Important: Migrations/banco (Alembic) ⏳ PENDENTE
+## Grupo 4 — Important: Migrations/banco (Alembic) ✅ CONCLUÍDO
+
+Decisão de escopo (usuário): **forward-path** — corrigir só o caminho que roda em
+deploy (`upgrade head`). Migrations já aplicadas e imutáveis; `downgrade` nunca
+roda em prod; testes usam `create_all` (não migrations); `env.py` já filtra Tiger
+do autogenerate. Validado com `alembic upgrade head` em **banco limpo descartável**
+(`argus_migtest`): head único `b7c1d2e3f4a5`, extensões criadas pela migration.
+
+| # | Achado | Resolução | Commit |
+|---|--------|-----------|--------|
+| G4-1 | Extensões (vector/postgis/pg_trgm) usadas no schema mas nunca criadas por migration | `CREATE EXTENSION IF NOT EXISTS` no topo do upgrade do `schema_inicial` → chain self-contained (no-op se já criadas pelo bootstrap) | `a381f72` |
+| G4-3 | `0193ae0cadf6`: `SET NOT NULL` em `bpm_id` sem cobrir guarnições inativas/sem unidade | Seed inclui inativas + fallback BPM "Sem Unidade" antes do NOT NULL | `d62b5fe` |
+| G4-4 | `cc1234567890`: `SET NOT NULL` em `guarnicao_id` sem backfill | Backfill dos NULL para a 1ª guarnição antes do NOT NULL | `d62b5fe` |
+| G4-5 | `c3d4e5f6a7b8`: cast `detalhes::jsonb` frágil para texto legado | `CASE` tolerante (NULL/''→NULL; JSON→cast; resto→`to_jsonb`) | `f241f12` |
+
+> **Known-debt (G4-2, decisão forward-path):** os `downgrade()` de `schema_inicial`
+> (~680 linhas) e `9a79fc5e1da2` (~1000 linhas) recriam tabelas Tiger/PostGIS (lixo
+> de autogenerate). Não removido: downgrade nunca roda em prod e os testes não usam
+> migrations. `env.py` já filtra esses objetos para migrations futuras. Limpeza
+> adiada para o Grupo 10 (Minor) se desejado.
+
+
 ## Grupo 5 — Important: Deploy/restore/scripts ⏳ PENDENTE
 ## Grupo 6 — Important: Docker/infra/supply-chain ⏳ PENDENTE
 ## Grupo 7 — Important: Observabilidade ⏳ PENDENTE
