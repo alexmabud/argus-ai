@@ -85,7 +85,7 @@ anonimizar-dry:
 	$(PYTHON) scripts/anonimizar_dados.py --dry-run
 
 sync-from-prod:
-	bash scripts/sync_from_prod.sh
+	bash scripts/sync_from_prod.sh $(if $(KEY),--with-prod-key,)
 
 # ─── Supply chain ─────────────────────────────────────────────────────────────
 
