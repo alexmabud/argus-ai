@@ -175,13 +175,32 @@ async function enqueueSync(tipo, dados, fotos = []) {
   // mídia não se perca ao sincronizar uma abordagem criada offline (#5 auditoria).
   return database.syncQueue.add({
     tipo,
-    dados,
+    // PII do payload (nomes, observação, GPS, pessoas, veículos) cifrada
+    // at-rest no IndexedDB; decriptada em getPendingSync antes do envio (G3-2).
+    dados: await encryptField(JSON.stringify(dados)),
     fotos,
     status: "pending",
     criadoEm: new Date().toISOString(),
     tentativas: 0,
     clientId: crypto.randomUUID(),
   });
+}
+
+/**
+ * Decripta o payload `dados` de um item da fila para o objeto original.
+ *
+ * Tolerante a migração: itens antigos gravados como objeto em claro (antes do
+ * G3-2) ou como JSON em claro são devolvidos sem erro. Defensivo: se não for
+ * JSON após o decrypt, devolve o valor cru.
+ */
+async function _decryptDados(raw) {
+  if (raw == null || typeof raw !== "string") return raw; // legado: objeto
+  const plano = await decryptField(raw);
+  try {
+    return JSON.parse(plano);
+  } catch {
+    return raw;
+  }
 }
 
 /**
@@ -204,7 +223,14 @@ function _sincronizavel(item) {
  */
 async function getPendingSync() {
   const database = await initDB();
-  return database.syncQueue.filter(_sincronizavel).toArray();
+  const items = await database.syncQueue.filter(_sincronizavel).toArray();
+  // Garante a chave antes de decriptar (evita falso failed se o sync disparar
+  // antes do ensureCryptoReady do boot). Só quando há itens e segredo presente.
+  if (items.length && localStorage.getItem("argus_db_secret")) {
+    await ensureCryptoReady();
+  }
+  for (const item of items) item.dados = await _decryptDados(item.dados);
+  return items;
 }
 
 /**
