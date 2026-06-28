@@ -11,6 +11,7 @@ import hashlib
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import filtros_abordagem
 from app.core.rate_limit import _get_real_client_ip, limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
@@ -31,6 +32,8 @@ def _filtros_consulta(user: Usuario) -> tuple[int | None, int | None]:
     """Retorna (guarnicao_id, bpm_id) para filtro de consultas.
 
     Prioridade: equipe > BPM > global. Apenas um dos dois será não-None.
+    Delega à fonte única ``filtros_abordagem`` (compartilhada com o controle
+    de acesso a mídias de abordagem no storage).
 
     Args:
         user: Usuário autenticado com guarnicao e bpm carregados.
@@ -38,11 +41,7 @@ def _filtros_consulta(user: Usuario) -> tuple[int | None, int | None]:
     Returns:
         Tupla (guarnicao_id, bpm_id). Ambos None = acesso global.
     """
-    if user.guarnicao and user.guarnicao.isolamento_abordagens:
-        return (user.guarnicao_id, None)
-    if user.guarnicao and user.guarnicao.bpm and user.guarnicao.bpm.isolamento_abordagens:
-        return (None, user.guarnicao.bpm_id)
-    return (None, None)
+    return filtros_abordagem(user)
 
 
 @router.get("/localidades")

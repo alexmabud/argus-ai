@@ -25,7 +25,7 @@ from app.api.v1.router import api_router
 from app.config import settings
 from app.core.logging_config import setup_logging
 from app.core.middleware import LoggingMiddleware, SecurityHeadersMiddleware
-from app.core.permissions import TenantFilter
+from app.core.permissions import TenantFilter, assert_pode_ver_foto_abordagem
 from app.core.rate_limit import limiter
 from app.database.session import engine, get_db
 from app.dependencies import get_current_user
@@ -219,8 +219,10 @@ def create_app() -> FastAPI:
         ).scalar_one_or_none()
         if foto is not None:
             if foto.pessoa_id is None:
-                # Midia de abordagem: respeita tenant.
-                TenantFilter.check_ownership(foto, user)
+                # Midia de abordagem: visibilidade segue a cascata
+                # isolamento_abordagens (equipe > BPM > global), consistente
+                # com consultas/analytics — evita 403 indevido sem isolamento.
+                await assert_pode_ver_foto_abordagem(db, user, foto)
         else:
             ocorrencia = (
                 await db.execute(

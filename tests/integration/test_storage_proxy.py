@@ -242,14 +242,18 @@ async def _outra_equipe(db_session: AsyncSession, bpm: Bpm) -> Guarnicao:
 
 
 @pytest.mark.asyncio
-async def test_storage_proxy_bloqueia_midia_de_abordagem_de_outra_equipe(
-    client, auth_headers, fake_storage, db_session, usuario, bpm
+async def test_storage_proxy_bloqueia_midia_de_abordagem_de_outra_equipe_com_isolamento(
+    client, auth_headers, fake_storage, db_session, usuario, guarnicao, bpm
 ):
-    """Foto vinculada a abordagem (pessoa_id=None) de outra equipe deve dar 403.
+    """Com isolamento de equipe ativo, mídia de abordagem de outra equipe dá 403.
 
-    Modelo de produto: fotos de pessoa = globais; demais midias operacionais
-    (RAP, foto direta de abordagem) respeitam isolamento BPM/equipe.
+    Mídia de abordagem (foto sem pessoa) segue a cascata ``isolamento_abordagens``
+    (equipe > BPM > global), igual a consultas/analytics. Com a equipe do usuário
+    isolada, foto de outra guarnição é bloqueada.
     """
+    guarnicao.isolamento_abordagens = True
+    await db_session.flush()
+
     outra = await _outra_equipe(db_session, bpm)
     foto = Foto(
         arquivo_url=f"/storage/{settings.S3_BUCKET}/fotos/midia_outra_abordagem.jpg",
@@ -269,6 +273,40 @@ async def test_storage_proxy_bloqueia_midia_de_abordagem_de_outra_equipe(
     )
     assert response.status_code == 403
     fake_storage.get_object.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_libera_midia_de_abordagem_de_outra_equipe_sem_isolamento(
+    client, auth_headers, fake_storage, db_session, usuario, bpm
+):
+    """Sem isolamento (padrão), mídia de abordagem de outra equipe é global.
+
+    Alinha a visibilidade da mídia à das abordagens em consultas/analytics
+    (achado #4 / 2B): com ``isolamento_abordagens`` desligado, abordagens — e
+    suas mídias — são globais. O watermark rastreável por matrícula preserva a
+    rastreabilidade LGPD.
+    """
+    outra = await _outra_equipe(db_session, bpm)
+    foto = Foto(
+        arquivo_url=f"/storage/{settings.S3_BUCKET}/fotos/midia_outra_abordagem.jpg",
+        tipo="abordagem",
+        data_hora=datetime.now(),
+        pessoa_id=None,
+        guarnicao_id=outra.id,
+    )
+    db_session.add(foto)
+    await db_session.flush()
+
+    body = _FakeStreamingBody([b"\x00"])
+    fake_storage.get_object = AsyncMock(
+        return_value={"Body": body, "ContentType": "image/jpeg", "ETag": '"x"'}
+    )
+
+    response = await client.get(
+        f"/storage/{settings.S3_BUCKET}/fotos/midia_outra_abordagem.jpg",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
