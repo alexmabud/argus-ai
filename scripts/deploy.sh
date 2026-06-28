@@ -16,7 +16,9 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/alexmabud/argus-ai.git"
-APP_DIR="$HOME/argus_ai"
+# Diretório canônico em prod: ~/argus-ai (o deploy real via CI faz `cd ~/argus-ai`
+# e o nome do container argus-ai-db-1 confirma o basename argus-ai).
+APP_DIR="$HOME/argus-ai"
 COMPOSE_FILE="docker-compose.prod.yml"
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
