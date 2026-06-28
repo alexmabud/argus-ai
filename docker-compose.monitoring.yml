@@ -44,7 +44,9 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_UNIFIED_ALERTING_ENABLED: "true"
-      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      # Embedding desabilitado (anti-clickjacking) — o app abre o Grafana em nova
+      # aba (/grafana via Caddy), não em iframe. Reative só se for embutir painéis.
+      GF_SECURITY_ALLOW_EMBEDDING: "false"
       # Aponta provisioning para destino do render (writable pelo grafana)
       GF_PATHS_PROVISIONING: /var/lib/grafana/provisioning
       # Consumidas pelo render-provisioning.sh
@@ -118,7 +120,7 @@ services:
     container_name: argus-postgres-exporter
     environment:
       DATA_SOURCE_NAME: >-
-        postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}?sslmode=disable
+        postgresql://${DB_USER:-argus}:${DB_PASSWORD:?DB_PASSWORD obrigatório para o postgres-exporter}@db:5432/${DB_NAME:-argus_db}?sslmode=disable
     expose:
       - "9187"
     depends_on:
@@ -171,21 +173,22 @@ services:
       - argus-network
 
 volumes:
-  # Volumes mapeados para /mnt/banco — consistente com postgres/redis/backups,
-  # evita consumir disco do sistema (que pode ser pequeno na Oracle Cloud).
+  # Por padrão mapeia para /mnt/banco (prod — disco de dados da Oracle Cloud).
+  # O device é configurável para não quebrar o monitoramento local, onde
+  # /mnt/banco não existe: `make monitoring-local` aponta para um dir do projeto.
   prometheus_data:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /mnt/banco/prometheus
+      device: ${PROMETHEUS_DATA_DIR:-/mnt/banco/prometheus}
 
   grafana_data:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /mnt/banco/grafana
+      device: ${GRAFANA_DATA_DIR:-/mnt/banco/grafana}
 
 networks:
   argus-network:

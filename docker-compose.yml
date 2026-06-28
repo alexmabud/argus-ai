@@ -148,7 +148,10 @@ services:
     volumes:
       - ./app:/app/app
       - ./scripts:/app/scripts:ro
-      - insightface_models:/root/.insightface
+      # O worker roda como appuser (UID 1000); o cache do InsightFace é ~/.insightface
+      # = /home/appuser/.insightface. Antes apontava p/ /root/.insightface (root),
+      # inacessível ao appuser → modelos não persistiam no volume.
+      - insightface_models:/home/appuser/.insightface
     depends_on:
       db:
         condition: service_healthy
