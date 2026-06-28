@@ -17,6 +17,11 @@ const MAX_SYNC_ATTEMPTS = 5;
 
 let db = null;
 
+// Cache em memória das pessoas já descriptografadas, para não re-decriptar todo
+// o cache local a cada tecla na busca (G3-5). Invalidado ao recachear pessoas
+// (cachePessoas) ou no logout (clearLocalDB).
+let _pessoasDecryptCache = null;
+
 // --- Crypto helpers (AES-256-GCM via Web Crypto API) ---
 let _cryptoKey = null;
 
@@ -74,6 +79,7 @@ async function ensureCryptoReady() {
  */
 async function clearLocalDB() {
   _cryptoKey = null;
+  _pessoasDecryptCache = null;
   try {
     if (db) {
       db.close();
@@ -238,6 +244,7 @@ async function cachePessoas(pessoas) {
   const database = await initDB();
   const encrypted = await Promise.all(pessoas.map(encryptPessoa));
   await database.pessoas.bulkPut(encrypted);
+  _pessoasDecryptCache = null; // invalida o cache decriptado (dados mudaram)
 }
 
 /**
@@ -254,9 +261,13 @@ async function cacheVeiculos(veiculos) {
 async function searchPessoasLocal(query) {
   const database = await initDB();
   const q = query.toLowerCase();
-  const all = await database.pessoas.toArray();
-  const decrypted = await Promise.all(all.map(decryptPessoa));
-  return decrypted
+  // Decripta o cache uma vez e reutiliza nas buscas seguintes (memoização);
+  // antes, cada tecla re-decriptava todos os registros (G3-5).
+  if (_pessoasDecryptCache === null) {
+    const all = await database.pessoas.toArray();
+    _pessoasDecryptCache = await Promise.all(all.map(decryptPessoa));
+  }
+  return _pessoasDecryptCache
     .filter((p) => p.nome.toLowerCase().includes(q) || (p.apelido && p.apelido.toLowerCase().includes(q)))
     .slice(0, 10);
 }
