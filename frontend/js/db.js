@@ -9,6 +9,12 @@
 // Importar Dexie via CDN (global script)
 const DEXIE_CDN = "https://cdn.jsdelivr.net/npm/dexie@4/dist/dexie.min.js";
 
+// Máximo de tentativas de sincronização antes de "estacionar" um item failed.
+// Itens failed abaixo deste limite são reprocessados automaticamente; acima,
+// ficam parados aguardando atenção manual (evita retry infinito de erro
+// permanente, ex.: validação).
+const MAX_SYNC_ATTEMPTS = 5;
+
 let db = null;
 
 // --- Crypto helpers (AES-256-GCM via Web Crypto API) ---
@@ -173,11 +179,26 @@ async function enqueueSync(tipo, dados, fotos = []) {
 }
 
 /**
- * Retorna todos os itens pendentes de sincronização.
+ * Predicado de item sincronizável: pendente ou falho ainda dentro do limite
+ * de tentativas (reprocessamento automático de falhas transitórias).
+ */
+function _sincronizavel(item) {
+  return (
+    item.status === "pending" ||
+    (item.status === "failed" && (item.tentativas || 0) < MAX_SYNC_ATTEMPTS)
+  );
+}
+
+/**
+ * Retorna os itens a sincronizar: pendentes + falhos reprocessáveis.
+ *
+ * Itens marcados como `failed` por erro transitório (rede/5xx) voltam a ser
+ * tentados até MAX_SYNC_ATTEMPTS, evitando a perda silenciosa de dados de
+ * campo que ficavam presos em `failed` para sempre.
  */
 async function getPendingSync() {
   const database = await initDB();
-  return database.syncQueue.where("status").equals("pending").toArray();
+  return database.syncQueue.filter(_sincronizavel).toArray();
 }
 
 /**
@@ -202,11 +223,11 @@ async function markFailed(id, erro) {
 }
 
 /**
- * Conta itens pendentes na fila.
+ * Conta itens na fila ainda por sincronizar (pendentes + falhos reprocessáveis).
  */
 async function countPending() {
   const database = await initDB();
-  return database.syncQueue.where("status").equals("pending").count();
+  return database.syncQueue.filter(_sincronizavel).count();
 }
 
 /**
