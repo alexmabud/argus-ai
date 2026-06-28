@@ -30,7 +30,7 @@ healthcheck redis verificado por container; `bash -n` em scripts; `node --check`
 **Itens correlatos adiados (grupo Important):** reprocessamento automático de itens `failed`
 na fila offline; documentar variáveis obrigatórias em `.env.production.example`.
 
-## Grupo 2 — Important: Segurança/autorização/multi-tenancy 🔄 EM ANDAMENTO
+## Grupo 2 — Important: Segurança/autorização/multi-tenancy ✅ CONCLUÍDO
 
 Plano: `docs/plans/2026-06-27-auditoria-grupo2-seguranca.md` (gitignored).
 Decisões: D-G2-1 fail-open + log error · D-G2-2 CPF global · D-G2-3 manter "Geral" (trade-off aceito) · D-G2-4 proxy de geocoding.
@@ -64,7 +64,20 @@ Decisões: D-G2-1 fail-open + log error · D-G2-2 CPF global · D-G2-3 manter "G
 auth/sessão 41/41; permissions_abordagem 7/7; storage_proxy 15/15;
 consulta/abordagens/fotos/analytics 44/44). Suíte completa confirmada ao fim do sub-lote.
 
-**Pendente:** 2C (#11 guard rota admin; #12 proxy geocoding; #13 sync_from_prod; #14 anonimizar).
+**Sub-lote 2C ✅**
+
+| # | Achado | Resolução |
+|---|--------|-----------|
+| 11 | Rotas admin sem guard client-side (defesa em profundidade) | `navigate()` bloqueia `admin-usuarios` (is_admin/super) e `admins` (super) com fallback p/ home; backend já valida cada chamada |
+| 12 | `gps.js` enviava coordenadas precisas direto ao Nominatim/OSM (D-G2-4) | Novo `GET /geocode/reverse` (autenticado) delega ao `GeocodingService`; `gps.js` chama o backend |
+| 13 | `sync_from_prod.sh` copiava `ENCRYPTION_KEY` de prod p/ dev | Default não copia (mantém/gera chave local); copiar a chave-mestra vira opt-in `--with-prod-key` (`make sync-from-prod KEY=1`) |
+| 14 | `anonimizar_dados.py` não apagava fotos do storage (docstring mentia) | Apaga arquivos (original+thumb) do storage, limpa URLs/embeddings, loga IDs; corrige bug pré-existente `deleted_at`→`desativado_em` que abortava o script |
+
+**Verificação:** `ruff` limpo; `bash -n`/`node --check` OK; geocode 3/3, `_storage_key` 3/3,
+anonimizar `--dry-run` OK. Suíte completa confirmada ao fim do grupo.
+
+> Decisão #13 (usuário): opt-in via flag — seguro por padrão, chave de prod só sob demanda.
+
 ## Grupo 3 — Important: Frontend/offline/PWA ⏳ PENDENTE
 ## Grupo 4 — Important: Migrations/banco (Alembic) ⏳ PENDENTE
 ## Grupo 5 — Important: Deploy/restore/scripts ⏳ PENDENTE
