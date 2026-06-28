@@ -188,10 +188,16 @@ class AuthService:
         )
 
     async def refresh(self, refresh_token: str) -> TokenResponse:
-        """Renova os tokens de acesso mantendo o session_id existente.
+        """Renova os tokens de acesso rotacionando o session_id (usuário comum).
 
-        Decodifica o refresh token, valida o usuário e session_id, e gera
-        novos tokens mantendo o mesmo session_id (sem rotação de sessão).
+        Decodifica o refresh token, valida o usuário e session_id, e gera novos
+        tokens. Para usuário comum o session_id é rotacionado a cada refresh,
+        invalidando o refresh token anterior (mitiga reuso de token roubado).
+        Admin mantém o session_id — sessão compartilhada entre dispositivos,
+        espelhando a lógica do login.
+
+        A persistência do novo session_id (commit) é responsabilidade do router
+        chamador, que detém a fronteira transacional.
 
         Args:
             refresh_token: Refresh token JWT válido com claim 'sid'.
@@ -220,7 +226,17 @@ class AuthService:
         if usuario.session_id is None or usuario.session_id != sid:
             raise CredenciaisInvalidasError()
 
-        token_data: dict = {"sub": str(usuario.id), "sid": sid}
+        # Rotação de sessão: usuário comum recebe um novo sid a cada refresh,
+        # invalidando o refresh token anterior. Admin mantém o sid para preservar
+        # a sessão compartilhada entre dispositivos (mesma regra do login).
+        if usuario.is_admin:
+            novo_sid = sid
+        else:
+            novo_sid = str(uuid.uuid4())
+            usuario.session_id = novo_sid
+            await self.db.flush()
+
+        token_data: dict = {"sub": str(usuario.id), "sid": novo_sid}
         if usuario.guarnicao_id is not None:
             token_data["guarnicao_id"] = usuario.guarnicao_id
 
