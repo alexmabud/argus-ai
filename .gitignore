@@ -125,6 +125,7 @@ tmp/
 !frontend/images/*.png
 !frontend/images/*.jpg
 !frontend/images/*.webp
+!frontend/vendor/images/*.png
 
 # ══════════════════════════════════
 # ALEMBIC
