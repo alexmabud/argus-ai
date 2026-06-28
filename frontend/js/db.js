@@ -6,8 +6,9 @@
  * Dados sensíveis são criptografados com AES-GCM via Web Crypto API.
  */
 
-// Importar Dexie via CDN (global script)
-const DEXIE_CDN = "https://cdn.jsdelivr.net/npm/dexie@4/dist/dexie.min.js";
+// Dexie self-hosted (same-origin) — carregado sob demanda; precacheado pelo SW
+// para funcionar offline (ver frontend/vendor/ e sw.js).
+const DEXIE_CDN = "/vendor/dexie.min.js";
 
 // Máximo de tentativas de sincronização antes de "estacionar" um item failed.
 // Itens failed abaixo deste limite são reprocessados automaticamente; acima,

@@ -12,13 +12,14 @@
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="stylesheet" href="/css/app.css?v=12">
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.44.2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+  <!-- Libs self-hosted (offline-first + sem dependência de CDN externa) — ver frontend/vendor/ -->
+  <script src="/vendor/apexcharts.min.js"></script>
+  <script src="/vendor/qrcode.min.js"></script>
+  <script defer src="/vendor/alpine.min.js"></script>
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="/vendor/leaflet.css" />
+  <link rel="stylesheet" href="/vendor/MarkerCluster.css" />
+  <link rel="stylesheet" href="/vendor/MarkerCluster.Default.css" />
 </head>
 <body class="dark" x-data="app()" x-init="init()" :class="{ 'login-active': !authenticated }">
 
@@ -151,7 +152,7 @@
   <script src="/js/utils/cores.js?v=1"></script>
   <script src="/js/api.js?v=6"></script>
   <script src="/js/auth.js?v=5"></script>
-  <script src="/js/db.js?v=7"></script>
+  <script src="/js/db.js?v=8"></script>
   <script src="/js/sync.js?v=4"></script>
   <script src="/js/components/gps.js?v=5"></script>
   <script src="/js/components/camera.js?v=3"></script>
@@ -173,9 +174,9 @@
   <script src="/js/pages/perfil.js?v=5"></script>
   <script src="/js/app.js?v=12"></script>
   <script src="/js/components/watermark.js?v=3"></script>
-  <!-- Leaflet JS + plugins -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <!-- Leaflet JS + plugins (self-hosted) -->
+  <script src="/vendor/leaflet.js"></script>
+  <script src="/vendor/leaflet.markercluster.js"></script>
+  <script src="/vendor/leaflet-heat.js"></script>
 </body>
 </html>
