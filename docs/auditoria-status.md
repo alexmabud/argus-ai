@@ -44,7 +44,27 @@ Decisões: D-G2-1 fail-open + log error · D-G2-2 CPF global · D-G2-3 manter "G
 | 9 | tasks face/pdf engoliam exceção → sem retry arq | `7fe73b7` |
 | 10 | XSS em perfil (`iniciais`/`matrícula` sem escape) | `c22380a` |
 
-**Pendente:** 2B (#3+#4 cascata de isolamento em fotos/storage; #5 rotação de sid; #1 fail-open log; #7 confirmar CPF global) · 2C (#11 guard rota admin; #12 proxy geocoding; #13 sync_from_prod; #14 anonimizar). Verificação: testes-alvo verdes por achado; suíte completa pendente ao fim do grupo.
+**Sub-lote 2B ✅**
+
+| # | Achado | Resolução |
+|---|--------|-----------|
+| 1 | `login_guard` fail-open silencioso quando Redis cai (D-G2-1) | Mantém fail-open (lockout por conta no DB é a defesa primária) + `logger.error` em `ip_bloqueado` quando o bloqueio por IP é desativado |
+| 4 | Mídia de abordagem no `/storage` usava tenant estrito, inconsistente com consultas (403 indevido sem isolamento) | `filtros_abordagem` (fonte única equipe>BPM>global) em `permissions.py` + `assert_pode_ver_foto_abordagem`; `_filtros_consulta` passa a delegar |
+| 5 | Refresh não rotacionava `sid` → refresh token roubado seguia válido | Rotação de `sid` no refresh p/ usuário comum (admin mantém — sessão multi-dispositivo) + `commit` no router `/refresh` |
+| 7 | CPF buscado global (D-G2-2) | Já consistente — **no-op** (`pessoa_service.buscar` passa `guarnicao_id=None`) |
+| 8 | Auto-criação da guarnição "Geral" (D-G2-3) | Mantida — trade-off de UX aceito, **no-op** |
+
+> Nota: o fix do #4 mudou o contrato de visibilidade da mídia de abordagem no
+> storage (agora segue `isolamento_abordagens`, global por padrão, igual a
+> consultas/analytics). O teste `test_storage_proxy_bloqueia_midia_de_abordagem_de_outra_equipe`
+> codificava o comportamento estrito antigo e foi substituído por dois casos
+> (isolamento ON → 403; OFF → global/200).
+
+**Verificação:** `ruff` limpo; testes-alvo verdes por achado (login_guard 1/1;
+auth/sessão 41/41; permissions_abordagem 7/7; storage_proxy 15/15;
+consulta/abordagens/fotos/analytics 44/44). Suíte completa confirmada ao fim do sub-lote.
+
+**Pendente:** 2C (#11 guard rota admin; #12 proxy geocoding; #13 sync_from_prod; #14 anonimizar).
 ## Grupo 3 — Important: Frontend/offline/PWA ⏳ PENDENTE
 ## Grupo 4 — Important: Migrations/banco (Alembic) ⏳ PENDENTE
 ## Grupo 5 — Important: Deploy/restore/scripts ⏳ PENDENTE
