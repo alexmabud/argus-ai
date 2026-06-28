@@ -50,12 +50,14 @@ def upgrade() -> None:
         ["desativado_por_id"], ["id"],
     )
 
-    # 2. Inserir BPMs a partir dos valores únicos de guarnicoes.unidade
+    # 2. Inserir BPMs a partir dos valores únicos de guarnicoes.unidade.
+    # Inclui guarnições inativas (sem o filtro ativo=true): elas também recebem
+    # bpm_id mais abaixo e o SET NOT NULL final vale para TODAS as linhas.
     op.execute("""
         INSERT INTO bpm (nome, ativo, criado_em, atualizado_em)
         SELECT DISTINCT unidade, true, now(), now()
         FROM guarnicoes
-        WHERE ativo = true AND unidade IS NOT NULL AND unidade != ''
+        WHERE unidade IS NOT NULL AND unidade != ''
     """)
 
     # 3. Adicionar bpm_id como nullable (para preencher antes de NOT NULL)
@@ -78,6 +80,21 @@ def upgrade() -> None:
 
     # 6. Index em bpm_id
     op.create_index("ix_guarnicoes_bpm_id", "guarnicoes", ["bpm_id"])
+
+    # 6b. Fallback: guarnições com unidade NULL/'' não casaram com nenhum BPM e
+    # ficariam com bpm_id NULL, quebrando o SET NOT NULL abaixo. Garante um BPM
+    # "Sem Unidade" e atribui as restantes.
+    op.execute("""
+        INSERT INTO bpm (nome, ativo, criado_em, atualizado_em)
+        SELECT 'Sem Unidade', true, now(), now()
+        WHERE EXISTS (SELECT 1 FROM guarnicoes WHERE bpm_id IS NULL)
+          AND NOT EXISTS (SELECT 1 FROM bpm WHERE nome = 'Sem Unidade')
+    """)
+    op.execute("""
+        UPDATE guarnicoes
+        SET bpm_id = (SELECT id FROM bpm WHERE nome = 'Sem Unidade')
+        WHERE bpm_id IS NULL
+    """)
 
     # 7. Tornar bpm_id NOT NULL
     op.alter_column("guarnicoes", "bpm_id", nullable=False)
