@@ -78,7 +78,23 @@ anonimizar `--dry-run` OK. Suíte completa confirmada ao fim do grupo.
 
 > Decisão #13 (usuário): opt-in via flag — seguro por padrão, chave de prod só sob demanda.
 
-## Grupo 3 — Important: Frontend/offline/PWA ⏳ PENDENTE
+## Grupo 3 — Important: Frontend/offline/PWA ✅ CONCLUÍDO
+
+Fonte: seção "Frontend, offline-first e PWA" do `code-review-consolidado.md` (5 achados).
+Frontend sem harness de teste JS → verificação por `node --check` + smoke HTTP + revisão
+(mesmo padrão do Grupo 1); confirmação visual final via `make dev` recomendada.
+
+| # | Achado | Resolução | Commit |
+|---|--------|-----------|--------|
+| G3-1 | Libs de CDN sem SRI + SW ignora cross-origin → 1º uso offline quebra | Self-host (vendoring) de Alpine/ApexCharts/QRCode/Dexie/Leaflet+plugins em `frontend/vendor/` (same-origin) + precache no SW; inclui imagens do Leaflet (exceção no `.gitignore`) | `229e30f` `998cc57` |
+| G3-2 | `syncQueue.dados` (PII de campo) em claro no IndexedDB | Cifra o payload (AES-GCM) no enqueue, decripta em `getPendingSync`, tolerante a migração | `dde9a40` |
+| G3-3 | Itens `failed` nunca reprocessados → perda silenciosa | `getPendingSync`/`countPending` reprocessam `failed` com `tentativas < MAX_SYNC_ATTEMPTS` (5) | `a566349` |
+| G3-4 | Logout agressivo em falha de rede no boot (apaga fila offline) | `fetchMe` só desloga em 401; rede/5xx preservam a sessão | `de82484` |
+| G3-5 | Busca decripta todo o cache de pessoas a cada tecla | Memoiza o cache decriptado; invalida em `cachePessoas`/`clearLocalDB` | `ace5665` |
+
+> Decisão G3-1 (usuário): self-host/vendoring (resolve offline-first + supply-chain).
+> Tiles do mapa (OSM) seguem externos por natureza (não vendoráveis).
+
 ## Grupo 4 — Important: Migrations/banco (Alembic) ⏳ PENDENTE
 ## Grupo 5 — Important: Deploy/restore/scripts ⏳ PENDENTE
 ## Grupo 6 — Important: Docker/infra/supply-chain ⏳ PENDENTE
