@@ -13,7 +13,7 @@ dependencies = [
     # aninhado, e prometheus-fastapi-instrumentator (<8.0) quebra ao ler
     # route.path → 500 em toda rota instrumentada. 0.136.1 é o último bom.
     "fastapi>=0.110.0,<0.137",
-    "uvicorn[standard]>=0.27.0",
+    "uvicorn[standard]>=0.49.0",
     "python-multipart>=0.0.27",
     "slowapi>=0.1.10",
     "prometheus-fastapi-instrumentator>=7.1.0,<8.0",
