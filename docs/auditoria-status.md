@@ -189,5 +189,25 @@ suíte completa confirmada ao fim. Mudanças backward-compatible (params com def
 > (conexão pendurada). Resolvido com `make test-db`; os fixes não tinham relação.
 
 
-## Grupo 9 — Important: Testes/cobertura ⏳ PENDENTE
+## Grupo 9 — Important: Testes/cobertura ✅ CONCLUÍDO
+
+Verificação: ruff limpo; testes-alvo **39 passed, 3 skipped** (argus_app skip sem
+APP_DATABASE_URL); suíte completa confirmada ao fim. ci.yml validado (YAML).
+
+| # | Achado | Resolução | Commit |
+|---|--------|-----------|--------|
+| G9-1 | Suite `argus_app` pulada sem `APP_DATABASE_URL`; teste DML só fazia SELECT | Teste DML fortalecido p/ INSERT/UPDATE/DELETE reais (net-zero). Un-skip no CI (provisionar `argus_app` + APP_DATABASE_URL com default privileges) fica como **follow-up** | `b83b3e3` |
+| G9-2 | Sync batch sem happy path real | `/sync/batch` cria pessoa de fato + verifica no banco | `b83b3e3` |
+| G9-3 | Busca facial/OCR só testava 401 | Similaridade pgvector exercitada com embeddings 512-dim sintéticos (sem InsightFace) | `b83b3e3` |
+| G9-4 | Asserts frouxos `in (400,401)` em auth | `== 401` (todos são `CredenciaisInvalidasError`) | `5f5ed90` |
+| G9-5 | Sem testes p/ crypto/login_guard/auth_cookie | Novos testes: crypto (round-trip+hash), auth_cookie (flags), login_guard (bloqueio+reset) | `fd9161a` |
+| G9-6 | Fixture `setup_db` autouse acopla unit ao banco | **Known-debt documentado**: desacoplar exige opt-in em ~94 arquivos de teste (autouse session-scoped); risco alto vs valor — adiado | — |
+| G9-7 | Teste tautológico de LIMIT | Inspeciona a statement compilada, exige `LIMIT 100` (cap) | `5f5ed90` |
+| G9-8 | Sem smoke de migrations no CI | Passo no CI: `alembic upgrade head` em banco limpo, exige head único | `cf00252` |
+
+> Follow-ups (gaps conscientes): un-skip do `argus_app` no CI (G9-1); teste de
+> upload de PDF do `ocorrencia_service` (G9-5, pesado — PDF + arq); refactor do
+> `conftest.setup_db` (G9-6). Nenhum bloqueia; documentados para não se perderem.
+
+
 ## Grupo 10 — Minor/Nit ⏳ PENDENTE
