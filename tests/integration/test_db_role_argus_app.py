@@ -59,14 +59,37 @@ async def test_argus_app_nao_pode_dropar_tabela() -> None:
 
 @pytest.mark.asyncio
 async def test_argus_app_pode_ler_e_escrever() -> None:
-    """argus_app PODE fazer SELECT/INSERT/DELETE numa tabela existente."""
+    """argus_app PODE de fato fazer SELECT/INSERT/UPDATE/DELETE.
+
+    Antes este teste só fazia SELECT count(*) — não provava que o DML real
+    (INSERT/UPDATE/DELETE) é permitido. Agora exercita o ciclo completo em uma
+    tabela existente (bpm), net-zero (insere e apaga a própria linha de teste).
+    """
     engine = create_async_engine(
         APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
     )
+    nome = "ARGUS_APP_DML_TEST"
     try:
         async with engine.begin() as conn:
-            # SELECT simples deve funcionar
-            res = await conn.execute(text("SELECT count(*) FROM guarnicoes"))
+            # SELECT
+            res = await conn.execute(text("SELECT count(*) FROM bpm"))
             assert res.scalar() is not None
+
+            # INSERT
+            await conn.execute(
+                text(
+                    "INSERT INTO bpm (nome, ativo, criado_em, atualizado_em) "
+                    "VALUES (:n, true, now(), now())"
+                ),
+                {"n": nome},
+            )
+            # UPDATE
+            upd = await conn.execute(
+                text("UPDATE bpm SET ativo = false WHERE nome = :n"), {"n": nome}
+            )
+            assert upd.rowcount == 1
+            # DELETE (limpa a linha de teste — net-zero)
+            dele = await conn.execute(text("DELETE FROM bpm WHERE nome = :n"), {"n": nome})
+            assert dele.rowcount == 1
     finally:
         await engine.dispose()
