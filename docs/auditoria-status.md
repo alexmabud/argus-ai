@@ -159,7 +159,21 @@ CI no deploy (uma falha aborta o deploy; prod segue na imagem antiga).
 | G6-9 | `supercronic` baixado sem checksum | Verifica sha256 (`sha256sum -c`) com ARG de versão/hash | `9717bef` |
 
 
-## Grupo 7 — Important: Observabilidade ⏳ PENDENTE
+## Grupo 7 — Important: Observabilidade ✅ CONCLUÍDO
+
+Verificação: YAML do `rules.yml` (18 alertas, 5 grupos) e do `deploy-monitoring.yml`
+OK; JSON do dashboard OK; `daily_report.py` ruff limpo.
+
+| # | Achado | Resolução | Commit |
+|---|--------|-----------|--------|
+| G7-1 | Alertas com `noDataState/execErrState: OK` → exporter morto mascara falha | Os 5 críticos de disponibilidade/backup (API/PostgreSQL/Redis/MinIO Offline, Backup Atrasado) → `Alerting`. CPU/Disco críticos ficam cobertos pelo meta `up==0` | `efdc137` |
+| G7-2 | Faltam alertas `up==0`, watchdog, backup-nuvens, disco `/mnt/banco` | + `alert-target-down` (up==0, noData=OK pois vazio=saudável), `alert-backup-clouds-falhou`, `alert-disco-banco`. Watchdog Telegram dead-man = follow-up (precisa receptor externo) | `efdc137` |
+| G7-3 | Reporter: erros do Prometheus viram `None` silencioso | `raise_for_status()` + log em stderr (erro ≠ sem-dados) | `6ac14dc` |
+| G7-4 | Painel "Latência por endpoint" usa `highr` (sem label de rota) | → `http_request_duration_seconds_bucket` por `handler`; p95 global segue no highr | `6ac14dc` |
+| G7-5 | `deploy-monitoring.yml` apagava TSDB/Grafana a cada run | Remove o `rm -rf`; chown/chmod corrigem perms sem perder dados | `25715c1` |
+| G7-6 | `blackbox-exporter` (já no compose) omitido do deploy/Makefile | Adicionado ao `deploy-monitoring.yml` e aos targets `monitoring`/`-local`/`-down` | `25715c1` |
+
+
 ## Grupo 8 — Important: Performance ⏳ PENDENTE
 ## Grupo 9 — Important: Testes/cobertura ⏳ PENDENTE
 ## Grupo 10 — Minor/Nit ⏳ PENDENTE
