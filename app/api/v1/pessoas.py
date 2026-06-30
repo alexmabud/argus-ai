@@ -478,8 +478,9 @@ async def listar_abordagens_pessoa(
     pessoa_service = PessoaService(db)
     abordagem_service = AbordagemService(db)
 
-    all_abordagens = await abordagem_service.listar_por_pessoa(pessoa_id, user.guarnicao_id)
-    abordagens = all_abordagens[skip : skip + limit]
+    abordagens = await abordagem_service.listar_por_pessoa(
+        pessoa_id, user.guarnicao_id, skip=skip, limit=limit
+    )
 
     result = []
     for ab in abordagens:
