@@ -33,11 +33,13 @@ class FotoRepository(BaseRepository[Foto]):
         """
         super().__init__(Foto, db)
 
-    async def get_by_pessoa(self, pessoa_id: int) -> Sequence[Foto]:
-        """Lista fotos associadas a uma pessoa.
+    async def get_by_pessoa(self, pessoa_id: int, skip: int = 0, limit: int = 50) -> Sequence[Foto]:
+        """Lista fotos associadas a uma pessoa (paginado no banco).
 
         Args:
             pessoa_id: ID da pessoa.
+            skip: Registros a pular (OFFSET).
+            limit: Máximo de resultados (LIMIT) — evita carregar tudo em memória.
 
         Returns:
             Sequência de Fotos da pessoa, ordenadas por data/hora decrescente.
@@ -46,6 +48,8 @@ class FotoRepository(BaseRepository[Foto]):
             select(Foto)
             .where(Foto.pessoa_id == pessoa_id, Foto.ativo == True)  # noqa: E712
             .order_by(Foto.data_hora.desc())
+            .offset(skip)
+            .limit(limit)
         )
         result = await self.db.execute(query)
         return result.scalars().all()
@@ -68,11 +72,15 @@ class FotoRepository(BaseRepository[Foto]):
         result = await self.db.execute(query)
         return int(result.scalar_one())
 
-    async def get_by_abordagem(self, abordagem_id: int) -> Sequence[Foto]:
-        """Lista fotos associadas a uma abordagem.
+    async def get_by_abordagem(
+        self, abordagem_id: int, skip: int = 0, limit: int = 50
+    ) -> Sequence[Foto]:
+        """Lista fotos associadas a uma abordagem (paginado no banco).
 
         Args:
             abordagem_id: ID da abordagem.
+            skip: Registros a pular (OFFSET).
+            limit: Máximo de resultados (LIMIT) — evita carregar tudo em memória.
 
         Returns:
             Sequência de Fotos da abordagem, ordenadas por data/hora decrescente.
@@ -81,6 +89,8 @@ class FotoRepository(BaseRepository[Foto]):
             select(Foto)
             .where(Foto.abordagem_id == abordagem_id, Foto.ativo == True)  # noqa: E712
             .order_by(Foto.data_hora.desc())
+            .offset(skip)
+            .limit(limit)
         )
         result = await self.db.execute(query)
         return result.scalars().all()

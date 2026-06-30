@@ -196,31 +196,39 @@ class FotoService:
 
         return foto
 
-    async def listar_por_pessoa(self, pessoa_id: int) -> list[Foto]:
-        """Lista todas as fotos associadas a uma pessoa.
+    async def listar_por_pessoa(
+        self, pessoa_id: int, skip: int = 0, limit: int = 50
+    ) -> list[Foto]:
+        """Lista as fotos associadas a uma pessoa (paginado no banco).
 
         Retorna fotos ordenadas por data/hora decrescente (mais recentes primeiro).
 
         Args:
             pessoa_id: ID da pessoa para buscar fotos.
+            skip: Registros a pular (OFFSET).
+            limit: Máximo de resultados (LIMIT).
 
         Returns:
             Lista de Fotos da pessoa ordenadas por data_hora decrescente.
         """
-        return list(await self.repo.get_by_pessoa(pessoa_id))
+        return list(await self.repo.get_by_pessoa(pessoa_id, skip=skip, limit=limit))
 
-    async def listar_por_abordagem(self, abordagem_id: int) -> list[Foto]:
-        """Lista todas as fotos associadas a uma abordagem.
+    async def listar_por_abordagem(
+        self, abordagem_id: int, skip: int = 0, limit: int = 50
+    ) -> list[Foto]:
+        """Lista as fotos associadas a uma abordagem (paginado no banco).
 
         Retorna fotos ordenadas por data/hora decrescente (mais recentes primeiro).
 
         Args:
             abordagem_id: ID da abordagem para buscar fotos.
+            skip: Registros a pular (OFFSET).
+            limit: Máximo de resultados (LIMIT).
 
         Returns:
             Lista de Fotos da abordagem ordenadas por data_hora decrescente.
         """
-        return list(await self.repo.get_by_abordagem(abordagem_id))
+        return list(await self.repo.get_by_abordagem(abordagem_id, skip=skip, limit=limit))
 
     async def buscar_por_rosto(
         self,
