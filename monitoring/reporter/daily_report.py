@@ -34,12 +34,16 @@ def query(promql: str) -> float | None:
             params={"query": promql},
             timeout=10,
         )
+        resp.raise_for_status()
         data = resp.json()
         results = data.get("data", {}).get("result", [])
         if results:
             return float(results[0]["value"][1])
         return None
-    except Exception:
+    except Exception as exc:
+        # Erro de conexão/HTTP/parse NÃO é "sem dados": registra em stderr para
+        # não mascarar um Prometheus inacessível como métrica vazia no relatório.
+        print(f"[reporter] erro ao consultar Prometheus ({promql!r}): {exc}", file=sys.stderr)
         return None
 
 
