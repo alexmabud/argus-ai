@@ -174,6 +174,20 @@ OK; JSON do dashboard OK; `daily_report.py` ruff limpo.
 | G7-6 | `blackbox-exporter` (já no compose) omitido do deploy/Makefile | Adicionado ao `deploy-monitoring.yml` e aos targets `monitoring`/`-local`/`-down` | `25715c1` |
 
 
-## Grupo 8 — Important: Performance ⏳ PENDENTE
+## Grupo 8 — Important: Performance ✅ CONCLUÍDO
+
+Verificação: ruff limpo; testes-alvo (abordagem/foto/consulta/fotos-api) **42 passed**;
+suíte completa confirmada ao fim. Mudanças backward-compatible (params com default).
+
+| # | Achado | Resolução | Commit |
+|---|--------|-----------|--------|
+| G8-1 | Paginação em memória após carregar todas as linhas (fotos, abordagens por pessoa) | `OFFSET/LIMIT` no SQL: `get_by_pessoa`/`get_by_abordagem` (foto) e `list_by_pessoa` (abordagem, selectinload) recebem skip/limit; routers param de fatiar `[skip:skip+limit]` em memória | `b9f51fd` `571ebf4` |
+| G8-2 | Query de localidade sem `LIMIT` (carregava milhares) | `search_by_localidade_ids_com_endereco` recebe skip/limit + `OFFSET/LIMIT`; alinha à busca por bairro/cidade | `3552a6f` |
+| G8-3 | Race em `client_id` sem handler de `IntegrityError` | `criar_abordagem` captura `IntegrityError` no flush (índice único parcial), faz rollback e retorna a abordagem vencedora — idempotente sob concorrência em vez de 500 | `571ebf4` |
+
+> Nota infra: durante a verificação o container `argus-db` caiu e travou os testes
+> (conexão pendurada). Resolvido com `make test-db`; os fixes não tinham relação.
+
+
 ## Grupo 9 — Important: Testes/cobertura ⏳ PENDENTE
 ## Grupo 10 — Minor/Nit ⏳ PENDENTE
