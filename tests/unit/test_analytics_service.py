@@ -82,7 +82,7 @@ class TestPessoasRecorrentes:
     """Testes para AnalyticsService.pessoas_recorrentes()."""
 
     async def test_pessoas_limita_a_100(self):
-        """Deve limitar resultados a 100 mesmo se solicitado mais."""
+        """Mesmo pedindo 200, o LIMIT efetivo na query é capado em 100."""
         db = AsyncMock()
         mock_result = MagicMock()
         mock_result.all.return_value = []
@@ -91,8 +91,12 @@ class TestPessoasRecorrentes:
 
         await service.pessoas_recorrentes(guarnicao_id=1, limit=200)
 
-        # Verificar que o SQL foi executado (sem erro)
         db.execute.assert_called_once()
+        # Inspeciona a statement realmente executada: o LIMIT deve ser 100, não 200.
+        stmt = db.execute.call_args.args[0]
+        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "LIMIT 100" in compiled
+        assert "LIMIT 200" not in compiled
 
     async def test_pessoas_retorna_formato_correto(self):
         """Deve retornar lista com id, nome, apelido, total, ultima, cpf e foto."""

@@ -55,7 +55,7 @@ class TestLogin:
             "/api/v1/auth/login",
             json={"matricula": "TEST001", "senha": "errada"},
         )
-        assert response.status_code in (400, 401)
+        assert response.status_code == 401
 
     async def test_login_matricula_inexistente_retorna_erro(self, client: AsyncClient):
         """Testa login com matrícula inexistente retorna erro.
@@ -67,7 +67,7 @@ class TestLogin:
             "/api/v1/auth/login",
             json={"matricula": "NAOEXISTE", "senha": "qualquer"},
         )
-        assert response.status_code in (400, 401)
+        assert response.status_code == 401
 
     async def test_login_bloqueia_apos_5_falhas(self, client: AsyncClient, usuario: Usuario):
         """Apos 5 senhas erradas, o login com senha CORRETA deve retornar 423.
@@ -166,7 +166,7 @@ class TestLogout:
             json={"refresh_token": refresh_token},
             headers=headers,
         )
-        assert resp.status_code in (400, 401)
+        assert resp.status_code == 401
 
 
 class TestRefresh:
@@ -182,7 +182,7 @@ class TestRefresh:
             "/api/v1/auth/refresh",
             json={"refresh_token": "token-invalido"},
         )
-        assert response.status_code in (400, 401)
+        assert response.status_code == 401
 
     async def test_refresh_rotaciona_sid_e_invalida_token_antigo(
         self, client: AsyncClient, usuario: Usuario, db_session: AsyncSession
@@ -219,7 +219,7 @@ class TestRefresh:
             "/api/v1/auth/refresh",
             json={"refresh_token": token_antigo},
         )
-        assert r2.status_code in (400, 401)
+        assert r2.status_code == 401
 
     async def test_refresh_mantem_sid_para_admin(
         self, client: AsyncClient, guarnicao, db_session: AsyncSession
