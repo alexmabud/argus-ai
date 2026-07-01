@@ -113,19 +113,24 @@ class AuthService:
             raise CredenciaisInvalidasError()
 
         # Verificar TOTP ANTES de zerar fail counter — evita bypass de lockout:
-        # senha correta + TOTP errado não deve resetar tentativas_falhas,
-        # pois um atacante com a senha poderia fazer brute-force do TOTP sem bloqueio.
+        # senha correta + TOTP errado não deve resetar tentativas_falhas.
         if usuario.is_admin and usuario.totp_secret:
-            if not totp_code:
-                raise CredenciaisInvalidasError()
-            try:
-                secret_plain = decrypt(usuario.totp_secret)
-                totp = pyotp.TOTP(secret_plain)
-                if not totp.verify(totp_code, valid_window=1):
-                    raise CredenciaisInvalidasError()
-            except CredenciaisInvalidasError:
-                raise
-            except Exception:
+            totp_ok = False
+            if totp_code:
+                try:
+                    secret_plain = decrypt(usuario.totp_secret)
+                    totp_ok = pyotp.TOTP(secret_plain).verify(totp_code, valid_window=1)
+                except Exception:
+                    totp_ok = False
+            if not totp_ok:
+                # TOTP errado CONTA para o lockout — senão um atacante que já tem a
+                # senha faria brute-force do TOTP de 6 dígitos sem nunca bloquear.
+                usuario.tentativas_falhas += 1
+                if usuario.tentativas_falhas >= LIMIAR_BLOQUEIO:
+                    usuario.bloqueado_ate = agora + DURACAO_BLOQUEIO
+                    usuario.tentativas_falhas = 0
+                await self.db.flush()
+                await self.db.commit()
                 raise CredenciaisInvalidasError()
 
         # Sucesso completo (senha + TOTP): zera contador e libera bloqueio.

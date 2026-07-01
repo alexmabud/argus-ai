@@ -74,15 +74,22 @@ class PessoaRepository(BaseRepository[Pessoa]):
         unaccent_nome = func.unaccent(func.lower(Pessoa.nome))
         unaccent_apelido = func.unaccent(func.lower(func.coalesce(Pessoa.apelido, "")))
 
+        # Escapa %, _ e \ dos tokens: senão um % ou _ digitado pelo usuário viraria
+        # curinga do LIKE (ex.: buscar "100%" casaria qualquer nome). Os '%'
+        # estruturais abaixo continuam sendo curingas; o ESCAPE '\' abaixo trata
+        # os literais escapados.
+        def _esc(t: str) -> str:
+            return t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
         # Monta: '%' || unaccent(lower(tok1)) || '%' || unaccent(lower(tok2)) || '%'
-        like_pattern = "%" + func.unaccent(func.lower(tokens[0])) + "%"
+        like_pattern = "%" + func.unaccent(func.lower(_esc(tokens[0]))) + "%"
         for token in tokens[1:]:
-            like_pattern = like_pattern + func.unaccent(func.lower(token)) + "%"
+            like_pattern = like_pattern + func.unaccent(func.lower(_esc(token))) + "%"
 
         unaccent_full_query = func.unaccent(func.lower(nome_clean))
 
-        match_nome = unaccent_nome.like(like_pattern)
-        match_apelido = unaccent_apelido.like(like_pattern)
+        match_nome = unaccent_nome.like(like_pattern, escape="\\")
+        match_apelido = unaccent_apelido.like(like_pattern, escape="\\")
         match_fuzzy = func.similarity(unaccent_nome, unaccent_full_query) > threshold
 
         query = select(Pessoa).where(

@@ -37,7 +37,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
+        # X-XSS-Protection é obsoleto: o auditor de XSS legado foi removido dos
+        # browsers e "1; mode=block" chegou a introduzir vulnerabilidades. O valor
+        # recomendado hoje é "0" (desliga o filtro); a proteção real vem do CSP.
+        response.headers["X-XSS-Protection"] = "0"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(self), microphone=(self)"
         # Defense-in-depth: HSTS no app-layer (Caddy já seta em prod).
