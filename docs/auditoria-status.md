@@ -210,13 +210,12 @@ APP_DATABASE_URL); suíte completa confirmada ao fim. ci.yml validado (YAML).
 > `conftest.setup_db` (G9-6). Nenhum bloqueia; documentados para não se perderem.
 
 
-## Grupo 10 — Minor/Nit 🔄 CORRIGIDO (verificação com banco pendente)
+## Grupo 10 — Minor/Nit ✅ CONCLUÍDO
 
 Abordagem: priorizados os nits de **segurança** + wins fáceis de limpeza; o restante
-(cosmético/arriscado) documentado como aceito/adiado. ⚠️ **Verificação com banco
-PENDENTE**: o Docker daemon caiu no ambiente durante o fechamento — falta rodar o
-teste `test_totp_lockout` e a suíte completa quando o Docker voltar. Código
-ruff-limpo e assinaturas/imports validados estaticamente.
+(cosmético/arriscado) documentado como aceito/adiado. Verificação: ruff limpo;
+testes-alvo 52/52 (inclui `test_totp_lockout`); **suíte completa 655 passed, 5
+skipped, 0 failed**.
 
 ### Corrigidos
 
