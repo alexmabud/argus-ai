@@ -1051,7 +1051,11 @@ function abordagemForm() {
           }
           this.novasPessoas = [];
         } catch (err) {
-          this.erro = err.message || "Erro ao cadastrar novo abordado.";
+          if (err.status === 409) {
+            this.erro = `${err.message}. Feche o formulário de cadastro e busque pelo nome ou CPF para adicionar o abordado já existente.`;
+          } else {
+            this.erro = err.message || "Erro ao cadastrar novo abordado.";
+          }
           this.submitting = false;
           return;
         }

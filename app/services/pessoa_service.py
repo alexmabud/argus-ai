@@ -98,7 +98,10 @@ class PessoaService:
             guarnicao_id=guarnicao_id,
         )
 
-        await self.repo.create(pessoa)
+        try:
+            await self.repo.create(pessoa)
+        except IntegrityError:
+            raise ConflitoDadosError("Pessoa com este CPF já cadastrada")
 
         await self.audit.log(
             usuario_id=user_id,
