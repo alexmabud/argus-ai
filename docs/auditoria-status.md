@@ -49,16 +49,16 @@ Decisões: D-G2-1 fail-open + log error · D-G2-2 CPF global · D-G2-3 manter "G
 | # | Achado | Resolução |
 |---|--------|-----------|
 | 1 | `login_guard` fail-open silencioso quando Redis cai (D-G2-1) | Mantém fail-open (lockout por conta no DB é a defesa primária) + `logger.error` em `ip_bloqueado` quando o bloqueio por IP é desativado |
-| 4 | Mídia de abordagem no `/storage` usava tenant estrito, inconsistente com consultas (403 indevido sem isolamento) | `filtros_abordagem` (fonte única equipe>BPM>global) em `permissions.py` + `assert_pode_ver_foto_abordagem`; `_filtros_consulta` passa a delegar |
+| 4 | Mídia de abordagem no `/storage` usava tenant estrito → 403 indevido | **Corrigida para GLOBAL** (`67420a6`, após esclarecimento do dono do produto): foto de abordagem é servida a qualquer usuário autenticado — a **ficha da pessoa** mostra fotos e GPS das abordagens de todas as equipes. O `isolamento_abordagens` atua **só na listagem** de relatórios/consultas (`filtros_abordagem`/`_filtros_consulta`), nunca na mídia. PDF de ocorrência (RAP) segue tenant-scoped |
 | 5 | Refresh não rotacionava `sid` → refresh token roubado seguia válido | Rotação de `sid` no refresh p/ usuário comum (admin mantém — sessão multi-dispositivo) + `commit` no router `/refresh` |
 | 7 | CPF buscado global (D-G2-2) | Já consistente — **no-op** (`pessoa_service.buscar` passa `guarnicao_id=None`) |
 | 8 | Auto-criação da guarnição "Geral" (D-G2-3) | Mantida — trade-off de UX aceito, **no-op** |
 
-> Nota: o fix do #4 mudou o contrato de visibilidade da mídia de abordagem no
-> storage (agora segue `isolamento_abordagens`, global por padrão, igual a
-> consultas/analytics). O teste `test_storage_proxy_bloqueia_midia_de_abordagem_de_outra_equipe`
-> codificava o comportamento estrito antigo e foi substituído por dois casos
-> (isolamento ON → 403; OFF → global/200).
+> Nota: a mídia de abordagem no `/storage` é **global** — a ficha da pessoa expõe
+> fotos/GPS de todas as equipes (regra de negócio). O `isolamento_abordagens` só
+> muda a **listagem de relatórios** (não revela quem fez). O teste
+> `test_storage_proxy_midia_de_abordagem_e_global_mesmo_com_isolamento` valida que a
+> foto de outra equipe é servida mesmo com o isolamento ligado (só o PDF de RAP é tenant).
 
 **Verificação:** `ruff` limpo; testes-alvo verdes por achado (login_guard 1/1;
 auth/sessão 41/41; permissions_abordagem 7/7; storage_proxy 15/15;
