@@ -210,4 +210,35 @@ APP_DATABASE_URL); suíte completa confirmada ao fim. ci.yml validado (YAML).
 > `conftest.setup_db` (G9-6). Nenhum bloqueia; documentados para não se perderem.
 
 
-## Grupo 10 — Minor/Nit ⏳ PENDENTE
+## Grupo 10 — Minor/Nit 🔄 CORRIGIDO (verificação com banco pendente)
+
+Abordagem: priorizados os nits de **segurança** + wins fáceis de limpeza; o restante
+(cosmético/arriscado) documentado como aceito/adiado. ⚠️ **Verificação com banco
+PENDENTE**: o Docker daemon caiu no ambiente durante o fechamento — falta rodar o
+teste `test_totp_lockout` e a suíte completa quando o Docker voltar. Código
+ruff-limpo e assinaturas/imports validados estaticamente.
+
+### Corrigidos
+
+| Tema | Achado | Resolução | Commit |
+|------|--------|-----------|--------|
+| Segurança | TOTP errado não contava lockout | TOTP incorreto (senha certa) incrementa `tentativas_falhas` e bloqueia; + `test_totp_lockout` | `7275f84` |
+| Segurança | Wildcard injection em `pessoa_repo.py:78` | Escapa `% _ \` dos tokens + `ESCAPE` no LIKE | `7275f84` |
+| Segurança | `X-XSS-Protection` obsoleto | `1; mode=block` → `0` (proteção real = CSP) | `7275f84` |
+| Limpeza | Componentes JS mortos (`sync-queue.js`, `offline-indicator.js`) | Removidos (sem caller) + tags no index | `7275f84` |
+| Limpeza | `db.Dockerfile` sem `HEALTHCHECK` | `HEALTHCHECK pg_isready` no nível da imagem | `5d1da7d` |
+| Supply chain | `requests==2.31.0` (CVEs) no reporter | → `2.32.4` | `5d1da7d` |
+| Testes | `factories.py` com import quebrado (`Passagem`) | Remove `PassagemFactory` + import (feature descontinuada) | `5d1da7d` |
+
+### Já resolvidos antes / no-op
+- `/metrics` sem auth → o `Caddyfile` já faz `respond /metrics 403` (externo); Prometheus scrapeia interno.
+- Testes de whitespace em consultas → já adicionados no Grupo 1 (`test_consulta_q_so_whitespace_*`).
+
+### Nits aceitos / adiados (cosméticos ou de risco desproporcional)
+- **Frontend**: CSP mais restritiva (risco de quebrar o app), `viewport` bloqueia zoom, UX 2FA, páginas monolíticas, índices Dexie vs cripto, ausência de harness de testes JS.
+- **Alembic**: revision IDs artificiais, downgrades vazios (known-debt do Grupo 4), docstring `Revises:` divergente.
+- **App**: doc desatualizada em `consultas.py`, pool arq por request, body `dict` não-tipado em `admin.py`.
+- **Docker/infra**: `COPY . .` antes de deps, single-stage dev, roteamento do `Caddyfile`, `postgres-exporter sslmode=disable` (conexão interna — aceito), `.dockerignore` não exclui `frontend/` (o prod precisa do frontend).
+- **Monitoring/scripts/root**: `render-provisioning.sh` token literal, `alert-ssl-expirando`, config morta cAdvisor, `curl | sh`, shebangs, `.secrets.baseline` órfão, README/árvore defasada.
+
+
