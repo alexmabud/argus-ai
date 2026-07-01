@@ -242,14 +242,16 @@ async def _outra_equipe(db_session: AsyncSession, bpm: Bpm) -> Guarnicao:
 
 
 @pytest.mark.asyncio
-async def test_storage_proxy_bloqueia_midia_de_abordagem_de_outra_equipe_com_isolamento(
+async def test_storage_proxy_midia_de_abordagem_e_global_mesmo_com_isolamento(
     client, auth_headers, fake_storage, db_session, usuario, guarnicao, bpm
 ):
-    """Com isolamento de equipe ativo, mídia de abordagem de outra equipe dá 403.
+    """Mídia de abordagem é GLOBAL mesmo com isolamento_abordagens ligado.
 
-    Mídia de abordagem (foto sem pessoa) segue a cascata ``isolamento_abordagens``
-    (equipe > BPM > global), igual a consultas/analytics. Com a equipe do usuário
-    isolada, foto de outra guarnição é bloqueada.
+    Regra de negócio: a ficha da pessoa mostra fotos e GPS das abordagens de
+    TODAS as equipes para qualquer usuário. O isolamento_abordagens atua apenas
+    na LISTAGEM de relatórios/consultas (não revela QUEM fez), nunca na mídia —
+    por isso o /storage serve a foto de outra equipe mesmo com o isolamento da
+    equipe do usuário ligado. O watermark por matrícula preserva a rastreabilidade.
     """
     guarnicao.isolamento_abordagens = True
     await db_session.flush()
@@ -265,27 +267,23 @@ async def test_storage_proxy_bloqueia_midia_de_abordagem_de_outra_equipe_com_iso
     db_session.add(foto)
     await db_session.flush()
 
-    fake_storage.get_object = AsyncMock()
+    body = _FakeStreamingBody([b"\x00"])
+    fake_storage.get_object = AsyncMock(
+        return_value={"Body": body, "ContentType": "image/jpeg", "ETag": '"x"'}
+    )
 
     response = await client.get(
         f"/storage/{settings.S3_BUCKET}/fotos/midia_outra_abordagem.jpg",
         headers=auth_headers,
     )
-    assert response.status_code == 403
-    fake_storage.get_object.assert_not_called()
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
 async def test_storage_proxy_libera_midia_de_abordagem_de_outra_equipe_sem_isolamento(
     client, auth_headers, fake_storage, db_session, usuario, bpm
 ):
-    """Sem isolamento (padrão), mídia de abordagem de outra equipe é global.
-
-    Alinha a visibilidade da mídia à das abordagens em consultas/analytics
-    (achado #4 / 2B): com ``isolamento_abordagens`` desligado, abordagens — e
-    suas mídias — são globais. O watermark rastreável por matrícula preserva a
-    rastreabilidade LGPD.
-    """
+    """Sem isolamento (padrão), mídia de abordagem de outra equipe também é global."""
     outra = await _outra_equipe(db_session, bpm)
     foto = Foto(
         arquivo_url=f"/storage/{settings.S3_BUCKET}/fotos/midia_outra_abordagem.jpg",
