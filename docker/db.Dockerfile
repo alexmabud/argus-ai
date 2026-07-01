@@ -14,3 +14,7 @@ RUN set -eux; \
       postgresql-16-postgis-3 \
       postgresql-16-postgis-3-scripts; \
     rm -rf /var/lib/apt/lists/*
+
+# Healthcheck ao nível da imagem (defense-in-depth; o compose também define o seu).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \
+    CMD pg_isready -U "${POSTGRES_USER:-argus}" -d "${POSTGRES_DB:-argus_db}" || exit 1
