@@ -19,10 +19,17 @@ COPY pyproject.toml requirements.lock ./
 #    as considere já satisfeitas (não rebaixa para a wheel CUDA do PyPI).
 # 2) Demais deps (incl. extra vision) a partir do lock com hashes verificados,
 #    em vez de resolver de pyproject.toml sem hashes.
+# 3) Remover as libs CUDA da NVIDIA e o triton: o requirements.lock as fixa
+#    (foi gerado resolvendo o torch do PyPI), mas a wheel CPU do torch NÃO as
+#    usa. Numa VM sem GPU são ~5 GB de peso morto que inchavam a imagem de
+#    runtime a ponto de estourar o disco de 49 GB da VM no 'exporting to image'.
+#    O uninstall no mesmo RUN deixa a camada final (o venv copiado) enxuta.
 RUN python -m venv /build/venv && \
     /build/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
     /build/venv/bin/pip install --no-cache-dir torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/cpu && \
-    /build/venv/bin/pip install --no-cache-dir --require-hashes -r requirements.lock
+    /build/venv/bin/pip install --no-cache-dir --require-hashes -r requirements.lock && \
+    PKGS="$(/build/venv/bin/pip list --format=freeze | grep -iE '^(nvidia-|triton==)' | cut -d= -f1)" && \
+    if [ -n "$PKGS" ]; then /build/venv/bin/pip uninstall -y $PKGS; fi
 
 # ── Stage 2: Runtime ───────────────────────────────────────────
 FROM python:3.12-slim-bookworm AS runtime
