@@ -85,14 +85,17 @@ anonimizar-dry:
 	$(PYTHON) scripts/anonimizar_dados.py --dry-run
 
 sync-from-prod:
-	bash scripts/sync_from_prod.sh
+	bash scripts/sync_from_prod.sh $(if $(KEY),--with-prod-key,)
 
 # ─── Supply chain ─────────────────────────────────────────────────────────────
 
 # Regera requirements.lock com hashes a partir de pyproject.toml.
-# Roda sempre que adicionar/remover dependencia no [project] dependencies.
+# Inclui o extra [vision] (insightface/easyocr/onnxruntime) para que o lock seja
+# o superset instalado em produção — sem isso o build de prod instalava vision
+# fora do lock (sem hashes). Roda ao adicionar/remover dependência.
 lock:
 	$(VENV_BIN)/pip-compile --generate-hashes --allow-unsafe \
+		--extra vision \
 		--output-file=requirements.lock pyproject.toml
 
 # Audita o lock file contra base de CVEs conhecidos (gera relatorio JSON).
@@ -104,23 +107,30 @@ audit:
 monitoring:
 	@echo "Criando diretórios de dados em /mnt/banco..."
 	sudo mkdir -p /mnt/banco/prometheus /mnt/banco/grafana
-	sudo chmod 777 /mnt/banco/prometheus /mnt/banco/grafana
+	# Ownership pelos UIDs dos containers (prometheus=nobody 65534, grafana=472)
+	# em vez de chmod 777 (world-writable). Cada serviço escreve só no seu dir.
+	sudo chown -R 65534:65534 /mnt/banco/prometheus
+	sudo chown -R 472:472 /mnt/banco/grafana
 	@echo "Subindo stack de monitoramento (Prometheus + Grafana + Exporters)..."
 	docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
 		up -d \
-		prometheus grafana node-exporter postgres-exporter redis-exporter telegram-reporter
+		prometheus grafana node-exporter postgres-exporter redis-exporter blackbox-exporter telegram-reporter
 	@echo "✅ Grafana disponível em: https://$$DOMAIN/grafana"
 	@echo "   Login: admin / $$GF_ADMIN_PASSWORD"
 
 monitoring-local:
-	@echo "Subindo monitoramento em ambiente local..."
+	@echo "Subindo monitoramento em ambiente local (dados em ./.monitoring-data)..."
+	mkdir -p .monitoring-data/prometheus .monitoring-data/grafana
+	chmod -R 777 .monitoring-data  # dir local efêmero (gitignored) — sem /mnt/banco
+	PROMETHEUS_DATA_DIR="$(CURDIR)/.monitoring-data/prometheus" \
+	GRAFANA_DATA_DIR="$(CURDIR)/.monitoring-data/grafana" \
 	docker compose -f docker-compose.yml -f docker-compose.monitoring.yml \
-		up -d prometheus grafana node-exporter postgres-exporter redis-exporter
+		up -d prometheus grafana node-exporter postgres-exporter redis-exporter blackbox-exporter
 
 monitoring-down:
 	docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
 		stop \
-		prometheus grafana node-exporter postgres-exporter redis-exporter telegram-reporter
+		prometheus grafana node-exporter postgres-exporter redis-exporter blackbox-exporter telegram-reporter
 
 monitoring-logs:
 	docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \

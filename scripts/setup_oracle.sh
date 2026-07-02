@@ -53,16 +53,19 @@ ufw --force enable
 
 echo "==> [7/7] Clonando repositório Argus AI..."
 read -rp "Cole a URL do repositório git: " REPO_URL
-git clone "$REPO_URL" /opt/argus_ai
-chown -R ubuntu:ubuntu /opt/argus_ai
+git clone "$REPO_URL" /home/ubuntu/argus-ai
+chown -R ubuntu:ubuntu /home/ubuntu/argus-ai
 
 echo ""
 echo "✓ Setup concluído!"
 echo ""
 echo "Próximos passos:"
-echo "  1. cd /opt/argus_ai"
+echo "  1. cd /home/ubuntu/argus-ai"
 echo "  2. cp .env.production.example .env"
 echo "  3. Edite o .env com suas credenciais reais"
-echo "  4. docker compose -f docker-compose.prod.yml up -d"
-echo "  5. docker compose -f docker-compose.prod.yml exec api python -m scripts.seed"
-echo "  6. Configure rclone: rclone config  (veja scripts/backup_rclone.sh)"
+echo "  4. docker compose -f docker-compose.prod.yml up -d --build"
+echo "  5. docker compose -f docker-compose.prod.yml exec api python -m alembic upgrade head"
+echo "  6. Crie o primeiro admin e promova a super-admin:"
+echo "     docker compose -f docker-compose.prod.yml exec api \\"
+echo "       python -m scripts.definir_super_admin --matricula <matricula_do_dono>"
+echo "  7. Configure o backup offsite: bash scripts/setup_rclone.sh"

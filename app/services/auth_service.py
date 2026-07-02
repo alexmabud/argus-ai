@@ -113,19 +113,24 @@ class AuthService:
             raise CredenciaisInvalidasError()
 
         # Verificar TOTP ANTES de zerar fail counter — evita bypass de lockout:
-        # senha correta + TOTP errado não deve resetar tentativas_falhas,
-        # pois um atacante com a senha poderia fazer brute-force do TOTP sem bloqueio.
+        # senha correta + TOTP errado não deve resetar tentativas_falhas.
         if usuario.is_admin and usuario.totp_secret:
-            if not totp_code:
-                raise CredenciaisInvalidasError()
-            try:
-                secret_plain = decrypt(usuario.totp_secret)
-                totp = pyotp.TOTP(secret_plain)
-                if not totp.verify(totp_code, valid_window=1):
-                    raise CredenciaisInvalidasError()
-            except CredenciaisInvalidasError:
-                raise
-            except Exception:
+            totp_ok = False
+            if totp_code:
+                try:
+                    secret_plain = decrypt(usuario.totp_secret)
+                    totp_ok = pyotp.TOTP(secret_plain).verify(totp_code, valid_window=1)
+                except Exception:
+                    totp_ok = False
+            if not totp_ok:
+                # TOTP errado CONTA para o lockout — senão um atacante que já tem a
+                # senha faria brute-force do TOTP de 6 dígitos sem nunca bloquear.
+                usuario.tentativas_falhas += 1
+                if usuario.tentativas_falhas >= LIMIAR_BLOQUEIO:
+                    usuario.bloqueado_ate = agora + DURACAO_BLOQUEIO
+                    usuario.tentativas_falhas = 0
+                await self.db.flush()
+                await self.db.commit()
                 raise CredenciaisInvalidasError()
 
         # Sucesso completo (senha + TOTP): zera contador e libera bloqueio.
@@ -188,10 +193,16 @@ class AuthService:
         )
 
     async def refresh(self, refresh_token: str) -> TokenResponse:
-        """Renova os tokens de acesso mantendo o session_id existente.
+        """Renova os tokens de acesso rotacionando o session_id (usuário comum).
 
-        Decodifica o refresh token, valida o usuário e session_id, e gera
-        novos tokens mantendo o mesmo session_id (sem rotação de sessão).
+        Decodifica o refresh token, valida o usuário e session_id, e gera novos
+        tokens. Para usuário comum o session_id é rotacionado a cada refresh,
+        invalidando o refresh token anterior (mitiga reuso de token roubado).
+        Admin mantém o session_id — sessão compartilhada entre dispositivos,
+        espelhando a lógica do login.
+
+        A persistência do novo session_id (commit) é responsabilidade do router
+        chamador, que detém a fronteira transacional.
 
         Args:
             refresh_token: Refresh token JWT válido com claim 'sid'.
@@ -220,7 +231,17 @@ class AuthService:
         if usuario.session_id is None or usuario.session_id != sid:
             raise CredenciaisInvalidasError()
 
-        token_data: dict = {"sub": str(usuario.id), "sid": sid}
+        # Rotação de sessão: usuário comum recebe um novo sid a cada refresh,
+        # invalidando o refresh token anterior. Admin mantém o sid para preservar
+        # a sessão compartilhada entre dispositivos (mesma regra do login).
+        if usuario.is_admin:
+            novo_sid = sid
+        else:
+            novo_sid = str(uuid.uuid4())
+            usuario.session_id = novo_sid
+            await self.db.flush()
+
+        token_data: dict = {"sub": str(usuario.id), "sid": novo_sid}
         if usuario.guarnicao_id is not None:
             token_data["guarnicao_id"] = usuario.guarnicao_id
 

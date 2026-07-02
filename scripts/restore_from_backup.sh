@@ -116,11 +116,18 @@ if [ "$DO_BANCO" = true ]; then
     docker compose -f "$ARGUS_DIR/docker-compose.prod.yml" stop api worker || true
 
     say "Restaurando dump no container do Postgres..."
-    docker exec -i argus-ai-db-1 pg_restore -U argus -d argus_db --clean --if-exists --no-owner --no-acl < "$DUMP_FILE"
+    # Captura o resultado (|| ...=$?) para que set -e NÃO aborte antes de religar
+    # API/worker — senão uma falha de pg_restore deixaria a produção parada.
+    restore_rc=0
+    docker exec -i argus-ai-db-1 pg_restore -U argus -d argus_db --clean --if-exists --no-owner --no-acl < "$DUMP_FILE" || restore_rc=$?
 
     say "Reiniciando API e worker..."
-    docker compose -f "$ARGUS_DIR/docker-compose.prod.yml" start api worker
+    docker compose -f "$ARGUS_DIR/docker-compose.prod.yml" start api worker || true
 
+    if [ "$restore_rc" -ne 0 ]; then
+        err "pg_restore falhou (rc=$restore_rc) — API/worker religados; banco pode estar inconsistente."
+        exit 1
+    fi
     ok "Banco restaurado de $RESTORE_DATE"
 fi
 
@@ -160,12 +167,25 @@ fi
 
 if [ "$DO_GRAFANA" = true ]; then
     docker compose -f "$ARGUS_DIR/docker-compose.monitoring.yml" stop grafana || true
-    rm -rf /mnt/banco/grafana.old
-    mv /mnt/banco/grafana /mnt/banco/grafana.old
-    tar -xzf "$GR_TAR" -C /mnt/banco/
-    chown -R 472:472 /mnt/banco/grafana
-    docker compose -f "$ARGUS_DIR/docker-compose.monitoring.yml" start grafana
-    ok "Grafana restaurado de $RESTORE_DATE (snapshot anterior em /mnt/banco/grafana.old)"
+    # Extrai para uma área de staging ANTES de mexer no diretório ativo: se o tar
+    # estiver corrompido, o /mnt/banco/grafana atual é preservado (antes, o mv
+    # acontecia antes do tar e uma falha deixava o Grafana sem dados).
+    rm -rf /mnt/banco/grafana.staging
+    mkdir -p /mnt/banco/grafana.staging
+    if tar -xzf "$GR_TAR" -C /mnt/banco/grafana.staging; then
+        rm -rf /mnt/banco/grafana.old
+        mv /mnt/banco/grafana /mnt/banco/grafana.old
+        mv /mnt/banco/grafana.staging/grafana /mnt/banco/grafana
+        rm -rf /mnt/banco/grafana.staging
+        chown -R 472:472 /mnt/banco/grafana
+        docker compose -f "$ARGUS_DIR/docker-compose.monitoring.yml" start grafana || true
+        ok "Grafana restaurado de $RESTORE_DATE (snapshot anterior em /mnt/banco/grafana.old)"
+    else
+        rm -rf /mnt/banco/grafana.staging
+        docker compose -f "$ARGUS_DIR/docker-compose.monitoring.yml" start grafana || true
+        err "Falha ao extrair o tar do Grafana — diretório atual preservado, Grafana religado."
+        exit 1
+    fi
 fi
 
 # ── 8. Fotos (apenas Google Drive) ───────────────────────────────────────────

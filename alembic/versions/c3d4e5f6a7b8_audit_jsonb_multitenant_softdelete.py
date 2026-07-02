@@ -28,9 +28,21 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     """Aplica mudanças: JSONB, multi-tenant e soft delete."""
     # 1. audit_logs.detalhes: Text → JSONB
-    # Converte dados existentes de texto JSON para JSONB nativo
+    # Cast tolerante a dados legados: `detalhes::jsonb` direto quebra se algum
+    # valor não for JSON válido (texto puro, string vazia). Trata NULL/'' → NULL,
+    # valores que parecem JSON (começam com { ou [) → cast, e o resto → string
+    # JSON via to_jsonb. Assim a migration nunca aborta por dado legado.
     op.execute(
-        "ALTER TABLE audit_logs ALTER COLUMN detalhes TYPE JSONB USING detalhes::jsonb"
+        """
+        ALTER TABLE audit_logs ALTER COLUMN detalhes TYPE JSONB
+        USING (
+            CASE
+                WHEN detalhes IS NULL OR btrim(detalhes) = '' THEN NULL
+                WHEN btrim(detalhes) ~ '^[{[]' THEN detalhes::jsonb
+                ELSE to_jsonb(detalhes)
+            END
+        )
+        """
     )
 
     # 2. guarnicao_id nullable em fotos e enderecos_pessoa (IF NOT EXISTS para idempotência)

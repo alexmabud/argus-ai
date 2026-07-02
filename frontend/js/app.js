@@ -206,6 +206,8 @@ function app() {
       // Verificar autenticacao existente
       if (auth.isAuthenticated()) {
         this.authenticated = true;
+        // Sessão ativa após F5: reativa a criptografia do IndexedDB.
+        if (typeof ensureCryptoReady === "function") ensureCryptoReady().catch(() => {});
         this.user = auth.getUser();
         // Atualiza o usuário em background (flags de admin podem ter mudado no
         // servidor desde o último login); não bloqueia o render inicial.
@@ -265,6 +267,20 @@ function app() {
      *     page: Nome da página destino.
      */
     navigate(page) {
+      // Defense-in-depth: bloqueia rotas administrativas no cliente conforme as
+      // flags do usuário (o backend já valida cada chamada). Evita renderizar a
+      // tela admin para quem não tem acesso quando navigate() é disparado fora
+      // dos botões gated (ex.: evento custom, console). Fallback para a home.
+      const guardsAdmin = {
+        "admin-usuarios": (u) => !!(u && (u.is_admin || u.is_super_admin)),
+        admins: (u) => !!(u && u.is_super_admin),
+      };
+      const permitido = guardsAdmin[page];
+      if (permitido && !permitido(this.user)) {
+        if (typeof showToast === "function") showToast("Acesso restrito", "error");
+        page = "home";
+      }
+
       // Sinaliza direção da navegação para que páginas com estado (ex.: dia
       // selecionado no relatório) saibam se devem resetar (entrada nova) ou
       // restaurar (retorno via voltar). Ver ocorrencias.js.

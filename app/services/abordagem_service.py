@@ -11,6 +11,7 @@ import logging
 from collections.abc import Sequence
 from datetime import date
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NaoEncontradoError
@@ -125,7 +126,19 @@ class AbordagemService:
             client_id=data.client_id,
         )
         self.db.add(abordagem)
-        await self.db.flush()
+        try:
+            await self.db.flush()
+        except IntegrityError:
+            # Race: outra requisição concorrente inseriu o MESMO client_id entre o
+            # dedup-check (passo 1) e este flush. O índice único parcial em
+            # client_id rejeita o segundo insert — recupera a abordagem vencedora
+            # e retorna (mantém a idempotência do sync offline sob concorrência).
+            await self.db.rollback()
+            if data.client_id:
+                existing = await self.repo.get_by_client_id(data.client_id)
+                if existing:
+                    return existing
+            raise
 
         # 5. Vincular pessoas (AbordagemPessoa)
         for pessoa_id in data.pessoa_ids:
@@ -338,9 +351,10 @@ class AbordagemService:
         self,
         pessoa_id: int,
         guarnicao_id: int | None = None,
+        skip: int = 0,
         limit: int = 50,
     ) -> Sequence[Abordagem]:
-        """Lista abordagens de uma pessoa com relacionamentos.
+        """Lista abordagens de uma pessoa com relacionamentos (paginado no banco).
 
         Abordagens na ficha de uma pessoa são globais — sem filtro de guarnição.
         guarnicao_id aceito por compatibilidade mas sempre ignorado.
@@ -348,12 +362,13 @@ class AbordagemService:
         Args:
             pessoa_id: ID da pessoa.
             guarnicao_id: Ignorado. Mantido por compatibilidade de assinatura.
-            limit: Número máximo de resultados.
+            skip: Registros a pular (OFFSET).
+            limit: Número máximo de resultados (LIMIT).
 
         Returns:
             Sequência de Abordagens com pessoas e veículos carregados.
         """
-        return await self.repo.list_by_pessoa(pessoa_id, None, limit)
+        return await self.repo.list_by_pessoa(pessoa_id, None, skip=skip, limit=limit)
 
     async def buscar_por_raio(
         self,

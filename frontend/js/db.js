@@ -6,10 +6,22 @@
  * Dados sensíveis são criptografados com AES-GCM via Web Crypto API.
  */
 
-// Importar Dexie via CDN (global script)
-const DEXIE_CDN = "https://cdn.jsdelivr.net/npm/dexie@4/dist/dexie.min.js";
+// Dexie self-hosted (same-origin) — carregado sob demanda; precacheado pelo SW
+// para funcionar offline (ver frontend/vendor/ e sw.js).
+const DEXIE_CDN = "/vendor/dexie.min.js";
+
+// Máximo de tentativas de sincronização antes de "estacionar" um item failed.
+// Itens failed abaixo deste limite são reprocessados automaticamente; acima,
+// ficam parados aguardando atenção manual (evita retry infinito de erro
+// permanente, ex.: validação).
+const MAX_SYNC_ATTEMPTS = 5;
 
 let db = null;
+
+// Cache em memória das pessoas já descriptografadas, para não re-decriptar todo
+// o cache local a cada tecla na busca (G3-5). Invalidado ao recachear pessoas
+// (cachePessoas) ou no logout (clearLocalDB).
+let _pessoasDecryptCache = null;
 
 // --- Crypto helpers (AES-256-GCM via Web Crypto API) ---
 let _cryptoKey = null;
@@ -40,6 +52,50 @@ async function initCryptoKey(secret) {
     ["encrypt", "decrypt"],
   );
   return _cryptoKey;
+}
+
+/**
+ * Garante que a chave de criptografia do IndexedDB está ativa.
+ *
+ * Sem isto, _cryptoKey ficava null e encryptField/decryptField devolviam
+ * texto puro — PII em claro no IndexedDB. Deriva a chave de um segredo
+ * aleatório por instalação (argus_db_secret em localStorage), gerado no
+ * primeiro login e apagado no logout (ver clearLocalDB). Sobrevive a F5.
+ */
+async function ensureCryptoReady() {
+  let secret = localStorage.getItem("argus_db_secret");
+  if (!secret) {
+    secret = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
+    localStorage.setItem("argus_db_secret", secret);
+  }
+  return initCryptoKey(secret);
+}
+
+/**
+ * Apaga todos os dados locais sensíveis (logout em dispositivo compartilhado).
+ *
+ * Remove o banco IndexedDB (PII de pessoas + fila offline) e o segredo/salt
+ * de criptografia. O Cache Storage do Service Worker é limpo separadamente
+ * em auth.logout(). Best-effort: nunca lança.
+ */
+async function clearLocalDB() {
+  _cryptoKey = null;
+  _pessoasDecryptCache = null;
+  try {
+    if (db) {
+      db.close();
+      db = null;
+    }
+    if (typeof Dexie !== "undefined") {
+      await Dexie.delete("argus");
+    } else if (self.indexedDB) {
+      indexedDB.deleteDatabase("argus");
+    }
+  } catch {
+    /* best-effort */
+  }
+  localStorage.removeItem("argus_db_secret");
+  localStorage.removeItem("argus_db_salt");
 }
 
 /**
@@ -114,11 +170,16 @@ async function initDB() {
 /**
  * Adiciona item à fila de sincronização offline.
  */
-async function enqueueSync(tipo, dados) {
+async function enqueueSync(tipo, dados, fotos = []) {
   const database = await initDB();
+  // `fotos` (Blob/File) é persistido nativamente pelo IndexedDB para que a
+  // mídia não se perca ao sincronizar uma abordagem criada offline (#5 auditoria).
   return database.syncQueue.add({
     tipo,
-    dados,
+    // PII do payload (nomes, observação, GPS, pessoas, veículos) cifrada
+    // at-rest no IndexedDB; decriptada em getPendingSync antes do envio (G3-2).
+    dados: await encryptField(JSON.stringify(dados)),
+    fotos,
     status: "pending",
     criadoEm: new Date().toISOString(),
     tentativas: 0,
@@ -127,11 +188,50 @@ async function enqueueSync(tipo, dados) {
 }
 
 /**
- * Retorna todos os itens pendentes de sincronização.
+ * Decripta o payload `dados` de um item da fila para o objeto original.
+ *
+ * Tolerante a migração: itens antigos gravados como objeto em claro (antes do
+ * G3-2) ou como JSON em claro são devolvidos sem erro. Defensivo: se não for
+ * JSON após o decrypt, devolve o valor cru.
+ */
+async function _decryptDados(raw) {
+  if (raw == null || typeof raw !== "string") return raw; // legado: objeto
+  const plano = await decryptField(raw);
+  try {
+    return JSON.parse(plano);
+  } catch {
+    return raw;
+  }
+}
+
+/**
+ * Predicado de item sincronizável: pendente ou falho ainda dentro do limite
+ * de tentativas (reprocessamento automático de falhas transitórias).
+ */
+function _sincronizavel(item) {
+  return (
+    item.status === "pending" ||
+    (item.status === "failed" && (item.tentativas || 0) < MAX_SYNC_ATTEMPTS)
+  );
+}
+
+/**
+ * Retorna os itens a sincronizar: pendentes + falhos reprocessáveis.
+ *
+ * Itens marcados como `failed` por erro transitório (rede/5xx) voltam a ser
+ * tentados até MAX_SYNC_ATTEMPTS, evitando a perda silenciosa de dados de
+ * campo que ficavam presos em `failed` para sempre.
  */
 async function getPendingSync() {
   const database = await initDB();
-  return database.syncQueue.where("status").equals("pending").toArray();
+  const items = await database.syncQueue.filter(_sincronizavel).toArray();
+  // Garante a chave antes de decriptar (evita falso failed se o sync disparar
+  // antes do ensureCryptoReady do boot). Só quando há itens e segredo presente.
+  if (items.length && localStorage.getItem("argus_db_secret")) {
+    await ensureCryptoReady();
+  }
+  for (const item of items) item.dados = await _decryptDados(item.dados);
+  return items;
 }
 
 /**
@@ -156,11 +256,11 @@ async function markFailed(id, erro) {
 }
 
 /**
- * Conta itens pendentes na fila.
+ * Conta itens na fila ainda por sincronizar (pendentes + falhos reprocessáveis).
  */
 async function countPending() {
   const database = await initDB();
-  return database.syncQueue.where("status").equals("pending").count();
+  return database.syncQueue.filter(_sincronizavel).count();
 }
 
 /**
@@ -171,6 +271,7 @@ async function cachePessoas(pessoas) {
   const database = await initDB();
   const encrypted = await Promise.all(pessoas.map(encryptPessoa));
   await database.pessoas.bulkPut(encrypted);
+  _pessoasDecryptCache = null; // invalida o cache decriptado (dados mudaram)
 }
 
 /**
@@ -187,9 +288,13 @@ async function cacheVeiculos(veiculos) {
 async function searchPessoasLocal(query) {
   const database = await initDB();
   const q = query.toLowerCase();
-  const all = await database.pessoas.toArray();
-  const decrypted = await Promise.all(all.map(decryptPessoa));
-  return decrypted
+  // Decripta o cache uma vez e reutiliza nas buscas seguintes (memoização);
+  // antes, cada tecla re-decriptava todos os registros (G3-5).
+  if (_pessoasDecryptCache === null) {
+    const all = await database.pessoas.toArray();
+    _pessoasDecryptCache = await Promise.all(all.map(decryptPessoa));
+  }
+  return _pessoasDecryptCache
     .filter((p) => p.nome.toLowerCase().includes(q) || (p.apelido && p.apelido.toLowerCase().includes(q)))
     .slice(0, 10);
 }

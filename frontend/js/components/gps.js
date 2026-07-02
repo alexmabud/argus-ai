@@ -1,32 +1,23 @@
 /**
  * Componente de GPS com geocoding reverso.
  *
- * Captura coordenadas via Geolocation API (high accuracy)
- * e resolve endereço via Nominatim (OpenStreetMap).
+ * Captura coordenadas via Geolocation API (high accuracy) e resolve o
+ * endereço pelo proxy autenticado do backend (/geocode/reverse) — evita
+ * enviar as coordenadas precisas da operação direto ao Nominatim/OSM a
+ * partir do dispositivo de cada agente.
  */
 async function _resolveGPSPosition(position) {
   const { latitude, longitude, accuracy } = position.coords;
   let endereco_texto = null;
 
-  // Geocoding reverso via Nominatim
+  // Geocoding reverso via proxy do backend (best-effort).
   try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
-      { headers: { "Accept-Language": "pt-BR" } }
+    const data = await api.get(
+      `/geocode/reverse?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`
     );
-    if (response.ok) {
-      const data = await response.json();
-      const addr = data.address;
-      const parts = [
-        addr.road,
-        addr.house_number,
-        addr.suburb || addr.neighbourhood,
-        addr.city || addr.town || addr.village,
-      ].filter(Boolean);
-      endereco_texto = parts.join(", ");
-    }
+    endereco_texto = data?.endereco || null;
   } catch {
-    // Geocoding falhou — retorna só coordenadas
+    // Geocoding falhou (offline/erro) — retorna só coordenadas
   }
 
   return { latitude, longitude, accuracy, endereco_texto };

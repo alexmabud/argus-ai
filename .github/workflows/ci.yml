@@ -144,6 +144,18 @@ jobs:
             CREATE EXTENSION IF NOT EXISTS unaccent;
           SQL
 
+      - name: Migration smoke (alembic upgrade head em banco limpo)
+        env:
+          MIG_URL: postgresql+asyncpg://test:test@localhost:5432/argus_migtest
+        run: |
+          PGPASSWORD=test psql -h localhost -U test -d postgres -c "DROP DATABASE IF EXISTS argus_migtest;"
+          PGPASSWORD=test psql -h localhost -U test -d postgres -c "CREATE DATABASE argus_migtest;"
+          # A cadeia deve subir do zero (extensões criadas pela própria migration
+          # schema_inicial) e chegar a um head único — pega backfill/ordem quebrados.
+          DATABASE_URL="$MIG_URL" MIGRATION_DATABASE_URL="$MIG_URL" alembic upgrade head
+          DATABASE_URL="$MIG_URL" MIGRATION_DATABASE_URL="$MIG_URL" alembic current | tee /tmp/alembic_current.txt
+          grep -q "(head)" /tmp/alembic_current.txt || { echo "ERRO: nao chegou a um head unico"; exit 1; }
+
       - name: Run tests
         run: pytest -v --cov=app --cov-report=term-missing --tb=short
 

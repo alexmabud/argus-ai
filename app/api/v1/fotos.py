@@ -235,8 +235,8 @@ async def listar_fotos_pessoa(
         Lista de FotoRead ordenadas por data/hora decrescente.
     """
     service = FotoService(db)
-    fotos = await service.listar_por_pessoa(pessoa_id)
-    return [FotoRead.model_validate(f) for f in fotos[skip : skip + limit]]
+    fotos = await service.listar_por_pessoa(pessoa_id, skip=skip, limit=limit)
+    return [FotoRead.model_validate(f) for f in fotos]
 
 
 @router.get("/abordagem/{abordagem_id}", response_model=list[FotoRead])
@@ -262,8 +262,8 @@ async def listar_fotos_abordagem(
         Lista de FotoRead ordenadas por data/hora decrescente.
     """
     service = FotoService(db)
-    fotos = await service.listar_por_abordagem(abordagem_id)
-    return [FotoRead.model_validate(f) for f in fotos[skip : skip + limit]]
+    fotos = await service.listar_por_abordagem(abordagem_id, skip=skip, limit=limit)
+    return [FotoRead.model_validate(f) for f in fotos]
 
 
 @router.post("/buscar-rosto", response_model=BuscaRostoResponse)

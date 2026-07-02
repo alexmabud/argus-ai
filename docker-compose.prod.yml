@@ -45,8 +45,12 @@ services:
     image: redis:7-alpine
     restart: always
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD obrigatório em produção}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD obrigatório em produção}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # Autentica com a senha do container (--requirepass); sem -a o ping
+      # retorna NOAUTH e o serviço nunca fica healthy, travando api/worker.
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 10

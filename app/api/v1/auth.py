@@ -145,6 +145,8 @@ async def refresh(
         raise CredenciaisInvalidasError()
     service = AuthService(db)
     tokens = await service.refresh(token)
+    # Persiste a rotação de session_id feita no refresh (usuário comum).
+    await db.commit()
     set_access_cookie(response, tokens.access_token)
     set_refresh_cookie(response, tokens.refresh_token)
     return tokens

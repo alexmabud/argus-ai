@@ -74,15 +74,22 @@ class PessoaRepository(BaseRepository[Pessoa]):
         unaccent_nome = func.unaccent(func.lower(Pessoa.nome))
         unaccent_apelido = func.unaccent(func.lower(func.coalesce(Pessoa.apelido, "")))
 
+        # Escapa %, _ e \ dos tokens: senão um % ou _ digitado pelo usuário viraria
+        # curinga do LIKE (ex.: buscar "100%" casaria qualquer nome). Os '%'
+        # estruturais abaixo continuam sendo curingas; o ESCAPE '\' abaixo trata
+        # os literais escapados.
+        def _esc(t: str) -> str:
+            return t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
         # Monta: '%' || unaccent(lower(tok1)) || '%' || unaccent(lower(tok2)) || '%'
-        like_pattern = "%" + func.unaccent(func.lower(tokens[0])) + "%"
+        like_pattern = "%" + func.unaccent(func.lower(_esc(tokens[0]))) + "%"
         for token in tokens[1:]:
-            like_pattern = like_pattern + func.unaccent(func.lower(token)) + "%"
+            like_pattern = like_pattern + func.unaccent(func.lower(_esc(token))) + "%"
 
         unaccent_full_query = func.unaccent(func.lower(nome_clean))
 
-        match_nome = unaccent_nome.like(like_pattern)
-        match_apelido = unaccent_apelido.like(like_pattern)
+        match_nome = unaccent_nome.like(like_pattern, escape="\\")
+        match_apelido = unaccent_apelido.like(like_pattern, escape="\\")
         match_fuzzy = func.similarity(unaccent_nome, unaccent_full_query) > threshold
 
         query = select(Pessoa).where(
@@ -231,18 +238,23 @@ class PessoaRepository(BaseRepository[Pessoa]):
         cidade_id: int | None,
         bairro_id: int | None,
         guarnicao_id: int | None,
+        skip: int = 0,
+        limit: int = 50,
     ) -> list[tuple[Pessoa, datetime]]:
         """Busca pessoas pelos ids de localidade (estado/cidade/bairro) do endereço.
 
         Espelha search_by_bairro_cidade_com_endereco, mas filtra pelas FKs
         estado_id/cidade_id/bairro_id do EnderecoPessoa (igualdade exata) em vez
-        de texto ILIKE. SEM limite — retorna todas as pessoas que casam.
+        de texto ILIKE. Paginado no banco (OFFSET/LIMIT) — um filtro amplo (ex.:
+        um estado inteiro) podia carregar milhares de pessoas em memória.
 
         Args:
             estado_id: ID da localidade estado (opcional).
             cidade_id: ID da localidade cidade (opcional).
             bairro_id: ID da localidade bairro (opcional).
             guarnicao_id: ID da guarnição para filtro multi-tenant (None = global).
+            skip: Registros a pular (OFFSET).
+            limit: Máximo de resultados (LIMIT).
 
         Returns:
             Lista de tuplas (Pessoa, endereco_criado_em). Uma linha por pessoa
@@ -265,7 +277,12 @@ class PessoaRepository(BaseRepository[Pessoa]):
         if guarnicao_id is not None:
             query = query.where(Pessoa.guarnicao_id == guarnicao_id)
 
-        query = query.order_by(Pessoa.id, EnderecoPessoa.criado_em.desc()).distinct(Pessoa.id)
+        query = (
+            query.order_by(Pessoa.id, EnderecoPessoa.criado_em.desc())
+            .distinct(Pessoa.id)
+            .offset(skip)
+            .limit(limit)
+        )
         result = await self.db.execute(query)
         return list(result.all())  # type: ignore[arg-type]
 

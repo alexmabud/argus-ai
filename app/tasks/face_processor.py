@@ -85,4 +85,6 @@ async def processar_face_task(ctx: dict, foto_id: int) -> dict:
         except Exception:
             await db.rollback()
             logger.exception("Erro ao processar face da foto %d", foto_id)
-            return {"status": "erro", "motivo": "Erro no processamento"}
+            # Relança para o arq reprocessar (max_tries) em vez de mascarar como
+            # sucesso — senão a foto fica presa em face_processada=False (#9 auditoria).
+            raise

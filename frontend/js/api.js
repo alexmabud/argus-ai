@@ -171,20 +171,20 @@ class ApiClient {
 
   async downloadBlob(path) {
     const url = `${this.baseUrl}${path}`;
-    const headers = {};
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
-    }
-    let response = await fetch(url, { method: "GET", headers });
-    if (response.status === 401 && this.refreshToken) {
+    // Autenticação via cookie HttpOnly (same-origin) — consistente com request().
+    // Não depende de this.token/this.refreshToken (que somem após F5).
+    const options = { method: "GET", credentials: "same-origin" };
+    let response = await fetch(url, options);
+    if (response.status === 401) {
       const refreshResult = await this._refreshAccessToken();
       if (refreshResult === "ok") {
-        headers["Authorization"] = `Bearer ${this.token}`;
-        response = await fetch(url, { method: "GET", headers });
+        response = await fetch(url, options);
       } else if (refreshResult === "invalid") {
         this.clearTokens();
         window.dispatchEvent(new Event("auth:expired"));
         throw new ApiError(401, "Sessão expirada");
+      } else {
+        throw new ApiError(0, "Sem conexão com o servidor");
       }
     }
     if (!response.ok) throw new ApiError(response.status, "Erro no download");

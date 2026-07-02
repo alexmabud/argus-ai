@@ -302,18 +302,21 @@ class AbordagemRepository(BaseRepository[Abordagem]):
         self,
         pessoa_id: int,
         guarnicao_id: int | None,
+        skip: int = 0,
         limit: int = 50,
     ) -> Sequence[Abordagem]:
         """Lista abordagens de uma pessoa com relacionamentos carregados.
 
         Quando guarnicao_id é None, retorna abordagens de todas as guarnições —
         comportamento correto para a ficha individual da pessoa, onde o isolamento
-        de guarnição não se aplica.
+        de guarnição não se aplica. Paginação aplicada no banco (OFFSET/LIMIT);
+        os relacionamentos usam selectinload, então o limit conta abordagens.
 
         Args:
             pessoa_id: ID da pessoa.
             guarnicao_id: ID da guarnição para filtro, ou None para todas.
-            limit: Número máximo de resultados.
+            skip: Registros a pular (OFFSET).
+            limit: Número máximo de resultados (LIMIT).
 
         Returns:
             Sequência de Abordagens com pessoas e veículos carregados.
@@ -334,6 +337,7 @@ class AbordagemRepository(BaseRepository[Abordagem]):
             )
             .where(*conditions)
             .order_by(Abordagem.data_hora.desc())
+            .offset(skip)
             .limit(limit)
         )
         result = await self.db.execute(query)

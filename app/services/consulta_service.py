@@ -128,6 +128,8 @@ class ConsultaService:
                     cidade_id=cidade_id,
                     bairro_id=bairro_id,
                     guarnicao_id=guarnicao_id_pessoa,
+                    skip=skip,
+                    limit=limit,
                 )
             elif bairro or cidade or estado:
                 pessoas = await self.pessoa_repo.search_by_bairro_cidade_com_endereco(

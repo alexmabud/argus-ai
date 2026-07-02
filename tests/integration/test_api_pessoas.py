@@ -134,6 +134,33 @@ class TestObterPessoa:
         assert "enderecos" in data
         assert "relacionamentos" in data
 
+    async def test_ficha_e_global_mesmo_com_isolamento(
+        self, client: AsyncClient, auth_headers: dict, db_session, usuario, guarnicao, bpm
+    ):
+        """A ficha da pessoa é GLOBAL: com isolamento ON, usuário de A abre pessoa de B.
+
+        Regressão: a ficha filtrava por guarnição quando isolamento_abordagens
+        estava ligado — a pessoa aparecia na busca (global) mas a ficha dava 404.
+        Isolamento atua só na listagem de relatórios/analytics, nunca na ficha.
+        """
+        from app.models.guarnicao import Guarnicao
+        from app.models.pessoa import Pessoa
+
+        guarnicao.isolamento_abordagens = True
+        outra = Guarnicao(nome="Equipe B ficha", bpm_id=bpm.id, codigo="B-FICHA")
+        db_session.add(outra)
+        await db_session.flush()
+        pessoa = Pessoa(nome="PESSOA DE OUTRA EQUIPE", guarnicao_id=outra.id)
+        db_session.add(pessoa)
+        await db_session.flush()
+
+        response = await client.get(
+            f"/api/v1/pessoas/{pessoa.id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["nome"] == "PESSOA DE OUTRA EQUIPE"
+
     async def test_obter_pessoa_inexistente(self, client: AsyncClient, auth_headers: dict):
         """Testa busca de pessoa inexistente retorna 404.
 
