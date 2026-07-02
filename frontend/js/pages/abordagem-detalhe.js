@@ -2,7 +2,8 @@
  * Página de detalhe de abordagem — Argus AI.
  *
  * Exibe dados completos de uma abordagem: pessoas abordadas (clicáveis),
- * veículos, mapa Leaflet, observação, upload de RAP PDF e upload de mídias.
+ * veículos, mapa Leaflet, observação editável (com ditado por voz), upload
+ * de RAP PDF e upload de mídias.
  */
 
 function renderAbordagemDetalhe() {
@@ -107,15 +108,31 @@ function renderAbordagemDetalhe() {
           </div>
 
           <!-- OBSERVAÇÃO -->
-          <template x-if="ab.observacao">
-            <div class="glass-card" style="padding:12px;">
-              <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="glass-card" style="padding:12px;">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
                 <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Observação</span>
-                <div style="background:var(--color-surface);border:1px solid var(--color-border);border-left:2px solid rgba(0,212,255,0.3);border-radius:4px;padding:10px 12px;font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);line-height:1.5;"
-                     x-text="ab.observacao"></div>
+                <button x-show="voiceSupported" @click="toggleVoice()"
+                        style="font-family:var(--font-data);font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;border:none;transition:all 0.15s;"
+                        :style="recording
+                          ? 'background:rgba(255,107,0,0.2);color:var(--color-danger);border:1px solid rgba(255,107,0,0.4);box-shadow:0 0 8px rgba(255,107,0,0.3);'
+                          : 'background:var(--color-surface);color:var(--color-text-muted);border:1px solid var(--color-border);'">
+                  <span x-text="recording ? 'PARAR' : 'VOZ'"></span>
+                </button>
               </div>
+              <textarea class="input-upper" x-model="observacaoEdit" rows="3" placeholder="Descreva a abordagem..."></textarea>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button @click="salvarObservacao()" class="btn btn-primary" style="padding:8px 16px;"
+                        :disabled="salvandoObservacao || observacaoEdit.trim() === (ab.observacao || '')">
+                  <span x-show="!salvandoObservacao">Salvar observação</span>
+                  <span x-show="salvandoObservacao" style="display:flex;align-items:center;gap:8px;">
+                    <span class="spinner"></span> Salvando...
+                  </span>
+                </button>
+              </div>
+              <p x-show="observacaoErro" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);" x-text="observacaoErro"></p>
             </div>
-          </template>
+          </div>
 
           <hr style="border:none;border-top:1px solid var(--color-border);margin:4px 0;">
 
@@ -264,6 +281,11 @@ function abordagemDetalhePage() {
     enviandoRap: false,
     enviandoMidia: false,
     midiaErro: null,
+    observacaoEdit: '',
+    salvandoObservacao: false,
+    observacaoErro: null,
+    recording: false,
+    voiceSupported: typeof webkitSpeechRecognition !== "undefined" || typeof SpeechRecognition !== "undefined",
     _mapa: null,
     _mapaObserver: null,
 
@@ -281,6 +303,7 @@ function abordagemDetalhePage() {
       }
       try {
         this.ab = await api.get(`/abordagens/${abordagemId}`);
+        this.observacaoEdit = this.ab.observacao || '';
       } catch (e) {
         this.erro = 'Erro ao carregar abordagem.';
       } finally {
@@ -356,6 +379,54 @@ function abordagemDetalhePage() {
         this.rapErro = e?.message || 'Erro ao enviar RAP. Verifique o arquivo e tente novamente.';
       } finally {
         this.enviandoRap = false;
+      }
+    },
+
+    async salvarObservacao() {
+      this.observacaoErro = null;
+      this.salvandoObservacao = true;
+      try {
+        const result = await api.patch(`/abordagens/${this.ab.id}`, {
+          observacao: this.observacaoEdit.trim() || null,
+        });
+        this.ab = { ...this.ab, observacao: result.observacao };
+        this.observacaoEdit = result.observacao || '';
+      } catch (e) {
+        this.observacaoErro = e?.message || 'Erro ao salvar observação. Tente novamente.';
+      } finally {
+        this.salvandoObservacao = false;
+      }
+    },
+
+    toggleVoice() {
+      if (this.recording) {
+        stopVoice();
+        this.recording = false;
+      } else {
+        this.observacaoErro = null;
+        const _voiceBase = this.observacaoEdit;
+        const started = startVoice(
+          (text, isFinal) => {
+            if (isFinal) {
+              this.observacaoEdit = _voiceBase
+                ? (_voiceBase + " " + text).trim()
+                : text.trim();
+            }
+          },
+          () => { this.recording = false; },
+          (errorType) => {
+            this.recording = false;
+            const msgs = {
+              "not-allowed":    "Permissão de microfone negada. Habilite o microfone nas configurações do navegador.",
+              "no-speech":      "Nenhuma fala detectada. Tente novamente.",
+              "audio-capture":  "Microfone não encontrado. Verifique o hardware.",
+              "network":        "Erro de rede no reconhecimento de voz.",
+              "service-not-allowed": "Serviço de reconhecimento de voz não permitido neste contexto.",
+            };
+            this.observacaoErro = msgs[errorType] || `Erro de reconhecimento de voz: ${errorType}`;
+          }
+        );
+        if (started) this.recording = true;
       }
     },
 

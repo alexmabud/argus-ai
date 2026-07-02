@@ -19,6 +19,7 @@ from app.schemas.abordagem import (
     AbordagemCreate,
     AbordagemDetail,
     AbordagemRead,
+    AbordagemUpdate,
     PessoaAbordagemRead,
     VeiculoAbordagemRead,
 )
@@ -221,6 +222,60 @@ async def detalhe_abordagem(
             detail="Abordagem não encontrada",
         )
     return _serializar_detalhe(abordagem)
+
+
+@router.patch("/{abordagem_id}", response_model=AbordagemRead)
+@limiter.limit("30/minute")
+async def atualizar_abordagem(
+    request: Request,
+    abordagem_id: int,
+    data: AbordagemUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
+) -> AbordagemRead:
+    """Atualiza observação e/ou endereço de uma abordagem existente.
+
+    Permite complementar a observação depois do registro em campo, para
+    o caso de o oficial não ter tido tempo de descrevê-la no momento
+    da abordagem.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        abordagem_id: Identificador da abordagem a atualizar.
+        data: Dados de atualização parcial (observacao, endereco_texto).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado com guarnição atribuída.
+
+    Returns:
+        AbordagemRead com dados atualizados.
+
+    Raises:
+        HTTPException 404: Abordagem não encontrada ou não pertence à guarnição.
+
+    Status Code:
+        200: Abordagem atualizada.
+        403: Usuário sem guarnição.
+        404: Abordagem não encontrada.
+        429: Rate limit (30/min).
+    """
+    assert user.guarnicao_id is not None
+    service = AbordagemService(db)
+    try:
+        abordagem = await service.atualizar(
+            abordagem_id,
+            data,
+            user_id=user.id,
+            guarnicao_id=user.guarnicao_id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except NaoEncontradoError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Abordagem não encontrada",
+        )
+    await db.commit()
+    return AbordagemRead.model_validate(abordagem)
 
 
 def _serializar_detalhe(abordagem: Abordagem) -> AbordagemDetail:
