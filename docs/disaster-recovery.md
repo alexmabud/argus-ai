@@ -187,6 +187,56 @@ docker compose -f docker-compose.monitoring.yml up -d
 
 ---
 
+### Cenário F — Deploy falhou por disco cheio na VM
+
+**Impacto**: produção fora do ar. O workflow de deploy (`.github/workflows/deploy.yml`)
+faz `docker compose down` **antes** de buildar — se o build falhar (ex.: disco
+cheio), os containers ficam parados até alguém corrigir manualmente. Não é
+troca atômica de versão.
+
+**Como identificar**: no log do Actions (aba Deploy da run), erro do tipo
+`failed to extract layer ...: no space left on device` durante o passo
+`exporting to image`.
+
+**Como recuperar** (via `ssh argus`, dentro de `~/argus-ai`):
+
+```bash
+# 1. Confirmar o disco cheio e liberar espaço (não afeta volumes/dados)
+df -h /
+docker system prune -af
+docker builder prune -af
+df -h /   # deve sobrar vários GB
+
+# 2. A última imagem boa geralmente continua taggeada (prune sem -a durante
+#    o deploy não a remove). Confirme e reaproveite sem rebuildar:
+docker images | grep argus-ai
+docker tag argus-ai-api:latest argus-ai-app:latest   # nome esperado pelo compose
+
+# 3. Sobe SEM --build (usa a imagem existente; evita rebuildar e estourar de novo)
+docker compose -f docker-compose.prod.yml up -d
+sleep 5
+docker compose -f docker-compose.prod.yml exec -T api python -m alembic upgrade head
+
+# 4. Confirmar
+docker compose -f docker-compose.prod.yml ps
+curl -sf http://localhost:80/health && echo "  OK"
+```
+
+Isso sobe só o `docker-compose.prod.yml` (sem o `docker-compose.monitoring.yml`)
+porque `GF_ADMIN_PASSWORD`/tokens do Telegram só existem como GitHub Secrets,
+injetados pelo workflow de deploy — não ficam salvos na VM. Depois de resolver
+a causa raiz (ver `docs/DEPLOY.md`, seção "Imagem única") e mergear a correção,
+deixe o próximo deploy automático religar o monitoring normalmente.
+
+**Causas já corrigidas** (não deveriam voltar a acontecer, mas documentado
+caso regrida):
+- `api`/`worker`/`worker-2` buildavam 3 imagens idênticas em paralelo →
+  agora compartilham uma `image:` só (`docker-compose.prod.yml`).
+- A imagem carregava ~5 GB de libs CUDA/NVIDIA (`nvidia-*`, `triton`) que uma
+  VM sem GPU nunca usa → removidas do venv em `Dockerfile.prod`.
+
+---
+
 ## 3. Checklist Mensal de Validação
 
 Faça essas verificações **uma vez por mês** para garantir que o backup
