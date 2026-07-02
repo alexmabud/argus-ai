@@ -201,12 +201,15 @@ class PessoaService:
         Carrega endereços, fotos e relacionamentos em uma única query
         para evitar N+1 queries na view de detalhe.
 
-        Quando isolamento_abordagens está desativado na guarnição, busca
-        globalmente — consistente com o comportamento de analytics e relatórios.
+        A ficha da pessoa é **GLOBAL**: qualquer usuário autenticado abre a ficha
+        de qualquer pessoa (com abordagens/fotos de todas as equipes). O
+        `isolamento_abordagens` atua apenas na LISTAGEM de relatórios/analytics,
+        nunca na ficha — senão a pessoa aparece na busca (global) mas a ficha dá
+        "não encontrado".
 
         Args:
             pessoa_id: ID da pessoa a buscar.
-            user: Usuário autenticado (para filtro de guarnição).
+            user: Usuário autenticado (mantido por consistência de assinatura).
 
         Returns:
             Pessoa com relacionamentos carregados.
@@ -214,10 +217,7 @@ class PessoaService:
         Raises:
             NaoEncontradoError: Se pessoa não existe ou está inativa.
         """
-        guarnicao_id = (
-            user.guarnicao_id if user.guarnicao and user.guarnicao.isolamento_abordagens else None
-        )
-        pessoa = await self.repo.get_detail(pessoa_id, guarnicao_id)
+        pessoa = await self.repo.get_detail(pessoa_id, None)
         if not pessoa:
             raise NaoEncontradoError("Pessoa")
         return pessoa
