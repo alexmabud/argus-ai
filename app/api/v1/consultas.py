@@ -11,7 +11,6 @@ import hashlib
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import filtros_abordagem
 from app.core.rate_limit import _get_real_client_ip, limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user
@@ -26,22 +25,6 @@ from app.services.consulta_service import ConsultaService
 from app.services.pessoa_service import PessoaService
 
 router = APIRouter(prefix="/consultas", tags=["Consultas"])
-
-
-def _filtros_consulta(user: Usuario) -> tuple[int | None, int | None]:
-    """Retorna (guarnicao_id, bpm_id) para filtro de consultas.
-
-    Prioridade: equipe > BPM > global. Apenas um dos dois será não-None.
-    Delega à fonte única ``filtros_abordagem`` (compartilhada com o controle
-    de acesso a mídias de abordagem no storage).
-
-    Args:
-        user: Usuário autenticado com guarnicao e bpm carregados.
-
-    Returns:
-        Tupla (guarnicao_id, bpm_id). Ambos None = acesso global.
-    """
-    return filtros_abordagem(user)
 
 
 @router.get("/localidades")
@@ -133,7 +116,10 @@ async def consulta_unificada(
             ),
         )
 
-    gid, bid = _filtros_consulta(user)
+    # Consulta é GLOBAL: a busca operacional (pessoa/veículo/abordagem/endereço)
+    # encontra qualquer registro de qualquer equipe. O isolamento_abordagens atua
+    # só na LISTAGEM de relatórios (/abordagens) e no analítico (/analytics).
+    gid, bid = None, None
     service = ConsultaService(db)
     resultados = await service.busca_unificada(
         q=q,

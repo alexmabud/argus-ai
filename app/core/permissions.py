@@ -58,29 +58,6 @@ class TenantFilter:
                 raise AcessoNegadoError("Recurso de outra guarnição")
 
 
-def filtros_abordagem(user) -> tuple[int | None, int | None]:
-    """Resolve a cascata de visibilidade de abordagens para um usuário.
-
-    Aplica a prioridade equipe > BPM > global a partir das flags
-    ``isolamento_abordagens`` da guarnição e do BPM do usuário. Usada na
-    LISTAGEM de relatórios/consultas (não na mídia — fotos de abordagem são
-    globais, expostas na ficha da pessoa para todas as equipes).
-
-    Args:
-        user: Usuário autenticado com ``guarnicao`` (e ``guarnicao.bpm``)
-            carregados — ambos relacionamentos são ``lazy="selectin"``.
-
-    Returns:
-        Tupla ``(guarnicao_id, bpm_id)``. No máximo um é não-None; ambos None
-        significa acesso global.
-    """
-    if user.guarnicao and user.guarnicao.isolamento_abordagens:
-        return (user.guarnicao_id, None)
-    if user.guarnicao and user.guarnicao.bpm and user.guarnicao.bpm.isolamento_abordagens:
-        return (None, user.guarnicao.bpm_id)
-    return (None, None)
-
-
 def assert_scope(admin, alvo_guarnicao_id: int | None) -> None:
     """Valida o alcance de um admin delegado sobre uma guarnição alvo.
 

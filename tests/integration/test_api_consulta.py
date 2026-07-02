@@ -366,7 +366,7 @@ class TestConsultaIsolamento:
         data = response.json()
         assert len(data["abordagens"]) >= 1
 
-    async def test_abordagens_toggle_on_nao_ve_outra_equipe(
+    async def test_consulta_abordagem_e_global_mesmo_com_isolamento(
         self,
         client: AsyncClient,
         db_session: AsyncSession,
@@ -375,7 +375,11 @@ class TestConsultaIsolamento:
         usuario: Usuario,
         equipe_c: Guarnicao,
     ):
-        """Busca de abordagem com toggle ON não retorna resultados de outra equipe.
+        """A busca da Consulta é GLOBAL: acha abordagem de outra equipe mesmo com toggle ON.
+
+        Regra de negócio: o isolamento_abordagens atua só na LISTAGEM de
+        relatórios (/abordagens) e no analítico (/analytics), nunca na Consulta —
+        a busca operacional encontra qualquer registro de qualquer equipe.
 
         Args:
             client: Cliente HTTP assincrónico.
@@ -403,7 +407,8 @@ class TestConsultaIsolamento:
         )
         assert response.status_code == 200
         data = response.json()
-        assert len(data["abordagens"]) == 0
+        # Consulta global: a equipe C (isolada) encontra a abordagem da equipe A.
+        assert len(data["abordagens"]) >= 1
 
 
 class TestConsultaAudit:
