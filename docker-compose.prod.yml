@@ -62,6 +62,11 @@ services:
       - argus-network
 
   api:
+    # Imagem única compartilhada por api/worker/worker-2 (mesmo Dockerfile.prod).
+    # Só a api tem 'build:' — os workers reusam esta imagem via 'image:'. Isso
+    # evita buildar/descompactar 3 imagens idênticas em paralelo, que estourava
+    # o disco de 49 GB da VM (torch+triton+easyocr, ~10 GB cada × 3).
+    image: argus-ai-app:latest
     build:
       context: .
       dockerfile: Dockerfile.prod
@@ -96,10 +101,8 @@ services:
       - argus-network
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.prod
-      network: host
+    # Reusa a imagem buildada pela api (não builda de novo). Ver nota em 'api'.
+    image: argus-ai-app:latest
     restart: always
     command: python -m arq app.worker.WorkerSettings
     env_file:
@@ -128,10 +131,8 @@ services:
       - argus-network
 
   worker-2:
-    build:
-      context: .
-      dockerfile: Dockerfile.prod
-      network: host
+    # Reusa a imagem buildada pela api (não builda de novo). Ver nota em 'api'.
+    image: argus-ai-app:latest
     restart: always
     command: python -m arq app.worker.WorkerSettings
     env_file:
