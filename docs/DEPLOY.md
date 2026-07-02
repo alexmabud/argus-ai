@@ -91,6 +91,28 @@ faz `git pull` na VM — **nunca** use `scp` (deixa a árvore suja e quebra o de
 docker compose -f docker-compose.prod.yml up -d
 ```
 
+### Imagem única (api/worker/worker-2)
+
+Os serviços `api`, `worker` e `worker-2` rodam o **mesmo código** (`Dockerfile.prod`).
+Só `api` tem `build:` no compose — ela produz `image: argus-ai-app:latest`, e
+`worker`/`worker-2` apenas referenciam essa `image:` (sem `build:` próprio).
+Isso builda a imagem **uma única vez** em vez de três vezes em paralelo.
+
+Isso importa porque a VM de produção (Oracle Free Tier) tem **disco pequeno
+(~49 GB)**. `torch`/`easyocr`/`insightface` deixam a imagem pesada; buildar 3
+cópias idênticas ao mesmo tempo já estourou o disco em produção. O
+`Dockerfile.prod` também remove as libs CUDA/NVIDIA (`nvidia-*`, `triton`) do
+venv após a instalação — o `requirements.lock` as fixa porque foi gerado
+resolvendo o torch do PyPI, mas a wheel **CPU** do torch não as usa; numa VM
+sem GPU são ~5 GB de peso morto. Ao alterar `Dockerfile.prod` ou
+`requirements.lock`, teste o build direto na VM antes de confiar no deploy
+automático — o CI não builda a imagem Docker, só valida testes/lint.
+
+Se um deploy falhar por disco cheio, o `docker compose down` do início do
+workflow já derrubou os containers antes do build falhar — **a produção fica
+fora do ar até o problema ser corrigido**. Ver `docs/disaster-recovery.md`,
+Cenário F.
+
 ## Variáveis de Ambiente (Produção)
 
 ```env
