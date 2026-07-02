@@ -97,9 +97,7 @@ class TestSyncBatch:
 
         # Persistência real no banco — não só o status na resposta.
         row = (
-            await db_session.execute(
-                select(Pessoa).where(Pessoa.nome == "FULANO SYNC TESTE")
-            )
+            await db_session.execute(select(Pessoa).where(Pessoa.nome == "FULANO SYNC TESTE"))
         ).scalar_one_or_none()
         assert row is not None
         assert row.guarnicao_id == usuario.guarnicao_id

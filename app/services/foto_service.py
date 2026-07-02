@@ -196,9 +196,7 @@ class FotoService:
 
         return foto
 
-    async def listar_por_pessoa(
-        self, pessoa_id: int, skip: int = 0, limit: int = 50
-    ) -> list[Foto]:
+    async def listar_por_pessoa(self, pessoa_id: int, skip: int = 0, limit: int = 50) -> list[Foto]:
         """Lista as fotos associadas a uma pessoa (paginado no banco).
 
         Retorna fotos ordenadas por data/hora decrescente (mais recentes primeiro).

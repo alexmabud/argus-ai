@@ -29,9 +29,7 @@ class TestGeocodeReverse:
 
         monkeypatch.setattr(GeocodingService, "reverse", fake_reverse)
 
-        resp = await client.get(
-            "/api/v1/geocode/reverse?lat=-23.5&lon=-46.6", headers=auth_headers
-        )
+        resp = await client.get("/api/v1/geocode/reverse?lat=-23.5&lon=-46.6", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["endereco"] == "Rua X, 10, Centro, Cidade"
 
