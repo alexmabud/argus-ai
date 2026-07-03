@@ -134,7 +134,44 @@ function renderAbordagemDetalhe() {
             </div>
           </div>
 
-          <hr style="border:none;border-top:1px solid var(--color-border);margin:4px 0;">
+          <!-- MÍDIAS -->
+          <div class="glass-card" style="padding:12px;">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Mídias</span>
+                <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);">Fotos dessa abordagem</span>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <template x-for="f in midiasAbordagem" :key="f.id">
+                  <div style="width:64px;height:64px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;overflow:hidden;cursor:pointer;position:relative;"
+                       @click="fotoAmpliada = f.arquivo_url">
+                    <img :src="f.thumbnail_url || f.arquivo_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
+                    <!-- Botão download -->
+                    <button @click.stop="downloadMidia(f)"
+                       style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.65);border-radius:3px;padding:2px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;"
+                       title="Baixar">
+                      <svg width="12" height="12" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    </button>
+                  </div>
+                </template>
+                <!-- Botão adicionar -->
+                <div style="width:64px;height:64px;border:1px dashed rgba(0,212,255,0.25);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;background:rgba(0,212,255,0.03);"
+                     :style="enviandoMidia ? 'opacity:0.5;cursor:not-allowed;' : ''"
+                     @click="!enviandoMidia && $refs.midiaInput.click()">
+                  <template x-if="!enviandoMidia">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-primary);"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </template>
+                  <template x-if="enviandoMidia">
+                    <div style="width:16px;height:16px;border:2px solid var(--color-border);border-top-color:var(--color-primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                  </template>
+                  <span style="font-family:var(--font-display);font-size:8px;color:var(--color-text-dim);" x-show="!enviandoMidia">ADD</span>
+                  <input type="file" accept="image/*,application/pdf" x-ref="midiaInput" style="display:none;"
+                         @change="enviarMidia($event.target.files[0])">
+                </div>
+              </div>
+              <p x-show="midiaErro" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);" x-text="midiaErro"></p>
+            </div>
+          </div>
 
           <!-- RAP -->
           <div class="glass-card" style="padding:12px;">
@@ -217,45 +254,6 @@ function renderAbordagemDetalhe() {
                   </button>
                 </div>
               </template>
-            </div>
-          </div>
-
-          <!-- MÍDIAS -->
-          <div class="glass-card" style="padding:12px;">
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Mídias</span>
-                <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);">fotos · vídeos · autorizações</span>
-              </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <template x-for="f in midiasAbordagem" :key="f.id">
-                  <div style="width:64px;height:64px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;overflow:hidden;cursor:pointer;position:relative;"
-                       @click="fotoAmpliada = f.arquivo_url">
-                    <img :src="f.thumbnail_url || f.arquivo_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
-                    <!-- Botão download -->
-                    <button @click.stop="downloadMidia(f)"
-                       style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.65);border-radius:3px;padding:2px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;"
-                       title="Baixar">
-                      <svg width="12" height="12" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    </button>
-                  </div>
-                </template>
-                <!-- Botão adicionar -->
-                <div style="width:64px;height:64px;border:1px dashed rgba(0,212,255,0.25);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;background:rgba(0,212,255,0.03);"
-                     :style="enviandoMidia ? 'opacity:0.5;cursor:not-allowed;' : ''"
-                     @click="!enviandoMidia && $refs.midiaInput.click()">
-                  <template x-if="!enviandoMidia">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--color-primary);"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  </template>
-                  <template x-if="enviandoMidia">
-                    <div style="width:16px;height:16px;border:2px solid var(--color-border);border-top-color:var(--color-primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-                  </template>
-                  <span style="font-family:var(--font-display);font-size:8px;color:var(--color-text-dim);" x-show="!enviandoMidia">ADD</span>
-                  <input type="file" accept="image/*,application/pdf" x-ref="midiaInput" style="display:none;"
-                         @change="enviarMidia($event.target.files[0])">
-                </div>
-              </div>
-              <p x-show="midiaErro" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);" x-text="midiaErro"></p>
             </div>
           </div>
 

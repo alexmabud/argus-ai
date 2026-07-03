@@ -502,9 +502,10 @@ function renderConsulta() {
       </div>
 
     <!-- Modal ver mais — busca por nome/CPF -->
+    <template x-teleport="body">
     <div x-show="modalVerMaisTexto" x-cloak
          @click.self="modalVerMaisTexto = false"
-         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
+         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 200; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
       <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; box-sizing: border-box; max-height: calc(100vh - 2rem); overflow-y: auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
@@ -535,11 +536,13 @@ function renderConsulta() {
         </div></div>
       </div>
     </div>
+    </template>
 
     <!-- Modal ver mais — busca por endereço -->
+    <template x-teleport="body">
     <div x-show="modalVerMaisEndereco" x-cloak
          @click.self="modalVerMaisEndereco = false"
-         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
+         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 200; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
       <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; box-sizing: border-box; max-height: calc(100vh - 2rem); overflow-y: auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
@@ -567,14 +570,24 @@ function renderConsulta() {
               <p style="font-family: var(--font-data); font-size: 10px; color: var(--color-text); margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
             </div>
           </template>
-        </div></div>
+        </div>
+        <div x-show="enderecoTemMais" style="text-align: center; margin-top: 0.75rem;">
+          <button @click="carregarMaisEndereco()" :disabled="loadingMaisEndereco"
+                  style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0;">
+            <span x-show="!loadingMaisEndereco">Carregar mais</span>
+            <span x-show="loadingMaisEndereco">Carregando...</span>
+          </button>
+        </div>
+        </div>
       </div>
     </div>
+    </template>
 
     <!-- Modal ver mais — busca por veículo -->
+    <template x-teleport="body">
     <div x-show="modalVerMaisVeiculo" x-cloak
          @click.self="modalVerMaisVeiculo = false"
-         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
+         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 200; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
       <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; box-sizing: border-box; max-height: calc(100vh - 2rem); overflow-y: auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
@@ -605,6 +618,7 @@ function renderConsulta() {
         </div></div>
       </div>
     </div>
+    </template>
 
     ${personPhotoModalHTML()}
   </div>
@@ -654,6 +668,8 @@ function consultaPage() {
     pessoasEndereco: [],
     loadingEndereco: false,
     searchedEndereco: false,
+    enderecoTemMais: false,
+    loadingMaisEndereco: false,
 
     // Estado — veiculo
     filtroPlaca: "",
@@ -762,6 +778,7 @@ function consultaPage() {
     _limparResultadoEndereco() {
       this.pessoasEndereco = [];
       this.searchedEndereco = false;
+      this.enderecoTemMais = false;
     },
 
     onFiltroEstadoChange() {
@@ -869,21 +886,41 @@ function consultaPage() {
       }
     },
 
+    _urlFiltroEndereco(skip) {
+      let url = `/consultas/?q=&tipo=pessoa&estado_id=${this.fEstadoId}&limit=200&skip=${skip}`;
+      if (this.fCidadeId) url += `&cidade_id=${this.fCidadeId}`;
+      if (this.fBairroId) url += `&bairro_id=${this.fBairroId}`;
+      return url;
+    },
+
     async searchPorEndereco() {
       if (!this.fEstadoId) return;
       this.loadingEndereco = true;
       try {
-        let url = `/consultas/?q=&tipo=pessoa&estado_id=${this.fEstadoId}`;
-        if (this.fCidadeId) url += `&cidade_id=${this.fCidadeId}`;
-        if (this.fBairroId) url += `&bairro_id=${this.fBairroId}`;
-        const r = await api.get(url);
+        const r = await api.get(this._urlFiltroEndereco(0));
         this.pessoasEndereco = r.pessoas || [];
+        this.enderecoTemMais = this.pessoasEndereco.length === 200;
         this.searchedEndereco = true;
         if (this.pessoasEndereco.length > 0) this.modalVerMaisEndereco = true;
       } catch {
         showToast("Erro no filtro por endereço", "error");
       } finally {
         this.loadingEndereco = false;
+      }
+    },
+
+    async carregarMaisEndereco() {
+      if (!this.enderecoTemMais || this.loadingMaisEndereco) return;
+      this.loadingMaisEndereco = true;
+      try {
+        const r = await api.get(this._urlFiltroEndereco(this.pessoasEndereco.length));
+        const novas = r.pessoas || [];
+        this.pessoasEndereco = this.pessoasEndereco.concat(novas);
+        this.enderecoTemMais = novas.length === 200;
+      } catch {
+        showToast("Erro ao carregar mais resultados", "error");
+      } finally {
+        this.loadingMaisEndereco = false;
       }
     },
 

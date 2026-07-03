@@ -184,3 +184,6 @@ docs/manual/
 
 # Dados locais do monitoramento (make monitoring-local)
 .monitoring-data/
+
+# Worktrees isoladas (using-git-worktrees skill)
+.worktrees/
