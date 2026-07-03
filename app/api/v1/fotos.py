@@ -305,6 +305,7 @@ async def buscar_por_rosto(
 
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
+    file_bytes = await normalizar_imagem_para_reconhecimento(file_bytes)
     service = FotoService(db)
     results = await service.buscar_por_rosto(
         image_bytes=file_bytes,

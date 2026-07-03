@@ -9,11 +9,14 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.database.session import get_db
+from app.dependencies import get_face_service
+from app.main import create_app
 from app.models.foto import Foto
 
 
@@ -80,6 +83,106 @@ class TestBuscarRosto:
             files={"file": ("face.jpg", b"fake", "image/jpeg")},
         )
         assert response.status_code == 401
+
+    @pytest.fixture
+    async def client_face(self, db_session: AsyncSession):
+        """Cliente com get_db e get_face_service sobrescritos.
+
+        Expõe o mock de FaceService para o teste controlar o retorno de
+        extrair_embedding sem depender do modelo InsightFace real.
+
+        Args:
+            db_session: Sessão do banco de testes.
+
+        Yields:
+            tuple[AsyncClient, MagicMock]: cliente HTTP e o mock de FaceService.
+        """
+        app = create_app()
+        mock_face = MagicMock()
+
+        async def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_face_service] = lambda: mock_face
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="https://test") as ac:
+            yield ac, mock_face
+        app.dependency_overrides.clear()
+
+    async def test_buscar_rosto_retorna_200_com_resultado(
+        self,
+        client_face,
+        auth_headers: dict,
+        pessoa,
+        db_session: AsyncSession,
+    ):
+        """Deve extrair embedding e retornar a pessoa com foto similar.
+
+        Args:
+            client_face: Cliente com face_service mockado.
+            auth_headers: Headers com Bearer token válido.
+            pessoa: Fixture de pessoa dona da foto de referência.
+            db_session: Sessão do banco de testes.
+        """
+        ac, mock_face = client_face
+        embedding = [1.0] + [0.0] * 511
+        mock_face.extrair_embedding.return_value = embedding
+
+        db_session.add(
+            Foto(
+                arquivo_url="/storage/x/rosto.jpg",
+                tipo="rosto",
+                data_hora=datetime.now(),
+                pessoa_id=pessoa.id,
+                embedding_face=embedding,
+                face_processada=True,
+            )
+        )
+        await db_session.flush()
+
+        response = await ac.post(
+            "/api/v1/fotos/buscar-rosto",
+            files={"file": ("face.jpg", b"\xff\xd8\xff\xe0" + b"\x00" * 16, "image/jpeg")},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["resultados"][0]["pessoa_id"] == pessoa.id
+        mock_face.extrair_embedding.assert_called_once()
+
+    async def test_buscar_rosto_heic_e_convertido_antes_do_embedding(
+        self, client_face, auth_headers: dict,
+    ):
+        """HEIC deve ser convertido para JPEG antes de chegar no FaceService.
+
+        Regressão: buscar-rosto aceitava HEIC nos magic bytes mas não
+        convertia antes de extrair o embedding — diferente do endpoint de
+        upload, que já convertia.
+
+        Args:
+            client_face: Cliente com face_service mockado.
+            auth_headers: Headers com Bearer token válido.
+        """
+        pytest.importorskip("pillow_heif")
+        buf = io.BytesIO()
+        Image.new("RGB", (400, 300), (70, 90, 110)).save(buf, format="HEIF")
+        heic_bytes = buf.getvalue()
+
+        ac, mock_face = client_face
+        mock_face.extrair_embedding.return_value = None
+
+        response = await ac.post(
+            "/api/v1/fotos/buscar-rosto",
+            files={"file": ("face.heic", heic_bytes, "image/heic")},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        called_bytes = mock_face.extrair_embedding.call_args[0][0]
+        assert called_bytes[:3] == b"\xff\xd8\xff"
 
 
 class TestOCRPlaca:
