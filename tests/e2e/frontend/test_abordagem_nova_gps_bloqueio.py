@@ -202,3 +202,44 @@ def test_submit_libera_apos_timeout_em_ambas_tentativas(harness: Path) -> None:
 
     assert habilitado, "botão deveria habilitar após timeout nas duas tentativas de GPS"
     assert estado["gpsPermissionDenied"] is False
+
+
+def test_submit_bloqueia_post_mesmo_chamado_diretamente_com_gps_pendente(harness: Path) -> None:
+    """Guarda interna de submit() bloqueia o POST mesmo contornando o :disabled do botão.
+
+    Regressão preventiva: o :disabled do botão e a guarda dentro de submit()
+    checam os mesmos campos (gpsLoading/gpsPermissionDenied) em dois lugares
+    porque o backend não valida latitude/longitude — se alguém inverter um
+    || por && em um dos dois no futuro, este teste pega a regressão mesmo que
+    o outro guard continue funcionando.
+    """
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script("window.__gpsStub = () => new Promise(() => {});")  # nunca resolve
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _selecionar_pessoa_existente(page)
+
+        # Chama submit() direto via Alpine, ignorando o :disabled do botão —
+        # simula um bypass (devtools, automação, ou regressão futura no :disabled).
+        page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data*="abordagemForm"]');
+              Alpine.$data(root).submit();
+            }"""
+        )
+        page.wait_for_timeout(300)
+
+        calls = page.evaluate("window.__calls")
+        browser.close()
+
+    posts_abordagem = [c for c in calls["posts"] if c["url"] == "/abordagens/"]
+    assert not posts_abordagem, (
+        "submit() deveria bloquear internamente com GPS pendente, mesmo chamado direto"
+    )
