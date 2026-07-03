@@ -113,9 +113,7 @@ class TestConverterHeicParaJpeg:
         ):
             mock_pil.open.return_value = fake_img
             mock_ops.exif_transpose.return_value = fake_img
-            result = await converter_heic_para_jpeg(
-                b"\x00\x00\x00\x18ftyp heic" + b"\x00" * 50
-            )
+            result = await converter_heic_para_jpeg(b"\x00\x00\x00\x18ftyp heic" + b"\x00" * 50)
 
         assert result[:3] == b"\xff\xd8\xff"
         mock_ops.exif_transpose.assert_called_once_with(fake_img)

@@ -154,7 +154,9 @@ class TestBuscarRosto:
         mock_face.extrair_embedding.assert_called_once()
 
     async def test_buscar_rosto_heic_e_convertido_antes_do_embedding(
-        self, client_face, auth_headers: dict,
+        self,
+        client_face,
+        auth_headers: dict,
     ):
         """HEIC deve ser convertido para JPEG antes de chegar no FaceService.
 
