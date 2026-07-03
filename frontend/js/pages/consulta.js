@@ -47,34 +47,31 @@ function renderConsulta() {
         </div>
 
         <!-- Reconhecimento Facial -->
-        <div x-show="!fotoFile" style="display:flex;gap:8px;">
-          <button @click="$refs.fotoInput.click()"
-                  class="hov-cta-card"
-                  style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:4px;border:2px dashed rgba(0,212,255,0.3);background:rgba(0,212,255,0.03);cursor:pointer;transition:all 150ms;">
-            <div style="width:40px;height:40px;border-radius:4px;background:rgba(0,212,255,0.1);display:flex;align-items:center;justify-content:center;color:var(--color-primary);">
-              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
-              </svg>
-            </div>
-            <div style="text-align:center;">
-              <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-primary);">Enviar arquivo</p>
-              <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Reconhecimento facial</p>
-            </div>
-          </button>
-          <button @click="$refs.fotoInputCamera.click()"
-                  class="hov-cta-card"
-                  style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:4px;border:2px dashed rgba(0,212,255,0.3);background:rgba(0,212,255,0.03);cursor:pointer;transition:all 150ms;">
-            <div style="width:40px;height:40px;border-radius:4px;background:rgba(0,212,255,0.1);display:flex;align-items:center;justify-content:center;color:var(--color-primary);">
-              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/>
-              </svg>
-            </div>
-            <div style="text-align:center;">
-              <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-primary);">Tirar foto agora</p>
-              <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Reconhecimento facial</p>
-            </div>
-          </button>
+        <div x-show="!fotoFile" style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:4px;border:1px solid rgba(0,212,255,0.15);background:rgba(0,212,255,0.02);">
+          <span style="font-family:var(--font-data);font-size:10px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;">Reconhecimento Facial</span>
+          <div style="display:flex;flex-direction:row;flex-wrap:nowrap;gap:8px;">
+            <button @click="$refs.fotoInput.click()"
+                    class="hov-cta-card"
+                    style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:4px;border:2px dashed rgba(0,212,255,0.3);background:rgba(0,212,255,0.03);cursor:pointer;transition:all 150ms;">
+              <div style="width:40px;height:40px;border-radius:4px;background:rgba(0,212,255,0.1);display:flex;align-items:center;justify-content:center;color:var(--color-primary);">
+                <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                </svg>
+              </div>
+              <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-primary);text-align:center;">Enviar arquivo</p>
+            </button>
+            <button @click="$refs.fotoInputCamera.click()"
+                    class="hov-cta-card"
+                    style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:4px;border:2px dashed rgba(0,212,255,0.3);background:rgba(0,212,255,0.03);cursor:pointer;transition:all 150ms;">
+              <div style="width:40px;height:40px;border-radius:4px;background:rgba(0,212,255,0.1);display:flex;align-items:center;justify-content:center;color:var(--color-primary);">
+                <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/>
+                </svg>
+              </div>
+              <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-primary);text-align:center;">Tirar foto agora</p>
+            </button>
+          </div>
         </div>
         <input type="file" x-ref="fotoInput" accept="image/jpeg,image/png,image/webp"
                class="hidden" @change="onFotoSelect($event)">
