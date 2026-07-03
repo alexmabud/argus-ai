@@ -469,7 +469,10 @@ function renderAbordagemNova() {
 
       <!-- 6. Submit -->
       <div style="display:flex;flex-direction:column;gap:12px;padding-top:8px;">
-        <button @click="submit()" class="btn btn-primary" :disabled="submitting || pessoaIds.length === 0">
+        <p x-show="gpsLoading" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);">Aguardando localização para liberar o registro...</p>
+        <p x-show="!gpsLoading && gpsPermissionDenied" style="font-family:var(--font-data);font-size:12px;color:var(--color-warning, #f59e0b);">Conceda a permissão de localização para registrar a abordagem.</p>
+
+        <button @click="submit()" class="btn btn-primary" :disabled="submitting || pessoaIds.length === 0 || gpsLoading || gpsPermissionDenied">
           <span x-show="!submitting">Registrar Abordagem</span>
           <span x-show="submitting" style="display:flex;align-items:center;gap:8px;">
             <span class="spinner"></span> Salvando...
@@ -526,6 +529,7 @@ function abordagemForm() {
     endereco: "",
     gpsLoading: false,
     gpsErro: null,
+    gpsPermissionDenied: false,
 
     // Formulário
     observacao: "",
@@ -598,19 +602,11 @@ function abordagemForm() {
     veiculoLocalidades: { modelos: [], cores: [] },
 
     async initForm() {
-      // Auto-capturar GPS apenas se permissão já foi concedida.
-      // Se "prompt" (ainda não decidida), aguarda gesto do usuário para evitar
-      // que o dialog apareça em momento inesperado e seja negado acidentalmente.
-      if (navigator.permissions) {
-        try {
-          const perm = await navigator.permissions.query({ name: "geolocation" });
-          if (perm.state === "granted") this.captureGPS();
-        } catch {
-          this.captureGPS(); // permissions API não suportada — tenta normalmente
-        }
-      } else {
-        this.captureGPS();
-      }
+      // Sempre tenta capturar GPS ao abrir a tela — inclusive com a permissão
+      // ainda em "prompt" (o diálogo nativo pode aparecer aqui). O submit fica
+      // bloqueado por gpsLoading/gpsPermissionDenied enquanto isso, então
+      // sempre há um estado de carregamento visível explicando a espera.
+      this.captureGPS();
 
       // Carregar estados para cascata de endereço
       try { this.anEstados = await api.get('/localidades?tipo=estado'); } catch { /* silencioso */ }
@@ -922,6 +918,7 @@ function abordagemForm() {
     async captureGPS() {
       this.gpsLoading = true;
       this.gpsErro = null;
+      this.gpsPermissionDenied = false;
 
       try {
         const loc = await getGPSLocation();
@@ -942,6 +939,9 @@ function abordagemForm() {
         this.endereco = "";
         if (err && err.code === 1) {
           this.gpsErro = "GPS bloqueado. Clique no cadeado (🔒) na barra de endereços → Localização → Permitir. No Windows, verifique também: Configurações → Privacidade → Localização → Ativar.";
+          // Permissão negada não é falha técnica — é reversível pelo usuário.
+          // Mantém o submit bloqueado até ele conceder a permissão.
+          this.gpsPermissionDenied = true;
         } else if (err && err.code === 2) {
           this.gpsErro = "Sinal de GPS indisponível.";
         } else if (err && err.code === 3) {
