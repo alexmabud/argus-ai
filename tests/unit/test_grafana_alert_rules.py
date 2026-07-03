@@ -13,12 +13,7 @@ from pathlib import Path
 import yaml
 
 RULES_PATH = (
-    Path(__file__).parents[2]
-    / "monitoring"
-    / "grafana"
-    / "provisioning"
-    / "alerting"
-    / "rules.yml"
+    Path(__file__).parents[2] / "monitoring" / "grafana" / "provisioning" / "alerting" / "rules.yml"
 )
 
 
