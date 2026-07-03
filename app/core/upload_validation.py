@@ -144,9 +144,9 @@ def _converter_heic_sincrono(file_bytes: bytes) -> bytes:
     original_orientation = img.info.get("original_orientation")
     if original_orientation and original_orientation != 1:
         img.getexif()[_EXIF_ORIENTATION_TAG] = original_orientation
-    img = ImageOps.exif_transpose(img).convert("RGB")
+    transposed = ImageOps.exif_transpose(img).convert("RGB")
     out = BytesIO()
-    img.save(out, format="JPEG", quality=90)
+    transposed.save(out, format="JPEG", quality=90)
     return out.getvalue()
 
 
