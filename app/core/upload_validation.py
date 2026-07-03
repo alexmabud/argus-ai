@@ -8,7 +8,7 @@ com limite de tamanho antes de carregar tudo na memória).
 import asyncio
 from io import BytesIO
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 try:
     import pillow_heif
@@ -124,13 +124,18 @@ async def converter_heic_para_jpeg(file_bytes: bytes) -> bytes:
 def _converter_heic_sincrono(file_bytes: bytes) -> bytes:
     """Executa a conversão HEIC→JPEG de forma síncrona (use via asyncio.to_thread).
 
+    Aplica ``exif_transpose`` antes de converter para RGB — a tag de
+    orientação EXIF do container HEIC seria perdida na conversão, e por
+    isso a rotação precisa ser aplicada aos pixels enquanto o EXIF ainda
+    existe (senão fotos de iPhone em retrato saem "deitadas" do rosto).
+
     Args:
         file_bytes: Bytes do arquivo HEIC/HEIF.
 
     Returns:
-        Bytes JPEG convertidos.
+        Bytes JPEG convertidos, já com orientação corrigida.
     """
-    img = Image.open(BytesIO(file_bytes)).convert("RGB")
+    img = ImageOps.exif_transpose(Image.open(BytesIO(file_bytes))).convert("RGB")
     out = BytesIO()
     img.save(out, format="JPEG", quality=90)
     return out.getvalue()

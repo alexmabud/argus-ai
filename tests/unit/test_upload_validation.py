@@ -89,7 +89,12 @@ class TestConverterHeicParaJpeg:
 
     @pytest.mark.asyncio
     async def test_retorna_jpeg(self):
-        """Deve retornar bytes JPEG válidos após conversão."""
+        """Deve retornar bytes JPEG válidos, aplicando exif_transpose antes do convert.
+
+        exif_transpose precisa rodar ANTES de converter para RGB — a tag de
+        orientação é perdida assim que o container HEIC é descartado, então
+        a rotação tem que ser aplicada aos pixels enquanto o EXIF ainda existe.
+        """
         from app.core.upload_validation import converter_heic_para_jpeg
 
         fake_img = MagicMock()
@@ -100,11 +105,18 @@ class TestConverterHeicParaJpeg:
 
         fake_img.save.side_effect = fake_save
 
-        with patch("app.core.upload_validation.Image") as mock_pil:
+        with (
+            patch("app.core.upload_validation.Image") as mock_pil,
+            patch("app.core.upload_validation.ImageOps") as mock_ops,
+        ):
             mock_pil.open.return_value = fake_img
-            result = await converter_heic_para_jpeg(b"\x00\x00\x00\x18ftyp heic" + b"\x00" * 50)
+            mock_ops.exif_transpose.return_value = fake_img
+            result = await converter_heic_para_jpeg(
+                b"\x00\x00\x00\x18ftyp heic" + b"\x00" * 50
+            )
 
         assert result[:3] == b"\xff\xd8\xff"
+        mock_ops.exif_transpose.assert_called_once_with(fake_img)
 
     @pytest.mark.asyncio
     async def test_lanca_erro_se_heif_indisponivel(self):
