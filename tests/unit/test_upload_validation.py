@@ -181,6 +181,21 @@ class TestNormalizarImagemParaReconhecimento:
             assert img.getexif().get(0x0112, 1) == 1
 
     @pytest.mark.asyncio
+    async def test_jpeg_nao_decodificavel_preserva_bytes_originais(self):
+        """Magic bytes válidos mas corpo corrompido não deve quebrar a normalização.
+
+        Mesma tolerância que FotoService.upload_foto já aplica na geração
+        de thumbnail (except UnidentifiedImageError) — a normalização não
+        pode travar o upload/busca por um arquivo com corpo inválido.
+        """
+        from app.core.upload_validation import normalizar_imagem_para_reconhecimento
+
+        fake_jpeg = b"\xff\xd8\xff\xe0" + b"\x00" * 16
+        result = await normalizar_imagem_para_reconhecimento(fake_jpeg)
+
+        assert result == fake_jpeg
+
+    @pytest.mark.asyncio
     async def test_jpeg_orientacao_3_mantem_dimensoes(self):
         """Orientation=3 (180°) mantém proporção mas inverte os pixels."""
         from app.core.upload_validation import normalizar_imagem_para_reconhecimento

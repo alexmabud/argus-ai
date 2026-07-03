@@ -8,7 +8,7 @@ com limite de tamanho antes de carregar tudo na memória).
 import asyncio
 from io import BytesIO
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 try:
     import pillow_heif
@@ -176,26 +176,34 @@ async def normalizar_imagem_para_reconhecimento(file_bytes: bytes) -> bytes:
 def _corrigir_orientacao_sincrono(file_bytes: bytes) -> bytes:
     """Corrige rotação EXIF preservando os bytes originais quando não há tag.
 
+    Se os bytes não formam uma imagem decodificável pelo Pillow (magic bytes
+    válidos mas corpo corrompido), retorna os bytes originais inalterados —
+    mesma tolerância que ``FotoService.upload_foto`` já aplica na geração de
+    thumbnail, para não travar o upload/busca por um arquivo inválido.
+
     Args:
         file_bytes: Bytes de imagem JPEG, PNG ou WebP.
 
     Returns:
         Bytes normalizados (reencodados só se havia rotação a corrigir).
     """
-    with Image.open(BytesIO(file_bytes)) as img:
-        orientation = img.getexif().get(_EXIF_ORIENTATION_TAG, 1)
-        if orientation == 1:
-            return file_bytes
+    try:
+        with Image.open(BytesIO(file_bytes)) as img:
+            orientation = img.getexif().get(_EXIF_ORIENTATION_TAG, 1)
+            if orientation == 1:
+                return file_bytes
 
-        transposed = ImageOps.exif_transpose(img)
-        fmt = img.format or "JPEG"
-        save_kwargs = {"quality": 90} if fmt == "JPEG" else {}
-        if fmt == "JPEG" and transposed.mode not in ("RGB", "L"):
-            transposed = transposed.convert("RGB")
+            transposed = ImageOps.exif_transpose(img)
+            fmt = img.format or "JPEG"
+            save_kwargs = {"quality": 90} if fmt == "JPEG" else {}
+            if fmt == "JPEG" and transposed.mode not in ("RGB", "L"):
+                transposed = transposed.convert("RGB")
 
-        out = BytesIO()
-        transposed.save(out, format=fmt, **save_kwargs)
-        return out.getvalue()
+            out = BytesIO()
+            transposed.save(out, format=fmt, **save_kwargs)
+            return out.getvalue()
+    except UnidentifiedImageError:
+        return file_bytes
 
 
 def validar_magic_bytes_pdf(file_bytes: bytes) -> None:
