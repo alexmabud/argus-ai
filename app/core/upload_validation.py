@@ -186,9 +186,12 @@ def _corrigir_orientacao_sincrono(file_bytes: bytes) -> bytes:
     """Corrige rotação EXIF preservando os bytes originais quando não há tag.
 
     Se os bytes não formam uma imagem decodificável pelo Pillow (magic bytes
-    válidos mas corpo corrompido), retorna os bytes originais inalterados —
-    mesma tolerância que ``FotoService.upload_foto`` já aplica na geração de
-    thumbnail, para não travar o upload/busca por um arquivo inválido.
+    válidos mas corpo corrompido ou truncado), retorna os bytes originais
+    inalterados — mesma tolerância que ``FotoService.upload_foto`` já aplica
+    na geração de thumbnail (``UnidentifiedImageError``/``OSError``), para
+    não travar o upload/busca por um arquivo inválido. Corpo truncado com
+    header/EXIF válidos lança ``OSError`` (não ``UnidentifiedImageError``)
+    só quando ``exif_transpose`` força a decodificação completa dos pixels.
 
     Args:
         file_bytes: Bytes de imagem JPEG, PNG ou WebP.
@@ -211,7 +214,7 @@ def _corrigir_orientacao_sincrono(file_bytes: bytes) -> bytes:
             out = BytesIO()
             transposed.save(out, format=fmt, **save_kwargs)
             return out.getvalue()
-    except UnidentifiedImageError:
+    except (UnidentifiedImageError, OSError):
         return file_bytes
 
 

@@ -219,6 +219,24 @@ class TestNormalizarImagemParaReconhecimento:
         assert result == fake_jpeg
 
     @pytest.mark.asyncio
+    async def test_jpeg_truncado_com_exif_preserva_bytes_originais(self):
+        """JPEG com header/EXIF válidos mas corpo truncado não deve derrubar a request.
+
+        Regressão: Image.open() abre normalmente (header intacto), mas
+        ImageOps.exif_transpose() força a decodificação completa dos pixels
+        e lança OSError (não UnidentifiedImageError) num corpo truncado —
+        cenário real de upload cortado no meio em campo com sinal ruim.
+        """
+        from app.core.upload_validation import normalizar_imagem_para_reconhecimento
+
+        full = _jpeg_bytes_com_orientacao(6, size=(200, 100))
+        truncated = full[:-30]
+
+        result = await normalizar_imagem_para_reconhecimento(truncated)
+
+        assert result == truncated
+
+    @pytest.mark.asyncio
     async def test_jpeg_orientacao_3_mantem_dimensoes(self):
         """Orientation=3 (180°) mantém proporção mas inverte os pixels."""
         from app.core.upload_validation import normalizar_imagem_para_reconhecimento
