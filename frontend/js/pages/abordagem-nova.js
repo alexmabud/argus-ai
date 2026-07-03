@@ -991,10 +991,15 @@ function abordagemForm() {
     },
 
     async submit() {
-      if (this.submitting) return;
+      if (this.submitting || this.gpsLoading) return;
 
       if (this.pessoaIds.length === 0) {
         this.erro = 'Adicione ao menos um abordado antes de registrar.';
+        return;
+      }
+
+      if (this.gpsPermissionDenied) {
+        this.erro = 'Conceda a permissão de localização para registrar a abordagem.';
         return;
       }
 
