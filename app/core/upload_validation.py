@@ -141,6 +141,63 @@ def _converter_heic_sincrono(file_bytes: bytes) -> bytes:
     return out.getvalue()
 
 
+#: Tag EXIF que codifica a orientação da câmera (1 = normal, sem correção necessária).
+_EXIF_ORIENTATION_TAG = 0x0112
+
+
+async def normalizar_imagem_para_reconhecimento(file_bytes: bytes) -> bytes:
+    """Normaliza bytes de imagem para reconhecimento facial e exibição.
+
+    Converte HEIC/HEIF para JPEG (câmeras de iPhone) e corrige a rotação
+    EXIF de fotos tiradas em retrato — sem isso, o InsightFace processa o
+    rosto "deitado" e a detecção falha ou perde qualidade. HEIC já corrige
+    a orientação internamente em ``converter_heic_para_jpeg`` (a rotação
+    precisa ser aplicada antes de descartar o container HEIC, que carrega
+    a tag de orientação).
+
+    Args:
+        file_bytes: Bytes da imagem já validados por
+            ``validar_magic_bytes_imagem`` (JPEG, PNG, WebP ou HEIC/HEIF).
+
+    Returns:
+        Bytes da imagem normalizada. HEIC sempre vira JPEG; os demais
+        formatos só são reencodados quando havia rotação EXIF a corrigir
+        (caso contrário os bytes originais são preservados).
+
+    Raises:
+        HTTPException: 400 se for HEIC e pillow-heif estiver indisponível,
+            ou se a conversão/normalização falhar.
+    """
+    if is_heic(file_bytes):
+        return await converter_heic_para_jpeg(file_bytes)
+    return await asyncio.to_thread(_corrigir_orientacao_sincrono, file_bytes)
+
+
+def _corrigir_orientacao_sincrono(file_bytes: bytes) -> bytes:
+    """Corrige rotação EXIF preservando os bytes originais quando não há tag.
+
+    Args:
+        file_bytes: Bytes de imagem JPEG, PNG ou WebP.
+
+    Returns:
+        Bytes normalizados (reencodados só se havia rotação a corrigir).
+    """
+    with Image.open(BytesIO(file_bytes)) as img:
+        orientation = img.getexif().get(_EXIF_ORIENTATION_TAG, 1)
+        if orientation == 1:
+            return file_bytes
+
+        transposed = ImageOps.exif_transpose(img)
+        fmt = img.format or "JPEG"
+        save_kwargs = {"quality": 90} if fmt == "JPEG" else {}
+        if fmt == "JPEG" and transposed.mode not in ("RGB", "L"):
+            transposed = transposed.convert("RGB")
+
+        out = BytesIO()
+        transposed.save(out, format=fmt, **save_kwargs)
+        return out.getvalue()
+
+
 def validar_magic_bytes_pdf(file_bytes: bytes) -> None:
     """Valida que o conteúdo do arquivo é um PDF real.
 

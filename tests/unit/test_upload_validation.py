@@ -1,9 +1,11 @@
 """Testes para upload_validation: magic bytes e conversão HEIC."""
 
-from unittest.mock import MagicMock, patch
+import io
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from PIL import Image
 
 
 class TestValidarMagicBytesImagem:
@@ -133,3 +135,73 @@ class TestConverterHeicParaJpeg:
             assert exc.value.status_code == 400
         finally:
             mod._HEIF_AVAILABLE = original
+
+
+def _jpeg_bytes_sem_exif(size: tuple[int, int] = (20, 10)) -> bytes:
+    """Gera JPEG sem tag de orientação EXIF."""
+    img = Image.new("RGB", size, color=(0, 255, 0))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+def _jpeg_bytes_com_orientacao(orientation: int, size: tuple[int, int] = (20, 10)) -> bytes:
+    """Gera JPEG com tag EXIF Orientation (0x0112) para testar exif_transpose."""
+    img = Image.new("RGB", size, color=(255, 0, 0))
+    exif = img.getexif()
+    exif[0x0112] = orientation
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", exif=exif)
+    return buf.getvalue()
+
+
+class TestNormalizarImagemParaReconhecimento:
+    """Testes para normalizar_imagem_para_reconhecimento."""
+
+    @pytest.mark.asyncio
+    async def test_jpeg_sem_orientacao_preserva_bytes_originais(self):
+        """Sem tag EXIF de orientação (ou orientação=1), retorna os bytes originais."""
+        from app.core.upload_validation import normalizar_imagem_para_reconhecimento
+
+        original = _jpeg_bytes_sem_exif()
+        result = await normalizar_imagem_para_reconhecimento(original)
+
+        assert result == original
+
+    @pytest.mark.asyncio
+    async def test_jpeg_orientacao_6_gira_e_troca_dimensoes(self):
+        """Orientation=6 (90° CW) gira a imagem — 20x10 vira 10x20."""
+        from app.core.upload_validation import normalizar_imagem_para_reconhecimento
+
+        original = _jpeg_bytes_com_orientacao(6, size=(20, 10))
+        result = await normalizar_imagem_para_reconhecimento(original)
+
+        with Image.open(io.BytesIO(result)) as img:
+            assert img.size == (10, 20)
+            assert img.getexif().get(0x0112, 1) == 1
+
+    @pytest.mark.asyncio
+    async def test_jpeg_orientacao_3_mantem_dimensoes(self):
+        """Orientation=3 (180°) mantém proporção mas inverte os pixels."""
+        from app.core.upload_validation import normalizar_imagem_para_reconhecimento
+
+        original = _jpeg_bytes_com_orientacao(3, size=(20, 10))
+        result = await normalizar_imagem_para_reconhecimento(original)
+
+        with Image.open(io.BytesIO(result)) as img:
+            assert img.size == (20, 10)
+
+    @pytest.mark.asyncio
+    async def test_heic_delega_para_converter_heic(self):
+        """Bytes HEIC devem passar por converter_heic_para_jpeg, não pela correção EXIF direta."""
+        from app.core.upload_validation import normalizar_imagem_para_reconhecimento
+
+        heic_bytes = b"\x00\x00\x00\x18ftypheic" + b"\x00" * 50
+        with patch(
+            "app.core.upload_validation.converter_heic_para_jpeg",
+            new=AsyncMock(return_value=b"\xff\xd8\xff" + b"\x00" * 10),
+        ) as mock_convert:
+            result = await normalizar_imagem_para_reconhecimento(heic_bytes)
+
+        mock_convert.assert_called_once_with(heic_bytes)
+        assert result[:3] == b"\xff\xd8\xff"
