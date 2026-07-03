@@ -121,6 +121,29 @@ class TestConverterHeicParaJpeg:
         mock_ops.exif_transpose.assert_called_once_with(fake_img)
 
     @pytest.mark.asyncio
+    async def test_heic_real_com_orientacao_gira_e_troca_dimensoes(self):
+        """HEIC real com orientation=6 deve sair rotacionado — 200x100 vira 100x200.
+
+        Regressão: pillow_heif já reseta getexif() para 1 ao abrir HEIC
+        (o valor real fica em img.info["original_orientation"]), então um
+        exif_transpose baseado só em getexif() é um no-op para HEIC real —
+        o teste mockado acima não pega isso porque simula Image/ImageOps.
+        """
+        pytest.importorskip("pillow_heif")
+        from app.core.upload_validation import converter_heic_para_jpeg
+
+        img = Image.new("RGB", (200, 100), color=(255, 0, 0))
+        exif = img.getexif()
+        exif[0x0112] = 6
+        buf = io.BytesIO()
+        img.save(buf, format="HEIF", exif=exif)
+
+        result = await converter_heic_para_jpeg(buf.getvalue())
+
+        with Image.open(io.BytesIO(result)) as out:
+            assert out.size == (100, 200)
+
+    @pytest.mark.asyncio
     async def test_lanca_erro_se_heif_indisponivel(self):
         """Deve lançar HTTPException 400 se pillow_heif não estiver disponível."""
         import app.core.upload_validation as mod

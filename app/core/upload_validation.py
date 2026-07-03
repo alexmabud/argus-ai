@@ -129,13 +129,22 @@ def _converter_heic_sincrono(file_bytes: bytes) -> bytes:
     isso a rotação precisa ser aplicada aos pixels enquanto o EXIF ainda
     existe (senão fotos de iPhone em retrato saem "deitadas" do rosto).
 
+    O plugin HEIF do Pillow (``pillow_heif``) já reseta ``getexif()`` para
+    1 ao abrir o arquivo, guardando a orientação real em
+    ``img.info["original_orientation"]`` — sem isso, ``exif_transpose``
+    não teria mais nenhuma tag para aplicar e viraria um no-op.
+
     Args:
         file_bytes: Bytes do arquivo HEIC/HEIF.
 
     Returns:
         Bytes JPEG convertidos, já com orientação corrigida.
     """
-    img = ImageOps.exif_transpose(Image.open(BytesIO(file_bytes))).convert("RGB")
+    img = Image.open(BytesIO(file_bytes))
+    original_orientation = img.info.get("original_orientation")
+    if original_orientation and original_orientation != 1:
+        img.getexif()[_EXIF_ORIENTATION_TAG] = original_orientation
+    img = ImageOps.exif_transpose(img).convert("RGB")
     out = BytesIO()
     img.save(out, format="JPEG", quality=90)
     return out.getvalue()
