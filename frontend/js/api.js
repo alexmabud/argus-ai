@@ -162,7 +162,6 @@ class ApiClient {
 
   get(path) { return this.request("GET", path); }
   post(path, body) { return this.request("POST", path, body); }
-  postForm(path, formData) { return this.request("POST", path, formData); }
   put(path, body) { return this.request("PUT", path, body); }
   del(path) { return this.request("DELETE", path); }
   patch(path, body) { return this.request("PATCH", path, body); }

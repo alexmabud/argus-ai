@@ -861,10 +861,7 @@ function consultaPage() {
       this.fotoSearchDone = false;
       this.fotoServicoIndisponivel = false;
       try {
-        const form = new FormData();
-        form.append("file", this.fotoFile);
-        form.append("top_k", "5");
-        const r = await api.postForm("/fotos/buscar-rosto", form);
+        const r = await api.uploadFile("/fotos/buscar-rosto", this.fotoFile, { top_k: 5 });
         this.pessoasFoto = r.resultados || [];
         this.fotoServicoIndisponivel = r.disponivel === false;
         this.fotoSearchDone = true;
