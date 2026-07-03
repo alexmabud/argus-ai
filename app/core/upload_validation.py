@@ -8,7 +8,7 @@ com limite de tamanho antes de carregar tudo na memória).
 import asyncio
 from io import BytesIO
 
-from PIL import Image
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 try:
     import pillow_heif
@@ -124,16 +124,98 @@ async def converter_heic_para_jpeg(file_bytes: bytes) -> bytes:
 def _converter_heic_sincrono(file_bytes: bytes) -> bytes:
     """Executa a conversão HEIC→JPEG de forma síncrona (use via asyncio.to_thread).
 
+    Aplica ``exif_transpose`` antes de converter para RGB — a tag de
+    orientação EXIF do container HEIC seria perdida na conversão, e por
+    isso a rotação precisa ser aplicada aos pixels enquanto o EXIF ainda
+    existe (senão fotos de iPhone em retrato saem "deitadas" do rosto).
+
+    O plugin HEIF do Pillow (``pillow_heif``) já reseta ``getexif()`` para
+    1 ao abrir o arquivo, guardando a orientação real em
+    ``img.info["original_orientation"]`` — sem isso, ``exif_transpose``
+    não teria mais nenhuma tag para aplicar e viraria um no-op.
+
     Args:
         file_bytes: Bytes do arquivo HEIC/HEIF.
 
     Returns:
-        Bytes JPEG convertidos.
+        Bytes JPEG convertidos, já com orientação corrigida.
     """
-    img = Image.open(BytesIO(file_bytes)).convert("RGB")
+    img = Image.open(BytesIO(file_bytes))
+    original_orientation = img.info.get("original_orientation")
+    if original_orientation and original_orientation != 1:
+        img.getexif()[_EXIF_ORIENTATION_TAG] = original_orientation
+    transposed = ImageOps.exif_transpose(img).convert("RGB")
     out = BytesIO()
-    img.save(out, format="JPEG", quality=90)
+    transposed.save(out, format="JPEG", quality=90)
     return out.getvalue()
+
+
+#: Tag EXIF que codifica a orientação da câmera (1 = normal, sem correção necessária).
+_EXIF_ORIENTATION_TAG = 0x0112
+
+
+async def normalizar_imagem_para_reconhecimento(file_bytes: bytes) -> bytes:
+    """Normaliza bytes de imagem para reconhecimento facial e exibição.
+
+    Converte HEIC/HEIF para JPEG (câmeras de iPhone) e corrige a rotação
+    EXIF de fotos tiradas em retrato — sem isso, o InsightFace processa o
+    rosto "deitado" e a detecção falha ou perde qualidade. HEIC já corrige
+    a orientação internamente em ``converter_heic_para_jpeg`` (a rotação
+    precisa ser aplicada antes de descartar o container HEIC, que carrega
+    a tag de orientação).
+
+    Args:
+        file_bytes: Bytes da imagem já validados por
+            ``validar_magic_bytes_imagem`` (JPEG, PNG, WebP ou HEIC/HEIF).
+
+    Returns:
+        Bytes da imagem normalizada. HEIC sempre vira JPEG; os demais
+        formatos só são reencodados quando havia rotação EXIF a corrigir
+        (caso contrário os bytes originais são preservados).
+
+    Raises:
+        HTTPException: 400 se for HEIC e pillow-heif estiver indisponível,
+            ou se a conversão/normalização falhar.
+    """
+    if is_heic(file_bytes):
+        return await converter_heic_para_jpeg(file_bytes)
+    return await asyncio.to_thread(_corrigir_orientacao_sincrono, file_bytes)
+
+
+def _corrigir_orientacao_sincrono(file_bytes: bytes) -> bytes:
+    """Corrige rotação EXIF preservando os bytes originais quando não há tag.
+
+    Se os bytes não formam uma imagem decodificável pelo Pillow (magic bytes
+    válidos mas corpo corrompido ou truncado), retorna os bytes originais
+    inalterados — mesma tolerância que ``FotoService.upload_foto`` já aplica
+    na geração de thumbnail (``UnidentifiedImageError``/``OSError``), para
+    não travar o upload/busca por um arquivo inválido. Corpo truncado com
+    header/EXIF válidos lança ``OSError`` (não ``UnidentifiedImageError``)
+    só quando ``exif_transpose`` força a decodificação completa dos pixels.
+
+    Args:
+        file_bytes: Bytes de imagem JPEG, PNG ou WebP.
+
+    Returns:
+        Bytes normalizados (reencodados só se havia rotação a corrigir).
+    """
+    try:
+        with Image.open(BytesIO(file_bytes)) as img:
+            orientation = img.getexif().get(_EXIF_ORIENTATION_TAG, 1)
+            if orientation == 1:
+                return file_bytes
+
+            transposed = ImageOps.exif_transpose(img)
+            fmt = img.format or "JPEG"
+            save_kwargs = {"quality": 90} if fmt == "JPEG" else {}
+            if fmt == "JPEG" and transposed.mode not in ("RGB", "L"):
+                transposed = transposed.convert("RGB")
+
+            out = BytesIO()
+            transposed.save(out, format=fmt, **save_kwargs)
+            return out.getvalue()
+    except (UnidentifiedImageError, OSError):
+        return file_bytes
 
 
 def validar_magic_bytes_pdf(file_bytes: bytes) -> None:

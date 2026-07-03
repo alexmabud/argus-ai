@@ -27,6 +27,7 @@ from app.core.upload_validation import (
     converter_heic_para_jpeg,
     is_heic,
     ler_upload_com_limite,
+    normalizar_imagem_para_reconhecimento,
     validar_magic_bytes_imagem,
     validar_magic_bytes_pdf,
 )
@@ -151,11 +152,11 @@ async def upload_foto(
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
 
-    # Converte HEIC/HEIF para JPEG antes de prosseguir
+    # Normaliza HEIC→JPEG e corrige rotação EXIF antes de prosseguir
     original_content_type = file.content_type or "image/jpeg"
     if is_heic(file_bytes):
-        file_bytes = await converter_heic_para_jpeg(file_bytes)
         original_content_type = "image/jpeg"
+    file_bytes = await normalizar_imagem_para_reconhecimento(file_bytes)
 
     filename = _sanitizar_filename(file.filename or "foto.jpg")
     if filename.lower().endswith((".heic", ".heif")):
@@ -304,6 +305,7 @@ async def buscar_por_rosto(
 
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
+    file_bytes = await normalizar_imagem_para_reconhecimento(file_bytes)
     service = FotoService(db)
     results = await service.buscar_por_rosto(
         image_bytes=file_bytes,

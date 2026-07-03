@@ -43,6 +43,7 @@ test: test-db
 
 lint:
 	$(RUFF) check app/ tests/
+	$(RUFF) format --check app/ tests/
 	$(MYPY) app/ --ignore-missing-imports
 
 format:
