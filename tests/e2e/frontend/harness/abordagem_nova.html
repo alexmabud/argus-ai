@@ -55,8 +55,17 @@ window.formatarData = v => v;
 window.parseDateBR = () => null;
 window.formatarBuscaQuery = v => v;
 window.formatarPlaca = v => (v || '');
-window.getGPSLocation = async () => ({ latitude: -15.6, longitude: -47.6, endereco_texto: 'LOCAL TESTE' });
-window.getGPSLocationLowAccuracy = window.getGPSLocation;
+// __gpsStub/__gpsStubLowAccuracy: hooks para os testes controlarem o resultado do
+// GPS (sucesso/erro/atraso) via page.add_init_script() antes do goto(). Sem hook
+// definido, mantém o comportamento padrão (sucesso imediato).
+window.getGPSLocation = async (...args) => {
+  const fn = window.__gpsStub || (async () => ({ latitude: -15.6, longitude: -47.6, endereco_texto: 'LOCAL TESTE' }));
+  return fn(...args);
+};
+window.getGPSLocationLowAccuracy = async (...args) => {
+  const fn = window.__gpsStubLowAccuracy || window.getGPSLocation;
+  return fn(...args);
+};
 window.startVoice = () => false;
 window.stopVoice = () => {};
 window.enqueueSync = async () => {};
@@ -77,6 +86,8 @@ window.__state = () => {
     veiculoPorPessoa: JSON.parse(JSON.stringify(d.veiculoPorPessoa)),
     erro: d.erro,
     showSuccessModal: d.showSuccessModal,
+    gpsLoading: d.gpsLoading,
+    gpsPermissionDenied: d.gpsPermissionDenied,
   };
 };
 </script>
