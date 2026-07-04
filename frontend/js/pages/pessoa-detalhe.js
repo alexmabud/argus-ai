@@ -71,29 +71,32 @@ function renderPessoaDetalhe(appState) {
             </div>
           </div>
 
-          <!-- Fotos -->
+          <!-- Foto de Rosto/Perfil -->
           <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">
-                Fotos (<span x-text="fotos.length"></span>)
+                Foto de Rosto/Perfil (<span x-text="fotosRosto().length"></span>)
               </h3>
               <!-- Botões câmera + galeria -->
               <div style="display: flex; gap: 0.375rem;">
                 <label style="cursor: pointer; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface-hover); color: var(--color-primary);">
                   📷
                   <input type="file" accept="image/*" capture="environment" style="display: none;"
-                         @change="onNovaFotoSelected($event)">
+                         @change="onNovaFotoSelected($event, 'rosto')">
                 </label>
                 <label style="cursor: pointer; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface-hover); color: var(--color-primary);">
                   📁
                   <input type="file" accept="image/*" style="display: none;"
-                         @change="onNovaFotoSelected($event)">
+                         @change="onNovaFotoSelected($event, 'rosto')">
                 </label>
               </div>
             </div>
+            <p style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
+              Use somente para fotos de rosto (reconhecimento facial).
+            </p>
 
             <!-- Preview + botão enviar (aparece após selecionar) -->
-            <template x-if="novaFotoFile">
+            <template x-if="novaFotoFile && novaFotoTipo === 'rosto'">
               <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: var(--color-surface-hover); border-radius: 4px;">
                 <img :src="novaFotoPreviewUrl" style="width: 3rem; height: 3rem; border-radius: 4px; object-fit: cover; flex-shrink: 0;">
                 <div style="flex: 1; min-width: 0;">
@@ -116,27 +119,111 @@ function renderPessoaDetalhe(appState) {
             </template>
 
             <!-- Grid de fotos existentes -->
-            <div x-show="fotos.length > 0">
+            <div x-show="fotosRosto().length > 0">
               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
-              <template x-for="foto in fotos.slice(0, 4)" :key="foto.id">
+              <template x-for="foto in fotosRosto().slice(0, 4)" :key="foto.id">
                 <div style="position: relative;">
                   <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
                        @click="fotoAmpliada = foto.arquivo_url">
                   <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                         x-text="foto.tipo || 'foto'"></span>
+                  <button @click.stop="apagarFoto(foto.id)"
+                          class="hov-icon-danger"
+                          style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
+                          title="Apagar foto">
+                    ✕
+                  </button>
                 </div>
               </template>
               </div>
             </div>
 
-            <button x-show="fotos.length > 4" @click="modalTodasFotos = true"
+            <button x-show="fotosRosto().length > 4" @click="modalTodasFotos = 'rosto'"
                     style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0; align-self: flex-start;">
-              Ver mais (<span x-text="fotos.length - 4"></span>)
+              Ver mais (<span x-text="fotosRosto().length - 4"></span>)
             </button>
 
             <!-- Estado vazio -->
-            <p x-show="fotos.length === 0 && !novaFotoFile" style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
-              Nenhuma foto cadastrada.
+            <p x-show="fotosRosto().length === 0 && !(novaFotoFile && novaFotoTipo === 'rosto')" style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
+              Nenhuma foto de rosto cadastrada.
+            </p>
+          </div>
+
+          <!-- Fotos Relacionadas ao Abordado -->
+          <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">
+                Fotos Relacionadas ao Abordado (<span x-text="fotosEvidencia().length"></span>)
+              </h3>
+              <!-- Botões câmera + galeria -->
+              <div style="display: flex; gap: 0.375rem;">
+                <label style="cursor: pointer; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface-hover); color: var(--color-primary);">
+                  📷
+                  <input type="file" accept="image/*" capture="environment" style="display: none;"
+                         @change="onNovaFotoSelected($event, 'evidencia')">
+                </label>
+                <label style="cursor: pointer; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface-hover); color: var(--color-primary);">
+                  📁
+                  <input type="file" accept="image/*" style="display: none;"
+                         @change="onNovaFotoSelected($event, 'evidencia')">
+                </label>
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
+              Armas, drogas, objetos ou outras evidências associadas a esta pessoa.
+            </p>
+
+            <!-- Preview + botão enviar (aparece após selecionar) -->
+            <template x-if="novaFotoFile && novaFotoTipo === 'evidencia'">
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: var(--color-surface-hover); border-radius: 4px;">
+                <img :src="novaFotoPreviewUrl" style="width: 3rem; height: 3rem; border-radius: 4px; object-fit: cover; flex-shrink: 0;">
+                <div style="flex: 1; min-width: 0;">
+                  <p style="font-size: 0.75rem; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0;" x-text="novaFotoFile?.name"></p>
+                </div>
+                <div style="display: flex; gap: 0.375rem; flex-shrink: 0;">
+                  <button @click="uploadNovaFoto()"
+                          :disabled="uploadandoFoto"
+                          style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-success); color: var(--color-bg); border: none; cursor: pointer; opacity: 1;"
+                          :style="uploadandoFoto ? 'opacity: 0.5' : ''">
+                    <span x-show="!uploadandoFoto">Enviar</span>
+                    <span x-show="uploadandoFoto" class="spinner"></span>
+                  </button>
+                  <button @click="cancelarNovaFoto()"
+                          style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-border); cursor: pointer;">
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- Grid de fotos existentes -->
+            <div x-show="fotosEvidencia().length > 0">
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+              <template x-for="foto in fotosEvidencia().slice(0, 4)" :key="foto.id">
+                <div style="position: relative;">
+                  <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
+                       @click="fotoAmpliada = foto.arquivo_url">
+                  <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
+                        x-text="foto.tipo || 'foto'"></span>
+                  <button @click.stop="apagarFoto(foto.id)"
+                          class="hov-icon-danger"
+                          style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
+                          title="Apagar foto">
+                    ✕
+                  </button>
+                </div>
+              </template>
+              </div>
+            </div>
+
+            <button x-show="fotosEvidencia().length > 4" @click="modalTodasFotos = 'evidencia'"
+                    style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0; align-self: flex-start;">
+              Ver mais (<span x-text="fotosEvidencia().length - 4"></span>)
+            </button>
+
+            <!-- Estado vazio -->
+            <p x-show="fotosEvidencia().length === 0 && !(novaFotoFile && novaFotoTipo === 'evidencia')" style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
+              Nenhuma foto de evidência cadastrada.
             </p>
           </div>
 
@@ -175,17 +262,24 @@ function renderPessoaDetalhe(appState) {
             <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; max-width: 32rem;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
                 <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
-                  Fotos de <span x-text="pessoa.nome"></span> (<span x-text="fotos.length"></span>)
+                  <span x-text="modalTodasFotos === 'rosto' ? 'Fotos de Rosto de' : 'Fotos Relacionadas a'"></span>
+                  <span x-text="pessoa.nome"></span> (<span x-text="fotosModal().length"></span>)
                 </h3>
                 <button @click="modalTodasFotos = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
               </div>
               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
-                <template x-for="foto in fotos" :key="'modal-' + foto.id">
+                <template x-for="foto in fotosModal()" :key="'modal-' + foto.id">
                   <div style="position: relative;">
                     <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
                          @click="fotoAmpliada = foto.arquivo_url">
                     <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                           x-text="foto.tipo || 'foto'"></span>
+                    <button @click.stop="apagarFoto(foto.id)"
+                            class="hov-icon-danger"
+                            style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
+                            title="Apagar foto">
+                      ✕
+                    </button>
                   </div>
                 </template>
               </div>
@@ -946,6 +1040,7 @@ function pessoaDetalhePage(pessoaId) {
     fotos: [],
     novaFotoFile: null,
     novaFotoPreviewUrl: "",
+    novaFotoTipo: 'rosto',
     uploadandoFoto: false,
     fotosVeiculos: {},
     abordagens: [],
@@ -1594,12 +1689,57 @@ function pessoaDetalhePage(pessoaId) {
       }
     },
 
-    onNovaFotoSelected(event) {
+    /**
+     * Filtra as fotos de rosto/perfil (usadas no reconhecimento facial).
+     *
+     * Implementado como método (não getter) de propósito: o x-data raiz desta
+     * página faz spread de múltiplos objetos (`{ ...pessoaDetalhePage(id), ...personPhotoModal() }`),
+     * e o Alpine congela getters em valores estáticos nesse cenário (bug já visto
+     * neste projeto na página de dashboard). Métodos chamados como função no
+     * template (`fotosRosto()`) continuam reativos.
+     *
+     * @returns {Array<object>} Fotos com tipo === 'rosto'.
+     */
+    fotosRosto() {
+      return this.fotos.filter(f => f.tipo === 'rosto');
+    },
+
+    /**
+     * Filtra as fotos relacionadas ao abordado (evidências: armas, drogas, etc)
+     * — qualquer foto que não seja de rosto. Ver nota em `fotosRosto()` sobre
+     * o motivo de ser método em vez de getter.
+     *
+     * @returns {Array<object>} Fotos com tipo !== 'rosto'.
+     */
+    fotosEvidencia() {
+      return this.fotos.filter(f => f.tipo !== 'rosto');
+    },
+
+    /**
+     * Retorna as fotos exibidas no modal "Ver mais", de acordo com qual card
+     * (rosto ou evidência) o abriu.
+     *
+     * @returns {Array<object>} Fotos do tipo selecionado em `modalTodasFotos`.
+     */
+    fotosModal() {
+      if (this.modalTodasFotos === 'rosto') return this.fotosRosto();
+      if (this.modalTodasFotos === 'evidencia') return this.fotosEvidencia();
+      return [];
+    },
+
+    /**
+     * Trata a seleção de uma nova foto (câmera ou galeria) em um dos cards de fotos.
+     *
+     * @param {Event} event - Evento de change do input file.
+     * @param {string} tipo - Tipo da foto a ser enviada ('rosto' ou 'evidencia').
+     */
+    onNovaFotoSelected(event, tipo) {
       const file = event.target.files?.[0];
       if (!file) return;
       if (this.novaFotoPreviewUrl) URL.revokeObjectURL(this.novaFotoPreviewUrl);
       this.novaFotoFile = file;
       this.novaFotoPreviewUrl = URL.createObjectURL(file);
+      this.novaFotoTipo = tipo;
       event.target.value = "";
     },
 
@@ -1614,7 +1754,7 @@ function pessoaDetalhePage(pessoaId) {
       this.uploadandoFoto = true;
       try {
         await api.uploadFile("/fotos/upload", this.novaFotoFile, {
-          tipo: "rosto",
+          tipo: this.novaFotoTipo,
           pessoa_id: parseInt(pessoaId, 10),
         });
         // Recarregar lista de fotos
@@ -1626,6 +1766,25 @@ function pessoaDetalhePage(pessoaId) {
         showToast(err?.message || "Erro ao enviar foto", "error");
       } finally {
         this.uploadandoFoto = false;
+      }
+    },
+
+    /**
+     * Apaga uma foto (soft delete) após confirmação do usuário.
+     *
+     * Remove a foto da lista local (`this.fotos`) em caso de sucesso, sem
+     * precisar recarregar a página inteira.
+     *
+     * @param {number} fotoId - ID da foto a ser apagada.
+     */
+    async apagarFoto(fotoId) {
+      if (!confirm("Apagar esta foto? Esta ação não pode ser desfeita.")) return;
+      try {
+        await api.delete(`/fotos/${fotoId}`);
+        this.fotos = this.fotos.filter(f => f.id !== fotoId);
+        showToast("Foto apagada com sucesso!", "success");
+      } catch (err) {
+        showToast(err?.message || "Erro ao apagar foto", "error");
       }
     },
   };
