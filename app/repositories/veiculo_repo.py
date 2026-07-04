@@ -224,7 +224,7 @@ class VeiculoRepository(BaseRepository[Veiculo]):
                 AbordagemPessoa.ativo == True,  # noqa: E712
             )
         )
-        query_abordagem, filtro_abordagem = _montar_filtros(query_abordagem)
+        query_abordagem, aplicou_filtro = _montar_filtros(query_abordagem)
 
         query_direto = (
             select(Pessoa, Veiculo)
@@ -236,11 +236,14 @@ class VeiculoRepository(BaseRepository[Veiculo]):
                 PessoaVeiculo.ativo == True,  # noqa: E712
             )
         )
-        query_direto, filtro_direto = _montar_filtros(query_direto)
+        # `_montar_filtros` aplica os mesmos placa/modelo/cor nos dois
+        # caminhos — o segundo retorno de "filtro efetivo" é sempre igual
+        # ao primeiro por construção, então só uma variável é mantida.
+        query_direto, _ = _montar_filtros(query_direto)
 
-        # Nenhum filtro efetivo em nenhum dos caminhos (ex.: placa que
-        # normaliza para vazio) → sem match-all, nem toca o banco.
-        if not filtro_abordagem and not filtro_direto:
+        # Nenhum filtro efetivo (ex.: placa que normaliza para vazio) →
+        # sem match-all, nem toca o banco.
+        if not aplicou_filtro:
             return []
 
         if guarnicao_id is not None:

@@ -13,6 +13,7 @@ TestGetPessoasPorVeiculoComVinculoDireto com banco de dados real,
 verificando o caminho Pessoa → PessoaVeiculo → Veiculo.
 """
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +22,7 @@ from app.models.abordagem import Abordagem, AbordagemPessoa, AbordagemVeiculo
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.pessoa_veiculo import PessoaVeiculo
+from app.models.usuario import Usuario
 from app.models.veiculo import Veiculo
 from app.repositories.veiculo_repo import VeiculoRepository
 
@@ -456,3 +458,64 @@ class TestGetPessoasPorVeiculoComVinculoDireto:
         assert len(resultado) == 1
         assert resultado[0][0].id == pessoa_alvo.id
         assert resultado[0][1].id == veiculo_alvo.id
+
+    async def test_skip_e_limit_aplicados_apos_combinar_e_deduplicar(
+        self,
+        db_session: AsyncSession,
+        guarnicao: Guarnicao,
+        usuario: Usuario,
+    ):
+        """skip/limit fatiam corretamente a lista combinada (abordagem + direto).
+
+        Cria 3 pares pessoa+veículo distintos (2 via vínculo direto, 1 via
+        abordagem) que casam com o mesmo filtro de modelo, e confirma que
+        limit=2 retorna só 2 e skip=1 pula o primeiro — garantindo que a
+        fatia acontece sobre o resultado já combinado e deduplicado, não
+        por query individual (o que retornaria menos resultados do que o
+        esperado quando o total combinado excede o limit).
+        """
+        pessoas = [Pessoa(nome=f"Paginacao {i}", guarnicao_id=guarnicao.id) for i in range(3)]
+        veiculos = [
+            Veiculo(placa=f"PAG{i}A23", modelo="Corolla", guarnicao_id=guarnicao.id)
+            for i in range(3)
+        ]
+        db_session.add_all([*pessoas, *veiculos])
+        await db_session.flush()
+
+        db_session.add(
+            PessoaVeiculo(
+                pessoa_id=pessoas[0].id, veiculo_id=veiculos[0].id, guarnicao_id=guarnicao.id
+            )
+        )
+        db_session.add(
+            PessoaVeiculo(
+                pessoa_id=pessoas[1].id, veiculo_id=veiculos[1].id, guarnicao_id=guarnicao.id
+            )
+        )
+        await db_session.flush()
+
+        ab = Abordagem(
+            data_hora=datetime.now(UTC),
+            latitude=-22.9068,
+            longitude=-43.1729,
+            usuario_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        db_session.add(ab)
+        await db_session.flush()
+        db_session.add(AbordagemPessoa(abordagem_id=ab.id, pessoa_id=pessoas[2].id))
+        db_session.add(AbordagemVeiculo(abordagem_id=ab.id, veiculo_id=veiculos[2].id))
+        await db_session.flush()
+
+        repo = VeiculoRepository(db_session)
+
+        pagina_completa = await repo.get_pessoas_por_veiculo(
+            placa=None, modelo="Corolla", cor=None, guarnicao_id=guarnicao.id, limit=20
+        )
+        assert len(pagina_completa) == 3
+
+        pagina_limitada = await repo.get_pessoas_por_veiculo(
+            placa=None, modelo="Corolla", cor=None, guarnicao_id=guarnicao.id, skip=1, limit=2
+        )
+        assert len(pagina_limitada) == 2
+        assert pagina_limitada == pagina_completa[1:3]
