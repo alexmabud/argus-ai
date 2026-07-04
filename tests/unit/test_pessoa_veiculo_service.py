@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AcessoNegadoError, ConflitoDadosError, NaoEncontradoError
 from app.core.security import hash_senha
+from app.models.abordagem import Abordagem, AbordagemPessoa, AbordagemVeiculo
 from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
@@ -112,10 +113,37 @@ class TestDesvincularEReativar:
         assert segundo.id == primeiro.id  # reativou a mesma linha, não criou outra
         assert segundo.ativo is True
 
+    async def test_reativar_reseta_campos_de_desativacao(
+        self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
+    ):
+        """Reativar um vínculo soft-deleted zera desativado_em/desativado_por_id."""
+        service = PessoaVeiculoService(db_session)
+        primeiro = await service.vincular(pessoa.id, veiculo.id, usuario)
+        await service.desvincular(pessoa.id, veiculo.id, usuario)
+        await db_session.refresh(primeiro)
+        assert primeiro.ativo is False
+        assert primeiro.desativado_em is not None
+        assert primeiro.desativado_por_id == usuario.id
+
+        segundo = await service.vincular(pessoa.id, veiculo.id, usuario)
+        assert segundo.desativado_em is None
+        assert segundo.desativado_por_id is None
+        assert segundo.criado_por_id == usuario.id
+
     async def test_desvincular_inexistente_levanta_erro(
         self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
     ):
         service = PessoaVeiculoService(db_session)
+        with pytest.raises(NaoEncontradoError):
+            await service.desvincular(pessoa.id, veiculo.id, usuario)
+
+    async def test_desvincular_ja_desvinculado_levanta_erro(
+        self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
+    ):
+        """Desvincular duas vezes seguidas: a segunda chamada não encontra vínculo ativo."""
+        service = PessoaVeiculoService(db_session)
+        await service.vincular(pessoa.id, veiculo.id, usuario)
+        await service.desvincular(pessoa.id, veiculo.id, usuario)
         with pytest.raises(NaoEncontradoError):
             await service.desvincular(pessoa.id, veiculo.id, usuario)
 
@@ -149,6 +177,50 @@ class TestListarVeiculosPessoa:
     async def test_marca_origem_direto(
         self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
     ):
+        service = PessoaVeiculoService(db_session)
+        await service.vincular(pessoa.id, veiculo.id, usuario)
+
+        resultado = await service.listar_veiculos_pessoa(pessoa.id, usuario)
+        assert len(resultado) == 1
+        assert resultado[0]["origem"] == "direto"
+        assert resultado[0]["veiculo"].id == veiculo.id
+
+    async def test_marca_origem_abordagem_quando_so_via_abordagem(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        usuario: Usuario,
+        abordagem: Abordagem,
+    ):
+        """Veículo só vinculado via abordagem (sem vínculo direto) tem origem 'abordagem'."""
+        db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
+        db_session.add(
+            AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id, pessoa_id=pessoa.id)
+        )
+        await db_session.flush()
+
+        service = PessoaVeiculoService(db_session)
+        resultado = await service.listar_veiculos_pessoa(pessoa.id, usuario)
+        assert len(resultado) == 1
+        assert resultado[0]["origem"] == "abordagem"
+        assert resultado[0]["veiculo"].id == veiculo.id
+
+    async def test_direto_prevalece_sobre_abordagem_quando_ambos(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        usuario: Usuario,
+        abordagem: Abordagem,
+    ):
+        """Veículo com vínculo direto E via abordagem aparece só uma vez, com origem 'direto'."""
+        db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
+        db_session.add(
+            AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id, pessoa_id=pessoa.id)
+        )
+        await db_session.flush()
+
         service = PessoaVeiculoService(db_session)
         await service.vincular(pessoa.id, veiculo.id, usuario)
 
