@@ -5,8 +5,10 @@
  * Não compartilha código com a tela de nova abordagem (frontend/js/pages/abordagem-nova.js) —
  * é um componente novo e isolado, escrito para ser plugado em pessoa-detalhe.js.
  *
- * Uso por quem consome o componente (ex.: pessoa-detalhe.js):
- *   x-data: "{ ...pessoaDetalhePage(id), ...veiculoFichaForm() }"
+ * Uso por quem consome o componente (ex.: pessoa-detalhe.js, que também
+ * espalha personPhotoModal() no mesmo x-data — os nomes de estado deste
+ * componente foram escolhidos para não colidir com nenhum dos dois):
+ *   x-data: "{ ...pessoaDetalhePage(id), ...personPhotoModal(), ...veiculoFichaForm() }"
  *   Incluir no template: ${veiculoFichaFormHTML()}
  *
  *   Adicionar veículo à pessoa:
@@ -29,13 +31,13 @@
 
 /**
  * Retorna o HTML do modal de busca/cadastro/edição de veículo.
- * Usa "modalVeiculo"/"modoVeiculo"/"veiculoForm" (não nomes genéricos)
+ * Usa "modalVeiculoFicha"/"modoVeiculo"/"veiculoForm" (não nomes genéricos)
  * para evitar conflito com o estado da página host.
  * @returns {string} HTML do modal.
  */
 function veiculoFichaFormHTML() {
   return `
-    <div x-show="modalVeiculo" x-cloak
+    <div x-show="modalVeiculoFicha" x-cloak
          @click.self="fecharModalVeiculo()"
          style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: var(--bottom-nav-height); background: rgba(5,10,15,0.7); z-index: 55; display: flex; align-items: center; justify-content: center; padding: 1rem;">
       <div class="glass-card"
@@ -68,8 +70,8 @@ function veiculoFichaFormHTML() {
           </div>
 
           <!-- Resultados -->
-          <div x-show="!buscando && resultadosBusca.length > 0" style="display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 4px; overflow: hidden;">
-            <template x-for="v in resultadosBusca" :key="v.id">
+          <div x-show="!buscando && resultadosBuscaVeiculo.length > 0" style="display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 4px; overflow: hidden;">
+            <template x-for="v in resultadosBuscaVeiculo" :key="v.id">
               <button type="button" @click="selecionarVeiculoExistente(v)"
                       :disabled="salvandoVeiculo"
                       class="hov-row-surface"
@@ -83,7 +85,7 @@ function veiculoFichaFormHTML() {
           </div>
 
           <!-- Sem resultados -->
-          <p x-show="!buscando && buscaPlaca.trim().length >= 2 && resultadosBusca.length === 0"
+          <p x-show="!buscando && buscaPlaca.trim().length >= 2 && resultadosBuscaVeiculo.length === 0"
              style="font-family: var(--font-data); font-size: 0.8rem; color: var(--color-text-dim); margin: 0;">
             Nenhum veículo encontrado.
           </p>
@@ -169,16 +171,16 @@ function veiculoFichaFormHTML() {
  */
 function veiculoFichaForm() {
   return {
-    modalVeiculo: false,
+    modalVeiculoFicha: false,
     modoVeiculo: "buscar", // 'buscar' | 'novo' | 'editar'
     buscaPlaca: "",
-    resultadosBusca: [],
+    resultadosBuscaVeiculo: [],
     buscando: false,
     veiculoForm: { id: null, placa: "", modelo: "", cor: "", ano: null },
     corDropdown: "",
     salvandoVeiculo: false,
     erroVeiculo: "",
-    _buscaTimer: null,
+    _buscaVeiculoTimer: null,
     // Setado por quem consome o componente antes de abrir o modal de
     // adicionar (ex.: this.pessoaIdParaVeiculo = pessoa.id). Usado para
     // vincular o veículo criado/selecionado à pessoa em questão.
@@ -192,14 +194,14 @@ function veiculoFichaForm() {
     abrirModalAdicionarVeiculo() {
       this.modoVeiculo = "buscar";
       this.buscaPlaca = "";
-      this.resultadosBusca = [];
+      this.resultadosBuscaVeiculo = [];
       this.buscando = false;
       this.veiculoForm = { id: null, placa: "", modelo: "", cor: "", ano: null };
       this.corDropdown = "";
       this.erroVeiculo = "";
       this.salvandoVeiculo = false;
-      clearTimeout(this._buscaTimer);
-      this.modalVeiculo = true;
+      clearTimeout(this._buscaVeiculoTimer);
+      this.modalVeiculoFicha = true;
     },
 
     /**
@@ -210,7 +212,7 @@ function veiculoFichaForm() {
     abrirModalEditarVeiculo(v) {
       this.modoVeiculo = "editar";
       this.buscaPlaca = "";
-      this.resultadosBusca = [];
+      this.resultadosBuscaVeiculo = [];
       this.buscando = false;
       this.erroVeiculo = "";
       this.salvandoVeiculo = false;
@@ -227,14 +229,14 @@ function veiculoFichaForm() {
       this.corDropdown = this._corParaDropdown(this.veiculoForm.cor);
       // Modo editar não vincula — não depende de pessoaIdParaVeiculo.
       this.pessoaIdParaVeiculo = null;
-      clearTimeout(this._buscaTimer);
-      this.modalVeiculo = true;
+      clearTimeout(this._buscaVeiculoTimer);
+      this.modalVeiculoFicha = true;
     },
 
     /** Fecha o modal e cancela busca pendente. */
     fecharModalVeiculo() {
-      this.modalVeiculo = false;
-      clearTimeout(this._buscaTimer);
+      this.modalVeiculoFicha = false;
+      clearTimeout(this._buscaVeiculoTimer);
     },
 
     /**
@@ -242,14 +244,14 @@ function veiculoFichaForm() {
      * consultar GET /veiculos/?placa=.
      */
     onBuscaPlacaInput() {
-      clearTimeout(this._buscaTimer);
+      clearTimeout(this._buscaVeiculoTimer);
       this.erroVeiculo = "";
       if (this.buscaPlaca.trim().length < 2) {
-        this.resultadosBusca = [];
+        this.resultadosBuscaVeiculo = [];
         this.buscando = false;
         return;
       }
-      this._buscaTimer = setTimeout(() => this._buscarVeiculos(), 300);
+      this._buscaVeiculoTimer = setTimeout(() => this._buscarVeiculos(), 300);
     },
 
     /** Consulta a API por veículos cuja placa contém o texto buscado. */
@@ -257,10 +259,10 @@ function veiculoFichaForm() {
       this.buscando = true;
       try {
         const data = await api.get(`/veiculos/?placa=${encodeURIComponent(this.buscaPlaca.trim())}&limit=5`);
-        this.resultadosBusca = data || [];
+        this.resultadosBuscaVeiculo = data || [];
       } catch (err) {
         this.erroVeiculo = err?.message || "Erro ao buscar veículos.";
-        this.resultadosBusca = [];
+        this.resultadosBuscaVeiculo = [];
       } finally {
         this.buscando = false;
       }
@@ -279,7 +281,7 @@ function veiculoFichaForm() {
         cor: v.cor || "",
         ano: v.ano ?? null,
       };
-      this.resultadosBusca = [];
+      this.resultadosBuscaVeiculo = [];
       this.confirmarVeiculo();
     },
 
@@ -330,9 +332,10 @@ function veiculoFichaForm() {
           await this._vincularExistente();
         }
         this.fecharModalVeiculo();
+        showToast("Veículo salvo com sucesso!", "success");
         // Dispara direto em window (em vez de this.$dispatch): o modo "buscar"
         // chega aqui via selecionarVeiculoExistente(), que já removeu o botão
-        // clicado do DOM (resultadosBusca = []) antes deste await terminar —
+        // clicado do DOM (resultadosBuscaVeiculo = []) antes deste await terminar —
         // this.$dispatch ficaria ancorado a um elemento desconectado, cujo
         // dispatchEvent não tem mais pai para borbulhar até window.
         window.dispatchEvent(new CustomEvent("veiculo-vinculado"));
@@ -343,17 +346,23 @@ function veiculoFichaForm() {
       }
     },
 
-    /** Cria o veículo e, se houver pessoa alvo, vincula-o em seguida. */
+    /** Cria o veículo e vincula-o à pessoa alvo (pessoaIdParaVeiculo). */
     async _salvarNovo() {
+      // Validado antes de criar o veículo (não só antes de vincular) para
+      // não deixar um veículo órfão cadastrado caso pessoaIdParaVeiculo não
+      // tenha sido setado por quem consome o componente — mesma checagem
+      // que _vincularExistente() já faz para o modo "buscar".
+      if (!this.pessoaIdParaVeiculo) {
+        throw new Error("Nenhuma pessoa definida para vincular o veículo.");
+      }
+
       const data = { placa: this.veiculoForm.placa.trim() };
       if (this.veiculoForm.modelo?.trim()) data.modelo = this.veiculoForm.modelo.trim();
       if (this.veiculoForm.cor?.trim()) data.cor = this.veiculoForm.cor.trim();
       if (this.veiculoForm.ano) data.ano = this.veiculoForm.ano;
 
       const veiculo = await api.post("/veiculos/", data);
-      if (this.pessoaIdParaVeiculo) {
-        await api.post(`/pessoas/${this.pessoaIdParaVeiculo}/veiculos/${veiculo.id}`);
-      }
+      await api.post(`/pessoas/${this.pessoaIdParaVeiculo}/veiculos/${veiculo.id}`);
     },
 
     /** Atualiza modelo/cor/ano do veículo (placa é imutável). */
