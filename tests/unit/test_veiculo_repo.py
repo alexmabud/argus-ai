@@ -292,3 +292,23 @@ class TestGetVeiculosPorPessoaViaAbordagem:
         repo = VeiculoRepository(db_session)
         resultado = await repo.get_veiculos_por_pessoa_via_abordagem(pessoa.id)
         assert resultado == []
+
+    async def test_nao_inclui_veiculo_com_vinculo_desativado(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        abordagem: Abordagem,
+    ):
+        """AbordagemVeiculo soft-deletado (ativo=False) não é retornado."""
+        db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
+        db_session.add(
+            AbordagemVeiculo(
+                abordagem_id=abordagem.id, veiculo_id=veiculo.id, pessoa_id=pessoa.id, ativo=False
+            )
+        )
+        await db_session.flush()
+
+        repo = VeiculoRepository(db_session)
+        resultado = await repo.get_veiculos_por_pessoa_via_abordagem(pessoa.id)
+        assert resultado == []
