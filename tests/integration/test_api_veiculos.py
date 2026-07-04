@@ -143,7 +143,49 @@ class TestAtualizarVeiculo:
         assert response.status_code == 200
         data = response.json()
         assert data["modelo"] == "ONIX"
+        assert data["cor"] == "PRETO"
         assert data["placa"] == veiculo.placa
+
+    async def test_atualizar_campo_omitido_permanece_inalterado(
+        self, client: AsyncClient, auth_headers: dict, veiculo: Veiculo
+    ):
+        """Campo não enviado no corpo do PUT não é alterado (partial update).
+
+        Args:
+            client: Cliente HTTP assíncrono.
+            auth_headers: Headers com Bearer token válido.
+            veiculo: Fixture de veículo com ano=2020, tipo="Carro".
+        """
+        response = await client.put(
+            f"/api/v1/veiculos/{veiculo.id}",
+            json={"modelo": "Onix"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["modelo"] == "ONIX"
+        assert data["ano"] == veiculo.ano
+        assert data["tipo"] == veiculo.tipo
+
+    async def test_atualizar_com_null_explicito_limpa_campo(
+        self, client: AsyncClient, auth_headers: dict, veiculo: Veiculo
+    ):
+        """Enviar null explicitamente para um campo o limpa (diferente de omitir).
+
+        Args:
+            client: Cliente HTTP assíncrono.
+            auth_headers: Headers com Bearer token válido.
+            veiculo: Fixture de veículo com cor="Branco".
+        """
+        response = await client.put(
+            f"/api/v1/veiculos/{veiculo.id}",
+            json={"cor": None},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["cor"] is None
+        assert data["modelo"] == veiculo.modelo  # não enviado, permanece
 
     async def test_atualizar_inexistente_retorna_404(self, client: AsyncClient, auth_headers: dict):
         """Testa que atualizar veículo inexistente retorna 404.
