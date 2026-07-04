@@ -40,7 +40,9 @@ class PessoaVeiculo(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     pessoa_id: Mapped[int] = mapped_column(ForeignKey("pessoas.id", ondelete="CASCADE"), index=True)
-    veiculo_id: Mapped[int] = mapped_column(ForeignKey("veiculos.id", ondelete="CASCADE"), index=True)
+    veiculo_id: Mapped[int] = mapped_column(
+        ForeignKey("veiculos.id", ondelete="CASCADE"), index=True
+    )
     criado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
 
     pessoa = relationship("Pessoa", lazy="selectin")
