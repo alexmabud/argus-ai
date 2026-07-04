@@ -1,11 +1,19 @@
 """Testes unitários do VeiculoRepository.
 
 Testa o método get_pessoas_por_veiculo com mock do banco de dados,
-verificando os filtros aplicados à query e o retorno correto.
+verificando os filtros aplicados à query e o retorno correto. Também
+testa get_veiculos_por_pessoa_via_abordagem com banco de dados real,
+verificando a resolução de Pessoa → AbordagemPessoa → AbordagemVeiculo.
 """
 
 from unittest.mock import AsyncMock, MagicMock
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.abordagem import Abordagem, AbordagemPessoa, AbordagemVeiculo
+from app.models.guarnicao import Guarnicao
+from app.models.pessoa import Pessoa
+from app.models.veiculo import Veiculo
 from app.repositories.veiculo_repo import VeiculoRepository
 
 
@@ -215,3 +223,72 @@ class TestGetPessoasPorVeiculo:
 
         assert result == []
         db.execute.assert_not_called()
+
+
+class TestGetVeiculosPorPessoaViaAbordagem:
+    """Testes do método get_veiculos_por_pessoa_via_abordagem (banco real).
+
+    Diferente das demais classes deste módulo, usa db_session real (não
+    mock) pois valida joins entre três tabelas (Pessoa, AbordagemPessoa,
+    AbordagemVeiculo, Veiculo) — mockar a query não verificaria o
+    comportamento do join nem o filtro OR sobre pessoa_id.
+    """
+
+    async def test_inclui_veiculo_com_pessoa_id_igual(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        abordagem: Abordagem,
+    ):
+        """Veículo explicitamente atribuído à pessoa na abordagem é retornado."""
+        db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
+        db_session.add(
+            AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id, pessoa_id=pessoa.id)
+        )
+        await db_session.flush()
+
+        repo = VeiculoRepository(db_session)
+        resultado = await repo.get_veiculos_por_pessoa_via_abordagem(pessoa.id)
+        assert [v.id for v in resultado] == [veiculo.id]
+
+    async def test_inclui_veiculo_com_pessoa_id_nulo(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        abordagem: Abordagem,
+    ):
+        """Veículo órfão (sem pessoa atribuída) na mesma abordagem também é retornado."""
+        db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
+        db_session.add(
+            AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id, pessoa_id=None)
+        )
+        await db_session.flush()
+
+        repo = VeiculoRepository(db_session)
+        resultado = await repo.get_veiculos_por_pessoa_via_abordagem(pessoa.id)
+        assert [v.id for v in resultado] == [veiculo.id]
+
+    async def test_nao_inclui_veiculo_de_outra_pessoa_na_mesma_abordagem(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        abordagem: Abordagem,
+        guarnicao: Guarnicao,
+    ):
+        """Veículo atribuído a outra pessoa na mesma abordagem não é retornado."""
+        outra = Pessoa(nome="Outra", guarnicao_id=guarnicao.id)
+        db_session.add(outra)
+        await db_session.flush()
+
+        db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
+        db_session.add(
+            AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id, pessoa_id=outra.id)
+        )
+        await db_session.flush()
+
+        repo = VeiculoRepository(db_session)
+        resultado = await repo.get_veiculos_por_pessoa_via_abordagem(pessoa.id)
+        assert resultado == []

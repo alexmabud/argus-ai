@@ -217,3 +217,34 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         result = await self.db.execute(query)
         rows = list(result.all())
         return rows  # type: ignore[return-value]
+
+    async def get_veiculos_por_pessoa_via_abordagem(self, pessoa_id: int) -> Sequence[Veiculo]:
+        """Veículos vinculados à pessoa através de abordagens.
+
+        Resolve AbordagemPessoa (pessoa esteve na abordagem) → AbordagemVeiculo
+        (veículo esteve na mesma abordagem) → Veiculo. Inclui tanto vínculos
+        onde o veículo foi explicitamente atribuído a esta pessoa
+        (AbordagemVeiculo.pessoa_id == pessoa_id) quanto vínculos órfãos sem
+        pessoa atribuída (pessoa_id NULL), mesmo padrão usado hoje no frontend.
+
+        Args:
+            pessoa_id: ID da pessoa.
+
+        Returns:
+            Sequência de Veículos únicos vinculados via abordagem.
+        """
+        query = (
+            select(Veiculo)
+            .join(AbordagemVeiculo, AbordagemVeiculo.veiculo_id == Veiculo.id)
+            .join(AbordagemPessoa, AbordagemPessoa.abordagem_id == AbordagemVeiculo.abordagem_id)
+            .where(
+                AbordagemPessoa.pessoa_id == pessoa_id,
+                or_(AbordagemVeiculo.pessoa_id == pessoa_id, AbordagemVeiculo.pessoa_id.is_(None)),
+                Veiculo.ativo == True,  # noqa: E712
+                AbordagemVeiculo.ativo == True,  # noqa: E712
+                AbordagemPessoa.ativo == True,  # noqa: E712
+            )
+            .distinct()
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
