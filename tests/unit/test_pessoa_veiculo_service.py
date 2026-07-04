@@ -23,6 +23,7 @@ class TestVincular:
     async def test_vincula_com_sucesso(
         self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
     ):
+        """Cria vínculo direto novo entre pessoa e veículo, ativo desde já."""
         service = PessoaVeiculoService(db_session)
         vinculo = await service.vincular(pessoa.id, veiculo.id, usuario)
         assert vinculo.pessoa_id == pessoa.id
@@ -32,6 +33,7 @@ class TestVincular:
     async def test_vincular_duplicado_levanta_conflito(
         self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
     ):
+        """Vincular o mesmo par duas vezes (ambas ativas) levanta ConflitoDadosError."""
         service = PessoaVeiculoService(db_session)
         await service.vincular(pessoa.id, veiculo.id, usuario)
         with pytest.raises(ConflitoDadosError):
@@ -40,6 +42,7 @@ class TestVincular:
     async def test_vincular_pessoa_inexistente_levanta_erro(
         self, db_session: AsyncSession, veiculo: Veiculo, usuario: Usuario
     ):
+        """Pessoa com ID inexistente levanta NaoEncontradoError."""
         service = PessoaVeiculoService(db_session)
         with pytest.raises(NaoEncontradoError):
             await service.vincular(99999, veiculo.id, usuario)
@@ -47,9 +50,39 @@ class TestVincular:
     async def test_vincular_veiculo_inexistente_levanta_erro(
         self, db_session: AsyncSession, pessoa: Pessoa, usuario: Usuario
     ):
+        """Veículo com ID inexistente levanta NaoEncontradoError."""
         service = PessoaVeiculoService(db_session)
         with pytest.raises(NaoEncontradoError):
             await service.vincular(pessoa.id, 99999, usuario)
+
+    async def test_vincular_corrida_no_insert_gera_conflito_dados(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        usuario: Usuario,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """Corrida entre duas requisições vinculando o mesmo par pela 1a vez.
+
+        Simula o cenário em que get_par (include_inactive=True) não
+        encontra nenhuma linha para o par — porque ainda não existia no
+        momento da leitura desta requisição — mas o vínculo já foi
+        criado por outra requisição concorrente antes do INSERT desta.
+        O banco rejeita o INSERT duplicado (unique constraint) e o
+        service deve converter isso em ConflitoDadosError, não deixar o
+        IntegrityError vazar como erro 500.
+        """
+        service = PessoaVeiculoService(db_session)
+        await service.vincular(pessoa.id, veiculo.id, usuario)
+
+        async def get_par_desatualizado(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(service.repo, "get_par", get_par_desatualizado)
+
+        with pytest.raises(ConflitoDadosError):
+            await service.vincular(pessoa.id, veiculo.id, usuario)
 
     async def test_vincular_pessoa_de_outra_guarnicao_levanta_acesso_negado(
         self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
@@ -104,6 +137,7 @@ class TestDesvincularEReativar:
     async def test_desvincular_e_revincular_nao_gera_conflito(
         self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
     ):
+        """Desvincular e vincular de novo o mesmo par reativa a linha, sem 409."""
         service = PessoaVeiculoService(db_session)
         primeiro = await service.vincular(pessoa.id, veiculo.id, usuario)
 
@@ -133,6 +167,7 @@ class TestDesvincularEReativar:
     async def test_desvincular_inexistente_levanta_erro(
         self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
     ):
+        """Desvincular um par que nunca foi vinculado levanta NaoEncontradoError."""
         service = PessoaVeiculoService(db_session)
         with pytest.raises(NaoEncontradoError):
             await service.desvincular(pessoa.id, veiculo.id, usuario)
@@ -177,6 +212,7 @@ class TestListarVeiculosPessoa:
     async def test_marca_origem_direto(
         self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
     ):
+        """Veículo vinculado só diretamente (sem abordagem) tem origem 'direto'."""
         service = PessoaVeiculoService(db_session)
         await service.vincular(pessoa.id, veiculo.id, usuario)
 
@@ -232,6 +268,7 @@ class TestListarVeiculosPessoa:
     async def test_pessoa_inexistente_levanta_erro(
         self, db_session: AsyncSession, usuario: Usuario
     ):
+        """Pessoa com ID inexistente levanta NaoEncontradoError."""
         service = PessoaVeiculoService(db_session)
         with pytest.raises(NaoEncontradoError):
             await service.listar_veiculos_pessoa(99999, usuario)
@@ -239,6 +276,7 @@ class TestListarVeiculosPessoa:
     async def test_pessoa_de_outra_guarnicao_levanta_acesso_negado(
         self, db_session: AsyncSession, pessoa: Pessoa, usuario: Usuario
     ):
+        """Listar veículos de pessoa de outra guarnição levanta AcessoNegadoError."""
         bpm_b = Bpm(nome="5o BPM Veiculos")
         db_session.add(bpm_b)
         await db_session.flush()

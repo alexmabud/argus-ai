@@ -5,6 +5,7 @@ abordagem), incluindo reativação de vínculos soft-deleted e listagem
 unificada de veículos de uma pessoa (diretos + derivados de abordagem).
 """
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
@@ -97,7 +98,16 @@ class PessoaVeiculoService:
                 guarnicao_id=user.guarnicao_id,
             )
             self.db.add(vinculo)
-            await self.db.flush()
+            try:
+                await self.db.flush()
+            except IntegrityError:
+                # Corrida entre duas requisições vinculando o mesmo par pela
+                # primeira vez: nenhuma via get_par (include_inactive=True)
+                # ainda não existia, mas o INSERT perdedor colide com a
+                # unique constraint. Mesmo tratamento de pessoa_service.py
+                # (criar_vinculo_manual) para o cenário equivalente.
+                await self.db.rollback()
+                raise ConflitoDadosError("Veículo já vinculado a esta pessoa")
 
         await self.audit.log(
             usuario_id=user.id,
