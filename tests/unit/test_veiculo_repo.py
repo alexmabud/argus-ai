@@ -1,9 +1,16 @@
 """Testes unitários do VeiculoRepository.
 
 Testa o método get_pessoas_por_veiculo com mock do banco de dados,
-verificando os filtros aplicados à query e o retorno correto. Também
-testa get_veiculos_por_pessoa_via_abordagem com banco de dados real,
-verificando a resolução de Pessoa → AbordagemPessoa → AbordagemVeiculo.
+verificando os filtros aplicados à query e o retorno correto. Desde que o
+método passou a combinar dois caminhos (via abordagem e via vínculo direto
+PessoaVeiculo), `db.execute` é chamado duas vezes por invocação — uma vez
+por query — quando algum filtro é efetivo; os testes que checam a query
+compilada usam sempre o último call (a query do caminho direto), que
+recebe os mesmos filtros da query de abordagem. Também testa
+get_veiculos_por_pessoa_via_abordagem com banco de dados real, verificando
+a resolução de Pessoa → AbordagemPessoa → AbordagemVeiculo, e
+TestGetPessoasPorVeiculoComVinculoDireto com banco de dados real,
+verificando o caminho Pessoa → PessoaVeiculo → Veiculo.
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -13,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.abordagem import Abordagem, AbordagemPessoa, AbordagemVeiculo
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
+from app.models.pessoa_veiculo import PessoaVeiculo
 from app.models.veiculo import Veiculo
 from app.repositories.veiculo_repo import VeiculoRepository
 
@@ -23,10 +31,8 @@ class TestGetPessoasPorVeiculo:
     async def test_get_pessoas_por_veiculo_retorna_lista_vazia(self):
         """Retorna lista vazia quando banco não tem resultados.
 
-        Verifica que o método retorna [] quando execute().all() é vazio.
-        Nota: quando placa é fornecida, debug logging executa queries extras
-        intermediárias [DEBUG-pv01]; por isso verificamos apenas que o
-        método foi chamado e não o count exato de execuções.
+        Verifica que o método retorna [] quando execute().all() é vazio nas
+        duas queries (caminho via abordagem e caminho via vínculo direto).
         """
         db = AsyncMock()
         mock_result = MagicMock()
@@ -45,8 +51,9 @@ class TestGetPessoasPorVeiculo:
         """Aplica filtro ILIKE normalizado quando placa é informada.
 
         Verifica que a query SQL compilada contém o padrão ILIKE com a
-        placa em uppercase sem traços. O último call é sempre a query
-        principal (debug queries intermediárias [DEBUG-pv01] vêm antes).
+        placa em uppercase sem traços. Duas queries são executadas (caminho
+        via abordagem e caminho via vínculo direto); o último call é a
+        query do caminho direto, que recebe o mesmo filtro de placa.
         """
         db = AsyncMock()
         mock_result = MagicMock()
@@ -58,8 +65,8 @@ class TestGetPessoasPorVeiculo:
             placa="abc-123", modelo=None, cor=None, guarnicao_id=None
         )
 
-        assert db.execute.called
-        # A query principal é sempre o último call (debug calls vêm antes)
+        assert db.execute.call_count == 2
+        # O último call é a query do caminho direto (executada após a de abordagem).
         call_args = db.execute.call_args
         query = call_args[0][0]
         compiled = str(query.compile(compile_kwargs={"literal_binds": True}))
@@ -81,7 +88,8 @@ class TestGetPessoasPorVeiculo:
         repo = VeiculoRepository(db)
         await repo.get_pessoas_por_veiculo(placa=None, modelo="Gol", cor=None, guarnicao_id=None)
 
-        db.execute.assert_called_once()
+        # Duas queries executadas (caminho via abordagem + caminho via vínculo direto).
+        assert db.execute.call_count == 2
         call_args = db.execute.call_args
         query = call_args[0][0]
         compiled = str(query.compile(compile_kwargs={"literal_binds": True}))
@@ -106,7 +114,8 @@ class TestGetPessoasPorVeiculo:
         repo = VeiculoRepository(db)
         await repo.get_pessoas_por_veiculo(placa=None, modelo="Golf ", cor=None, guarnicao_id=None)
 
-        db.execute.assert_called_once()
+        # Duas queries executadas (caminho via abordagem + caminho via vínculo direto).
+        assert db.execute.call_count == 2
         call_args = db.execute.call_args
         query = call_args[0][0]
         compiled = str(query.compile(compile_kwargs={"literal_binds": True}))
@@ -129,7 +138,8 @@ class TestGetPessoasPorVeiculo:
         repo = VeiculoRepository(db)
         await repo.get_pessoas_por_veiculo(placa=None, modelo="Gol", cor=None, guarnicao_id=None)
 
-        db.execute.assert_called_once()
+        # Duas queries executadas (caminho via abordagem + caminho via vínculo direto).
+        assert db.execute.call_count == 2
         compiled = str(db.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
         # Extrai todos os padrões ILIKE gerados
         import re as _re
@@ -159,7 +169,8 @@ class TestGetPessoasPorVeiculo:
             placa=None, modelo="Gol", cor="Branco", guarnicao_id=None
         )
 
-        db.execute.assert_called_once()
+        # Duas queries executadas (caminho via abordagem + caminho via vínculo direto).
+        assert db.execute.call_count == 2
         call_args = db.execute.call_args
         query = call_args[0][0]
         compiled = str(query.compile(compile_kwargs={"literal_binds": True}))
@@ -169,8 +180,13 @@ class TestGetPessoasPorVeiculo:
     async def test_get_pessoas_por_veiculo_retorna_tuplas(self):
         """Retorna lista de tuplas quando banco tem resultados.
 
-        Verifica que o método repassa o resultado de result.all() diretamente
-        como lista de tuplas (Pessoa, Veiculo) quando há um filtro válido.
+        Verifica que o método repassa os elementos de result.all() como
+        lista de tuplas (Pessoa, Veiculo) quando há um filtro válido. As
+        duas queries (abordagem e direto) retornam a mesma tupla mockada
+        via mock_result compartilhado; o dedupe por (pessoa.id, veiculo.id)
+        colapsa as duas ocorrências em uma — daí len(result) == 1. A
+        combinação reconstrói a tupla (não preserva identidade do objeto
+        original), por isso a comparação é por elemento, não por `is`.
         """
         db = AsyncMock()
         mock_result = MagicMock()
@@ -184,7 +200,8 @@ class TestGetPessoasPorVeiculo:
         )
 
         assert len(result) == 1
-        assert result[0] is tupla_fake
+        assert result[0][0] is tupla_fake[0]
+        assert result[0][1] is tupla_fake[1]
 
     async def test_get_pessoas_por_veiculo_sem_filtros_nao_casa_tudo(self):
         """Sem nenhum filtro efetivo, retorna [] SEM executar query (#2 auditoria).
@@ -312,3 +329,130 @@ class TestGetVeiculosPorPessoaViaAbordagem:
         repo = VeiculoRepository(db_session)
         resultado = await repo.get_veiculos_por_pessoa_via_abordagem(pessoa.id)
         assert resultado == []
+
+
+class TestGetPessoasPorVeiculoComVinculoDireto:
+    """Testes do caminho via vínculo direto (PessoaVeiculo) em get_pessoas_por_veiculo.
+
+    Usa banco de dados real (não mock) — valida o join Pessoa → PessoaVeiculo
+    → Veiculo, o soft delete, o filtro de modelo/cor no caminho direto e a
+    deduplicação entre os dois caminhos (abordagem e direto) combinados.
+    """
+
+    async def test_encontra_pessoa_so_com_vinculo_direto_sem_abordagem(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        guarnicao: Guarnicao,
+    ):
+        """Veículo vinculado só via PessoaVeiculo (sem abordagem) aparece na busca."""
+        db_session.add(
+            PessoaVeiculo(pessoa_id=pessoa.id, veiculo_id=veiculo.id, guarnicao_id=guarnicao.id)
+        )
+        await db_session.flush()
+
+        repo = VeiculoRepository(db_session)
+        resultado = await repo.get_pessoas_por_veiculo(
+            placa=veiculo.placa, modelo=None, cor=None, guarnicao_id=guarnicao.id
+        )
+        assert len(resultado) == 1
+        assert resultado[0][0].id == pessoa.id
+        assert resultado[0][1].id == veiculo.id
+
+    async def test_vinculo_direto_desativado_nao_aparece(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        guarnicao: Guarnicao,
+    ):
+        """PessoaVeiculo soft-deletado (ativo=False) não é retornado."""
+        db_session.add(
+            PessoaVeiculo(
+                pessoa_id=pessoa.id,
+                veiculo_id=veiculo.id,
+                guarnicao_id=guarnicao.id,
+                ativo=False,
+            )
+        )
+        await db_session.flush()
+
+        repo = VeiculoRepository(db_session)
+        resultado = await repo.get_pessoas_por_veiculo(
+            placa=veiculo.placa, modelo=None, cor=None, guarnicao_id=guarnicao.id
+        )
+        assert resultado == []
+
+    async def test_dedupe_entre_abordagem_e_vinculo_direto(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        abordagem: Abordagem,
+        guarnicao: Guarnicao,
+    ):
+        """Mesmo par pessoa+veículo vinculado via abordagem E via direto aparece só uma vez.
+
+        Garante que a combinação (union em Python) dos dois caminhos deduplica
+        corretamente por (pessoa.id, veiculo.id), e não apenas dentro de cada
+        caminho isoladamente.
+        """
+        db_session.add(AbordagemPessoa(abordagem_id=abordagem.id, pessoa_id=pessoa.id))
+        db_session.add(AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id))
+        db_session.add(
+            PessoaVeiculo(pessoa_id=pessoa.id, veiculo_id=veiculo.id, guarnicao_id=guarnicao.id)
+        )
+        await db_session.flush()
+
+        repo = VeiculoRepository(db_session)
+        resultado = await repo.get_pessoas_por_veiculo(
+            placa=veiculo.placa, modelo=None, cor=None, guarnicao_id=guarnicao.id
+        )
+        assert len(resultado) == 1
+        assert resultado[0][0].id == pessoa.id
+        assert resultado[0][1].id == veiculo.id
+
+    async def test_filtro_modelo_e_cor_aplicado_no_caminho_direto(
+        self,
+        db_session: AsyncSession,
+        guarnicao: Guarnicao,
+    ):
+        """Filtros de modelo e cor funcionam no caminho direto, não só no de abordagem.
+
+        Cria dois veículos vinculados diretamente a pessoas distintas — um
+        que casa com o filtro (modelo "Civic", cor "Prata") e outro que não
+        (modelo "Uno", cor "Vermelho") — e garante que só o primeiro retorna,
+        sem nenhuma abordagem envolvida em nenhum dos dois.
+        """
+        pessoa_alvo = Pessoa(nome="Alvo Filtro", guarnicao_id=guarnicao.id)
+        pessoa_outra = Pessoa(nome="Outra Filtro", guarnicao_id=guarnicao.id)
+        veiculo_alvo = Veiculo(
+            placa="CIV1C23", modelo="Civic", cor="Prata", guarnicao_id=guarnicao.id
+        )
+        veiculo_outro = Veiculo(
+            placa="UNO1D23", modelo="Uno", cor="Vermelho", guarnicao_id=guarnicao.id
+        )
+        db_session.add_all([pessoa_alvo, pessoa_outra, veiculo_alvo, veiculo_outro])
+        await db_session.flush()
+
+        db_session.add(
+            PessoaVeiculo(
+                pessoa_id=pessoa_alvo.id, veiculo_id=veiculo_alvo.id, guarnicao_id=guarnicao.id
+            )
+        )
+        db_session.add(
+            PessoaVeiculo(
+                pessoa_id=pessoa_outra.id, veiculo_id=veiculo_outro.id, guarnicao_id=guarnicao.id
+            )
+        )
+        await db_session.flush()
+
+        repo = VeiculoRepository(db_session)
+        resultado = await repo.get_pessoas_por_veiculo(
+            placa=None, modelo="Civic", cor="Prata", guarnicao_id=guarnicao.id
+        )
+
+        assert len(resultado) == 1
+        assert resultado[0][0].id == pessoa_alvo.id
+        assert resultado[0][1].id == veiculo_alvo.id
