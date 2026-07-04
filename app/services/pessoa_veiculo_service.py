@@ -91,6 +91,11 @@ class PessoaVeiculoService:
             await self.db.flush()
             vinculo = existente
         else:
+            # vinculo.veiculo fica acessível sem `db.refresh()` explícito
+            # (diferente de criar_vinculo_manual) porque `veiculo` já está
+            # no identity map da sessão via `veiculo_repo.get()` acima —
+            # SQLAlchemy resolve o relationship many-to-one sem query nem
+            # greenlet bridge, então não há risco de MissingGreenlet aqui.
             vinculo = PessoaVeiculo(
                 pessoa_id=pessoa_id,
                 veiculo_id=veiculo_id,
