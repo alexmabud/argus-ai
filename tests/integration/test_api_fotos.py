@@ -308,3 +308,65 @@ class TestDownloadMidia:
 
         assert resp.status_code == 200
         assert resp.content == pdf_bytes  # PDF inalterado
+
+
+class TestDeletarFoto:
+    """Testes do endpoint DELETE /api/v1/fotos/{foto_id}."""
+
+    @patch("app.services.foto_service.StorageService")
+    async def test_deletar_foto_retorna_204(
+        self,
+        mock_storage_cls,
+        client: AsyncClient,
+        auth_headers: dict,
+        pessoa,
+    ):
+        """Deve desativar a foto (204) e removê-la da listagem da pessoa.
+
+        Args:
+            mock_storage_cls: Mock do StorageService.
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+            pessoa: Fixture de pessoa dona da foto enviada.
+        """
+        mock_storage = MagicMock()
+        mock_storage.upload = AsyncMock(return_value="https://s3.example.com/fotos/test.jpg")
+        mock_storage.generate_key = MagicMock(return_value="fotos/test.jpg")
+        mock_storage_cls.return_value = mock_storage
+        mock_storage_cls.get = MagicMock(return_value=mock_storage)
+
+        upload_resp = await client.post(
+            "/api/v1/fotos/upload",
+            files={"file": ("teste.jpg", b"\xff\xd8\xff\xe0" + b"\x00" * 16, "image/jpeg")},
+            data={"tipo": "evidencia", "pessoa_id": str(pessoa.id)},
+            headers=auth_headers,
+        )
+        foto_id = upload_resp.json()["id"]
+
+        response = await client.delete(f"/api/v1/fotos/{foto_id}", headers=auth_headers)
+        assert response.status_code == 204
+
+        # Foto some da listagem da pessoa
+        listagem = await client.get(f"/api/v1/fotos/pessoa/{pessoa.id}", headers=auth_headers)
+        assert all(f["id"] != foto_id for f in listagem.json())
+
+    async def test_deletar_foto_inexistente_retorna_404(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Deve retornar 404 ao tentar desativar uma foto que não existe.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+        """
+        response = await client.delete("/api/v1/fotos/99999", headers=auth_headers)
+        assert response.status_code == 404
+
+    async def test_deletar_foto_sem_auth_retorna_401(self, client: AsyncClient):
+        """Deve retornar 401 sem autenticação.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+        """
+        response = await client.delete("/api/v1/fotos/1")
+        assert response.status_code == 401

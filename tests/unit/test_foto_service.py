@@ -1,15 +1,19 @@
 """Testes unitários para FotoService.
 
-Valida enriquecimento de resultados com dados da pessoa vinculada e
-enforcement da quota de fotos por abordagem.
+Valida enriquecimento de resultados com dados da pessoa vinculada,
+enforcement da quota de fotos por abordagem e soft delete de fotos.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import QuotaExcedidaError
+from app.core.exceptions import NaoEncontradoError, QuotaExcedidaError
+from app.models.guarnicao import Guarnicao
+from app.models.pessoa import Pessoa
+from app.models.usuario import Usuario
 from app.services.foto_service import QUOTA_FOTOS_POR_ABORDAGEM, FotoService
 
 
@@ -387,6 +391,47 @@ class TestUploadFotoThumbnail:
         assert foto.arquivo_url == "/storage/argus/fotos/abc_foto.jpg"
         # Só o upload original — geração falhou antes do segundo upload
         assert storage_mock.upload.await_count == 1
+
+
+class TestDesativarFoto:
+    """Testes para FotoService.desativar (soft delete)."""
+
+    async def test_desativa_foto_com_sucesso(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, pessoa: Pessoa, usuario: Usuario
+    ):
+        """Deve marcar a foto como inativa (ativo=False) preservando o registro."""
+        storage_mock = MagicMock()
+        storage_mock.generate_key = MagicMock(return_value="fotos/teste.jpg")
+        storage_mock.upload = AsyncMock(return_value="/storage/argus/fotos/teste.jpg")
+
+        with patch("app.services.foto_service.StorageService.get", return_value=storage_mock):
+            service = FotoService(db_session)
+
+        foto = await service.upload_foto(
+            file_bytes=b"fake-image-bytes",
+            filename="teste.jpg",
+            content_type="image/jpeg",
+            pessoa_id=pessoa.id,
+            abordagem_id=None,
+            veiculo_id=None,
+            tipo="evidencia",
+            latitude=None,
+            longitude=None,
+            user_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        assert foto.ativo is True
+
+        desativada = await service.desativar(foto.id, usuario)
+        assert desativada.ativo is False
+
+    async def test_desativar_foto_inexistente_levanta_erro(
+        self, db_session: AsyncSession, usuario: Usuario
+    ):
+        """Deve levantar NaoEncontradoError quando a foto não existe."""
+        service = FotoService(db_session)
+        with pytest.raises(NaoEncontradoError):
+            await service.desativar(99999, usuario)
 
 
 class TestFotoComCompressaoStatus:
