@@ -10,7 +10,9 @@ import numpy as np
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NaoEncontradoError, QuotaExcedidaError
+from app.core.exceptions import AcessoNegadoError, NaoEncontradoError, QuotaExcedidaError
+from app.core.security import hash_senha
+from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
@@ -424,6 +426,54 @@ class TestDesativarFoto:
 
         desativada = await service.desativar(foto.id, usuario)
         assert desativada.ativo is False
+
+    async def test_desativar_foto_de_outra_guarnicao_levanta_acesso_negado(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, pessoa: Pessoa, usuario: Usuario
+    ):
+        """Deve levantar AcessoNegadoError ao desativar foto de outra guarnição.
+
+        A foto pertence à guarnição de ``usuario`` (tenant A). Um segundo
+        usuário criado em outra guarnição (tenant B) não pode desativá-la.
+        """
+        storage_mock = MagicMock()
+        storage_mock.generate_key = MagicMock(return_value="fotos/teste.jpg")
+        storage_mock.upload = AsyncMock(return_value="/storage/argus/fotos/teste.jpg")
+
+        with patch("app.services.foto_service.StorageService.get", return_value=storage_mock):
+            service = FotoService(db_session)
+
+        foto = await service.upload_foto(
+            file_bytes=b"fake-image-bytes",
+            filename="teste.jpg",
+            content_type="image/jpeg",
+            pessoa_id=pessoa.id,
+            abordagem_id=None,
+            veiculo_id=None,
+            tipo="evidencia",
+            latitude=None,
+            longitude=None,
+            user_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+
+        # Cria segunda guarnição (tenant B) e usuário nela
+        bpm_b = Bpm(nome="5o BPM Fotos")
+        db_session.add(bpm_b)
+        await db_session.flush()
+        guarnicao_b = Guarnicao(nome="5a Cia - GU 02", bpm_id=bpm_b.id, codigo="5BPM-5CIA-GU02")
+        db_session.add(guarnicao_b)
+        await db_session.flush()
+        usuario_b = Usuario(
+            nome="Agente Outro Tenant",
+            matricula="OTHER001",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao_b.id,
+        )
+        db_session.add(usuario_b)
+        await db_session.flush()
+
+        with pytest.raises(AcessoNegadoError):
+            await service.desativar(foto.id, usuario_b)
 
     async def test_desativar_foto_inexistente_levanta_erro(
         self, db_session: AsyncSession, usuario: Usuario
