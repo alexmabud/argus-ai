@@ -1232,6 +1232,19 @@ function pessoaDetalhePage(pessoaId) {
             mapaFotos[foto.veiculo_id].push(foto);
           }
         }
+        // Mescla fotos de veículo vinculadas direto pela ficha (tipo=veiculo
+        // + pessoa_id, sem nenhuma abordagem envolvida) — this.fotos já foi
+        // carregado em load() antes desta chamada via GET /fotos/pessoa/{id}.
+        // Sem isso, a foto sumiria após F5: não há abordagem pra buscar via
+        // GET /fotos/abordagem/{id} (bug confirmado em teste manual).
+        for (const foto of this.fotos) {
+          if (foto.tipo === 'veiculo' && foto.veiculo_id) {
+            if (!mapaFotos[foto.veiculo_id]) mapaFotos[foto.veiculo_id] = [];
+            if (!mapaFotos[foto.veiculo_id].some(f => f.id === foto.id)) {
+              mapaFotos[foto.veiculo_id].push(foto);
+            }
+          }
+        }
         this.fotosVeiculos = mapaFotos;
 
         // Extrair pontos com coordenadas para o mapa
@@ -1295,13 +1308,15 @@ function pessoaDetalhePage(pessoaId) {
      * abordado, reutilizando o mesmo endpoint de upload já usado na tela
      * de abordagem.
      *
-     * Atualiza `fotosVeiculos` localmente a partir da resposta do upload,
-     * em vez de re-chamar `carregarAbordagens()`: essa função deriva
-     * `fotosVeiculos` a partir de `GET /fotos/abordagem/{id}` de cada
-     * abordagem da pessoa, o que não alcança veículos vinculados direto
-     * pela ficha sem nenhuma abordagem associada (bug confirmado em teste
-     * manual em browser real — a foto era salva no backend, mas nunca
-     * aparecia na grade porque não havia abordagem nenhuma para buscar).
+     * Envia `pessoa_id` junto (além de `veiculo_id`) para que a foto também
+     * apareça em `GET /fotos/pessoa/{id}` — sem isso, a foto sumia após um
+     * F5 (bug confirmado em teste manual em browser real): `fotosVeiculos`
+     * só era populado a partir de `GET /fotos/abordagem/{id}` de cada
+     * abordagem da pessoa (`carregarAbordagens()`), que não alcança
+     * veículos vinculados direto pela ficha sem nenhuma abordagem. Atualiza
+     * `fotosVeiculos` localmente de imediato (feedback instantâneo) e
+     * depende de `this.fotos` (recarregado a cada `load()`) mais a mescla
+     * feita em `carregarAbordagens()` para persistir a foto entre recargas.
      *
      * @param {Event} event - Evento de change do input file.
      * @param {number} veiculoId - ID do veículo alvo da foto.
@@ -1311,7 +1326,11 @@ function pessoaDetalhePage(pessoaId) {
       if (!file) return;
       event.target.value = "";
       try {
-        const foto = await api.uploadFile("/fotos/upload", file, { tipo: "veiculo", veiculo_id: veiculoId });
+        const foto = await api.uploadFile("/fotos/upload", file, {
+          tipo: "veiculo",
+          veiculo_id: veiculoId,
+          pessoa_id: parseInt(pessoaId, 10),
+        });
         this.fotosVeiculos = {
           ...this.fotosVeiculos,
           [veiculoId]: [...(this.fotosVeiculos[veiculoId] || []), foto],
@@ -1814,13 +1833,18 @@ function pessoaDetalhePage(pessoaId) {
 
     /**
      * Filtra as fotos relacionadas ao abordado (evidências: armas, drogas, etc)
-     * — qualquer foto que não seja de rosto. Ver nota em `fotosRosto()` sobre
-     * o motivo de ser método em vez de getter.
+     * — fotos que não são de rosto nem de veículo/placa (essas têm exibição
+     * própria no card de Veículos, não devem duplicar aqui). Exclusão
+     * explícita de 'veiculo'/'placa' evitando duplicação: fotos de veículo
+     * vinculado direto pela ficha agora também trafegam com `pessoa_id`
+     * setado (ver `onFotoVeiculoDireto`), então apareceriam aqui também
+     * sem essa exclusão. Ver nota em `fotosRosto()` sobre o motivo de ser
+     * método em vez de getter.
      *
-     * @returns {Array<object>} Fotos com tipo !== 'rosto'.
+     * @returns {Array<object>} Fotos que não são 'rosto', 'veiculo' nem 'placa'.
      */
     fotosEvidencia() {
-      return this.fotos.filter(f => f.tipo !== 'rosto');
+      return this.fotos.filter(f => !['rosto', 'veiculo', 'placa'].includes(f.tipo));
     },
 
     /**
