@@ -30,6 +30,33 @@ class TestVincular:
         assert vinculo.veiculo_id == veiculo.id
         assert vinculo.ativo is True
 
+    async def test_vinculo_veiculo_acessivel_sem_veiculo_pre_carregado_na_sessao(
+        self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
+    ):
+        """Regressão: vinculo.veiculo deve ser acessível sem MissingGreenlet.
+
+        Em produção, cada requisição usa uma sessão nova — o Veiculo nunca
+        esteve no identity map antes de vincular() carregá-lo. Nos testes,
+        a fixture `veiculo` e o service compartilham a MESMA sessão (padrão
+        de `tests/conftest.py::client`), o que mascarava esse bug: o objeto
+        já estava resolvido antes mesmo do service tocar nele. `expunge()`
+        remove o veiculo do identity map da sessão de teste antes de
+        vincular(), reproduzindo a condição real de uma requisição nova —
+        sem isso, este teste passaria mesmo com o bug presente (já
+        confirmado manualmente: reproduz MissingGreenlet real via reversão
+        temporária do fix, e via HTTP direto contra um uvicorn real).
+        """
+        db_session.expunge(veiculo)
+        service = PessoaVeiculoService(db_session)
+        vinculo = await service.vincular(pessoa.id, veiculo.id, usuario)
+
+        # A linha abaixo é o próprio teste: acessar .veiculo é exatamente o
+        # que app/api/v1/pessoas.py faz para montar a resposta da rota
+        # POST /pessoas/{id}/veiculos/{id} — sem o fix, levanta MissingGreenlet.
+        veiculo_relacionado = vinculo.veiculo
+        assert veiculo_relacionado is not None
+        assert veiculo_relacionado.id == veiculo.id
+
     async def test_vincular_duplicado_levanta_conflito(
         self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, usuario: Usuario
     ):
