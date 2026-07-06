@@ -76,8 +76,8 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 
 #### Backend FastAPI
 - ✅ **11 routers** v1 (auth, pessoas, veículos, abordagens, fotos, consultas, ocorrências, analytics, sync, admin, localidades) + `health`
-- ✅ **14 models** SQLAlchemy + `base`, com mixins (Timestamp, SoftDelete, MultiTenant)
-- ✅ **24 services** especializados (auth, pessoa, observação de pessoa, veículo, abordagem, ocorrência, embedding, face, ocr, sync, analytics, audit, bpm, equipe, localidade, relacionamento, geocoding, storage, consulta, notificação, usuário-admin, texto, foto, watermark)
+- ✅ **15 models** SQLAlchemy + `base`, com mixins (Timestamp, SoftDelete, MultiTenant)
+- ✅ **25 services** especializados (auth, pessoa, observação de pessoa, veículo, vínculo pessoa-veículo, abordagem, ocorrência, embedding, face, ocr, sync, analytics, audit, bpm, equipe, localidade, relacionamento, geocoding, storage, consulta, notificação, usuário-admin, texto, foto, watermark)
 - ✅ **Watermark rastreável** em 3 camadas (overlay client-side, marca queimada server-side com cache, auditoria de visualização/download)
 - ✅ **Multi-tenancy** operacional (isolamento por guarnição e por BPM)
 - ✅ **Autenticação JWT** (login, refresh, logout, sessão exclusiva via `session_id`)
@@ -261,6 +261,7 @@ argus-ai/
 │   │   ├── pessoa_observacao.py      # Observações livres por pessoa
 │   │   ├── endereco.py
 │   │   ├── veiculo.py
+│   │   ├── pessoa_veiculo.py         # Vínculo direto pessoa-veículo (independente de abordagem)
 │   │   ├── localidade.py             # Hierarquia estado/cidade/bairro
 │   │   ├── abordagem.py
 │   │   ├── foto.py                   # Embedding facial (Vector 512)
@@ -274,6 +275,7 @@ argus-ai/
 │   │   ├── auth.py
 │   │   ├── pessoa.py
 │   │   ├── veiculo.py
+│   │   ├── pessoa_veiculo.py
 │   │   ├── abordagem.py
 │   │   ├── foto.py
 │   │   ├── ocorrencia.py
@@ -295,6 +297,7 @@ argus-ai/
 │   │   ├── pessoa_service.py
 │   │   ├── pessoa_observacao_service.py
 │   │   ├── veiculo_service.py
+│   │   ├── pessoa_veiculo_service.py  # Vínculo direto pessoa-veículo
 │   │   ├── localidade_service.py
 │   │   ├── abordagem_service.py
 │   │   ├── relacionamento_service.py # Materialização de vínculos
@@ -319,6 +322,7 @@ argus-ai/
 │   │   ├── base.py                   # Repository base genérico
 │   │   ├── pessoa_repo.py
 │   │   ├── veiculo_repo.py
+│   │   ├── pessoa_veiculo_repo.py
 │   │   ├── abordagem_repo.py
 │   │   ├── ocorrencia_repo.py
 │   │   ├── foto_repo.py
@@ -967,8 +971,10 @@ class Ocorrencia(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
 
 Além dos acima, o projeto inclui: `bpm` (batalhão que agrupa equipes, com flag de
 isolamento de dados), `localidade` (hierarquia estado/cidade/bairro), `pessoa_observacao`
-(anotações livres por pessoa) e `vinculo_manual` (vínculo manual pessoa-pessoa). Veja
-`app/models/` para os campos completos.
+(anotações livres por pessoa), `vinculo_manual` (vínculo manual pessoa-pessoa) e
+`pessoa_veiculo` (vínculo direto pessoa-veículo, independente de abordagem, reutilizando
+a mesma tabela `veiculos` da consulta por veículo). Veja `app/models/` para os campos
+completos.
 
 ### Índices críticos
 
