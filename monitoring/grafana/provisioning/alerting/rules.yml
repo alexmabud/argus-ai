@@ -25,6 +25,8 @@ groups:
             model:
               expr: 100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -55,6 +57,8 @@ groups:
             model:
               expr: 100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -85,6 +89,8 @@ groups:
             model:
               expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -115,6 +121,8 @@ groups:
             model:
               expr: 100 - (node_filesystem_avail_bytes{mountpoint="/mnt/fotos"} / node_filesystem_size_bytes{mountpoint="/mnt/fotos"} * 100)
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -145,6 +153,8 @@ groups:
             model:
               expr: 100 - (node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"} * 100)
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -167,8 +177,10 @@ groups:
       - uid: alert-api-down
         title: API Offline
         condition: threshold
-        noDataState: OK
-        execErrState: OK
+        # noData/execErr = Alerting: se o exporter/datasource morre, o alerta
+        # crítico DISPARA em vez de resolver para OK (mascarando o outage).
+        noDataState: Alerting
+        execErrState: Alerting
         for: 3m
         annotations:
           summary: "API OFFLINE"
@@ -182,6 +194,8 @@ groups:
             model:
               expr: up{job="argus-api"}
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -212,6 +226,8 @@ groups:
             model:
               expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -242,6 +258,8 @@ groups:
             model:
               expr: histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -264,8 +282,8 @@ groups:
       - uid: alert-postgres-down
         title: PostgreSQL Offline
         condition: threshold
-        noDataState: OK
-        execErrState: OK
+        noDataState: Alerting
+        execErrState: Alerting
         for: 2m
         annotations:
           summary: "PostgreSQL OFFLINE"
@@ -279,6 +297,8 @@ groups:
             model:
               expr: pg_up
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -294,8 +314,8 @@ groups:
       - uid: alert-redis-down
         title: Redis Offline
         condition: threshold
-        noDataState: OK
-        execErrState: OK
+        noDataState: Alerting
+        execErrState: Alerting
         for: 2m
         annotations:
           summary: "Redis OFFLINE"
@@ -309,6 +329,8 @@ groups:
             model:
               expr: redis_up
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -341,6 +363,8 @@ groups:
               # Multiplica por redis_up pra não disparar junto com alert-redis-down
               expr: rate(redis_commands_processed_total[5m]) * redis_up
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -380,6 +404,8 @@ groups:
               # predict_linear: extrapola usando últimas 6h, prevê espaço em 7 dias (604800s)
               expr: predict_linear(node_filesystem_avail_bytes{mountpoint="/mnt/fotos"}[6h], 7 * 24 * 3600)
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -396,8 +422,8 @@ groups:
       - uid: alert-minio-down
         title: MinIO Offline
         condition: threshold
-        noDataState: OK
-        execErrState: OK
+        noDataState: Alerting
+        execErrState: Alerting
         for: 3m
         annotations:
           summary: "MinIO OFFLINE"
@@ -412,6 +438,8 @@ groups:
               # blackbox_exporter retorna 1 se health endpoint responde, 0 se falha
               expr: probe_success{job="blackbox-minio"}
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -443,6 +471,8 @@ groups:
               # Segundos restantes até expirar
               expr: probe_ssl_earliest_cert_expiry{job="blackbox-https"} - time()
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -459,8 +489,9 @@ groups:
       - uid: alert-backup-falhou
         title: Backup do Postgres Atrasado
         condition: threshold
-        noDataState: OK
-        execErrState: OK
+        # noData = a métrica de backup nunca foi escrita = backup NUNCA rodou.
+        noDataState: Alerting
+        execErrState: Alerting
         for: 30m
         annotations:
           summary: "Backup do Postgres atrasado há mais de 26h"
@@ -475,6 +506,8 @@ groups:
               # Idade em segundos do último backup bem-sucedido
               expr: time() - argus_backup_last_success_timestamp_seconds
               refId: A
+              instant: true
+              range: false
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -484,6 +517,114 @@ groups:
               conditions:
                 # > 26h = 93600s (1h de folga sobre os 24h esperados)
                 - evaluator: {type: gt, params: [93600]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: last}
+
+      - uid: alert-backup-clouds-falhou
+        title: Backup Offsite (nuvens) Atrasado
+        condition: threshold
+        # noData = backup offsite nunca escreveu a métrica = nunca rodou.
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 1h
+        annotations:
+          summary: "Backup para as nuvens atrasado há mais de 30h"
+          description: "Sem novo backup offsite (Oracle/GDrive) há mais de 30h (cron root às 03:00 BRT, backup_to_clouds.sh). Verificar /var/log/argus-backup-clouds e o cron."
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: time() - argus_backup_clouds_last_success_timestamp_seconds
+              refId: A
+              instant: true
+              range: false
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                # > 30h = 108000s
+                - evaluator: {type: gt, params: [108000]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: last}
+
+      - uid: alert-disco-banco
+        title: Disco de Dados (/mnt/banco) Crítico
+        condition: threshold
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Disco /mnt/banco acima de 85%"
+          description: "O volume /mnt/banco (Postgres, backups, Prometheus, Grafana) passou de 85% de uso. Se encher, o banco para de escrever. Expandir o volume ou limpar dados antigos."
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: 100 - (node_filesystem_avail_bytes{mountpoint="/mnt/banco"} / node_filesystem_size_bytes{mountpoint="/mnt/banco"} * 100)
+              refId: A
+              instant: true
+              range: false
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [85]}
+                  operator: {type: and}
+                  query: {params: [A]}
+                  reducer: {type: last}
+
+  # ─── Meta-monitoramento (detecta exporter/scrape morto) ────────────
+  - orgId: 1
+    name: Meta-Monitoramento
+    folder: Argus AI
+    interval: 1m
+    rules:
+
+      - uid: alert-target-down
+        title: Alvo de Métrica Offline (scrape falhando)
+        condition: threshold
+        # up==0 retorna série (valor 1) só para alvos DOWN e vazio quando tudo
+        # OK — por isso noDataState=OK aqui (vazio = saudável). Pega exporter
+        # morto (node/postgres/redis/blackbox) que cegaria os demais alertas.
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Scrape de métricas falhando"
+          description: "Um ou mais alvos do Prometheus estão down (up==0) há mais de 5 min. Um exporter parado mascara os outros alertas. Verificar os targets em /targets do Prometheus."
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: up == 0
+              refId: A
+              instant: true
+              range: false
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [0.5]}
                   operator: {type: and}
                   query: {params: [A]}
                   reducer: {type: last}

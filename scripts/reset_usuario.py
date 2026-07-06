@@ -49,8 +49,31 @@ def _guard_producao() -> None:
         sys.exit("ERRO: DATABASE_URL contem 'prod'. Recusando.")
 
 
+def _confirmar() -> None:
+    """Exige confirmação interativa explícita antes do hard delete.
+
+    Defesa em profundidade sobre `_guard_producao`: mostra o banco alvo (com a
+    senha mascarada) e só prossegue se o operador digitar 'apagar'. Bypass
+    não-interativo (automação) com a flag --yes.
+    """
+    url = settings.DATABASE_URL or ""
+    alvo = url
+    if "://" in url and "@" in url:
+        prefixo, _, resto = url.partition("://")
+        cred, _, host = resto.partition("@")
+        user = cred.split(":", 1)[0]
+        alvo = f"{prefixo}://{user}:***@{host}"
+    print(f"Isto vai APAGAR TODOS os usuarios e audit_logs em: {alvo}")
+    if "--yes" in sys.argv:
+        return
+    resp = input("Digite 'apagar' para confirmar: ")
+    if resp.strip().lower() != "apagar":
+        sys.exit("Cancelado.")
+
+
 async def main() -> None:
     _guard_producao()
+    _confirmar()
     engine = create_async_engine(_async_url(), echo=False)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 

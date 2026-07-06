@@ -55,6 +55,15 @@ async def ip_bloqueado(ip: str) -> bool:
     """
     redis = await _get_redis()
     if redis is None:
+        # Fail-open (D-G2-1): sem Redis o bloqueio por IP some; o lockout por
+        # conta no DB segue como defesa primária. Registramos em ERROR para que
+        # a operação enxergue que a proteção contra brute-force por IP está
+        # desativada enquanto o Redis estiver fora.
+        logger.error(
+            "login_guard: Redis indisponível — bloqueio por IP DESATIVADO, "
+            "login permitido sem checagem de IP (%s)",
+            ip,
+        )
         return False
     try:
         val = await redis.get(_chave_ip(ip))

@@ -9,9 +9,22 @@
 # reais. A maquina local passa a guardar dados sensiveis — mantenha
 # acesso restrito e criptografia de disco habilitada.
 #
-# Uso: make sync-from-prod
+# Por padrao a ENCRYPTION_KEY de PRODUCAO NAO e copiada para o dev
+# (mantem/gera uma chave local) — os CPFs do dump ficam ilegiveis.
+# Use a flag --with-prod-key (make sync-from-prod KEY=1) para tambem
+# trazer a chave-mestra de prod e decifrar os CPFs localmente.
+#
+# Uso: make sync-from-prod            (default seguro, sem chave de prod)
+#      make sync-from-prod KEY=1      (opt-in: traz a chave de prod)
 # ══════════════════════════════════════════════════════════════
 set -euo pipefail
+
+WITH_PROD_KEY=0
+for arg in "$@"; do
+    case "$arg" in
+        --with-prod-key) WITH_PROD_KEY=1 ;;
+    esac
+done
 
 SSH_HOST="argus"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -61,16 +74,35 @@ echo "═══ 3/6 Backup do .env local ═══"
 cp "$ENV_FILE" "$ENV_BACKUP"
 echo "Backup salvo em $ENV_BACKUP"
 
-# ─── 4/6 ── Atualizar ENCRYPTION_KEY local ────────────────────
+# ─── 4/6 ── ENCRYPTION_KEY local ──────────────────────────────
 echo ""
-echo "═══ 4/6 Atualizando ENCRYPTION_KEY local (chave de prod) ═══"
-PROD_KEY=$(ssh "$SSH_HOST" "grep '^ENCRYPTION_KEY=' ~/argus-ai/.env" | cut -d= -f2-)
-if [[ -z "$PROD_KEY" ]]; then
-    echo "ERRO: nao foi possivel obter ENCRYPTION_KEY de prod" >&2
-    exit 1
+if [[ "$WITH_PROD_KEY" == "1" ]]; then
+    echo "═══ 4/6 Trazendo ENCRYPTION_KEY de PRODUCAO (opt-in --with-prod-key) ═══"
+    PROD_KEY=$(ssh "$SSH_HOST" "grep '^ENCRYPTION_KEY=' ~/argus-ai/.env" | cut -d= -f2-)
+    if [[ -z "$PROD_KEY" ]]; then
+        echo "ERRO: nao foi possivel obter ENCRYPTION_KEY de prod" >&2
+        exit 1
+    fi
+    sed -i "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=$PROD_KEY|" "$ENV_FILE"
+    echo "ENCRYPTION_KEY atualizada para a chave de producao"
+else
+    echo "═══ 4/6 ENCRYPTION_KEY local (chave de prod NAO copiada) ═══"
+    if grep -qE '^ENCRYPTION_KEY=.+' "$ENV_FILE"; then
+        echo "Mantendo a ENCRYPTION_KEY local existente."
+    else
+        PYTHON_BIN="$PROJECT_DIR/.venv/bin/python"
+        [[ -x "$PYTHON_BIN" ]] || PYTHON_BIN="python3"
+        NOVA_KEY=$("$PYTHON_BIN" -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+        if grep -q '^ENCRYPTION_KEY=' "$ENV_FILE"; then
+            sed -i "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=$NOVA_KEY|" "$ENV_FILE"
+        else
+            printf '\nENCRYPTION_KEY=%s\n' "$NOVA_KEY" >> "$ENV_FILE"
+        fi
+        echo "Gerada nova ENCRYPTION_KEY local."
+    fi
+    echo "ATENCAO: os CPFs do dump foram cifrados com a chave de PROD e ficarao"
+    echo "ILEGIVEIS localmente. Rode 'make sync-from-prod KEY=1' se precisar decifra-los."
 fi
-sed -i "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=$PROD_KEY|" "$ENV_FILE"
-echo "ENCRYPTION_KEY atualizada para a chave de producao"
 
 # ─── 5/6 ── Restore Postgres local ────────────────────────────
 echo ""
@@ -132,10 +164,12 @@ if [[ ${#ENV_BAK_ANTIGOS[@]} -gt 0 ]]; then
 fi
 
 # ─── Aviso de seguranca LGPD ──────────────────────────────────
-echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo " ATENCAO: .env local agora contem a ENCRYPTION_KEY de PRODUCAO."
-echo " Se este device for perdido ou comprometido, CPFs da base ficam"
-echo " decifraveis. Exija criptografia de disco (LUKS/BitLocker) e"
-echo " bloqueio automatico de tela."
-echo "═══════════════════════════════════════════════════════════════"
+if [[ "$WITH_PROD_KEY" == "1" ]]; then
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════"
+    echo " ATENCAO: .env local agora contem a ENCRYPTION_KEY de PRODUCAO."
+    echo " Se este device for perdido ou comprometido, CPFs da base ficam"
+    echo " decifraveis. Exija criptografia de disco (LUKS/BitLocker) e"
+    echo " bloqueio automatico de tela."
+    echo "═══════════════════════════════════════════════════════════════"
+fi

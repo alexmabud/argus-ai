@@ -23,6 +23,16 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    # Backfill antes do NOT NULL: usuários com guarnicao_id NULL recebem a
+    # primeira guarnição existente (regra: todos pertencem à guarnição genérica),
+    # senão o SET NOT NULL falharia. No-op quando não há usuários NULL.
+    op.execute(
+        """
+        UPDATE usuarios
+        SET guarnicao_id = (SELECT id FROM guarnicoes ORDER BY id LIMIT 1)
+        WHERE guarnicao_id IS NULL
+        """
+    )
     op.alter_column(
         "usuarios",
         "guarnicao_id",

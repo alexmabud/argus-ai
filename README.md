@@ -325,6 +325,9 @@ argus-ai/
 | GET | `/{id}/abordagens` | Listar abordagens da pessoa |
 | POST | `/{id}/vinculos-manuais` | Criar vinculo manual entre pessoas |
 | DELETE | `/{id}/vinculos-manuais/{vinculo_id}` | Remover vinculo manual |
+| POST | `/{id}/veiculos/{veiculo_id}` | Vincular veiculo direto a pessoa (fora do contexto de abordagem, com reativacao se ja existiu) |
+| DELETE | `/{id}/veiculos/{veiculo_id}` | Remover vinculo direto pessoa-veiculo (soft delete do vinculo, nao do veiculo) |
+| GET | `/{id}/veiculos` | Listar veiculos da pessoa (unificado: vinculo direto + derivados de abordagem) |
 | GET | `/{id}/observacoes` | Listar observacoes operacionais da pessoa |
 | POST | `/{id}/observacoes` | Criar observacao |
 | PATCH | `/{id}/observacoes/{obs_id}` | Atualizar observacao |
@@ -336,6 +339,7 @@ argus-ai/
 |--------|------|-----------|
 | GET | `/` | Listar veiculos (filtros por placa/modelo/cor) |
 | POST | `/` | Cadastrar veiculo (placa normalizada) |
+| PUT | `/{id}` | Atualizar veiculo (modelo/cor/ano/tipo/observacoes; placa e imutavel) |
 | GET | `/localidades` | Modelos e cores distintos (autocomplete) |
 
 ### Abordagens (`/api/v1/abordagens`)
@@ -350,13 +354,14 @@ argus-ai/
 
 | Metodo | Rota | Descricao |
 |--------|------|-----------|
-| POST | `/upload` | Upload de foto de pessoa para o storage S3-compatible (face embedding async via worker) |
+| POST | `/upload` | Upload de foto de pessoa para o storage S3-compatible (tipos: rosto, evidencia, veiculo, etc — face embedding async via worker so para tipo=rosto) |
 | POST | `/midias` | Upload de midia (foto/video) vinculada a abordagem |
 | GET | `/pessoa/{pessoa_id}` | Listar fotos de uma pessoa |
 | GET | `/abordagem/{abordagem_id}` | Listar midias de uma abordagem |
 | POST | `/buscar-rosto` | Busca por similaridade facial (IVFFlat pgvector) |
 | POST | `/ocr-placa` | Extrair numero de placa via EasyOCR |
 | GET | `/{foto_id}/download` | Download/redirect de midia via URL assinada (S3 presigned URL) |
+| DELETE | `/{foto_id}` | Soft delete de foto (corrige fotos categorizadas incorretamente) |
 
 ### Consultas (`/api/v1/consultas`)
 

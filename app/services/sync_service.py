@@ -60,12 +60,16 @@ class SyncService:
                 result = await self._process_item(item, user)
                 results.append(result)
             except Exception as e:
+                # Detalhe interno só no log; cliente recebe mensagem genérica (#6).
                 logger.error("Erro sync item %s: %s", item.client_id, str(e))
+                # Limpa a transação envenenada para que os próximos itens do batch
+                # ainda possam ser processados (sem isso, a sessão fica inutilizável).
+                await self.db.rollback()
                 results.append(
                     SyncItemResult(
                         client_id=item.client_id,
                         status="error",
-                        error=str(e),
+                        error="Falha ao processar item",
                     )
                 )
         return results

@@ -18,9 +18,11 @@ from PIL import UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import QuotaExcedidaError
+from app.core.exceptions import NaoEncontradoError, QuotaExcedidaError
+from app.core.permissions import TenantFilter
 from app.models.foto import Foto
 from app.models.pessoa import Pessoa
+from app.models.usuario import Usuario
 from app.repositories.foto_repo import FotoRepository
 from app.services.audit_service import AuditService
 from app.services.storage_service import StorageService
@@ -196,31 +198,37 @@ class FotoService:
 
         return foto
 
-    async def listar_por_pessoa(self, pessoa_id: int) -> list[Foto]:
-        """Lista todas as fotos associadas a uma pessoa.
+    async def listar_por_pessoa(self, pessoa_id: int, skip: int = 0, limit: int = 50) -> list[Foto]:
+        """Lista as fotos associadas a uma pessoa (paginado no banco).
 
         Retorna fotos ordenadas por data/hora decrescente (mais recentes primeiro).
 
         Args:
             pessoa_id: ID da pessoa para buscar fotos.
+            skip: Registros a pular (OFFSET).
+            limit: Máximo de resultados (LIMIT).
 
         Returns:
             Lista de Fotos da pessoa ordenadas por data_hora decrescente.
         """
-        return list(await self.repo.get_by_pessoa(pessoa_id))
+        return list(await self.repo.get_by_pessoa(pessoa_id, skip=skip, limit=limit))
 
-    async def listar_por_abordagem(self, abordagem_id: int) -> list[Foto]:
-        """Lista todas as fotos associadas a uma abordagem.
+    async def listar_por_abordagem(
+        self, abordagem_id: int, skip: int = 0, limit: int = 50
+    ) -> list[Foto]:
+        """Lista as fotos associadas a uma abordagem (paginado no banco).
 
         Retorna fotos ordenadas por data/hora decrescente (mais recentes primeiro).
 
         Args:
             abordagem_id: ID da abordagem para buscar fotos.
+            skip: Registros a pular (OFFSET).
+            limit: Máximo de resultados (LIMIT).
 
         Returns:
             Lista de Fotos da abordagem ordenadas por data_hora decrescente.
         """
-        return list(await self.repo.get_by_abordagem(abordagem_id))
+        return list(await self.repo.get_by_abordagem(abordagem_id, skip=skip, limit=limit))
 
     async def buscar_por_rosto(
         self,
@@ -267,3 +275,51 @@ class FotoService:
             }
             for row in results
         ]
+
+    async def desativar(
+        self,
+        foto_id: int,
+        user: Usuario,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> Foto:
+        """Remove foto via soft delete, com verificação de tenant.
+
+        Permite corrigir fotos categorizadas incorretamente (ex: foto de
+        arma/droga enviada como "rosto"). Não remove o arquivo do storage,
+        apenas marca o registro como inativo.
+
+        Args:
+            foto_id: ID da foto a desativar.
+            user: Usuário autenticado (verificação de guarnição + auditoria).
+            ip_address: IP da requisição (opcional).
+            user_agent: User-Agent do cliente (opcional).
+
+        Returns:
+            Foto desativada (ativo=False).
+
+        Raises:
+            NaoEncontradoError: Se a foto não existe.
+            AcessoNegadoError: Se a foto pertence a outra guarnição.
+        """
+        foto = await self.repo.get(foto_id)
+        if not foto:
+            raise NaoEncontradoError("Foto")
+        TenantFilter.check_ownership(foto, user)
+
+        await self.repo.soft_delete(foto, deleted_by_id=user.id)
+
+        await self.audit.log(
+            usuario_id=user.id,
+            acao="DELETE",
+            recurso="foto",
+            recurso_id=foto.id,
+            detalhes={
+                "tipo": foto.tipo,
+                "pessoa_id": foto.pessoa_id,
+                "veiculo_id": foto.veiculo_id,
+            },
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        return foto

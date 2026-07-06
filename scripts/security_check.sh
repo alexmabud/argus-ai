@@ -10,8 +10,20 @@
 # =============================================================================
 set -euo pipefail
 
-CONTAINER_DB="argus-db"
-CONTAINER_API="argus-api"
+# Detecta o nome do container conforme o ambiente: dev usa container_name fixo
+# (argus-db/argus-api); prod usa o naming do compose (argus-ai-db-1/...). Sem
+# isso, um nome errado fazia as checagens 'docker exec' falharem em silêncio.
+_detect_container() {
+    local svc="$1" name
+    for name in "argus-${svc}" "argus-ai-${svc}-1"; do
+        if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$name"; then
+            echo "$name"; return 0
+        fi
+    done
+    echo "argus-ai-${svc}-1"  # fallback: nome de produção
+}
+CONTAINER_DB="$(_detect_container db)"
+CONTAINER_API="$(_detect_container api)"
 
 # Cores
 RED='\033[0;31m'
@@ -40,7 +52,7 @@ if command -v ss &>/dev/null; then
     # Postgres (5432) não deve estar exposto externamente — apenas 127.0.0.1
     if ss -tlnp 2>/dev/null | grep -qE "0\.0\.0\.0:5432|:::5432"; then
         fail "Postgres exposto em 0.0.0.0:5432 — deve ser 127.0.0.1 apenas"
-        ((ERROS++))
+        ERROS=$((ERROS + 1))
     else
         ok "Postgres não exposto externamente"
     fi
@@ -48,7 +60,7 @@ if command -v ss &>/dev/null; then
     # Redis (6379) não deve estar exposto externamente
     if ss -tlnp 2>/dev/null | grep -qE "0\.0\.0\.0:6379|:::6379"; then
         fail "Redis exposto em 0.0.0.0:6379 — deve ser 127.0.0.1 apenas"
-        ((ERROS++))
+        ERROS=$((ERROS + 1))
     else
         ok "Redis não exposto externamente"
     fi
@@ -94,7 +106,7 @@ if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${CONTAINER_DB}$"; th
         2>/dev/null || echo "0")
     if [ "${PG_SUPER:-0}" -gt 0 ]; then
         fail "Superusuário 'postgres' com ${PG_SUPER} conexões de app ativas"
-        ((ERROS++))
+        ERROS=$((ERROS + 1))
     else
         ok "Superusuário postgres sem conexões de app"
     fi

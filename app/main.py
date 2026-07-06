@@ -205,23 +205,21 @@ def create_app() -> FastAPI:
                 detail="Arquivo não encontrado",
             )
 
-        # Tenant check seletivo: fotos vinculadas a pessoa permanecem globais
-        # (BNMP, modelo de produto); midias de abordagem e PDFs de ocorrencia
-        # respeitam o isolamento BPM/equipe. Assets nao registrados em banco
-        # passam sem checagem (uploads legitimos ainda nao indexados).
+        # Tenant check seletivo: FOTOS (de pessoa OU de abordagem) sao GLOBAIS —
+        # a ficha da pessoa mostra as fotos e o GPS das abordagens de todas as
+        # equipes para qualquer usuario autenticado. O isolamento_abordagens atua
+        # apenas na LISTAGEM de relatorios/consultas (_filtros_consulta), nunca na
+        # midia. Ja o PDF de ocorrencia (RAP) e documento tenant-scoped. Assets
+        # nao registrados em banco passam sem checagem (uploads ainda nao indexados).
         url_publica = f"/storage/{path}"
         foto = (
             await db.execute(
-                select(Foto).where(
+                select(Foto.id).where(
                     or_(Foto.arquivo_url == url_publica, Foto.thumbnail_url == url_publica)
                 )
             )
         ).scalar_one_or_none()
-        if foto is not None:
-            if foto.pessoa_id is None:
-                # Midia de abordagem: respeita tenant.
-                TenantFilter.check_ownership(foto, user)
-        else:
+        if foto is None:
             ocorrencia = (
                 await db.execute(
                     select(Ocorrencia).where(Ocorrencia.arquivo_pdf_url == url_publica)

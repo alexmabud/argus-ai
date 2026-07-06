@@ -30,12 +30,14 @@ from app.schemas.pessoa_observacao import (
     PessoaObservacaoRead,
     PessoaObservacaoUpdate,
 )
+from app.schemas.pessoa_veiculo import PessoaVeiculoRead
 from app.schemas.veiculo import VeiculoRead
 from app.schemas.vinculo_manual import VinculoManualCreate, VinculoManualRead
 from app.services.abordagem_service import AbordagemService
 from app.services.audit_service import AuditService
 from app.services.pessoa_observacao_service import PessoaObservacaoService
 from app.services.pessoa_service import PessoaService
+from app.services.pessoa_veiculo_service import PessoaVeiculoService
 
 router = APIRouter(prefix="/pessoas", tags=["Pessoas"])
 
@@ -478,8 +480,9 @@ async def listar_abordagens_pessoa(
     pessoa_service = PessoaService(db)
     abordagem_service = AbordagemService(db)
 
-    all_abordagens = await abordagem_service.listar_por_pessoa(pessoa_id, user.guarnicao_id)
-    abordagens = all_abordagens[skip : skip + limit]
+    abordagens = await abordagem_service.listar_por_pessoa(
+        pessoa_id, user.guarnicao_id, skip=skip, limit=limit
+    )
 
     result = []
     for ab in abordagens:
@@ -656,6 +659,152 @@ async def remover_vinculo_manual(
         ip_address=request.client.host if request.client else None,
     )
     await db.commit()
+
+
+@router.post(
+    "/{pessoa_id}/veiculos/{veiculo_id}",
+    response_model=PessoaVeiculoRead,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("30/minute")
+async def vincular_veiculo_pessoa(
+    request: Request,
+    pessoa_id: int,
+    veiculo_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> PessoaVeiculoRead:
+    """Vincula um veículo diretamente à pessoa, fora do contexto de abordagem.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa.
+        veiculo_id: ID do veículo (já deve existir — buscar ou criar antes
+            via GET/POST /veiculos/).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        PessoaVeiculoRead com dados do veículo e origem "direto".
+
+    Raises:
+        NaoEncontradoError: Se pessoa ou veículo não existem.
+        AcessoNegadoError: Se pessoa ou veículo são de outra guarnição.
+        ConflitoDadosError: Se já vinculado.
+
+    Status Code:
+        201: Vínculo criado (ou reativado).
+        403: Acesso negado.
+        404: Pessoa ou veículo não encontrado.
+        409: Já vinculado.
+        429: Rate limit.
+    """
+    service = PessoaVeiculoService(db)
+    vinculo = await service.vincular(
+        pessoa_id,
+        veiculo_id,
+        user,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    await db.commit()
+    veiculo_obj = vinculo.veiculo
+    return PessoaVeiculoRead(
+        veiculo_id=veiculo_obj.id,
+        placa=veiculo_obj.placa,
+        modelo=veiculo_obj.modelo,
+        cor=veiculo_obj.cor,
+        ano=veiculo_obj.ano,
+        tipo=veiculo_obj.tipo,
+        observacoes=veiculo_obj.observacoes,
+        criado_em=veiculo_obj.criado_em,
+        origem="direto",
+    )
+
+
+@router.delete(
+    "/{pessoa_id}/veiculos/{veiculo_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@limiter.limit("10/minute")
+async def desvincular_veiculo_pessoa(
+    request: Request,
+    pessoa_id: int,
+    veiculo_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> None:
+    """Remove o vínculo direto entre pessoa e veículo (soft delete).
+
+    Não afeta vínculos derivados de abordagem — só desfaz associação
+    criada via POST desta mesma rota.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa.
+        veiculo_id: ID do veículo.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Raises:
+        NaoEncontradoError: Se não existe vínculo direto ativo pro par.
+
+    Status Code:
+        204: Vínculo removido.
+        404: Vínculo não encontrado.
+    """
+    service = PessoaVeiculoService(db)
+    await service.desvincular(
+        pessoa_id,
+        veiculo_id,
+        user,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    await db.commit()
+
+
+@router.get("/{pessoa_id}/veiculos", response_model=list[PessoaVeiculoRead])
+@limiter.limit("30/minute")
+async def listar_veiculos_pessoa(
+    request: Request,
+    pessoa_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[PessoaVeiculoRead]:
+    """Lista veículos da pessoa (vínculo direto + derivados de abordagem).
+
+    Args:
+        request: Objeto Request do FastAPI.
+        pessoa_id: ID da pessoa.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        Lista de PessoaVeiculoRead, cada item com origem "direto" ou
+        "abordagem". Substitui a derivação client-side que existia antes
+        (montada a partir de GET /pessoas/{id}/abordagens no frontend).
+
+    Status Code:
+        200: Lista (pode ser vazia).
+        404: Pessoa não encontrada.
+    """
+    service = PessoaVeiculoService(db)
+    itens = await service.listar_veiculos_pessoa(pessoa_id, user)
+    return [
+        PessoaVeiculoRead(
+            veiculo_id=item["veiculo"].id,
+            placa=item["veiculo"].placa,
+            modelo=item["veiculo"].modelo,
+            cor=item["veiculo"].cor,
+            ano=item["veiculo"].ano,
+            tipo=item["veiculo"].tipo,
+            observacoes=item["veiculo"].observacoes,
+            criado_em=item["veiculo"].criado_em,
+            origem=item["origem"],
+        )
+        for item in itens
+    ]
 
 
 # ---------------------------------------------------------------------------

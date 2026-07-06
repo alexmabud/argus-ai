@@ -27,24 +27,6 @@ from app.services.pessoa_service import PessoaService
 router = APIRouter(prefix="/consultas", tags=["Consultas"])
 
 
-def _filtros_consulta(user: Usuario) -> tuple[int | None, int | None]:
-    """Retorna (guarnicao_id, bpm_id) para filtro de consultas.
-
-    Prioridade: equipe > BPM > global. Apenas um dos dois será não-None.
-
-    Args:
-        user: Usuário autenticado com guarnicao e bpm carregados.
-
-    Returns:
-        Tupla (guarnicao_id, bpm_id). Ambos None = acesso global.
-    """
-    if user.guarnicao and user.guarnicao.isolamento_abordagens:
-        return (user.guarnicao_id, None)
-    if user.guarnicao and user.guarnicao.bpm and user.guarnicao.bpm.isolamento_abordagens:
-        return (None, user.guarnicao.bpm_id)
-    return (None, None)
-
-
 @router.get("/localidades")
 @limiter.limit("30/minute")
 async def listar_localidades(
@@ -124,6 +106,7 @@ async def consulta_unificada(
         ConsultaUnificadaResponse com listas de pessoas, veículos,
         abordagens e total de resultados.
     """
+    q = q.strip()
     filtro_endereco = bairro or cidade or estado or estado_id or cidade_id or bairro_id
     if not filtro_endereco and len(q) < 2:
         raise HTTPException(
@@ -133,7 +116,10 @@ async def consulta_unificada(
             ),
         )
 
-    gid, bid = _filtros_consulta(user)
+    # Consulta é GLOBAL: a busca operacional (pessoa/veículo/abordagem/endereço)
+    # encontra qualquer registro de qualquer equipe. O isolamento_abordagens atua
+    # só na LISTAGEM de relatórios (/abordagens) e no analítico (/analytics).
+    gid, bid = None, None
     service = ConsultaService(db)
     resultados = await service.busca_unificada(
         q=q,
@@ -198,6 +184,8 @@ async def pessoas_por_veiculo(
     Raises:
         HTTPException 400: Se nenhum parâmetro de busca for informado.
     """
+    placa = placa.strip() if placa else None
+    modelo = modelo.strip() if modelo else None
     if not placa and not modelo:
         raise HTTPException(status_code=400, detail="Informe placa ou modelo para buscar.")
 

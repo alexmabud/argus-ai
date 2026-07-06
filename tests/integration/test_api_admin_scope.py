@@ -141,6 +141,50 @@ async def test_excluir_super_admin_ok(client: AsyncClient, super_admin, usuario)
 
 
 @pytest.mark.asyncio
+async def test_listar_usuarios_delegado_so_ve_propria_equipe(
+    client: AsyncClient, db_session, guarnicao, outra_guarnicao
+):
+    """Admin delegado (não-global) só lista usuários da própria guarnição (#2 auditoria)."""
+    delegado = await _delegado(db_session, guarnicao.id)
+    de_fora = Usuario(
+        nome="De Fora",
+        matricula="FORA001",
+        senha_hash=hash_senha("x"),
+        guarnicao_id=outra_guarnicao.id,
+        session_id="fora-sid",
+    )
+    db_session.add(de_fora)
+    await db_session.flush()
+
+    resp = await client.get("/api/v1/admin/usuarios", headers=_headers(delegado))
+    assert resp.status_code == 200
+    matriculas = {u["matricula"] for u in resp.json()}
+    assert delegado.matricula in matriculas
+    assert "FORA001" not in matriculas
+
+
+@pytest.mark.asyncio
+async def test_listar_usuarios_super_admin_ve_todas_equipes(
+    client: AsyncClient, db_session, super_admin, outra_guarnicao
+):
+    """Super-admin continua vendo usuários de todas as equipes (#2 auditoria)."""
+    de_fora = Usuario(
+        nome="De Fora 2",
+        matricula="FORA002",
+        senha_hash=hash_senha("x"),
+        guarnicao_id=outra_guarnicao.id,
+        session_id="fora2-sid",
+    )
+    db_session.add(de_fora)
+    await db_session.flush()
+
+    resp = await client.get("/api/v1/admin/usuarios", headers=_headers(super_admin))
+    assert resp.status_code == 200
+    matriculas = {u["matricula"] for u in resp.json()}
+    assert "FORA002" in matriculas
+
+
+@pytest.mark.asyncio
 async def test_gerir_equipes_exige_global(client: AsyncClient, db_session, guarnicao, bpm):
     """Delegado com pode_gerir_equipes mas admin_global=False → 403 ao criar equipe."""
     delegado = await _delegado(db_session, guarnicao.id, pode_gerir_equipes=True)

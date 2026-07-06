@@ -13,7 +13,7 @@ function renderPessoaDetalhe(appState) {
   }
 
   return `
-    <div x-data="{ ...pessoaDetalhePage(${pessoaId}), ...personPhotoModal() }" x-init="load()" style="display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem;">
+    <div x-data="{ ...pessoaDetalhePage(${pessoaId}), ...personPhotoModal(), ...veiculoFichaForm() }" x-init="load()" @veiculo-vinculado.window="recarregarVeiculosPessoa()" style="display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem;">
       <!-- Loading -->
       <div x-show="loading" style="display: flex; justify-content: center; padding: 3rem 0;">
         <span class="spinner"></span>
@@ -71,29 +71,32 @@ function renderPessoaDetalhe(appState) {
             </div>
           </div>
 
-          <!-- Fotos -->
+          <!-- Foto de Rosto/Perfil -->
           <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">
-                Fotos (<span x-text="fotos.length"></span>)
+                Foto de Rosto/Perfil (<span x-text="fotosRosto().length"></span>)
               </h3>
               <!-- Botões câmera + galeria -->
               <div style="display: flex; gap: 0.375rem;">
                 <label style="cursor: pointer; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface-hover); color: var(--color-primary);">
                   📷
                   <input type="file" accept="image/*" capture="environment" style="display: none;"
-                         @change="onNovaFotoSelected($event)">
+                         @change="onNovaFotoSelected($event, 'rosto')">
                 </label>
                 <label style="cursor: pointer; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface-hover); color: var(--color-primary);">
                   📁
                   <input type="file" accept="image/*" style="display: none;"
-                         @change="onNovaFotoSelected($event)">
+                         @change="onNovaFotoSelected($event, 'rosto')">
                 </label>
               </div>
             </div>
+            <p style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
+              Use somente para fotos de rosto (reconhecimento facial).
+            </p>
 
             <!-- Preview + botão enviar (aparece após selecionar) -->
-            <template x-if="novaFotoFile">
+            <template x-if="novaFotoFile && novaFotoTipo === 'rosto'">
               <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: var(--color-surface-hover); border-radius: 4px;">
                 <img :src="novaFotoPreviewUrl" style="width: 3rem; height: 3rem; border-radius: 4px; object-fit: cover; flex-shrink: 0;">
                 <div style="flex: 1; min-width: 0;">
@@ -116,27 +119,111 @@ function renderPessoaDetalhe(appState) {
             </template>
 
             <!-- Grid de fotos existentes -->
-            <div x-show="fotos.length > 0">
+            <div x-show="fotosRosto().length > 0">
               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
-              <template x-for="foto in fotos.slice(0, 4)" :key="foto.id">
+              <template x-for="foto in fotosRosto().slice(0, 4)" :key="foto.id">
                 <div style="position: relative;">
                   <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
                        @click="fotoAmpliada = foto.arquivo_url">
                   <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                         x-text="foto.tipo || 'foto'"></span>
+                  <button @click.stop="apagarFoto(foto.id)"
+                          class="hov-icon-danger"
+                          style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
+                          title="Apagar foto">
+                    ✕
+                  </button>
                 </div>
               </template>
               </div>
             </div>
 
-            <button x-show="fotos.length > 4" @click="modalTodasFotos = true"
+            <button x-show="fotosRosto().length > 4" @click="modalTodasFotos = 'rosto'"
                     style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0; align-self: flex-start;">
-              Ver mais (<span x-text="fotos.length - 4"></span>)
+              Ver mais (<span x-text="fotosRosto().length - 4"></span>)
             </button>
 
             <!-- Estado vazio -->
-            <p x-show="fotos.length === 0 && !novaFotoFile" style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
-              Nenhuma foto cadastrada.
+            <p x-show="fotosRosto().length === 0 && !(novaFotoFile && novaFotoTipo === 'rosto')" style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
+              Nenhuma foto de rosto cadastrada.
+            </p>
+          </div>
+
+          <!-- Fotos Relacionadas ao Abordado -->
+          <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">
+                Fotos Relacionadas ao Abordado (<span x-text="fotosEvidencia().length"></span>)
+              </h3>
+              <!-- Botões câmera + galeria -->
+              <div style="display: flex; gap: 0.375rem;">
+                <label style="cursor: pointer; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface-hover); color: var(--color-primary);">
+                  📷
+                  <input type="file" accept="image/*" capture="environment" style="display: none;"
+                         @change="onNovaFotoSelected($event, 'evidencia')">
+                </label>
+                <label style="cursor: pointer; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface-hover); color: var(--color-primary);">
+                  📁
+                  <input type="file" accept="image/*" style="display: none;"
+                         @change="onNovaFotoSelected($event, 'evidencia')">
+                </label>
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
+              Armas, drogas, objetos ou outras evidências associadas a esta pessoa.
+            </p>
+
+            <!-- Preview + botão enviar (aparece após selecionar) -->
+            <template x-if="novaFotoFile && novaFotoTipo === 'evidencia'">
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: var(--color-surface-hover); border-radius: 4px;">
+                <img :src="novaFotoPreviewUrl" style="width: 3rem; height: 3rem; border-radius: 4px; object-fit: cover; flex-shrink: 0;">
+                <div style="flex: 1; min-width: 0;">
+                  <p style="font-size: 0.75rem; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0;" x-text="novaFotoFile?.name"></p>
+                </div>
+                <div style="display: flex; gap: 0.375rem; flex-shrink: 0;">
+                  <button @click="uploadNovaFoto()"
+                          :disabled="uploadandoFoto"
+                          style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-success); color: var(--color-bg); border: none; cursor: pointer; opacity: 1;"
+                          :style="uploadandoFoto ? 'opacity: 0.5' : ''">
+                    <span x-show="!uploadandoFoto">Enviar</span>
+                    <span x-show="uploadandoFoto" class="spinner"></span>
+                  </button>
+                  <button @click="cancelarNovaFoto()"
+                          style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-border); cursor: pointer;">
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- Grid de fotos existentes -->
+            <div x-show="fotosEvidencia().length > 0">
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
+              <template x-for="foto in fotosEvidencia().slice(0, 4)" :key="foto.id">
+                <div style="position: relative;">
+                  <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
+                       @click="fotoAmpliada = foto.arquivo_url">
+                  <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
+                        x-text="foto.tipo || 'foto'"></span>
+                  <button @click.stop="apagarFoto(foto.id)"
+                          class="hov-icon-danger"
+                          style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
+                          title="Apagar foto">
+                    ✕
+                  </button>
+                </div>
+              </template>
+              </div>
+            </div>
+
+            <button x-show="fotosEvidencia().length > 4" @click="modalTodasFotos = 'evidencia'"
+                    style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0; align-self: flex-start;">
+              Ver mais (<span x-text="fotosEvidencia().length - 4"></span>)
+            </button>
+
+            <!-- Estado vazio -->
+            <p x-show="fotosEvidencia().length === 0 && !(novaFotoFile && novaFotoTipo === 'evidencia')" style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
+              Nenhuma foto de evidência cadastrada.
             </p>
           </div>
 
@@ -175,17 +262,24 @@ function renderPessoaDetalhe(appState) {
             <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; max-width: 32rem;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
                 <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
-                  Fotos de <span x-text="pessoa.nome"></span> (<span x-text="fotos.length"></span>)
+                  <span x-text="modalTodasFotos === 'rosto' ? 'Fotos de Rosto de' : 'Fotos Relacionadas a'"></span>
+                  <span x-text="pessoa.nome"></span> (<span x-text="fotosModal().length"></span>)
                 </h3>
                 <button @click="modalTodasFotos = false" style="color: var(--color-text-muted); background: none; border: none; cursor: pointer; font-size: 1.125rem; line-height: 1;">&times;</button>
               </div>
               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
-                <template x-for="foto in fotos" :key="'modal-' + foto.id">
+                <template x-for="foto in fotosModal()" :key="'modal-' + foto.id">
                   <div style="position: relative;">
                     <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
                          @click="fotoAmpliada = foto.arquivo_url">
                     <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                           x-text="foto.tipo || 'foto'"></span>
+                    <button @click.stop="apagarFoto(foto.id)"
+                            class="hov-icon-danger"
+                            style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
+                            title="Apagar foto">
+                      ✕
+                    </button>
                   </div>
                 </template>
               </div>
@@ -206,7 +300,7 @@ function renderPessoaDetalhe(appState) {
               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem;">
                 <template x-for="fv in (fotosVeiculos[modalFotosVeiculo] || [])" :key="'mv-' + fv.id">
                   <img :src="fv.thumbnail_url || fv.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
-                       @click="openPhotoModal(fv.arquivo_url, pessoa.id, pessoa, veiculos.find(vv => vv.id === modalFotosVeiculo))">
+                       @click="openPhotoModal(fv.arquivo_url, pessoa.id, pessoa, veiculos.find(vv => vv.veiculo_id === modalFotosVeiculo))">
                 </template>
               </div>
             </div>
@@ -628,42 +722,82 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Veículos Vinculados ao Abordado (container pai) -->
-          <div x-show="veiculos.length > 0" class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
-            <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border);">Veículos Vinculados ao Abordado</h3>
+          <div class="glass-card card-led-blue" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--color-border); flex: 1; margin-right: 0.5rem;">
+                Veículos Vinculados ao Abordado (<span x-text="veiculos.length"></span>)
+              </h3>
+              <button @click="pessoaIdParaVeiculo = pessoa.id; abrirModalAdicionarVeiculo()"
+                      style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-size: 0.75rem; font-family: var(--font-data); font-weight: 600; letter-spacing: 0.05em; padding: 0; opacity: 0.85; transition: opacity 0.15s;"
+                      class="hov-opacity-up">
+                + Adicionar
+              </button>
+            </div>
 
             <!-- Lista de veículos -->
             <div x-show="veiculos.length > 0" style="display: flex; flex-direction: column; gap: 0.5rem;">
-              <template x-for="(v, idx) in veiculos" :key="v.id">
+              <template x-for="v in veiculos" :key="v.veiculo_id">
                 <div class="card-led-purple" style="display: flex; align-items: center; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem;">
                   <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; width: 100%;">
-                    <div>
+                    <div style="flex: 1; min-width: 0;">
                       <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em; background: var(--color-surface-hover); padding: 0.125rem 0.375rem; border-radius: 2px; border: 1px solid var(--color-border);" x-text="formatPlaca(v.placa)"></span>
                       <p x-show="v.modelo || v.cor || v.ano" style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;"
                          x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
-                      <template x-if="fotosVeiculos[v.id]?.length > 0">
+                      <template x-if="fotosVeiculos[v.veiculo_id]?.length > 0">
                         <div style="margin-top: 0.25rem;">
                           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.25rem;">
-                            <template x-for="fv in fotosVeiculos[v.id].slice(0, 4)" :key="fv.id">
+                            <template x-for="fv in fotosVeiculos[v.veiculo_id].slice(0, 4)" :key="fv.id">
                               <img :src="fv.thumbnail_url || fv.arquivo_url"
                                    style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;"
                                    @click="openPhotoModal(fv.arquivo_url, pessoa.id, pessoa, v)"
                                    loading="lazy">
                             </template>
                           </div>
-                          <button x-show="fotosVeiculos[v.id].length > 4" @click="modalFotosVeiculo = v.id"
+                          <button x-show="fotosVeiculos[v.veiculo_id].length > 4" @click="modalFotosVeiculo = v.veiculo_id"
                                   style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0;">
-                            Ver mais (<span x-text="fotosVeiculos[v.id].length - 4"></span>)
+                            Ver mais (<span x-text="fotosVeiculos[v.veiculo_id].length - 4"></span>)
                           </button>
                         </div>
                       </template>
                     </div>
-                    <span x-show="v.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim); flex-shrink: 0;"
-                          x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></span>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex-shrink: 0; margin-left: 0.5rem;">
+                      <span x-show="v.criado_em" style="font-size: 0.75rem; color: var(--color-text-dim);"
+                            x-text="'Cadastrado em ' + new Date(v.criado_em).toLocaleDateString('pt-BR')"></span>
+                      <div style="display: flex; align-items: center; gap: 0.375rem;">
+                        <button @click="abrirModalEditarVeiculo(v)"
+                                class="hov-text-primary"
+                                style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); padding: 0.125rem; transition: color 0.15s;"
+                                title="Editar veículo">
+                          <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/>
+                          </svg>
+                        </button>
+                        <label style="cursor: pointer; color: var(--color-text-dim); padding: 0.125rem; font-size: 0.8rem; line-height: 1; display: flex;"
+                               class="hov-text-primary"
+                               title="Adicionar foto do veículo">
+                          📷
+                          <input type="file" accept="image/*" style="display: none;"
+                                 @change="onFotoVeiculoDireto($event, v.veiculo_id)">
+                        </label>
+                        <button x-show="v.origem === 'direto'" @click="removerVinculoVeiculo(v.veiculo_id)"
+                                class="hov-icon-danger"
+                                style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); padding: 0.125rem;"
+                                title="Remover vínculo">
+                          <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </template>
             </div>
 
+            <!-- Mensagem quando não há veículos -->
+            <p x-show="veiculos.length === 0" style="font-size: 0.75rem; color: var(--color-text-dim); text-align: center; margin: 0;">
+              Nenhum veículo vinculado
+            </p>
           </div>
 
           <!-- Vínculos (automáticos + manuais) -->
@@ -933,6 +1067,7 @@ function renderPessoaDetalhe(appState) {
       </template>
 
       ${personPhotoModalHTML()}
+      ${veiculoFichaFormHTML()}
 
       <!-- Erro -->
       <p x-show="erro" style="color: var(--color-danger); font-size: 0.875rem;" x-text="erro"></p>
@@ -946,10 +1081,17 @@ function pessoaDetalhePage(pessoaId) {
     fotos: [],
     novaFotoFile: null,
     novaFotoPreviewUrl: "",
+    novaFotoTipo: 'rosto',
     uploadandoFoto: false,
     fotosVeiculos: {},
     abordagens: [],
     veiculos: [],
+    // Setado antes de abrir o modal de veiculoFichaForm() para adicionar um
+    // veículo (pessoaIdParaVeiculo = pessoa.id; abrirModalAdicionarVeiculo()).
+    // Também é declarado em veiculoFichaForm() — como os dois objetos são
+    // espalhados juntos no mesmo x-data, só uma cópia sobrevive ao spread;
+    // não importa qual, pois o botão sempre define o valor antes de usá-lo.
+    pessoaIdParaVeiculo: null,
     fotoAmpliada: null,
     modalTodasFotos: false,
     modalFotosVeiculo: null,
@@ -1053,6 +1195,8 @@ function pessoaDetalhePage(pessoaId) {
 
         // Buscar abordagens da pessoa (usando consulta geral)
         await this.carregarAbordagens();
+        // Buscar veículos unificados (vínculo direto + via abordagem)
+        await this.carregarVeiculos();
       } catch (err) {
         this.erro = err.message || "Erro ao carregar pessoa.";
       } finally {
@@ -1088,18 +1232,20 @@ function pessoaDetalhePage(pessoaId) {
             mapaFotos[foto.veiculo_id].push(foto);
           }
         }
-        this.fotosVeiculos = mapaFotos;
-
-        // Coletar veículos únicos da pessoa (veículos vinculados ao abordado)
-        const veiculosMap = {};
-        for (const ab of abordagens) {
-          for (const v of ab.veiculos || []) {
-            if (v.pessoa_id === pessoaId || v.pessoa_id === null) {
-              veiculosMap[v.id] = v;
+        // Mescla fotos de veículo vinculadas direto pela ficha (tipo=veiculo
+        // + pessoa_id, sem nenhuma abordagem envolvida) — this.fotos já foi
+        // carregado em load() antes desta chamada via GET /fotos/pessoa/{id}.
+        // Sem isso, a foto sumiria após F5: não há abordagem pra buscar via
+        // GET /fotos/abordagem/{id} (bug confirmado em teste manual).
+        for (const foto of this.fotos) {
+          if (foto.tipo === 'veiculo' && foto.veiculo_id) {
+            if (!mapaFotos[foto.veiculo_id]) mapaFotos[foto.veiculo_id] = [];
+            if (!mapaFotos[foto.veiculo_id].some(f => f.id === foto.id)) {
+              mapaFotos[foto.veiculo_id].push(foto);
             }
           }
         }
-        this.veiculos = Object.values(veiculosMap);
+        this.fotosVeiculos = mapaFotos;
 
         // Extrair pontos com coordenadas para o mapa
         this.pontosComLocalizacao = abordagens
@@ -1117,6 +1263,82 @@ function pessoaDetalhePage(pessoaId) {
           }));
 
       } catch { /* silencioso */ }
+    },
+
+    /**
+     * Carrega a lista unificada de veículos da pessoa (vínculo direto +
+     * derivados de abordagem), via GET /pessoas/{id}/veiculos.
+     *
+     * Substitui a antiga derivação client-side (feita a partir de
+     * `abordagens[].veiculos`) por uma única chamada ao backend, que já
+     * resolve prioridade direto-sobre-abordagem e dedup.
+     */
+    async carregarVeiculos() {
+      try {
+        this.veiculos = await api.get(`/pessoas/${pessoaId}/veiculos`);
+      } catch {
+        this.veiculos = [];
+      }
+    },
+
+    /** Recarrega a lista de veículos após o modal de vínculo/edição concluir com sucesso. */
+    async recarregarVeiculosPessoa() {
+      await this.carregarVeiculos();
+    },
+
+    /**
+     * Remove o vínculo direto entre a pessoa e um veículo (soft delete do
+     * vínculo, não do veículo em si) após confirmação do usuário.
+     *
+     * @param {number} veiculoId - ID do veículo a desvincular.
+     */
+    async removerVinculoVeiculo(veiculoId) {
+      if (!confirm("Remover este vínculo? O veículo continua cadastrado no sistema.")) return;
+      try {
+        await api.delete(`/pessoas/${pessoaId}/veiculos/${veiculoId}`);
+        await this.carregarVeiculos();
+        showToast("Vínculo removido.", "success");
+      } catch (err) {
+        showToast(err?.message || "Erro ao remover vínculo", "error");
+      }
+    },
+
+    /**
+     * Envia uma foto para um veículo vinculado diretamente pela ficha do
+     * abordado, reutilizando o mesmo endpoint de upload já usado na tela
+     * de abordagem.
+     *
+     * Envia `pessoa_id` junto (além de `veiculo_id`) para que a foto também
+     * apareça em `GET /fotos/pessoa/{id}` — sem isso, a foto sumia após um
+     * F5 (bug confirmado em teste manual em browser real): `fotosVeiculos`
+     * só era populado a partir de `GET /fotos/abordagem/{id}` de cada
+     * abordagem da pessoa (`carregarAbordagens()`), que não alcança
+     * veículos vinculados direto pela ficha sem nenhuma abordagem. Atualiza
+     * `fotosVeiculos` localmente de imediato (feedback instantâneo) e
+     * depende de `this.fotos` (recarregado a cada `load()`) mais a mescla
+     * feita em `carregarAbordagens()` para persistir a foto entre recargas.
+     *
+     * @param {Event} event - Evento de change do input file.
+     * @param {number} veiculoId - ID do veículo alvo da foto.
+     */
+    async onFotoVeiculoDireto(event, veiculoId) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      event.target.value = "";
+      try {
+        const foto = await api.uploadFile("/fotos/upload", file, {
+          tipo: "veiculo",
+          veiculo_id: veiculoId,
+          pessoa_id: parseInt(pessoaId, 10),
+        });
+        this.fotosVeiculos = {
+          ...this.fotosVeiculos,
+          [veiculoId]: [...(this.fotosVeiculos[veiculoId] || []), foto],
+        };
+        showToast("Foto do veículo adicionada!", "success");
+      } catch (err) {
+        showToast(err?.message || "Erro ao enviar foto do veículo", "error");
+      }
     },
 
     async setupMapaObserver() {
@@ -1594,12 +1816,62 @@ function pessoaDetalhePage(pessoaId) {
       }
     },
 
-    onNovaFotoSelected(event) {
+    /**
+     * Filtra as fotos de rosto/perfil (usadas no reconhecimento facial).
+     *
+     * Implementado como método (não getter) de propósito: o x-data raiz desta
+     * página faz spread de múltiplos objetos (`{ ...pessoaDetalhePage(id), ...personPhotoModal() }`),
+     * e o Alpine congela getters em valores estáticos nesse cenário (bug já visto
+     * neste projeto na página de dashboard). Métodos chamados como função no
+     * template (`fotosRosto()`) continuam reativos.
+     *
+     * @returns {Array<object>} Fotos com tipo === 'rosto'.
+     */
+    fotosRosto() {
+      return this.fotos.filter(f => f.tipo === 'rosto');
+    },
+
+    /**
+     * Filtra as fotos relacionadas ao abordado (evidências: armas, drogas, etc)
+     * — fotos que não são de rosto nem de veículo/placa (essas têm exibição
+     * própria no card de Veículos, não devem duplicar aqui). Exclusão
+     * explícita de 'veiculo'/'placa' evitando duplicação: fotos de veículo
+     * vinculado direto pela ficha agora também trafegam com `pessoa_id`
+     * setado (ver `onFotoVeiculoDireto`), então apareceriam aqui também
+     * sem essa exclusão. Ver nota em `fotosRosto()` sobre o motivo de ser
+     * método em vez de getter.
+     *
+     * @returns {Array<object>} Fotos que não são 'rosto', 'veiculo' nem 'placa'.
+     */
+    fotosEvidencia() {
+      return this.fotos.filter(f => !['rosto', 'veiculo', 'placa'].includes(f.tipo));
+    },
+
+    /**
+     * Retorna as fotos exibidas no modal "Ver mais", de acordo com qual card
+     * (rosto ou evidência) o abriu.
+     *
+     * @returns {Array<object>} Fotos do tipo selecionado em `modalTodasFotos`.
+     */
+    fotosModal() {
+      if (this.modalTodasFotos === 'rosto') return this.fotosRosto();
+      if (this.modalTodasFotos === 'evidencia') return this.fotosEvidencia();
+      return [];
+    },
+
+    /**
+     * Trata a seleção de uma nova foto (câmera ou galeria) em um dos cards de fotos.
+     *
+     * @param {Event} event - Evento de change do input file.
+     * @param {string} tipo - Tipo da foto a ser enviada ('rosto' ou 'evidencia').
+     */
+    onNovaFotoSelected(event, tipo) {
       const file = event.target.files?.[0];
       if (!file) return;
       if (this.novaFotoPreviewUrl) URL.revokeObjectURL(this.novaFotoPreviewUrl);
       this.novaFotoFile = file;
       this.novaFotoPreviewUrl = URL.createObjectURL(file);
+      this.novaFotoTipo = tipo;
       event.target.value = "";
     },
 
@@ -1614,7 +1886,7 @@ function pessoaDetalhePage(pessoaId) {
       this.uploadandoFoto = true;
       try {
         await api.uploadFile("/fotos/upload", this.novaFotoFile, {
-          tipo: "rosto",
+          tipo: this.novaFotoTipo,
           pessoa_id: parseInt(pessoaId, 10),
         });
         // Recarregar lista de fotos
@@ -1626,6 +1898,25 @@ function pessoaDetalhePage(pessoaId) {
         showToast(err?.message || "Erro ao enviar foto", "error");
       } finally {
         this.uploadandoFoto = false;
+      }
+    },
+
+    /**
+     * Apaga uma foto (soft delete) após confirmação do usuário.
+     *
+     * Remove a foto da lista local (`this.fotos`) em caso de sucesso, sem
+     * precisar recarregar a página inteira.
+     *
+     * @param {number} fotoId - ID da foto a ser apagada.
+     */
+    async apagarFoto(fotoId) {
+      if (!confirm("Apagar esta foto? Esta ação não pode ser desfeita.")) return;
+      try {
+        await api.delete(`/fotos/${fotoId}`);
+        this.fotos = this.fotos.filter(f => f.id !== fotoId);
+        showToast("Foto apagada com sucesso!", "success");
+      } catch (err) {
+        showToast(err?.message || "Erro ao apagar foto", "error");
       }
     },
   };

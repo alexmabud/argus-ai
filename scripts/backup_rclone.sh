@@ -1,6 +1,11 @@
 #!/bin/bash
 # backup_rclone.sh — Backup diário para Oracle Object Storage (10GB gratuito)
 #
+# ⚠️  DEPRECADO / SUPERSEDED: o backup offsite oficial é scripts/backup_to_clouds.sh
+#     (remote oracle:argus-backups, paths /mnt/*, retenção por --min-age). Este
+#     script usa bucket/paths divergentes (/data/*, oracle-object:argus-backup) e
+#     é mantido só como referência. Não use em produção.
+#
 # O que faz:
 #   1. Sincroniza fotos dos últimos 30 dias para Oracle Object Storage
 #   2. Faz dump do PostgreSQL e envia para Object Storage
@@ -65,12 +70,10 @@ echo "[$DATE] Dump enviado para $BUCKET/dumps/"
 find "$BACKUP_DIR" -name "argus_db_*.sql.gz" -mtime "+$DUMP_RETENTION" -delete
 echo "[$DATE] Dumps locais com mais de $DUMP_RETENTION dias removidos."
 
-# ── 4. Limpar dumps remotos antigos ──────────────────────────────────────────
-echo "[$DATE] Removendo dumps remotos antigos (mantendo últimos $DUMP_RETENTION)..."
-rclone ls "$BUCKET/dumps/" \
-  | sort \
-  | head -n "-$DUMP_RETENTION" \
-  | awk '{print $2}' \
-  | xargs -I{} rclone deletefile "$BUCKET/dumps/{}" 2>/dev/null || true
+# ── 4. Limpar dumps remotos antigos (por DATA, não por ordenação textual) ─────
+# `rclone ls | sort | head` ordenava por NOME (texto), podendo apagar o dump
+# errado quando o padrão de nome muda. `--min-age` apaga por idade real.
+echo "[$DATE] Removendo dumps remotos com mais de ${DUMP_RETENTION} dias..."
+rclone delete "$BUCKET/dumps/" --min-age "${DUMP_RETENTION}d" --log-level INFO 2>/dev/null || true
 
 echo "[$DATE] === Backup concluído com sucesso ==="

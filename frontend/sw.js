@@ -8,6 +8,22 @@ const STATIC_ASSETS = [
   "/js/db.js",
   "/js/sync.js",
   "/manifest.json",
+  // Libs self-hosted — precache para offline-first (G3-1).
+  "/vendor/alpine.min.js",
+  "/vendor/apexcharts.min.js",
+  "/vendor/qrcode.min.js",
+  "/vendor/dexie.min.js",
+  "/vendor/leaflet.js",
+  "/vendor/leaflet.css",
+  "/vendor/leaflet.markercluster.js",
+  "/vendor/MarkerCluster.css",
+  "/vendor/MarkerCluster.Default.css",
+  "/vendor/leaflet-heat.js",
+  "/vendor/images/marker-icon.png",
+  "/vendor/images/marker-icon-2x.png",
+  "/vendor/images/marker-shadow.png",
+  "/vendor/images/layers.png",
+  "/vendor/images/layers-2x.png",
 ];
 
 // Install — cache static assets

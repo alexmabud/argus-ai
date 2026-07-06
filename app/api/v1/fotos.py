@@ -27,6 +27,7 @@ from app.core.upload_validation import (
     converter_heic_para_jpeg,
     is_heic,
     ler_upload_com_limite,
+    normalizar_imagem_para_reconhecimento,
     validar_magic_bytes_imagem,
     validar_magic_bytes_pdf,
 )
@@ -128,7 +129,7 @@ async def upload_foto(
     Args:
         request: Objeto Request do FastAPI.
         file: Arquivo de imagem (multipart/form-data).
-        tipo: Tipo de foto (rosto, corpo, placa, documento).
+        tipo: Tipo de foto (rosto, corpo, placa, documento, evidencia).
         pessoa_id: ID da pessoa associada (opcional).
         abordagem_id: ID da abordagem associada (opcional).
         veiculo_id: ID do veículo associado (opcional — para fotos de veículos específicos).
@@ -151,11 +152,11 @@ async def upload_foto(
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
 
-    # Converte HEIC/HEIF para JPEG antes de prosseguir
+    # Normaliza HEIC→JPEG e corrige rotação EXIF antes de prosseguir
     original_content_type = file.content_type or "image/jpeg"
     if is_heic(file_bytes):
-        file_bytes = await converter_heic_para_jpeg(file_bytes)
         original_content_type = "image/jpeg"
+    file_bytes = await normalizar_imagem_para_reconhecimento(file_bytes)
 
     filename = _sanitizar_filename(file.filename or "foto.jpg")
     if filename.lower().endswith((".heic", ".heif")):
@@ -174,6 +175,7 @@ async def upload_foto(
             latitude=latitude,
             longitude=longitude,
             user_id=user.id,
+            guarnicao_id=user.guarnicao_id,
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
@@ -235,8 +237,47 @@ async def listar_fotos_pessoa(
         Lista de FotoRead ordenadas por data/hora decrescente.
     """
     service = FotoService(db)
-    fotos = await service.listar_por_pessoa(pessoa_id)
-    return [FotoRead.model_validate(f) for f in fotos[skip : skip + limit]]
+    fotos = await service.listar_por_pessoa(pessoa_id, skip=skip, limit=limit)
+    return [FotoRead.model_validate(f) for f in fotos]
+
+
+@router.delete("/{foto_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
+async def deletar_foto(
+    request: Request,
+    foto_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> None:
+    """Remove foto via soft delete.
+
+    Permite corrigir fotos categorizadas incorretamente (ex: foto de
+    arma/droga enviada como "rosto"). Não remove o arquivo do storage,
+    apenas marca o registro como inativo.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        foto_id: ID da foto a remover.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Raises:
+        NaoEncontradoError: Se a foto não existe.
+        AcessoNegadoError: Se a foto pertence a outra guarnição.
+
+    Status Code:
+        204: Foto removida.
+        404: Foto não encontrada.
+        429: Rate limit (30/min).
+    """
+    service = FotoService(db)
+    await service.desativar(
+        foto_id,
+        user,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    await db.commit()
 
 
 @router.get("/abordagem/{abordagem_id}", response_model=list[FotoRead])
@@ -262,8 +303,8 @@ async def listar_fotos_abordagem(
         Lista de FotoRead ordenadas por data/hora decrescente.
     """
     service = FotoService(db)
-    fotos = await service.listar_por_abordagem(abordagem_id)
-    return [FotoRead.model_validate(f) for f in fotos[skip : skip + limit]]
+    fotos = await service.listar_por_abordagem(abordagem_id, skip=skip, limit=limit)
+    return [FotoRead.model_validate(f) for f in fotos]
 
 
 @router.post("/buscar-rosto", response_model=BuscaRostoResponse)
@@ -304,6 +345,7 @@ async def buscar_por_rosto(
 
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
+    file_bytes = await normalizar_imagem_para_reconhecimento(file_bytes)
     service = FotoService(db)
     results = await service.buscar_por_rosto(
         image_bytes=file_bytes,

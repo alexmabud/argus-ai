@@ -13,7 +13,6 @@ from app.core.security import hash_senha
 from app.models.abordagem import Abordagem
 from app.models.foto import Foto
 from app.models.guarnicao import Guarnicao
-from app.models.passagem import Passagem
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.models.veiculo import Veiculo
@@ -125,25 +124,6 @@ class AbordagemFactory(factory.Factory):
     endereco_texto = "Av. Brasil, 1000 - Centro, Rio de Janeiro"
     usuario_id = 1
     guarnicao_id = 1
-
-
-class PassagemFactory(factory.Factory):
-    """Factory para criar instâncias de passagem (tipo penal) para testes.
-
-    Gera passagens com artigos sequenciais do Código Penal.
-
-    Attributes:
-        lei: Lei padrão ("CP" — Código Penal).
-        artigo: Artigo sequencial (ex: "121", "122", ...).
-        nome_crime: Nome do crime sequencial.
-    """
-
-    class Meta:
-        model = Passagem
-
-    lei = "CP"
-    artigo = factory.Sequence(lambda n: str(121 + n))
-    nome_crime = factory.Sequence(lambda n: f"Crime Tipo {n}")
 
 
 class FotoFactory(factory.Factory):

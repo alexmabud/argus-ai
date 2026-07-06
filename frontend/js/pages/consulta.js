@@ -47,21 +47,35 @@ function renderConsulta() {
         </div>
 
         <!-- Reconhecimento Facial -->
-        <button x-show="!fotoFile" @click="$refs.fotoInput.click()"
-                class="hov-cta-card"
-                style="width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:4px;border:2px dashed rgba(0,212,255,0.3);background:rgba(0,212,255,0.03);cursor:pointer;transition:all 150ms;">
-          <div style="width:40px;height:40px;border-radius:4px;background:rgba(0,212,255,0.1);display:flex;align-items:center;justify-content:center;color:var(--color-primary);">
-            <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/>
-            </svg>
+        <div x-show="!fotoFile" style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:4px;border:1px solid rgba(0,212,255,0.15);background:rgba(0,212,255,0.02);">
+          <span style="font-family:var(--font-data);font-size:10px;font-weight:600;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.1em;">Reconhecimento Facial</span>
+          <div style="display:flex;flex-direction:row;flex-wrap:nowrap;gap:8px;">
+            <button @click="$refs.fotoInput.click()"
+                    class="hov-cta-card"
+                    style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:4px;border:2px dashed rgba(0,212,255,0.3);background:rgba(0,212,255,0.03);cursor:pointer;transition:all 150ms;">
+              <div style="width:40px;height:40px;border-radius:4px;background:rgba(0,212,255,0.1);display:flex;align-items:center;justify-content:center;color:var(--color-primary);">
+                <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                </svg>
+              </div>
+              <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-primary);text-align:center;">Enviar arquivo</p>
+            </button>
+            <button @click="$refs.fotoInputCamera.click()"
+                    class="hov-cta-card"
+                    style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:4px;border:2px dashed rgba(0,212,255,0.3);background:rgba(0,212,255,0.03);cursor:pointer;transition:all 150ms;">
+              <div style="width:40px;height:40px;border-radius:4px;background:rgba(0,212,255,0.1);display:flex;align-items:center;justify-content:center;color:var(--color-primary);">
+                <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/>
+                </svg>
+              </div>
+              <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-primary);text-align:center;">Tirar foto agora</p>
+            </button>
           </div>
-          <div style="text-align:center;">
-            <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-primary);">Reconhecimento Facial</p>
-            <p style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);margin-top:2px;">Toque para enviar foto e comparar com o banco</p>
-          </div>
-        </button>
+        </div>
         <input type="file" x-ref="fotoInput" accept="image/jpeg,image/png,image/webp"
+               class="hidden" @change="onFotoSelect($event)">
+        <input type="file" x-ref="fotoInputCamera" accept="image/*" capture="environment"
                class="hidden" @change="onFotoSelect($event)">
 
         <!-- Preview da foto -->
@@ -488,9 +502,10 @@ function renderConsulta() {
       </div>
 
     <!-- Modal ver mais — busca por nome/CPF -->
+    <template x-teleport="body">
     <div x-show="modalVerMaisTexto" x-cloak
          @click.self="modalVerMaisTexto = false"
-         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
+         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 200; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
       <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; box-sizing: border-box; max-height: calc(100vh - 2rem); overflow-y: auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
@@ -521,11 +536,13 @@ function renderConsulta() {
         </div></div>
       </div>
     </div>
+    </template>
 
     <!-- Modal ver mais — busca por endereço -->
+    <template x-teleport="body">
     <div x-show="modalVerMaisEndereco" x-cloak
          @click.self="modalVerMaisEndereco = false"
-         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
+         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 200; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
       <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; box-sizing: border-box; max-height: calc(100vh - 2rem); overflow-y: auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
@@ -553,14 +570,24 @@ function renderConsulta() {
               <p style="font-family: var(--font-data); font-size: 10px; color: var(--color-text); margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="p.nome"></p>
             </div>
           </template>
-        </div></div>
+        </div>
+        <div x-show="enderecoTemMais" style="text-align: center; margin-top: 0.75rem;">
+          <button @click="carregarMaisEndereco()" :disabled="loadingMaisEndereco"
+                  style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0;">
+            <span x-show="!loadingMaisEndereco">Carregar mais</span>
+            <span x-show="loadingMaisEndereco">Carregando...</span>
+          </button>
+        </div>
+        </div>
       </div>
     </div>
+    </template>
 
     <!-- Modal ver mais — busca por veículo -->
+    <template x-teleport="body">
     <div x-show="modalVerMaisVeiculo" x-cloak
          @click.self="modalVerMaisVeiculo = false"
-         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 50; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
+         style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 200; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
       <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 1rem; width: 100%; box-sizing: border-box; max-height: calc(100vh - 2rem); overflow-y: auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <h3 style="font-family: var(--font-data); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">
@@ -591,6 +618,7 @@ function renderConsulta() {
         </div></div>
       </div>
     </div>
+    </template>
 
     ${personPhotoModalHTML()}
   </div>
@@ -640,6 +668,8 @@ function consultaPage() {
     pessoasEndereco: [],
     loadingEndereco: false,
     searchedEndereco: false,
+    enderecoTemMais: false,
+    loadingMaisEndereco: false,
 
     // Estado — veiculo
     filtroPlaca: "",
@@ -742,11 +772,13 @@ function consultaPage() {
       this.fotoSearchDone = false;
       this.fotoServicoIndisponivel = false;
       this.$refs.fotoInput.value = "";
+      this.$refs.fotoInputCamera.value = "";
     },
 
     _limparResultadoEndereco() {
       this.pessoasEndereco = [];
       this.searchedEndereco = false;
+      this.enderecoTemMais = false;
     },
 
     onFiltroEstadoChange() {
@@ -843,10 +875,7 @@ function consultaPage() {
       this.fotoSearchDone = false;
       this.fotoServicoIndisponivel = false;
       try {
-        const form = new FormData();
-        form.append("file", this.fotoFile);
-        form.append("top_k", "5");
-        const r = await api.postForm("/fotos/buscar-rosto", form);
+        const r = await api.uploadFile("/fotos/buscar-rosto", this.fotoFile, { top_k: 5 });
         this.pessoasFoto = r.resultados || [];
         this.fotoServicoIndisponivel = r.disponivel === false;
         this.fotoSearchDone = true;
@@ -857,21 +886,41 @@ function consultaPage() {
       }
     },
 
+    _urlFiltroEndereco(skip) {
+      let url = `/consultas/?q=&tipo=pessoa&estado_id=${this.fEstadoId}&limit=200&skip=${skip}`;
+      if (this.fCidadeId) url += `&cidade_id=${this.fCidadeId}`;
+      if (this.fBairroId) url += `&bairro_id=${this.fBairroId}`;
+      return url;
+    },
+
     async searchPorEndereco() {
       if (!this.fEstadoId) return;
       this.loadingEndereco = true;
       try {
-        let url = `/consultas/?q=&tipo=pessoa&estado_id=${this.fEstadoId}`;
-        if (this.fCidadeId) url += `&cidade_id=${this.fCidadeId}`;
-        if (this.fBairroId) url += `&bairro_id=${this.fBairroId}`;
-        const r = await api.get(url);
+        const r = await api.get(this._urlFiltroEndereco(0));
         this.pessoasEndereco = r.pessoas || [];
+        this.enderecoTemMais = this.pessoasEndereco.length === 200;
         this.searchedEndereco = true;
         if (this.pessoasEndereco.length > 0) this.modalVerMaisEndereco = true;
       } catch {
         showToast("Erro no filtro por endereço", "error");
       } finally {
         this.loadingEndereco = false;
+      }
+    },
+
+    async carregarMaisEndereco() {
+      if (!this.enderecoTemMais || this.loadingMaisEndereco) return;
+      this.loadingMaisEndereco = true;
+      try {
+        const r = await api.get(this._urlFiltroEndereco(this.pessoasEndereco.length));
+        const novas = r.pessoas || [];
+        this.pessoasEndereco = this.pessoasEndereco.concat(novas);
+        this.enderecoTemMais = novas.length === 200;
+      } catch {
+        showToast("Erro ao carregar mais resultados", "error");
+      } finally {
+        this.loadingMaisEndereco = false;
       }
     },
 

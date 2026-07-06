@@ -11,7 +11,7 @@ from app.core.rate_limit import limiter
 from app.database.session import get_db
 from app.dependencies import get_current_user, get_current_user_with_guarnicao
 from app.models.usuario import Usuario
-from app.schemas.veiculo import VeiculoCreate, VeiculoRead
+from app.schemas.veiculo import VeiculoCreate, VeiculoRead, VeiculoUpdate
 from app.services.audit_service import AuditService
 from app.services.veiculo_service import VeiculoService
 
@@ -96,6 +96,49 @@ async def criar_veiculo(
         recurso_id=veiculo.id,
         detalhes={"placa": data.placa},
         ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return VeiculoRead.model_validate(veiculo)
+
+
+@router.put("/{veiculo_id}", response_model=VeiculoRead)
+@limiter.limit("30/minute")
+async def atualizar_veiculo(
+    request: Request,
+    veiculo_id: int,
+    data: VeiculoUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> VeiculoRead:
+    """Atualiza dados de um veículo existente (placa é imutável).
+
+    Args:
+        request: Objeto Request do FastAPI.
+        veiculo_id: ID do veículo a atualizar.
+        data: Campos a atualizar (modelo, cor, ano, tipo, observacoes).
+        db: Sessão do banco de dados.
+        user: Usuário autenticado.
+
+    Returns:
+        VeiculoRead com dados atualizados.
+
+    Raises:
+        NaoEncontradoError: Se veículo não existe.
+        AcessoNegadoError: Se veículo pertence a outra guarnição.
+
+    Status Code:
+        200: Veículo atualizado.
+        403: Acesso negado.
+        404: Veículo não encontrado.
+        429: Rate limit.
+    """
+    service = VeiculoService(db)
+    veiculo = await service.atualizar(
+        veiculo_id,
+        data,
+        user,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
     )
     await db.commit()
     return VeiculoRead.model_validate(veiculo)

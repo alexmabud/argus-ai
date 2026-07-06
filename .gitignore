@@ -125,6 +125,7 @@ tmp/
 !frontend/images/*.png
 !frontend/images/*.jpg
 !frontend/images/*.webp
+!frontend/vendor/images/*.png
 
 # ══════════════════════════════════
 # ALEMBIC
@@ -180,3 +181,9 @@ Claude Flare - Argus.txt
 # Artefatos de trabalho — não fazem parte do código
 docs/plans/
 docs/manual/
+
+# Dados locais do monitoramento (make monitoring-local)
+.monitoring-data/
+
+# Worktrees isoladas (using-git-worktrees skill)
+.worktrees/

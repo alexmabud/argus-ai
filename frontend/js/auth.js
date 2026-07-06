@@ -42,6 +42,10 @@ class AuthManager {
     const user = await api.get("/auth/me");
     this.user = user;
     localStorage.setItem("argus_user", JSON.stringify(user));
+    // Ativa a criptografia do IndexedDB antes de qualquer cache de PII.
+    if (typeof ensureCryptoReady === "function") {
+      await ensureCryptoReady().catch(() => {});
+    }
     return user;
   }
 
@@ -52,6 +56,17 @@ class AuthManager {
     api.clearTokens();
     this.user = null;
     localStorage.removeItem("argus_user");
+    // Limpa dados sensíveis locais (PII no IndexedDB + respostas de API
+    // cacheadas no Service Worker) — evita vazamento em dispositivo compartilhado.
+    if (typeof clearLocalDB === "function") clearLocalDB().catch(() => {});
+    if (self.caches) {
+      caches
+        .keys()
+        .then((keys) =>
+          Promise.all(keys.filter((k) => k.startsWith("argus-")).map((k) => caches.delete(k))),
+        )
+        .catch(() => {});
+    }
   }
 
   async fetchMe() {
@@ -60,9 +75,16 @@ class AuthManager {
       this.user = user;
       localStorage.setItem("argus_user", JSON.stringify(user));
       return user;
-    } catch {
-      this.logout();
-      return null;
+    } catch (err) {
+      // Só desloga em falha de AUTENTICAÇÃO (401). Erro de rede/offline (status
+      // 0) ou erro do servidor (5xx) NÃO pode deslogar nem apagar a fila offline
+      // — deslogar no boot offline causaria perda de dados de campo não
+      // sincronizados. Mantém a sessão existente (cookie HttpOnly + argus_user).
+      if (err && err.status === 401) {
+        this.logout();
+        return null;
+      }
+      return this.user;
     }
   }
 }

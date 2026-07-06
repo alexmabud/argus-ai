@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════
 # Script de deploy do Argus AI para Oracle Cloud (Ubuntu 22.04)
+# HTTPS automático via Caddy (Let's Encrypt) — sem nginx/certbot.
 # ══════════════════════════════════════════════════════════════
 #
 # Uso (primeira vez):
@@ -10,15 +11,14 @@
 # Uso (atualizações):
 #   ./scripts/deploy.sh update
 #
-# Uso (SSL com Let's Encrypt):
-#   ./scripts/deploy.sh ssl seu-dominio.com
-#
 # ══════════════════════════════════════════════════════════════
 
 set -euo pipefail
 
 REPO_URL="https://github.com/alexmabud/argus-ai.git"
-APP_DIR="$HOME/argus_ai"
+# Diretório canônico em prod: ~/argus-ai (o deploy real via CI faz `cd ~/argus-ai`
+# e o nome do container argus-ai-db-1 confirma o basename argus-ai).
+APP_DIR="$HOME/argus-ai"
 COMPOSE_FILE="docker-compose.prod.yml"
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
@@ -51,49 +51,47 @@ cmd_setup() {
     fi
     cd "$APP_DIR"
 
-    # 4. Verificar .env.production
-    if [ ! -f .env.production ]; then
-        log "Criando .env.production a partir do exemplo..."
-        cp .env.production.example .env.production
+    # 4. Criar .env (arquivo lido pelo docker-compose.prod.yml via env_file)
+    if [ ! -f .env ]; then
+        log "Criando .env a partir do exemplo..."
+        cp .env.production.example .env
 
-        # Gerar chaves automaticamente
+        # Gerar chaves automaticamente. ENCRYPTION_KEY (Fernet) é obrigatória
+        # para a criptografia LGPD — abortar se 'cryptography' não existir
+        # (jamais gravar placeholder e seguir com chave inválida).
         SECRET_KEY=$(openssl rand -hex 32)
-        ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" 2>/dev/null || echo "GERAR-MANUALMENTE")
+        if ! ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" 2>/dev/null); then
+            error "python3 + 'cryptography' são necessários para gerar ENCRYPTION_KEY (LGPD). Instale: pip install cryptography"
+        fi
         DB_PASSWORD=$(openssl rand -hex 16)
 
-        sed -i "s/TROCAR-GERAR-COM-OPENSSL-RAND-HEX-32/$SECRET_KEY/" .env.production
-        sed -i "s/TROCAR-GERAR-COM-FERNET/$ENCRYPTION_KEY/" .env.production
-        sed -i "s/TROCAR-SENHA-FORTE-AQUI/$DB_PASSWORD/" .env.production
+        sed -i "s/TROCAR-GERAR-COM-OPENSSL-RAND-HEX-32/$SECRET_KEY/" .env
+        sed -i "s|TROCAR-GERAR-COM-FERNET|$ENCRYPTION_KEY|" .env
+        sed -i "s/TROCAR-SENHA-FORTE-AQUI/$DB_PASSWORD/" .env
 
-        log "Chaves geradas automaticamente em .env.production"
-        log "IMPORTANTE: Edite .env.production para configurar S3, LLM e CORS"
-        log "  nano .env.production"
+        log "Chaves SECRET_KEY/ENCRYPTION_KEY/DB_PASSWORD geradas em .env"
+        log "IMPORTANTE: edite .env e defina as variáveis ainda obrigatórias"
+        log "  (REDIS_PASSWORD, APP_DB_PASSWORD, S3_*, DOMAIN, LLM/CORS):"
+        log "  nano .env"
     fi
 
-    # 5. Usar nginx inicial (sem SSL)
-    cp deploy/nginx-initial.conf deploy/nginx.conf
-
-    # 6. Criar dirs para certbot
-    mkdir -p deploy/certbot/conf deploy/certbot/www
-
-    # 7. Build e start
+    # 5. Build e start (Caddy provisiona TLS/HTTPS automaticamente)
     log "Fazendo build das imagens..."
     docker compose -f "$COMPOSE_FILE" build
 
     log "Iniciando serviços..."
     docker compose -f "$COMPOSE_FILE" up -d
 
-    # 8. Rodar migrations (como DONO via MIGRATION_DATABASE_URL; alembic/env.py
+    # 6. Rodar migrations (como DONO via MIGRATION_DATABASE_URL; alembic/env.py
     #    usa settings.effective_migration_url, não a DATABASE_URL de runtime argus_app).
     log "Aguardando banco ficar pronto..."
     sleep 10
-    docker compose -f "$COMPOSE_FILE" exec api python -m alembic upgrade head || \
-        log "AVISO: Migrations falharam. Execute manualmente depois."
+    docker compose -f "$COMPOSE_FILE" exec -T api python -m alembic upgrade head \
+        || error "Migrations falharam (alembic upgrade head). Deploy abortado — schema desatualizado."
 
     log "════════════════════════════════════════"
     log "Deploy concluído!"
-    log "API: http://$(curl -s ifconfig.me):80"
-    log "Health: http://$(curl -s ifconfig.me):80/health"
+    log "App disponível em https://<DOMAIN configurado no .env> (TLS automático via Caddy)"
     log "════════════════════════════════════════"
 }
 
@@ -118,38 +116,10 @@ cmd_update() {
 
     # Migrations (como DONO via MIGRATION_DATABASE_URL — ver alembic/env.py)
     log "Executando migrations..."
-    docker compose -f "$COMPOSE_FILE" exec api python -m alembic upgrade head || \
-        log "AVISO: Migrations falharam."
+    docker compose -f "$COMPOSE_FILE" exec -T api python -m alembic upgrade head \
+        || error "Migrations falharam (alembic upgrade head). Atualização abortada."
 
     log "Atualização concluída!"
-}
-
-# ── Configurar SSL com Let's Encrypt ─────────────────────────
-cmd_ssl() {
-    local domain="${1:-}"
-    [ -z "$domain" ] && error "Uso: $0 ssl seu-dominio.com"
-
-    cd "$APP_DIR" || error "Diretório $APP_DIR não encontrado."
-
-    log "Gerando certificado SSL para $domain..."
-
-    # Gerar certificado
-    docker compose -f "$COMPOSE_FILE" run --rm certbot \
-        certonly --webroot \
-        --webroot-path=/var/www/certbot \
-        --email admin@"$domain" \
-        --agree-tos \
-        --no-eff-email \
-        -d "$domain"
-
-    # Trocar nginx config para versão com SSL
-    sed "s/seu-dominio.com/$domain/g" deploy/nginx.conf.ssl > deploy/nginx.conf 2>/dev/null || \
-        sed -i "s/seu-dominio.com/$domain/g" deploy/nginx.conf
-
-    # Reload nginx
-    docker compose -f "$COMPOSE_FILE" exec nginx nginx -s reload
-
-    log "SSL configurado para $domain!"
 }
 
 # ── Status dos serviços ──────────────────────────────────────
@@ -171,16 +141,16 @@ cmd_logs() {
 case "${1:-help}" in
     setup)  cmd_setup ;;
     update) cmd_update ;;
-    ssl)    cmd_ssl "${2:-}" ;;
     status) cmd_status ;;
     logs)   cmd_logs "${2:-}" ;;
     *)
-        echo "Uso: $0 {setup|update|ssl|status|logs}"
+        echo "Uso: $0 {setup|update|status|logs}"
         echo ""
         echo "  setup           Primeiro deploy (instala Docker, clona, configura, sobe)"
         echo "  update          Atualiza (git pull, rebuild, restart, migrations)"
-        echo "  ssl <dominio>   Configurar SSL com Let's Encrypt"
         echo "  status          Mostra status dos serviços"
         echo "  logs [serviço]  Mostra logs (padrão: api)"
+        echo ""
+        echo "  TLS/HTTPS é automático via Caddy (Let's Encrypt) — não há comando 'ssl'."
         ;;
 esac

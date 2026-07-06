@@ -24,7 +24,10 @@ async function compressImage(file) {
   }
 
   try {
-    const bitmap = await createImageBitmap(file);
+    // imageOrientation explícito: garante que a rotação EXIF seja aplicada
+    // aos pixels antes do canvas descartar os metadados (não depende do
+    // default do navegador, que já foi inconsistente entre engines).
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
     const { width, height } = bitmap;
 
     let newWidth = width;

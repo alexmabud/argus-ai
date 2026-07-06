@@ -55,7 +55,7 @@ class TestLogin:
             "/api/v1/auth/login",
             json={"matricula": "TEST001", "senha": "errada"},
         )
-        assert response.status_code in (400, 401)
+        assert response.status_code == 401
 
     async def test_login_matricula_inexistente_retorna_erro(self, client: AsyncClient):
         """Testa login com matrícula inexistente retorna erro.
@@ -67,7 +67,7 @@ class TestLogin:
             "/api/v1/auth/login",
             json={"matricula": "NAOEXISTE", "senha": "qualquer"},
         )
-        assert response.status_code in (400, 401)
+        assert response.status_code == 401
 
     async def test_login_bloqueia_apos_5_falhas(self, client: AsyncClient, usuario: Usuario):
         """Apos 5 senhas erradas, o login com senha CORRETA deve retornar 423.
@@ -166,7 +166,7 @@ class TestLogout:
             json={"refresh_token": refresh_token},
             headers=headers,
         )
-        assert resp.status_code in (400, 401)
+        assert resp.status_code == 401
 
 
 class TestRefresh:
@@ -182,7 +182,79 @@ class TestRefresh:
             "/api/v1/auth/refresh",
             json={"refresh_token": "token-invalido"},
         )
-        assert response.status_code in (400, 401)
+        assert response.status_code == 401
+
+    async def test_refresh_rotaciona_sid_e_invalida_token_antigo(
+        self, client: AsyncClient, usuario: Usuario, db_session: AsyncSession
+    ):
+        """Refresh de usuário comum deve rotacionar o sid e invalidar o token antigo.
+
+        Mitiga roubo de refresh token (#5/2B): após um refresh, o token anterior
+        deixa de valer porque o session_id rotaciona no banco.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            usuario: Fixture de usuário comum (não-admin).
+            db_session: Sessão do banco de testes.
+        """
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={"matricula": "TEST001", "senha": "senha123"},
+        )
+        assert login.status_code == 200
+        token_antigo = login.json()["refresh_token"]
+        await db_session.refresh(usuario)
+        sid_apos_login = usuario.session_id
+
+        # Refresh válido (usa o cookie HttpOnly setado no login).
+        r1 = await client.post("/api/v1/auth/refresh", json={})
+        assert r1.status_code == 200
+        await db_session.refresh(usuario)
+        assert usuario.session_id is not None
+        assert usuario.session_id != sid_apos_login  # sid rotacionou
+
+        # O token de refresh ANTIGO (do login) agora deve ser rejeitado.
+        client.cookies.clear()
+        r2 = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": token_antigo},
+        )
+        assert r2.status_code == 401
+
+    async def test_refresh_mantem_sid_para_admin(
+        self, client: AsyncClient, guarnicao, db_session: AsyncSession
+    ):
+        """Refresh de admin deve manter o sid (sessão multi-dispositivo).
+
+        Admin compartilha um único session_id entre celular e desktop; rotacionar
+        no refresh derrubaria o outro dispositivo. Garante que o caso admin
+        preserva o sid (espelha a lógica do login).
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            guarnicao: Fixture de guarnição.
+            db_session: Sessão do banco de testes.
+        """
+        from app.core.security import criar_refresh_token, hash_senha
+        from app.services.auth_service import AuthService
+
+        admin = Usuario(
+            nome="Admin Teste",
+            matricula="ADMIN2B",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao.id,
+            session_id="sid-admin-fixo",
+            is_admin=True,
+        )
+        db_session.add(admin)
+        await db_session.flush()
+
+        token = criar_refresh_token({"sub": str(admin.id), "sid": "sid-admin-fixo"})
+        novos = await AuthService(db_session).refresh(token)
+        assert novos.access_token
+
+        await db_session.refresh(admin)
+        assert admin.session_id == "sid-admin-fixo"  # admin não rotaciona
 
 
 class TestMe:

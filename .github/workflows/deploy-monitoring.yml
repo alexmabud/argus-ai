@@ -68,8 +68,9 @@ jobs:
 
             echo "══════ Criando diretórios de dados ══════"
             sudo mkdir -p /mnt/banco/prometheus /mnt/banco/grafana
-            # Limpa arquivos antigos com permissões erradas (safe: nenhum dado coletado ainda)
-            sudo rm -rf /mnt/banco/prometheus/* /mnt/banco/grafana/*
+            # NÃO apagar o conteúdo: isso rodava a cada deploy e destruía o TSDB do
+            # Prometheus (histórico de métricas) e o estado do Grafana. chown/chmod
+            # abaixo corrigem permissões de forma idempotente, sem perder dados.
             # Donos corretos para cada container e perms restritivas (Task 24):
             # Prometheus = UID 65534 (nobody), Grafana = UID 472. Antes era chmod 777,
             # gravando dado sensivel world-writable.
@@ -81,7 +82,7 @@ jobs:
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
               up -d --force-recreate --build \
               prometheus grafana node-exporter \
-              postgres-exporter redis-exporter telegram-reporter
+              postgres-exporter redis-exporter blackbox-exporter telegram-reporter
 
             echo "══════ Aguardando 40s p/ Grafana provisionar + estabilizar ══════"
             sleep 40
@@ -89,7 +90,7 @@ jobs:
             docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml \
               ps \
               prometheus grafana node-exporter \
-              postgres-exporter redis-exporter telegram-reporter
+              postgres-exporter redis-exporter blackbox-exporter telegram-reporter
 
             echo "══════ Restart count (>0 indica crash-loop) ══════"
             for c in argus-prometheus argus-grafana argus-telegram-reporter; do

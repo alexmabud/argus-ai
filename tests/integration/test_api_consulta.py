@@ -52,6 +52,45 @@ class TestConsultaUnificada:
         )
         assert response.status_code == 422
 
+    async def test_consulta_q_so_whitespace_retorna_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Termo só com espaços não pode passar como busca válida (#2 auditoria).
+
+        `q="  "` tem len==2 e burlava o gate len(q) < 2, normalizando para
+        vazio e gerando ILIKE '%%' global. Deve ser rejeitado com 422.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+        """
+        response = await client.get(
+            "/api/v1/consultas/?q=%20%20",
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    async def test_consulta_q_normaliza_vazio_nao_casa_tudo(
+        self, client: AsyncClient, auth_headers: dict, veiculo
+    ):
+        """Termo que normaliza para vazio não pode virar ILIKE '%%' (#2 auditoria).
+
+        `q="--"` passa o gate len>=2, mas a placa normaliza para '' (sem traços).
+        A guarda do repositório deve impedir o match-all, retornando veículos vazio
+        mesmo havendo um veículo cadastrado (fixture `veiculo`).
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+            veiculo: Veículo de teste (placa ABC1D23).
+        """
+        response = await client.get(
+            "/api/v1/consultas/?q=--&tipo=veiculo",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["veiculos"] == []
+
     async def test_consulta_sem_auth_retorna_401(self, client: AsyncClient):
         """Testa que consulta sem autenticação retorna 401.
 
@@ -158,6 +197,24 @@ class TestPessoasPorVeiculo:
         """
         response = await client.get(
             "/api/v1/consultas/pessoas-por-veiculo",
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+
+    async def test_pessoas_por_veiculo_placa_so_whitespace_retorna_400(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Placa só com espaços não é busca válida (#2 auditoria).
+
+        `placa="  "` é truthy e burlava o gate `if not placa`, normalizando
+        para vazio e gerando ILIKE '%%'. Deve ser rejeitado com 400.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido.
+        """
+        response = await client.get(
+            "/api/v1/consultas/pessoas-por-veiculo?placa=%20%20",
             headers=auth_headers,
         )
         assert response.status_code == 400
@@ -309,7 +366,7 @@ class TestConsultaIsolamento:
         data = response.json()
         assert len(data["abordagens"]) >= 1
 
-    async def test_abordagens_toggle_on_nao_ve_outra_equipe(
+    async def test_consulta_abordagem_e_global_mesmo_com_isolamento(
         self,
         client: AsyncClient,
         db_session: AsyncSession,
@@ -318,7 +375,11 @@ class TestConsultaIsolamento:
         usuario: Usuario,
         equipe_c: Guarnicao,
     ):
-        """Busca de abordagem com toggle ON não retorna resultados de outra equipe.
+        """A busca da Consulta é GLOBAL: acha abordagem de outra equipe mesmo com toggle ON.
+
+        Regra de negócio: o isolamento_abordagens atua só na LISTAGEM de
+        relatórios (/abordagens) e no analítico (/analytics), nunca na Consulta —
+        a busca operacional encontra qualquer registro de qualquer equipe.
 
         Args:
             client: Cliente HTTP assincrónico.
@@ -346,7 +407,8 @@ class TestConsultaIsolamento:
         )
         assert response.status_code == 200
         data = response.json()
-        assert len(data["abordagens"]) == 0
+        # Consulta global: a equipe C (isolada) encontra a abordagem da equipe A.
+        assert len(data["abordagens"]) >= 1
 
 
 class TestConsultaAudit:

@@ -42,28 +42,39 @@ class SyncManager {
     this.syncing = true;
     this._notify("syncing", { total: pending.length });
 
+    // Abordagens com fotos vão pelo fluxo /abordagens/ (idempotente por client_id)
+    // para obter o id do servidor e subir a mídia — o batch não retorna esse id (#5).
+    const comFotos = pending.filter((p) => p.tipo === "abordagem" && p.fotos && p.fotos.length);
+    const semFotos = pending.filter((p) => !(p.tipo === "abordagem" && p.fotos && p.fotos.length));
+
     try {
-      const items = pending.map((item) => ({
-        client_id: item.clientId,
-        tipo: item.tipo,
-        dados: item.dados,
-      }));
-
-      const response = await api.post("/sync/batch", { items });
-
       let synced = 0;
       let failed = 0;
 
-      for (const result of response.results) {
-        const item = pending.find((p) => p.clientId === result.client_id);
-        if (!item) continue;
+      for (const item of comFotos) {
+        (await this._syncAbordagemComFotos(item)) ? synced++ : failed++;
+      }
 
-        if (result.status === "ok") {
-          await markSynced(item.id);
-          synced++;
-        } else {
-          await markFailed(item.id, result.error || "Erro desconhecido");
-          failed++;
+      if (semFotos.length > 0) {
+        const items = semFotos.map((item) => ({
+          client_id: item.clientId,
+          tipo: item.tipo,
+          dados: item.dados,
+        }));
+
+        const response = await api.post("/sync/batch", { items });
+
+        for (const result of response.results) {
+          const item = semFotos.find((p) => p.clientId === result.client_id);
+          if (!item) continue;
+
+          if (result.status === "ok") {
+            await markSynced(item.id);
+            synced++;
+          } else {
+            await markFailed(item.id, result.error || "Erro desconhecido");
+            failed++;
+          }
         }
       }
 
@@ -75,9 +86,28 @@ class SyncManager {
         return;
       }
       // Se endpoint não existe ainda, sincronizar individualmente
-      await this._syncIndividual(pending);
+      await this._syncIndividual(semFotos);
     } finally {
       this.syncing = false;
+    }
+  }
+
+  async _syncAbordagemComFotos(item) {
+    // Recria a abordagem pelo endpoint normal (dedup por client_id no payload)
+    // e sobe cada foto persistida com o id retornado pelo servidor.
+    try {
+      const created = await api.post("/abordagens/", item.dados);
+      for (const foto of item.fotos) {
+        const extra = { tipo: foto.tipo, abordagem_id: created.id };
+        if (foto.pessoa_id != null) extra.pessoa_id = foto.pessoa_id;
+        if (foto.veiculo_id != null) extra.veiculo_id = foto.veiculo_id;
+        await api.uploadFile("/fotos/upload", foto.blob, extra);
+      }
+      await markSynced(item.id);
+      return true;
+    } catch (err) {
+      await markFailed(item.id, err.message || "Erro ao sincronizar abordagem com fotos");
+      return false;
     }
   }
 

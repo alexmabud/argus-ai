@@ -25,6 +25,7 @@ class FotoTipo(StrEnum):
         veiculo: Foto geral do veículo envolvido na abordagem.
         documento: Foto de documento.
         midia_abordagem: Mídia operacional vinculada a abordagem (foto, vídeo, documento).
+        evidencia: Foto de arma, droga ou outro item associado ao abordado (fora do rosto).
     """
 
     rosto = "rosto"
@@ -33,6 +34,7 @@ class FotoTipo(StrEnum):
     veiculo = "veiculo"
     documento = "documento"
     midia_abordagem = "midia_abordagem"
+    evidencia = "evidencia"
 
 
 class FotoRead(BaseModel):
