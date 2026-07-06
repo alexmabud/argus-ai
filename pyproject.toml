@@ -49,7 +49,7 @@ dependencies = [
     # Teto <6 obrigatorio: arq exige redis[hiredis]<6 — redis 6/7/8 quebra o worker (ver PR #32)
     "redis>=5.0.0,<6",
     # Production server
-    "gunicorn>=21.2.0",
+    "gunicorn>=26.0.0",
 ]
 
 [project.optional-dependencies]
