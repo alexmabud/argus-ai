@@ -129,7 +129,7 @@ async def upload_foto(
     Args:
         request: Objeto Request do FastAPI.
         file: Arquivo de imagem (multipart/form-data).
-        tipo: Tipo de foto (rosto, corpo, placa, documento).
+        tipo: Tipo de foto (rosto, corpo, placa, documento, evidencia).
         pessoa_id: ID da pessoa associada (opcional).
         abordagem_id: ID da abordagem associada (opcional).
         veiculo_id: ID do veículo associado (opcional — para fotos de veículos específicos).

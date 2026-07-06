@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.pessoa_veiculo import PessoaVeiculo
+from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
 
 
@@ -51,15 +52,28 @@ class PessoaVeiculoRepository(BaseRepository[PessoaVeiculo]):
     async def listar_diretos(self, pessoa_id: int) -> Sequence[PessoaVeiculo]:
         """Lista vínculos diretos ativos de uma pessoa, com veículo carregado.
 
+        Exclui vínculos cujo Veiculo esteja soft-deletado — mesma checagem
+        já aplicada no caminho via abordagem
+        (`VeiculoRepository.get_veiculos_por_pessoa_via_abordagem`), pra que
+        os dois caminhos que se unificam em `listar_veiculos_pessoa` tenham
+        paridade defensiva (hoje não há rota de desativar veículo, mas o
+        service já existe — `VeiculoService.desativar` — então evita uma
+        inconsistência silenciosa se essa rota for exposta no futuro).
+
         Args:
             pessoa_id: ID da pessoa.
 
         Returns:
-            Sequência de PessoaVeiculo ativos.
+            Sequência de PessoaVeiculo ativos, com veículo ativo.
         """
-        query = select(PessoaVeiculo).where(
-            PessoaVeiculo.pessoa_id == pessoa_id,
-            PessoaVeiculo.ativo == True,  # noqa: E712
+        query = (
+            select(PessoaVeiculo)
+            .join(Veiculo, Veiculo.id == PessoaVeiculo.veiculo_id)
+            .where(
+                PessoaVeiculo.pessoa_id == pessoa_id,
+                PessoaVeiculo.ativo == True,  # noqa: E712
+                Veiculo.ativo == True,  # noqa: E712
+            )
         )
         result = await self.db.execute(query)
         return result.scalars().all()

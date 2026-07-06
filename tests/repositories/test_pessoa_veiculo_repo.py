@@ -68,3 +68,25 @@ class TestListarDiretos:
         diretos = await repo.listar_diretos(pessoa.id)
         assert len(diretos) == 1
         assert diretos[0].veiculo_id == veiculo.id
+
+    async def test_nao_lista_vinculo_com_veiculo_desativado(
+        self, db_session: AsyncSession, pessoa: Pessoa, veiculo: Veiculo, guarnicao: Guarnicao
+    ):
+        """Vínculo ativo cujo Veiculo está soft-deletado não é retornado.
+
+        Paridade defensiva com get_veiculos_por_pessoa_via_abordagem, que já
+        exclui veículos inativos — hoje não há rota de desativar veículo,
+        mas o service (VeiculoService.desativar) já existe.
+        """
+        vinculo = PessoaVeiculo(
+            pessoa_id=pessoa.id, veiculo_id=veiculo.id, guarnicao_id=guarnicao.id
+        )
+        db_session.add(vinculo)
+        await db_session.flush()
+
+        veiculo.ativo = False
+        await db_session.flush()
+
+        repo = PessoaVeiculoRepository(db_session)
+        diretos = await repo.listar_diretos(pessoa.id)
+        assert diretos == []
