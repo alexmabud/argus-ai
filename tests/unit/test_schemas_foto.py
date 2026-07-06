@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from app.schemas.foto import BuscaRostoItem, FotoRead, FotoUploadResponse
+from app.schemas.foto import BuscaRostoItem, FotoRead, FotoTipo, FotoUploadResponse
 
 
 def _base_data(**kwargs) -> dict:
@@ -176,3 +176,12 @@ def test_busca_rosto_item_normaliza_thumb_urls_absolutas():
     )
     assert item.thumbnail_url == f"/storage/{settings.S3_BUCKET}/fotos/a_thumb.jpg"
     assert item.foto_principal_thumb_url == f"/storage/{settings.S3_BUCKET}/fotos/perfil_thumb.jpg"
+
+
+# --- Task 1: FotoTipo.evidencia ---------------------------------------------
+
+
+def test_foto_tipo_aceita_evidencia():
+    """FotoTipo aceita o valor "evidencia" (foto de arma, droga ou outro item)."""
+    assert FotoTipo("evidencia") == FotoTipo.evidencia
+    assert FotoTipo.evidencia.value == "evidencia"

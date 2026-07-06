@@ -7,12 +7,13 @@ com filtros multi-tenant e soft delete.
 import logging
 from collections.abc import Sequence
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.abordagem import AbordagemPessoa, AbordagemVeiculo
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
+from app.models.pessoa_veiculo import PessoaVeiculo
 from app.models.veiculo import Veiculo
 from app.repositories.base import BaseRepository
 from app.services.text_utils import cor_variantes, escape_like
@@ -144,7 +145,7 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         skip: int = 0,
         limit: int = 20,
     ) -> list[tuple]:
-        """Busca pessoas vinculadas a veículos via abordagens.
+        """Busca pessoas vinculadas a veículos via abordagens ou vínculo direto.
 
         Resolve Veiculo → AbordagemVeiculo (veiculo_id) → AbordagemPessoa
         (abordagem_id) → Pessoa para retornar todos os abordados presentes
@@ -154,6 +155,14 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         O caminho passa por AbordagemPessoa (não AbordagemVeiculo.pessoa_id)
         pois o campo pessoa_id em AbordagemVeiculo é opcional (nullable) e
         frequentemente NULL — o que tornava a busca inoperante.
+
+        Além do caminho via abordagem, resolve também Pessoa → PessoaVeiculo
+        → Veiculo: o vínculo direto cadastrado na ficha do abordado (Tasks
+        3-6), sem nenhuma abordagem envolvida. Sem esse segundo caminho, um
+        veículo vinculado só via PessoaVeiculo ficava invisível nesta busca
+        — o gap que motivou este método passar a rodar as duas queries e
+        combinar (union em Python) os resultados, deduplicando por par
+        (pessoa.id, veiculo.id).
 
         Args:
             placa: Placa parcial para busca ILIKE (opcional).
@@ -168,7 +177,42 @@ class VeiculoRepository(BaseRepository[Veiculo]):
             pessoa pode aparecer múltiplas vezes se vinculada a veículos distintos
             que atendam o filtro.
         """
-        query = (
+
+        def _montar_filtros(query: Select) -> tuple[Select, bool]:
+            """Aplica os filtros de placa/modelo/cor comuns aos dois caminhos.
+
+            Args:
+                query: Select parcial (ainda sem filtros de placa/modelo/cor).
+
+            Returns:
+                Tupla (query com filtros aplicados, se algum filtro foi efetivo).
+            """
+            aplicou_filtro = False
+            if placa:
+                normalized = placa.upper().replace("-", "").replace(" ", "")
+                if normalized:
+                    query = query.where(Veiculo.placa.ilike(f"%{escape_like(normalized)}%"))
+                    aplicou_filtro = True
+            if modelo:
+                modelo_clean = modelo.strip()
+                if modelo_clean:
+                    m = escape_like(modelo_clean)
+                    query = query.where(
+                        Veiculo.modelo.ilike(m)
+                        | Veiculo.modelo.ilike(f"{m} %")
+                        | Veiculo.modelo.ilike(f"% {m}")
+                        | Veiculo.modelo.ilike(f"% {m} %")
+                    )
+                    aplicou_filtro = True
+            if cor:
+                # Flexão de gênero: "branco" também casa "branca" e vice-versa.
+                clauses = [Veiculo.cor.ilike(f"%{escape_like(v)}%") for v in cor_variantes(cor)]
+                if clauses:
+                    query = query.where(or_(*clauses))
+                    aplicou_filtro = True
+            return query, aplicou_filtro
+
+        query_abordagem = (
             select(Pessoa, Veiculo)
             .join_from(Pessoa, AbordagemPessoa, AbordagemPessoa.pessoa_id == Pessoa.id)
             .join(AbordagemVeiculo, AbordagemVeiculo.abordagem_id == AbordagemPessoa.abordagem_id)
@@ -180,40 +224,74 @@ class VeiculoRepository(BaseRepository[Veiculo]):
                 AbordagemPessoa.ativo == True,  # noqa: E712
             )
         )
+        query_abordagem, aplicou_filtro = _montar_filtros(query_abordagem)
 
-        aplicou_filtro = False
-        if placa:
-            normalized = placa.upper().replace("-", "").replace(" ", "")
-            if normalized:
-                query = query.where(Veiculo.placa.ilike(f"%{escape_like(normalized)}%"))
-                aplicou_filtro = True
-        if modelo:
-            modelo_clean = modelo.strip()
-            if modelo_clean:
-                m = escape_like(modelo_clean)
-                query = query.where(
-                    Veiculo.modelo.ilike(m)
-                    | Veiculo.modelo.ilike(f"{m} %")
-                    | Veiculo.modelo.ilike(f"% {m}")
-                    | Veiculo.modelo.ilike(f"% {m} %")
-                )
-                aplicou_filtro = True
-        if cor:
-            # Flexão de gênero: "branco" também casa "branca" e vice-versa.
-            cor_clauses = [Veiculo.cor.ilike(f"%{escape_like(v)}%") for v in cor_variantes(cor)]
-            if cor_clauses:
-                query = query.where(or_(*cor_clauses))
-                aplicou_filtro = True
-        # Nenhum filtro efetivo (ex.: placa que normaliza para vazio) → sem match-all.
+        query_direto = (
+            select(Pessoa, Veiculo)
+            .join_from(PessoaVeiculo, Pessoa, PessoaVeiculo.pessoa_id == Pessoa.id)
+            .join(Veiculo, Veiculo.id == PessoaVeiculo.veiculo_id)
+            .where(
+                Pessoa.ativo == True,  # noqa: E712
+                Veiculo.ativo == True,  # noqa: E712
+                PessoaVeiculo.ativo == True,  # noqa: E712
+            )
+        )
+        # `_montar_filtros` aplica os mesmos placa/modelo/cor nos dois
+        # caminhos — o segundo retorno de "filtro efetivo" é sempre igual
+        # ao primeiro por construção, então só uma variável é mantida.
+        query_direto, _ = _montar_filtros(query_direto)
+
+        # Nenhum filtro efetivo (ex.: placa que normaliza para vazio) →
+        # sem match-all, nem toca o banco.
         if not aplicou_filtro:
             return []
+
         if guarnicao_id is not None:
             # Pessoas são sempre globais per spec do projeto — NÃO filtrar por guarnicao_id.
             # Filtrar apenas veículos por tenant para restringir o escopo da busca.
-            query = query.where(Veiculo.guarnicao_id == guarnicao_id)
+            query_abordagem = query_abordagem.where(Veiculo.guarnicao_id == guarnicao_id)
+            query_direto = query_direto.where(Veiculo.guarnicao_id == guarnicao_id)
 
-        query = query.distinct().offset(skip).limit(limit)
+        resultado_abordagem = (await self.db.execute(query_abordagem.distinct())).all()
+        resultado_direto = (await self.db.execute(query_direto.distinct())).all()
 
+        vistos: set[tuple[int, int]] = set()
+        combinado: list[tuple] = []
+        for pessoa_row, veiculo_row in [*resultado_abordagem, *resultado_direto]:
+            chave = (pessoa_row.id, veiculo_row.id)
+            if chave not in vistos:
+                vistos.add(chave)
+                combinado.append((pessoa_row, veiculo_row))
+
+        return combinado[skip : skip + limit]
+
+    async def get_veiculos_por_pessoa_via_abordagem(self, pessoa_id: int) -> Sequence[Veiculo]:
+        """Veículos vinculados à pessoa através de abordagens.
+
+        Resolve AbordagemPessoa (pessoa esteve na abordagem) → AbordagemVeiculo
+        (veículo esteve na mesma abordagem) → Veiculo. Inclui tanto vínculos
+        onde o veículo foi explicitamente atribuído a esta pessoa
+        (AbordagemVeiculo.pessoa_id == pessoa_id) quanto vínculos órfãos sem
+        pessoa atribuída (pessoa_id NULL), mesmo padrão usado hoje no frontend.
+
+        Args:
+            pessoa_id: ID da pessoa.
+
+        Returns:
+            Sequência de Veículos únicos vinculados via abordagem.
+        """
+        query = (
+            select(Veiculo)
+            .join(AbordagemVeiculo, AbordagemVeiculo.veiculo_id == Veiculo.id)
+            .join(AbordagemPessoa, AbordagemPessoa.abordagem_id == AbordagemVeiculo.abordagem_id)
+            .where(
+                AbordagemPessoa.pessoa_id == pessoa_id,
+                or_(AbordagemVeiculo.pessoa_id == pessoa_id, AbordagemVeiculo.pessoa_id.is_(None)),
+                Veiculo.ativo == True,  # noqa: E712
+                AbordagemVeiculo.ativo == True,  # noqa: E712
+                AbordagemPessoa.ativo == True,  # noqa: E712
+            )
+            .distinct()
+        )
         result = await self.db.execute(query)
-        rows = list(result.all())
-        return rows  # type: ignore[return-value]
+        return result.scalars().all()
