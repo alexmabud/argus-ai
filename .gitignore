@@ -187,3 +187,6 @@ docs/manual/
 
 # Worktrees isoladas (using-git-worktrees skill)
 .worktrees/
+
+# Metadados do Windows (Mark of the Web) em arquivos copiados pro WSL
+*:Zone.Identifier
