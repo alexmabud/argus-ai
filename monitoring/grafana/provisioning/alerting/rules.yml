@@ -247,30 +247,49 @@ groups:
         execErrState: OK
         for: 5m
         annotations:
-          summary: Endpoints com latência alta
-          description: "p95 de resposta acima de 5 segundos há mais de 5 minutos."
+          summary: Endpoint com latência alta
+          description: "Endpoint `{{ $labels.handler }}` com p95 acima de 5s há mais de 5 minutos (atual: {{ with $values.A }}{{ printf \"%.1f\" .Value }}{{ else }}—{{ end }}s, {{ with $values.B }}{{ printf \"%.0f\" .Value }}{{ else }}—{{ end }} reqs na janela)."
         labels:
           severity: warning
         data:
+          # p95 por endpoint. Usa a métrica "não-highr" porque só ela carrega o
+          # label handler — a highr tem buckets mais finos mas é agregada.
           - refId: A
             relativeTimeRange: {from: 300, to: 0}
             datasourceUid: prometheus-argus
             model:
-              expr: histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))
+              expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (handler, le))
               refId: A
               instant: true
               range: false
+          # Volume de requests do mesmo endpoint na janela — com o tráfego baixo
+          # deste sistema, 1-2 requests lentas isoladas bastam pra estourar um
+          # p95 sozinhas; exige um mínimo de amostras pra confiar no percentil.
+          - refId: B
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus-argus
+            model:
+              expr: sum(increase(http_requests_total[5m])) by (handler)
+              refId: B
+              instant: true
+              range: false
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: math
+              refId: C
+              expression: "$A > 5 && $B >= 3"
           - refId: threshold
             datasourceUid: __expr__
             model:
               type: threshold
               refId: threshold
-              expression: A
+              expression: C
               conditions:
-                - evaluator: {type: gt, params: [5]}
+                - evaluator: {type: gt, params: [0.5]}
                   operator: {type: and}
-                  query: {params: [A]}
-                  reducer: {type: avg}
+                  query: {params: [C]}
+                  reducer: {type: last}
 
   # ─── Dependências (PG / Redis / Worker) ────────────────────────────
   - orgId: 1

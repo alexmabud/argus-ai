@@ -209,6 +209,13 @@ def main() -> None:
     latencia_p95 = query(
         "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[24h])) by (le))"
     )
+    # p95 médio de 24h dilui picos curtos entre centenas de requests rápidas do
+    # dia. O pico em janelas de 5min é a mesma conta que o alerta de latência
+    # usa — reflete os picos reais mesmo quando a média do dia parece ok.
+    latencia_p95_pico = query_range_max(
+        "histogram_quantile(0.95,"
+        " sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))"
+    )
 
     # Sem séries 5xx no período = zero erros (e não "sem dados") quando houve tráfego
     if total_erros is None and total_requests is not None and total_requests > 0:
@@ -240,6 +247,7 @@ def main() -> None:
     backup_clouds_status = backup_status(backup_clouds_ts, scheduled_hour_brt=3)
 
     # Montar mensagem
+    pico_alerta = " ⚠️" if latencia_p95_pico and latencia_p95_pico > 5 else ""
     ram_line = f"{fmt(ram_pct_max, '%')}"
     if ram_gb_num:
         ram_used = (ram_pct_max / 100 * ram_gb_num) if ram_pct_max else None
@@ -256,7 +264,8 @@ def main() -> None:
 📡 *API*
 ├── Total requests: {fmt(total_requests, '', 0)}
 ├── Pico: {fmt(pico_req_min, ' req/min', 0)}
-├── Latência p95: {fmt(latencia_p95, 's')}
+├── Latência p95 (24h): {fmt(latencia_p95, 's')}
+├── Pico p95 (janela 5min): {fmt(latencia_p95_pico, 's')}{pico_alerta}
 └── Erros 5xx: {fmt(total_erros, '', 0)} ({taxa_erro_str})
 
 🗄️ *Banco e Cache*
