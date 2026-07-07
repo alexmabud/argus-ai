@@ -249,6 +249,10 @@ function cadastroPessoaModal() {
       this.cpCidadeTexto = "";
       this.cpBairroId = null;
       this.cpBairroTexto = "";
+      this.cpCidadeSugestoes = [];
+      this.cpBairroSugestoes = [];
+      this.cpCidadeCadastrarNovo = false;
+      this.cpBairroCadastrarNovo = false;
       this.fotoPessoa = null;
       this.fotoPessoaPreviewUrl = "";
       this.erroCadastro = null;
@@ -366,23 +370,26 @@ function cadastroPessoaModal() {
 
         const temEndereco = this.novaPessoa.endereco.trim() || this.cpEstadoId || this.cpCidadeId;
 
+        // Endereço e foto são independentes entre si (só dependem de pessoa.id) — rodam em paralelo.
+        const tarefas = [];
         if (temEndereco) {
-          await api.post(`/pessoas/${pessoa.id}/enderecos`, {
+          tarefas.push(api.post(`/pessoas/${pessoa.id}/enderecos`, {
             endereco: this.novaPessoa.endereco.trim() || "-",
             estado_id: this.cpEstadoId ? parseInt(this.cpEstadoId) : null,
             cidade_id: this.cpCidadeId || null,
             bairro_id: this.cpBairroId || null,
-          });
+          }));
         }
-
         if (this.fotoPessoa) {
-          await api.uploadFile("/fotos/upload", this.fotoPessoa, {
+          tarefas.push(api.uploadFile("/fotos/upload", this.fotoPessoa, {
             tipo: "rosto",
             pessoa_id: pessoa.id,
-          });
+          }));
+        }
+        if (tarefas.length > 0) {
+          await Promise.all(tarefas);
         }
 
-        this.cpfBuscaErro = "";
         this.fecharCadastroPessoa();
         showToast("Pessoa cadastrada com sucesso!", "success");
         if (typeof this.viewPessoa === "function") {
