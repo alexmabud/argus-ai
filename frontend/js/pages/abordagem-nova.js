@@ -15,6 +15,15 @@ function renderAbordagemNova() {
         <span style="font-family:var(--font-data);font-size:11px;font-weight:500;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;">REGISTRO OPERACIONAL</span>
       </div>
 
+      <!-- Aviso: isto é uma abordagem, não cadastro avulso de pessoa -->
+      <div style="background:rgba(255,59,59,0.1);border:1px solid rgba(255,59,59,0.4);border-radius:4px;padding:10px 12px;">
+        <p style="font-family:var(--font-data);font-size:10px;font-weight:700;color:var(--color-danger);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 4px 0;">Atenção</p>
+        <p style="font-family:var(--font-body);font-size:13px;color:var(--color-text);margin:0;line-height:1.4;">
+          Isto registra uma <strong>abordagem</strong>. Se você só quer cadastrar uma pessoa, sem abordagem, use o botão
+          <span @click="irParaCadastroPessoaHome()" style="color:var(--color-primary);font-weight:600;text-decoration:underline;cursor:pointer;">Cadastrar Nova Pessoa</span> na tela inicial.
+        </p>
+      </div>
+
       <!-- 1. Pessoas abordadas (primeiro campo) -->
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;position:relative;z-index:10;">
         <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Pessoas abordadas</span>
@@ -683,6 +692,15 @@ function abordagemForm() {
         this.erroPessoa = null;
         this.showNovaPessoa = true;
       });
+    },
+
+    /**
+     * Navega para a home e sinaliza abertura automática do modal de
+     * cadastro de pessoa (link do aviso "só quer cadastrar uma pessoa?").
+     */
+    irParaCadastroPessoaHome() {
+      window.__argusAbrirCadastroPessoaHome = true;
+      window.dispatchEvent(new CustomEvent("navigate", { detail: "home" }));
     },
 
     anPosicionarDropdown(_inputEl) {

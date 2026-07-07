@@ -1050,6 +1050,22 @@ input.input-warning {
   letter-spacing: 0.06em;
 }
 
+/* Variante "barra": ação comprida e fina abaixo do grid principal (ex.:
+   Cadastrar Nova Pessoa). Reaproveita fundo/borda/scan-line de
+   .home-action-card, só troca o layout de coluna para linha. */
+.home-action-bar {
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+}
+
+.home-action-bar .card-icon {
+  margin-bottom: 0;
+}
+
 /* ========================================
    CALENDÁRIO INTERATIVO (.cal-day / .cal-led)
    Compartilhado entre Analítico e Relatórios
