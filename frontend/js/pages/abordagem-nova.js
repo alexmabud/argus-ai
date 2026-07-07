@@ -19,8 +19,8 @@ function renderAbordagemNova() {
       <div style="background:rgba(255,59,59,0.1);border:1px solid rgba(255,59,59,0.4);border-radius:4px;padding:10px 12px;">
         <p style="font-family:var(--font-data);font-size:10px;font-weight:700;color:var(--color-danger);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 4px 0;">Atenção</p>
         <p style="font-family:var(--font-body);font-size:13px;color:var(--color-text);margin:0;line-height:1.4;">
-          Isto registra uma <strong>abordagem</strong>. Se você só quer cadastrar uma pessoa, sem abordagem, use o botão
-          <span @click="irParaCadastroPessoaHome()" style="color:var(--color-primary);font-weight:600;text-decoration:underline;cursor:pointer;">Cadastrar Nova Pessoa</span> na tela inicial.
+          Este formulário registra uma <strong>abordagem</strong>. Se você só quer cadastrar uma pessoa, sem abordagem, use o botão
+          <span @click="irParaCadastroPessoaHome()" style="color:var(--color-primary);font-weight:600;text-decoration:underline;cursor:pointer;">Cadastrar Nova Pessoa</span>.
         </p>
       </div>
 
