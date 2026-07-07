@@ -13,6 +13,15 @@ from app.config import settings
 
 logger = logging.getLogger("argus")
 
+_NOMINATIM_EXCLUDED_FIELDS = {
+    "postcode",
+    "country",
+    "country_code",
+    "region",
+    "ISO3166-2-lvl3",
+    "ISO3166-2-lvl4",
+}
+
 
 class GeocodingService:
     """Serviço de geocoding reverso.
@@ -68,7 +77,31 @@ class GeocodingService:
             response = await client.get(url, params=params, headers=headers)
             response.raise_for_status()
             data = response.json()
+            return self._format_nominatim_address(data)
+
+    def _format_nominatim_address(self, data: dict) -> str | None:
+        """Monta endereço legível a partir do detalhamento do Nominatim.
+
+        O `display_name` do Nominatim inclui região, CEP e país, deixando
+        o endereço longo demais para exibição. Reconstrói a partir do dict
+        `address` (que preserva a ordem hierárquica), removendo esses campos.
+
+        Args:
+            data: Resposta JSON do Nominatim (com addressdetails=1).
+
+        Returns:
+            Endereço formatado sem região/CEP/país, ou None se falha.
+        """
+        address = data.get("address")
+        if not address:
             return data.get("display_name")
+
+        parts = [
+            value
+            for field, value in address.items()
+            if field not in _NOMINATIM_EXCLUDED_FIELDS
+        ]
+        return ", ".join(parts) if parts else data.get("display_name")
 
     async def _google_reverse(self, lat: float, lon: float) -> str | None:
         """Geocoding reverso via Google Maps Geocoding API.
