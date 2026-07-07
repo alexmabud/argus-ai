@@ -248,48 +248,37 @@ groups:
         for: 5m
         annotations:
           summary: Endpoint com latência alta
-          description: "Endpoint `{{ $labels.handler }}` com p95 acima de 5s há mais de 5 minutos (atual: {{ with $values.A }}{{ printf \"%.1f\" .Value }}{{ else }}—{{ end }}s, {{ with $values.B }}{{ printf \"%.0f\" .Value }}{{ else }}—{{ end }} reqs na janela)."
+          description: "Endpoint `{{ $labels.handler }}` com p95 acima de 5s há mais de 5 minutos (atual: {{ with $values.A }}{{ printf \"%.1f\" .Value }}{{ else }}—{{ end }}s)."
         labels:
           severity: warning
         data:
-          # p95 por endpoint. Usa a métrica "não-highr" porque só ela carrega o
-          # label handler — a highr tem buckets mais finos mas é agregada.
+          # p95 por endpoint, só para handlers com tráfego real na janela
+          # (>=3 requests). Sem esse filtro, QUALQUER rota já acessada alguma
+          # vez desde o boot da API aparece com rate=0 em todos os buckets
+          # quando fica 5min sem receber request — e histogram_quantile de um
+          # histograma todo-zero é NaN, não "sem alerta". Um "$A > 5 && $B"
+          # em expressão math não filtra esse NaN de forma confiável; o
+          # "and on(handler)" do PromQL remove a série inteira da resposta,
+          # então ela nunca chega a ser avaliada pelo threshold.
           - refId: A
             relativeTimeRange: {from: 300, to: 0}
             datasourceUid: prometheus-argus
             model:
-              expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (handler, le))
+              expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (handler, le)) and on (handler) (sum(increase(http_requests_total[5m])) by (handler) >= 3)
               refId: A
               instant: true
               range: false
-          # Volume de requests do mesmo endpoint na janela — com o tráfego baixo
-          # deste sistema, 1-2 requests lentas isoladas bastam pra estourar um
-          # p95 sozinhas; exige um mínimo de amostras pra confiar no percentil.
-          - refId: B
-            relativeTimeRange: {from: 300, to: 0}
-            datasourceUid: prometheus-argus
-            model:
-              expr: sum(increase(http_requests_total[5m])) by (handler)
-              refId: B
-              instant: true
-              range: false
-          - refId: C
-            datasourceUid: __expr__
-            model:
-              type: math
-              refId: C
-              expression: "$A > 5 && $B >= 3"
           - refId: threshold
             datasourceUid: __expr__
             model:
               type: threshold
               refId: threshold
-              expression: C
+              expression: A
               conditions:
-                - evaluator: {type: gt, params: [0.5]}
+                - evaluator: {type: gt, params: [5]}
                   operator: {type: and}
-                  query: {params: [C]}
-                  reducer: {type: last}
+                  query: {params: [A]}
+                  reducer: {type: avg}
 
   # ─── Dependências (PG / Redis / Worker) ────────────────────────────
   - orgId: 1
