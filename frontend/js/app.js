@@ -647,7 +647,7 @@ function renderHomePage(appState) {
 
       <div style="display: flex; flex-direction: column; gap: 12px;">
         <div x-data="cadastroPessoaModal()">
-          <button type="button" @click="abrirCadastroPessoa()"
+          <button type="button" @click="abrirCadastroPessoa(null, true)"
                   class="home-action-card home-action-bar"
                   style="animation-delay: 0ms;">
             <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg></div>

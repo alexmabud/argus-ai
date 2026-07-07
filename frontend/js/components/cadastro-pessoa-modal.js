@@ -2,16 +2,22 @@
  * Modal reutilizável para cadastro de nova pessoa (sem abordagem associada).
  *
  * Usado pela Consulta IA (busca sem resultado) e pelo botão "Cadastrar Nova
- * Pessoa" da home. Aberto via abrirCadastroPessoa(prefillTexto), fechado e
- * resetado via fecharCadastroPessoa(). Se o host expõe um método
- * viewPessoa(id) (caso da Consulta IA, que preserva estado de busca ao
- * voltar), ele é usado para navegar até a ficha após salvar; senão, navega
- * direto para a ficha da pessoa criada.
+ * Pessoa" da home. Aberto via abrirCadastroPessoa(prefillTexto,
+ * mostrarAvisoAbordagem), fechado e resetado via fecharCadastroPessoa(). Se
+ * o host expõe um método viewPessoa(id) (caso da Consulta IA, que preserva
+ * estado de busca ao voltar), ele é usado para navegar até a ficha após
+ * salvar; senão, navega direto para a ficha da pessoa criada.
+ *
+ * Quando aberto com mostrarAvisoAbordagem=true (caso do botão da home),
+ * exibe um aviso no topo do modal esclarecendo que o formulário é só para
+ * cadastro de pessoa, com link para Nova Abordagem — a Consulta IA abre sem
+ * esse aviso (contexto onde a confusão é menos provável).
  *
  * Uso nas páginas:
  *   x-data: "{ ...minhaPage(), ...cadastroPessoaModal() }"
  *   Incluir no template: ${cadastroPessoaModalHTML()}
  *   Acionar: abrirCadastroPessoa() ou abrirCadastroPessoa('texto buscado')
+ *   Acionar com aviso: abrirCadastroPessoa(null, true)
  */
 
 /**
@@ -25,6 +31,15 @@ function cadastroPessoaModalHTML() {
          @click.self="fecharCadastroPessoa()"
          style="position: fixed; inset: 0; background: rgba(5,10,15,0.85); z-index: 200; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; padding: 1rem;">
       <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 4px; padding: 16px; width: 100%; max-width: min(92vw, 480px); box-sizing: border-box; max-height: calc(100vh - 2rem); overflow-y: auto; display:flex; flex-direction:column; gap:12px;">
+
+        <div x-show="cpMostrarAvisoAbordagem" x-cloak
+             style="background: rgba(255,59,59,0.1); border: 1px solid rgba(255,59,59,0.4); border-radius: 4px; padding: 10px 12px;">
+          <p style="font-family:var(--font-data);font-size:10px;font-weight:700;color:var(--color-danger);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 4px 0;">Atenção</p>
+          <p style="font-family:var(--font-body);font-size:13px;color:var(--color-text);margin:0;line-height:1.4;">
+            Este formulário cadastra uma <strong>pessoa</strong>, sem registrar nenhuma abordagem. Se você quer registrar uma abordagem, use o botão
+            <span @click="irParaNovaAbordagem()" style="color:var(--color-primary);font-weight:600;text-decoration:underline;cursor:pointer;">Nova Abordagem</span>.
+          </p>
+        </div>
 
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <h3 style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text);text-transform:uppercase;letter-spacing:0.06em;">Cadastrar Pessoa</h3>
@@ -168,6 +183,7 @@ function cadastroPessoaModalHTML() {
 function cadastroPessoaModal() {
   return {
     showCadastroPessoa: false,
+    cpMostrarAvisoAbordagem: false,
     novaPessoa: { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" },
     fotoPessoa: null,
     fotoPessoaPreviewUrl: "",
@@ -190,9 +206,13 @@ function cadastroPessoaModal() {
      * Abre o modal, carrega estados e opcionalmente pré-preenche nome ou CPF
      * a partir de um texto já digitado (ex.: busca sem resultado).
      * @param {string} [prefillTexto] - Nome ou CPF já digitado alhures.
+     * @param {boolean} [mostrarAvisoAbordagem] - Exibe o aviso de que este
+     *   formulário é só para cadastro de pessoa (usado pelo botão da home,
+     *   onde a confusão com "Nova Abordagem" é mais provável).
      */
-    abrirCadastroPessoa(prefillTexto) {
+    abrirCadastroPessoa(prefillTexto, mostrarAvisoAbordagem = false) {
       this.showCadastroPessoa = true;
+      this.cpMostrarAvisoAbordagem = mostrarAvisoAbordagem;
       this.cpCarregarEstados();
       if (prefillTexto) {
         if (/^\d/.test(prefillTexto)) {
@@ -208,6 +228,7 @@ function cadastroPessoaModal() {
      */
     fecharCadastroPessoa() {
       this.showCadastroPessoa = false;
+      this.cpMostrarAvisoAbordagem = false;
       this.novaPessoa = { nome: "", cpf: "", data_nascimento: "", apelido: "", nome_mae: "", endereco: "" };
       this.cpEstadoId = null;
       this.cpCidadeId = null;
@@ -218,6 +239,14 @@ function cadastroPessoaModal() {
       this.fotoPessoaPreviewUrl = "";
       this.erroCadastro = null;
       this.cpfCadastroErro = "";
+    },
+
+    /**
+     * Fecha o modal e navega para Nova Abordagem (link do aviso).
+     */
+    irParaNovaAbordagem() {
+      this.fecharCadastroPessoa();
+      window.dispatchEvent(new CustomEvent("navigate", { detail: "abordagem-nova" }));
     },
 
     async cpCarregarEstados() {
