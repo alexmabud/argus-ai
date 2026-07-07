@@ -581,7 +581,9 @@ function escapeHtml(str) {
  *
  * Cards no estilo glass + HUD tático: fundo glassmorphism, clip-path no canto
  * inferior direito, scan line no hover, código tático e glow no ícone.
- * Animação de entrada em stagger (60ms por card).
+ * Animação de entrada em stagger (60ms por card). Abaixo do grid, uma barra
+ * de ação comprida ("Cadastrar Nova Pessoa") reaproveita o mesmo estilo
+ * visual em layout horizontal e abre cadastroPessoaModal() em escopo próprio.
  */
 function renderHomePage(appState) {
   const user = appState.user;
@@ -620,7 +622,7 @@ function renderHomePage(appState) {
     <button type="button"
             data-navigate-to="${c.page}"
             class="home-action-card"
-            style="animation-delay: ${i * 60}ms;">
+            style="animation-delay: ${(i + 1) * 60}ms;">
       <div class="card-code">
         <span>${c.code}</span>
         <span>\u25c6</span>
@@ -643,8 +645,20 @@ function renderHomePage(appState) {
         </p>
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-        ${cardsHtml}
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div x-data="cadastroPessoaModal()">
+          <button type="button" @click="abrirCadastroPessoa()"
+                  class="home-action-card home-action-bar"
+                  style="animation-delay: 0ms;">
+            <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg></div>
+            <span class="card-label">Cadastrar Nova Pessoa</span>
+          </button>
+          ${cadastroPessoaModalHTML()}
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+          ${cardsHtml}
+        </div>
       </div>
     </div>
   `;
