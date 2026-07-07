@@ -55,6 +55,13 @@ function renderAbordagemNova() {
                       style="margin-top:8px;width:100%;text-align:left;color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
                 + Cadastrar novo abordado
               </button>
+              <div style="margin-top:8px;padding:8px 12px;border-radius:4px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.3);display:flex;align-items:flex-start;gap:8px;">
+                <span style="color:var(--color-primary);font-size:14px;line-height:1.4;flex-shrink:0;">i</span>
+                <span style="font-family:var(--font-data);font-size:12px;color:var(--color-primary);line-height:1.4;">
+                  Só quer cadastrar a pessoa, sem registrar uma abordagem? Use o botão
+                  <span @click="irParaCadastroPessoaHome()" style="text-decoration:underline;cursor:pointer;font-weight:600;">Cadastrar Nova Pessoa</span> na tela inicial.
+                </span>
+              </div>
             </div>
           </div>
 
@@ -683,6 +690,15 @@ function abordagemForm() {
         this.erroPessoa = null;
         this.showNovaPessoa = true;
       });
+    },
+
+    /**
+     * Navega para a home e sinaliza abertura automática do modal de
+     * cadastro de pessoa (link do aviso "só quer cadastrar uma pessoa?").
+     */
+    irParaCadastroPessoaHome() {
+      window.__argusAbrirCadastroPessoaHome = true;
+      window.dispatchEvent(new CustomEvent("navigate", { detail: "home" }));
     },
 
     anPosicionarDropdown(_inputEl) {

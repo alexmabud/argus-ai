@@ -203,6 +203,20 @@ function cadastroPessoaModal() {
     cpBairroCadastrarNovo: false,
 
     /**
+     * Abre o modal automaticamente ao chegar na home, quando sinalizado por
+     * outra página (ex.: link "Cadastrar Nova Pessoa" em Nova Abordagem) via
+     * a flag global window.__argusAbrirCadastroPessoaHome. Chamado por
+     * x-init no wrapper do botão da home — não é usado pela Consulta IA,
+     * que já tem seu próprio init() nesse mesmo x-data mesclado.
+     */
+    initCadastroPessoaModal() {
+      if (window.__argusAbrirCadastroPessoaHome) {
+        window.__argusAbrirCadastroPessoaHome = false;
+        this.abrirCadastroPessoa(null, true);
+      }
+    },
+
+    /**
      * Abre o modal, carrega estados e opcionalmente pré-preenche nome ou CPF
      * a partir de um texto já digitado (ex.: busca sem resultado).
      * @param {string} [prefillTexto] - Nome ou CPF já digitado alhures.

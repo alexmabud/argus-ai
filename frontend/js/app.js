@@ -646,7 +646,7 @@ function renderHomePage(appState) {
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 12px;">
-        <div x-data="cadastroPessoaModal()">
+        <div x-data="cadastroPessoaModal()" x-init="initCadastroPessoaModal()">
           <button type="button" @click="abrirCadastroPessoa(null, true)"
                   class="home-action-card home-action-bar"
                   style="animation-delay: 0ms;">
