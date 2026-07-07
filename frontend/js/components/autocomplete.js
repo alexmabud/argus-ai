@@ -156,6 +156,18 @@ function autocompleteComponent(tipo) {
       return item.nome || item.id;
     },
 
+    // Desambiguador de homônimos no dropdown: nascimento > mãe > CPF > nada.
+    getSubLabel(item) {
+      if (tipo !== "pessoa") return "";
+      if (item.data_nascimento) {
+        const [y, m, d] = item.data_nascimento.split("-");
+        return `${d}/${m}/${y}`;
+      }
+      if (item.nome_mae) return item.nome_mae;
+      if (item.cpf || item.cpf_masked) return item.cpf || item.cpf_masked;
+      return "";
+    },
+
     getIds() {
       return this.selected.map((s) => s.id);
     },

@@ -50,10 +50,10 @@ function renderAbordagemNova() {
             <!-- Resultados encontrados -->
             <template x-for="item in results" :key="item.id">
               <button @click="select(item); $dispatch('pessoa-selected', { selected: selected })"
-                      style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);"
+                      style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);display:flex;flex-direction:column;gap:2px;"
                       class="hov-row-surface">
                 <span x-text="getLabel(item)"></span>
-                <span x-show="item.cpf || item.cpf_masked" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-dim);margin-left:8px;" x-text="item.cpf || item.cpf_masked"></span>
+                <span x-show="getSubLabel(item)" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="getSubLabel(item)"></span>
               </button>
             </template>
 
