@@ -15,6 +15,15 @@ function renderAbordagemNova() {
         <span style="font-family:var(--font-data);font-size:11px;font-weight:500;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.08em;">REGISTRO OPERACIONAL</span>
       </div>
 
+      <!-- Aviso: isto é uma abordagem, não cadastro avulso de pessoa -->
+      <div style="background:rgba(255,59,59,0.1);border:1px solid rgba(255,59,59,0.4);border-radius:4px;padding:10px 12px;">
+        <p style="font-family:var(--font-data);font-size:10px;font-weight:700;color:var(--color-danger);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 4px 0;">Atenção</p>
+        <p style="font-family:var(--font-body);font-size:13px;color:var(--color-text);margin:0;line-height:1.4;">
+          Isto registra uma <strong>abordagem</strong>. Se você só quer cadastrar uma pessoa, sem abordagem, use o botão
+          <span @click="irParaCadastroPessoaHome()" style="color:var(--color-primary);font-weight:600;text-decoration:underline;cursor:pointer;">Cadastrar Nova Pessoa</span> na tela inicial.
+        </p>
+      </div>
+
       <!-- 1. Pessoas abordadas (primeiro campo) -->
       <div class="glass-card" style="padding:16px;border-radius:4px;display:flex;flex-direction:column;gap:12px;position:relative;z-index:10;">
         <span style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.08em;">Pessoas abordadas</span>
@@ -55,13 +64,6 @@ function renderAbordagemNova() {
                       style="margin-top:8px;width:100%;text-align:left;color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
                 + Cadastrar novo abordado
               </button>
-              <div style="margin-top:8px;padding:8px 12px;border-radius:4px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.3);display:flex;align-items:flex-start;gap:8px;">
-                <span style="color:var(--color-primary);font-size:14px;line-height:1.4;flex-shrink:0;">i</span>
-                <span style="font-family:var(--font-data);font-size:12px;color:var(--color-primary);line-height:1.4;">
-                  Só quer cadastrar a pessoa, sem registrar uma abordagem? Use o botão
-                  <span @click="irParaCadastroPessoaHome()" style="text-decoration:underline;cursor:pointer;font-weight:600;">Cadastrar Nova Pessoa</span> na tela inicial.
-                </span>
-              </div>
             </div>
           </div>
 

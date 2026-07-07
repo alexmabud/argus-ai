@@ -7,7 +7,7 @@
  */
 function renderConsulta() {
   return `
-    <div x-data="{ ...consultaPage(), ...personPhotoModal(), ...cadastroPessoaModal() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
+    <div x-data="{ ...cadastroPessoaModal(), ...personPhotoModal(), ...consultaPage() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
 
       <!-- Header da página -->
       <div>
@@ -880,7 +880,7 @@ function consultaPage() {
       if (this.modalVerMaisTexto) { this.modalVerMaisTexto = false; return true; }
       if (this.modalVerMaisEndereco) { this.modalVerMaisEndereco = false; return true; }
       if (this.modalVerMaisVeiculo) { this.modalVerMaisVeiculo = false; return true; }
-      if (this.showCadastroPessoa) { this.showCadastroPessoa = false; return true; }
+      if (this.showCadastroPessoa) { this.fecharCadastroPessoa(); return true; }
       return false;
     },
   };

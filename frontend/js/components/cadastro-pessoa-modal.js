@@ -256,6 +256,20 @@ function cadastroPessoaModal() {
     },
 
     /**
+     * Fecha o modal no "voltar" quando este componente está sozinho no
+     * escopo (caso da home). Na Consulta IA, quem trata o voltar é o
+     * interceptBack() de consultaPage() — que também fecha este modal e
+     * precisa vir depois deste no merge do x-data para não ser sobrescrito.
+     */
+    interceptBack() {
+      if (this.showCadastroPessoa) {
+        this.fecharCadastroPessoa();
+        return true;
+      }
+      return false;
+    },
+
+    /**
      * Fecha o modal e navega para Nova Abordagem (link do aviso).
      */
     irParaNovaAbordagem() {
