@@ -97,9 +97,7 @@ class GeocodingService:
             return data.get("display_name")
 
         parts = [
-            value
-            for field, value in address.items()
-            if field not in _NOMINATIM_EXCLUDED_FIELDS
+            value for field, value in address.items() if field not in _NOMINATIM_EXCLUDED_FIELDS
         ]
         return ", ".join(parts) if parts else data.get("display_name")
 
