@@ -180,6 +180,11 @@ class FotoService:
         )
         await self.repo.create(foto)
 
+        # 2b. Recalcular foto de perfil da pessoa (única fonte de verdade —
+        # evita ficar com URL congelada e desatualizada após soft-delete).
+        if tipo == "rosto" and pessoa_id is not None:
+            await self.recomputar_foto_principal(pessoa_id)
+
         # 3. Audit log
         await self.audit.log(
             usuario_id=user_id,
@@ -229,6 +234,26 @@ class FotoService:
             Lista de Fotos da abordagem ordenadas por data_hora decrescente.
         """
         return list(await self.repo.get_by_abordagem(abordagem_id, skip=skip, limit=limit))
+
+    async def recomputar_foto_principal(self, pessoa_id: int) -> None:
+        """Recalcula a foto de perfil da pessoa a partir da foto de rosto ativa mais recente.
+
+        Fonte única de verdade para ``Pessoa.foto_principal_url`` e
+        ``foto_principal_thumb_url`` — chamado tanto no upload quanto na
+        desativação de fotos, para nunca deixar o campo congelado numa foto
+        errada ou já desativada (ex: foto de veículo enviada por engano
+        como tipo "rosto" e depois corrigida).
+
+        Args:
+            pessoa_id: ID da pessoa cuja foto de perfil deve ser recalculada.
+        """
+        pessoa = await self.db.get(Pessoa, pessoa_id)
+        if pessoa is None:
+            return
+
+        foto_rosto = await self.repo.get_ultima_rosto_ativa(pessoa_id)
+        pessoa.foto_principal_url = foto_rosto.arquivo_url if foto_rosto else None
+        pessoa.foto_principal_thumb_url = foto_rosto.thumbnail_url if foto_rosto else None
 
     async def buscar_por_rosto(
         self,
@@ -313,6 +338,12 @@ class FotoService:
         TenantFilter.check_ownership(foto, user)
 
         await self.repo.soft_delete(foto, deleted_by_id=user.id)
+
+        # Recalcular foto de perfil se a foto desativada era de rosto —
+        # senão o perfil fica travado numa foto inativa (ex: enviada com
+        # tipo errado e depois corrigida).
+        if foto.tipo == "rosto" and foto.pessoa_id is not None:
+            await self.recomputar_foto_principal(foto.pessoa_id)
 
         await self.audit.log(
             usuario_id=user.id,

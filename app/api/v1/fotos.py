@@ -33,7 +33,6 @@ from app.core.upload_validation import (
 )
 from app.database.session import get_db
 from app.dependencies import get_current_user, get_face_service
-from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.schemas.foto import (
     BuscaRostoItem,
@@ -184,14 +183,6 @@ async def upload_foto(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao fazer upload da foto. Verifique o storage e tente novamente.",
         ) from exc
-
-    # Atualizar foto principal da pessoa quando for rosto
-    if tipo == FotoTipo.rosto and pessoa_id:
-        pessoa = await db.get(Pessoa, pessoa_id)
-        if pessoa:
-            pessoa.foto_principal_url = foto.arquivo_url
-            pessoa.foto_principal_thumb_url = foto.thumbnail_url
-            await db.commit()
 
     # Enfileirar processamento facial em background (apenas para fotos de rosto)
     if tipo == FotoTipo.rosto:

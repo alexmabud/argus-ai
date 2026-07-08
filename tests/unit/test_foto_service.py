@@ -525,6 +525,113 @@ class TestDesativarFoto:
             await service.desativar(99999, usuario)
 
 
+class TestRecomputeFotoPrincipal:
+    """Testes para recomputo de Pessoa.foto_principal_url ao desativar/enviar fotos.
+
+    Cobre o bug em que a foto de perfil ficava travada numa foto errada
+    (ex: foto de carro enviada por engano como tipo="rosto") mesmo depois
+    dela ser desativada, porque o campo era gravado direto no upload e
+    nunca recalculado no soft-delete.
+    """
+
+    async def _upload_rosto(
+        self, service: FotoService, pessoa: Pessoa, usuario: Usuario, guarnicao: Guarnicao, url: str
+    ):
+        """Faz upload de uma foto tipo=rosto com uma arquivo_url determinística."""
+        service.storage.upload = AsyncMock(return_value=url)
+        return await service.upload_foto(
+            file_bytes=b"fake-image-bytes",
+            filename="rosto.jpg",
+            content_type="image/jpeg",
+            pessoa_id=pessoa.id,
+            abordagem_id=None,
+            veiculo_id=None,
+            tipo="rosto",
+            latitude=None,
+            longitude=None,
+            user_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+
+    async def test_desativar_foto_de_perfil_recua_para_rosto_ativa_mais_recente(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, pessoa: Pessoa, usuario: Usuario
+    ):
+        """Ao desativar a foto de rosto que é o perfil, deve recuar para a próxima mais recente."""
+        usuario.is_admin = True
+        storage_mock = MagicMock()
+        storage_mock.generate_key = MagicMock(return_value="fotos/teste.jpg")
+
+        with patch("app.services.foto_service.StorageService.get", return_value=storage_mock):
+            service = FotoService(db_session)
+
+        foto_antiga = await self._upload_rosto(
+            service, pessoa, usuario, guarnicao, "/storage/argus/fotos/antiga.jpg"
+        )
+        foto_recente = await self._upload_rosto(
+            service, pessoa, usuario, guarnicao, "/storage/argus/fotos/recente.jpg"
+        )
+        assert pessoa.foto_principal_url == foto_recente.arquivo_url
+
+        await service.desativar(foto_recente.id, usuario)
+
+        assert pessoa.foto_principal_url == foto_antiga.arquivo_url
+
+    async def test_desativar_unica_foto_rosto_zera_perfil(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, pessoa: Pessoa, usuario: Usuario
+    ):
+        """Ao desativar a única foto de rosto ativa, o perfil deve ficar vazio."""
+        usuario.is_admin = True
+        storage_mock = MagicMock()
+        storage_mock.generate_key = MagicMock(return_value="fotos/teste.jpg")
+
+        with patch("app.services.foto_service.StorageService.get", return_value=storage_mock):
+            service = FotoService(db_session)
+
+        foto = await self._upload_rosto(
+            service, pessoa, usuario, guarnicao, "/storage/argus/fotos/unica.jpg"
+        )
+        assert pessoa.foto_principal_url == foto.arquivo_url
+
+        await service.desativar(foto.id, usuario)
+
+        assert pessoa.foto_principal_url is None
+        assert pessoa.foto_principal_thumb_url is None
+
+    async def test_desativar_foto_nao_rosto_nao_altera_perfil(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, pessoa: Pessoa, usuario: Usuario
+    ):
+        """Desativar uma foto que não é rosto (ex: carro) não deve mexer no perfil."""
+        usuario.is_admin = True
+        storage_mock = MagicMock()
+        storage_mock.generate_key = MagicMock(return_value="fotos/teste.jpg")
+
+        with patch("app.services.foto_service.StorageService.get", return_value=storage_mock):
+            service = FotoService(db_session)
+
+        foto_rosto = await self._upload_rosto(
+            service, pessoa, usuario, guarnicao, "/storage/argus/fotos/rosto.jpg"
+        )
+        service.storage.upload = AsyncMock(return_value="/storage/argus/fotos/carro.jpg")
+        foto_veiculo = await service.upload_foto(
+            file_bytes=b"fake-image-bytes",
+            filename="carro.jpg",
+            content_type="image/jpeg",
+            pessoa_id=pessoa.id,
+            abordagem_id=None,
+            veiculo_id=None,
+            tipo="veiculo",
+            latitude=None,
+            longitude=None,
+            user_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        assert pessoa.foto_principal_url == foto_rosto.arquivo_url
+
+        await service.desativar(foto_veiculo.id, usuario)
+
+        assert pessoa.foto_principal_url == foto_rosto.arquivo_url
+
+
 class TestFotoComCompressaoStatus:
     """Testa que Foto possui campo compressao_status."""
 

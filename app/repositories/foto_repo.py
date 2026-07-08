@@ -54,6 +54,33 @@ class FotoRepository(BaseRepository[Foto]):
         result = await self.db.execute(query)
         return result.scalars().all()
 
+    async def get_ultima_rosto_ativa(self, pessoa_id: int) -> Foto | None:
+        """Busca a foto de rosto ativa mais recente de uma pessoa.
+
+        Usado para recalcular a foto de perfil (``Pessoa.foto_principal_url``)
+        sempre que uma foto é enviada ou desativada, em vez de manter um
+        valor congelado que fica desatualizado após soft-delete.
+
+        Args:
+            pessoa_id: ID da pessoa.
+
+        Returns:
+            Foto de tipo "rosto" ativa mais recente (por ``data_hora``),
+            ou None se a pessoa não tiver nenhuma foto de rosto ativa.
+        """
+        query = (
+            select(Foto)
+            .where(
+                Foto.pessoa_id == pessoa_id,
+                Foto.tipo == "rosto",
+                Foto.ativo == True,  # noqa: E712
+            )
+            .order_by(Foto.data_hora.desc())
+            .limit(1)
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
     async def count_by_abordagem(self, abordagem_id: int) -> int:
         """Conta fotos ativas vinculadas a uma abordagem.
 
