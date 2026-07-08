@@ -13,6 +13,8 @@ def _foto_mock(
     arquivo_url: str = "/storage/argus/fotos/abc_x.jpg",
     thumbnail_url: str | None = None,
     ativo: bool = True,
+    tipo: str | None = None,
+    pessoa_id: int | None = None,
 ) -> MagicMock:
     """Cria mock de Foto com campos relevantes para a task."""
     foto = MagicMock()
@@ -20,6 +22,8 @@ def _foto_mock(
     foto.arquivo_url = arquivo_url
     foto.thumbnail_url = thumbnail_url
     foto.ativo = ativo
+    foto.tipo = tipo
+    foto.pessoa_id = pessoa_id
     return foto
 
 
@@ -88,6 +92,47 @@ async def test_backfill_gera_thumb_e_atualiza_foto():
     assert result["status"] == "sucesso"
     assert foto.thumbnail_url == "/storage/argus/thumbs/abc_x_thumb.jpg"
     ctx["_db"].commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_backfill_de_foto_rosto_recalcula_foto_principal_da_pessoa():
+    """Se a foto é tipo=rosto vinculada a uma pessoa, deve recalcular o perfil dela.
+
+    Sem isso, Pessoa.foto_principal_thumb_url fica desatualizada indefinidamente
+    quando a foto de perfil é uma foto legada que só ganha thumb via backfill.
+    """
+    foto = _foto_mock(arquivo_url="/storage/argus/fotos/abc_x.jpg", tipo="rosto", pessoa_id=42)
+    ctx = _ctx_with_db(foto)
+
+    with (
+        patch("app.tasks.thumbnail_backfill.gerar_thumbnail", return_value=b"thumb-bytes"),
+        patch("app.tasks.thumbnail_backfill.FotoService") as mock_foto_service_cls,
+    ):
+        mock_service = MagicMock()
+        mock_service.recomputar_foto_principal = AsyncMock()
+        mock_foto_service_cls.return_value = mock_service
+
+        result = await gerar_thumbnail_backfill_task(ctx, foto.id)
+
+    assert result["status"] == "sucesso"
+    mock_foto_service_cls.assert_called_once_with(ctx["_db"])
+    mock_service.recomputar_foto_principal.assert_awaited_once_with(42)
+
+
+@pytest.mark.asyncio
+async def test_backfill_de_foto_nao_rosto_nao_recalcula_foto_principal():
+    """Foto que não é rosto (ex: veículo) não deve disparar o recompute do perfil."""
+    foto = _foto_mock(arquivo_url="/storage/argus/fotos/abc_x.jpg", tipo="veiculo", pessoa_id=42)
+    ctx = _ctx_with_db(foto)
+
+    with (
+        patch("app.tasks.thumbnail_backfill.gerar_thumbnail", return_value=b"thumb-bytes"),
+        patch("app.tasks.thumbnail_backfill.FotoService") as mock_foto_service_cls,
+    ):
+        result = await gerar_thumbnail_backfill_task(ctx, foto.id)
+
+    assert result["status"] == "sucesso"
+    mock_foto_service_cls.assert_not_called()
 
 
 @pytest.mark.asyncio

@@ -184,6 +184,11 @@ async def upload_foto(
             detail="Erro ao fazer upload da foto. Verifique o storage e tente novamente.",
         ) from exc
 
+    # Commit antes de enfileirar — o worker arq roda numa conexão separada e,
+    # em READ COMMITTED, não enxerga a Foto se o job for dequeued antes do
+    # commit (falha silenciosa, sem retry, deixando face_processada travado).
+    await db.commit()
+
     # Enfileirar processamento facial em background (apenas para fotos de rosto)
     if tipo == FotoTipo.rosto:
         try:
