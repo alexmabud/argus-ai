@@ -681,6 +681,30 @@ input.input-warning {
 }
 
 /* ========================================
+   MAPA — botão de tela cheia
+   ======================================== */
+.leaflet-container:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}
+
+.mapa-fullscreen-btn {
+  width: 30px !important;
+  height: 30px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #333;
+  background: #fff;
+}
+
+.mapa-fullscreen-btn:hover {
+  background: #f4f4f4;
+}
+
+/* ========================================
    PAGE CONTENT — legacy support
    ======================================== */
 .page-content {

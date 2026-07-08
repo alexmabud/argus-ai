@@ -1379,6 +1379,7 @@ function pessoaDetalhePage(pessoaId) {
         attribution: '© OpenStreetMap',
         maxZoom: 19,
       }).addTo(this.mapaInst);
+      criarControleFullscreenMapa().addTo(this.mapaInst);
 
       const pontos = this.pontosComLocalizacao;
 

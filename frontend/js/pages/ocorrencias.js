@@ -475,6 +475,7 @@ function ocorrenciasPage() {
         attribution: '© OpenStreetMap',
         maxZoom: 19,
       }).addTo(this.mapaAnaliticoInst);
+      criarControleFullscreenMapa().addTo(this.mapaAnaliticoInst);
 
       const pontos = this.pontosMapa;
 

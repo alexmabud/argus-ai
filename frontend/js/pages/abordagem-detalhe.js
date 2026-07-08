@@ -327,6 +327,7 @@ function abordagemDetalhePage() {
         L.circleMarker([this.ab.latitude, this.ab.longitude], {
           radius: 8, color: '#00D4FF', fillColor: '#00D4FF', fillOpacity: 0.8, weight: 2
         }).addTo(this._mapa);
+        criarControleFullscreenMapa().addTo(this._mapa);
         return true;
       };
       if (!tryInit()) {
