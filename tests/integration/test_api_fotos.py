@@ -14,10 +14,12 @@ from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.security import criar_access_token, hash_senha
 from app.database.session import get_db
 from app.dependencies import get_face_service
 from app.main import create_app
 from app.models.foto import Foto
+from app.models.usuario import Usuario
 
 
 class TestUploadFoto:
@@ -311,7 +313,34 @@ class TestDownloadMidia:
 
 
 class TestDeletarFoto:
-    """Testes do endpoint DELETE /api/v1/fotos/{foto_id}."""
+    """Testes do endpoint DELETE /api/v1/fotos/{foto_id}. Restrito a administradores."""
+
+    @pytest.fixture
+    async def admin_usuario(self, db_session, guarnicao):
+        """Fixture de usuário admin com sessão ativa, na mesma guarnição de ``pessoa``."""
+        u = Usuario(
+            nome="Admin Teste Fotos",
+            matricula="ADMFOTO01",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao.id,
+            is_admin=True,
+            session_id="admin-foto-session-id",
+        )
+        db_session.add(u)
+        await db_session.flush()
+        return u
+
+    @pytest.fixture
+    async def admin_headers(self, admin_usuario):
+        """Headers de autenticação Bearer para o admin."""
+        token = criar_access_token(
+            {
+                "sub": str(admin_usuario.id),
+                "guarnicao_id": admin_usuario.guarnicao_id,
+                "sid": admin_usuario.session_id,
+            }
+        )
+        return {"Authorization": f"Bearer {token}"}
 
     @patch("app.services.foto_service.StorageService")
     async def test_deletar_foto_retorna_204(
@@ -319,6 +348,7 @@ class TestDeletarFoto:
         mock_storage_cls,
         client: AsyncClient,
         auth_headers: dict,
+        admin_headers: dict,
         pessoa,
     ):
         """Deve desativar a foto (204) e removê-la da listagem da pessoa.
@@ -326,7 +356,8 @@ class TestDeletarFoto:
         Args:
             mock_storage_cls: Mock do StorageService.
             client: Cliente HTTP assincrónico.
-            auth_headers: Headers com Bearer token válido.
+            auth_headers: Headers com Bearer token válido (usuário comum, faz o upload).
+            admin_headers: Headers com Bearer token de admin (apaga a foto).
             pessoa: Fixture de pessoa dona da foto enviada.
         """
         mock_storage = MagicMock()
@@ -343,23 +374,35 @@ class TestDeletarFoto:
         )
         foto_id = upload_resp.json()["id"]
 
-        response = await client.delete(f"/api/v1/fotos/{foto_id}", headers=auth_headers)
+        response = await client.delete(f"/api/v1/fotos/{foto_id}", headers=admin_headers)
         assert response.status_code == 204
 
         # Foto some da listagem da pessoa
         listagem = await client.get(f"/api/v1/fotos/pessoa/{pessoa.id}", headers=auth_headers)
         assert all(f["id"] != foto_id for f in listagem.json())
 
-    async def test_deletar_foto_inexistente_retorna_404(
+    async def test_deletar_foto_sem_ser_admin_retorna_403(
         self, client: AsyncClient, auth_headers: dict
+    ):
+        """Deve retornar 403 quando quem tenta apagar não é administrador.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers com Bearer token válido (usuário comum).
+        """
+        response = await client.delete("/api/v1/fotos/1", headers=auth_headers)
+        assert response.status_code == 403
+
+    async def test_deletar_foto_inexistente_retorna_404(
+        self, client: AsyncClient, admin_headers: dict
     ):
         """Deve retornar 404 ao tentar desativar uma foto que não existe.
 
         Args:
             client: Cliente HTTP assincrónico.
-            auth_headers: Headers com Bearer token válido.
+            admin_headers: Headers com Bearer token de admin.
         """
-        response = await client.delete("/api/v1/fotos/99999", headers=auth_headers)
+        response = await client.delete("/api/v1/fotos/99999", headers=admin_headers)
         assert response.status_code == 404
 
     async def test_deletar_foto_sem_auth_retorna_401(self, client: AsyncClient):

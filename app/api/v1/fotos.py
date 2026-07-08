@@ -249,7 +249,7 @@ async def deletar_foto(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> None:
-    """Remove foto via soft delete.
+    """Remove foto via soft delete. Restrito a administradores.
 
     Permite corrigir fotos categorizadas incorretamente (ex: foto de
     arma/droga enviada como "rosto"). Não remove o arquivo do storage,
@@ -259,14 +259,16 @@ async def deletar_foto(
         request: Objeto Request do FastAPI.
         foto_id: ID da foto a remover.
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado (precisa ser admin).
 
     Raises:
         NaoEncontradoError: Se a foto não existe.
-        AcessoNegadoError: Se a foto pertence a outra guarnição.
+        AcessoNegadoError: Se o usuário não é administrador, ou se a foto
+            pertence a outra guarnição.
 
     Status Code:
         204: Foto removida.
+        403: Usuário não é administrador.
         404: Foto não encontrada.
         429: Rate limit (30/min).
     """

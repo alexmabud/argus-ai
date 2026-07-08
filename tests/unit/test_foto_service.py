@@ -401,7 +401,13 @@ class TestDesativarFoto:
     async def test_desativa_foto_com_sucesso(
         self, db_session: AsyncSession, guarnicao: Guarnicao, pessoa: Pessoa, usuario: Usuario
     ):
-        """Deve marcar a foto como inativa (ativo=False) preservando o registro."""
+        """Deve marcar a foto como inativa (ativo=False) preservando o registro.
+
+        Apagar foto é restrito a administradores, por isso ``usuario`` precisa
+        do flag ``is_admin`` para que a desativação seja permitida.
+        """
+        usuario.is_admin = True
+
         storage_mock = MagicMock()
         storage_mock.generate_key = MagicMock(return_value="fotos/teste.jpg")
         storage_mock.upload = AsyncMock(return_value="/storage/argus/fotos/teste.jpg")
@@ -427,13 +433,47 @@ class TestDesativarFoto:
         desativada = await service.desativar(foto.id, usuario)
         assert desativada.ativo is False
 
+    async def test_desativar_foto_por_usuario_nao_admin_levanta_acesso_negado(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, pessoa: Pessoa, usuario: Usuario
+    ):
+        """Deve levantar AcessoNegadoError quando quem apaga não é admin.
+
+        Mesmo sendo da mesma guarnição da foto (e ainda que tenha sido quem
+        fez o upload), um usuário sem ``is_admin`` não pode apagar fotos.
+        """
+        storage_mock = MagicMock()
+        storage_mock.generate_key = MagicMock(return_value="fotos/teste.jpg")
+        storage_mock.upload = AsyncMock(return_value="/storage/argus/fotos/teste.jpg")
+
+        with patch("app.services.foto_service.StorageService.get", return_value=storage_mock):
+            service = FotoService(db_session)
+
+        foto = await service.upload_foto(
+            file_bytes=b"fake-image-bytes",
+            filename="teste.jpg",
+            content_type="image/jpeg",
+            pessoa_id=pessoa.id,
+            abordagem_id=None,
+            veiculo_id=None,
+            tipo="evidencia",
+            latitude=None,
+            longitude=None,
+            user_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+
+        with pytest.raises(AcessoNegadoError):
+            await service.desativar(foto.id, usuario)
+
     async def test_desativar_foto_de_outra_guarnicao_levanta_acesso_negado(
         self, db_session: AsyncSession, guarnicao: Guarnicao, pessoa: Pessoa, usuario: Usuario
     ):
         """Deve levantar AcessoNegadoError ao desativar foto de outra guarnição.
 
         A foto pertence à guarnição de ``usuario`` (tenant A). Um segundo
-        usuário criado em outra guarnição (tenant B) não pode desativá-la.
+        usuário não-admin criado em outra guarnição (tenant B) não pode
+        desativá-la — bloqueado já pelo gate de admin, antes mesmo de
+        chegar na checagem de tenant.
         """
         storage_mock = MagicMock()
         storage_mock.generate_key = MagicMock(return_value="fotos/teste.jpg")
@@ -479,6 +519,7 @@ class TestDesativarFoto:
         self, db_session: AsyncSession, usuario: Usuario
     ):
         """Deve levantar NaoEncontradoError quando a foto não existe."""
+        usuario.is_admin = True
         service = FotoService(db_session)
         with pytest.raises(NaoEncontradoError):
             await service.desativar(99999, usuario)

@@ -18,7 +18,7 @@ from PIL import UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NaoEncontradoError, QuotaExcedidaError
+from app.core.exceptions import AcessoNegadoError, NaoEncontradoError, QuotaExcedidaError
 from app.core.permissions import TenantFilter
 from app.models.foto import Foto
 from app.models.pessoa import Pessoa
@@ -283,7 +283,7 @@ class FotoService:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> Foto:
-        """Remove foto via soft delete, com verificação de tenant.
+        """Remove foto via soft delete, restrito a administradores.
 
         Permite corrigir fotos categorizadas incorretamente (ex: foto de
         arma/droga enviada como "rosto"). Não remove o arquivo do storage,
@@ -291,7 +291,8 @@ class FotoService:
 
         Args:
             foto_id: ID da foto a desativar.
-            user: Usuário autenticado (verificação de guarnição + auditoria).
+            user: Usuário autenticado (precisa ser admin; verificação de
+                guarnição + auditoria).
             ip_address: IP da requisição (opcional).
             user_agent: User-Agent do cliente (opcional).
 
@@ -299,9 +300,13 @@ class FotoService:
             Foto desativada (ativo=False).
 
         Raises:
+            AcessoNegadoError: Se o usuário não é administrador, ou se a
+                foto pertence a outra guarnição.
             NaoEncontradoError: Se a foto não existe.
-            AcessoNegadoError: Se a foto pertence a outra guarnição.
         """
+        if not (user.is_admin or user.is_super_admin):
+            raise AcessoNegadoError("Apenas administradores podem apagar fotos")
+
         foto = await self.repo.get(foto_id)
         if not foto:
             raise NaoEncontradoError("Foto")

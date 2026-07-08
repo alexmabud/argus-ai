@@ -127,7 +127,7 @@ function renderPessoaDetalhe(appState) {
                        @click="fotoAmpliada = foto.arquivo_url">
                   <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                         x-text="foto.tipo || 'foto'"></span>
-                  <button @click.stop="apagarFoto(foto.id)"
+                  <button x-show="isAdmin" @click.stop="apagarFoto(foto.id)"
                           class="hov-icon-danger"
                           style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
                           title="Apagar foto">
@@ -205,7 +205,7 @@ function renderPessoaDetalhe(appState) {
                        @click="fotoAmpliada = foto.arquivo_url">
                   <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                         x-text="foto.tipo || 'foto'"></span>
-                  <button @click.stop="apagarFoto(foto.id)"
+                  <button x-show="isAdmin" @click.stop="apagarFoto(foto.id)"
                           class="hov-icon-danger"
                           style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
                           title="Apagar foto">
@@ -274,7 +274,7 @@ function renderPessoaDetalhe(appState) {
                          @click="fotoAmpliada = foto.arquivo_url">
                     <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                           x-text="foto.tipo || 'foto'"></span>
-                    <button @click.stop="apagarFoto(foto.id)"
+                    <button x-show="isAdmin" @click.stop="apagarFoto(foto.id)"
                             class="hov-icon-danger"
                             style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
                             title="Apagar foto">
@@ -1076,8 +1076,10 @@ function renderPessoaDetalhe(appState) {
 }
 
 function pessoaDetalhePage(pessoaId) {
+  const _user = auth.getUser() || {};
   return {
     pessoa: null,
+    isAdmin: !!(_user.is_admin || _user.is_super_admin),
     fotos: [],
     novaFotoFile: null,
     novaFotoPreviewUrl: "",
