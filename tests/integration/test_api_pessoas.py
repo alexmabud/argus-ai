@@ -106,6 +106,29 @@ class TestListarPessoas:
         data = response.json()
         assert len(data) >= 2
 
+    async def test_listar_pessoas_expoe_foto_principal_thumb_url(
+        self, client: AsyncClient, auth_headers: dict, db_session, guarnicao
+    ):
+        """GET /pessoas/ deve expor foto_principal_thumb_url na listagem.
+
+        Regressão: _to_pessoa_read montava PessoaRead sem esse campo.
+        """
+        from app.models.pessoa import Pessoa
+
+        pessoa = Pessoa(
+            nome="PESSOA LISTA COM THUMB",
+            guarnicao_id=guarnicao.id,
+            foto_principal_url="/storage/argus/fotos/lista.jpg",
+            foto_principal_thumb_url="/storage/argus/thumbs/lista_thumb.jpg",
+        )
+        db_session.add(pessoa)
+        await db_session.flush()
+
+        response = await client.get("/api/v1/pessoas/", headers=auth_headers)
+        assert response.status_code == 200
+        encontrada = next(p for p in response.json() if p["id"] == pessoa.id)
+        assert encontrada["foto_principal_thumb_url"] == "/storage/argus/thumbs/lista_thumb.jpg"
+
 
 class TestObterPessoa:
     """Testes do endpoint GET /api/v1/pessoas/{id}."""
@@ -160,6 +183,33 @@ class TestObterPessoa:
         )
         assert response.status_code == 200
         assert response.json()["nome"] == "PESSOA DE OUTRA EQUIPE"
+
+    async def test_obter_detalhe_pessoa_expoe_foto_principal_thumb_url(
+        self, client: AsyncClient, auth_headers: dict, db_session, guarnicao
+    ):
+        """GET /pessoas/{id} deve expor foto_principal_thumb_url, não só a url cheia.
+
+        Regressão: PessoaDetail era montado manualmente sem esse campo,
+        então o thumb nunca aparecia na API mesmo com valor correto no banco.
+        """
+        from app.models.pessoa import Pessoa
+
+        pessoa = Pessoa(
+            nome="PESSOA COM THUMB",
+            guarnicao_id=guarnicao.id,
+            foto_principal_url="/storage/argus/fotos/perfil.jpg",
+            foto_principal_thumb_url="/storage/argus/thumbs/perfil_thumb.jpg",
+        )
+        db_session.add(pessoa)
+        await db_session.flush()
+
+        response = await client.get(
+            f"/api/v1/pessoas/{pessoa.id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        thumb = response.json()["foto_principal_thumb_url"]
+        assert thumb == "/storage/argus/thumbs/perfil_thumb.jpg"
 
     async def test_obter_pessoa_inexistente(self, client: AsyncClient, auth_headers: dict):
         """Testa busca de pessoa inexistente retorna 404.
