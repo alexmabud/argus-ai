@@ -55,6 +55,7 @@ class TestOCRService:
 
         assert result is None
 
+    @patch("app.services.ocr_service._reader_loaded", True)
     @patch("app.services.ocr_service._reader", None)
     def test_extrair_placa_sem_easyocr(self):
         """Deve retornar None quando EasyOCR não está instalado."""
