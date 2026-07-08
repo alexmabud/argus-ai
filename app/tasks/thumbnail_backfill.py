@@ -11,6 +11,7 @@ import logging
 from sqlalchemy import select
 
 from app.models.foto import Foto
+from app.services.foto_service import FotoService
 from app.services.storage_service import StorageService
 from app.utils.imaging import gerar_thumbnail
 from app.utils.s3 import extrair_key_da_url
@@ -29,7 +30,8 @@ async def gerar_thumbnail_backfill_task(ctx: dict, foto_id: int) -> dict:
         2. Skip se a foto não existe, já tem thumb ou não é imagem.
         3. Baixa bytes da imagem original do storage.
         4. Gera thumbnail (CPU-bound em thread) e faz upload em ``thumbs/``.
-        5. Atualiza ``foto.thumbnail_url`` e comita.
+        5. Atualiza ``foto.thumbnail_url``, recalcula a foto de perfil da
+           pessoa se for a foto de rosto ativa mais recente, e comita.
 
     Args:
         ctx: Contexto do worker arq. Espera ``db_session_factory`` e
@@ -78,6 +80,13 @@ async def gerar_thumbnail_backfill_task(ctx: dict, foto_id: int) -> dict:
             )
 
             foto.thumbnail_url = thumb_url
+
+            # Se essa foto é a foto de rosto ativa mais recente da pessoa,
+            # o backfill do thumb precisa refletir em foto_principal_thumb_url
+            # — senão o perfil fica com thumb desatualizado indefinidamente.
+            if foto.tipo == "rosto" and foto.pessoa_id is not None:
+                await FotoService(db).recomputar_foto_principal(foto.pessoa_id)
+
             await db.commit()
             logger.info("Thumb backfilled para foto %d", foto_id)
             return {"status": "sucesso"}
