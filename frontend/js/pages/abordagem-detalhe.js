@@ -146,11 +146,11 @@ function renderAbordagemDetalhe() {
                   <div style="width:64px;height:64px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;overflow:hidden;cursor:pointer;position:relative;"
                        @click="fotoAmpliada = f.arquivo_url">
                     <img :src="f.thumbnail_url || f.arquivo_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
-                    <!-- Botão download -->
-                    <button @click.stop="downloadMidia(f)"
-                       style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.65);border-radius:3px;padding:2px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;"
-                       title="Baixar">
-                      <svg width="12" height="12" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    <button x-show="isAdmin" @click.stop="apagarFoto(f.id)"
+                       class="hov-icon-danger"
+                       style="position:absolute;top:2px;right:2px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;background:rgba(5,10,15,0.75);color:var(--color-text-muted);border:none;border-radius:2px;cursor:pointer;font-size:10px;line-height:1;padding:0;"
+                       title="Apagar mídia">
+                      ✕
                     </button>
                   </div>
                 </template>
@@ -262,6 +262,13 @@ function renderAbordagemDetalhe() {
 
       ${personPhotoModalHTML()}
 
+      <!-- Foto ampliada (mídia da abordagem — sem pessoa vinculada) -->
+      <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
+           style="position:fixed;top:var(--header-height);left:0;right:0;bottom:var(--bottom-nav-height);background:rgba(5,10,15,0.85);z-index:50;display:flex;align-items:center;justify-content:center;padding:1rem;">
+        <img :src="fotoAmpliada" @click.stop="fotoAmpliada = null"
+             style="max-width:min(90vw,480px);max-height:80vh;border-radius:4px;display:block;cursor:pointer;object-fit:contain;">
+      </div>
+
     </div>
   `;
 }
@@ -272,6 +279,7 @@ function abordagemDetalhePage() {
     loading: true,
     erro: null,
     fotoAmpliada: null,
+    isAdmin: !!(auth.getUser()?.is_admin || auth.getUser()?.is_super_admin),
     rapFile: null,
     rapNumero: '',
     rapData: '',
@@ -434,22 +442,14 @@ function abordagemDetalhePage() {
       }
     },
 
-    async downloadMidia(foto) {
+    async apagarFoto(fotoId) {
+      if (!confirm("Apagar esta mídia? Esta ação não pode ser desfeita.")) return;
       try {
-        const response = await api.downloadBlob(`/fotos/${foto.id}/download`);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const disposition = response.headers.get('Content-Disposition');
-        const match = disposition && disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';\n]+)["']?/i);
-        a.download = match ? decodeURIComponent(match[1].trim()) : `midia_${foto.id}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (e) {
-        this.midiaErro = 'Erro ao baixar mídia. Tente novamente.';
+        await api.delete(`/fotos/${fotoId}`);
+        this.ab = { ...this.ab, fotos: this.ab.fotos.filter(f => f.id !== fotoId) };
+        showToast("Mídia apagada com sucesso!", "success");
+      } catch (err) {
+        showToast(err?.message || "Erro ao apagar mídia", "error");
       }
     },
 
