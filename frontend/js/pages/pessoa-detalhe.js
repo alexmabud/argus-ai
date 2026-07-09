@@ -170,7 +170,7 @@ function renderPessoaDetalhe(appState) {
               </div>
             </div>
             <p style="font-size: 0.75rem; color: var(--color-text-dim); margin: 0;">
-              Armas, drogas, objetos ou outras evidências associadas a esta pessoa.
+              Tatuagens, armas, drogas, objetos ou outras evidências associadas a esta pessoa.
             </p>
 
             <!-- Preview + botão enviar (aparece após selecionar) -->

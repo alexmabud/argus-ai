@@ -142,7 +142,7 @@ function renderAbordagemDetalhe() {
                 <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);">Fotos dessa abordagem</span>
               </div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <template x-for="f in midiasAbordagem" :key="f.id">
+                <template x-for="f in midiasAbordagem()" :key="f.id">
                   <div style="width:64px;height:64px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:4px;overflow:hidden;cursor:pointer;position:relative;"
                        @click="fotoAmpliada = f.arquivo_url">
                     <img :src="f.thumbnail_url || f.arquivo_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
@@ -287,7 +287,12 @@ function abordagemDetalhePage() {
     _mapa: null,
     _mapaObserver: null,
 
-    get midiasAbordagem() {
+    // Método (não getter) de propósito: o x-data raiz desta página faz spread
+    // de múltiplos objetos (`{ ...abordagemDetalhePage(), ...personPhotoModal() }`),
+    // e o Alpine congela getters em valores estáticos nesse cenário (mesmo bug
+    // documentado em fotosRosto() de pessoa-detalhe.js). Chamado como função
+    // no template (`midiasAbordagem()`) continua reativo.
+    midiasAbordagem() {
       return (this.ab && this.ab.fotos ? this.ab.fotos : []).filter(f => f.tipo === 'midia_abordagem');
     },
 
