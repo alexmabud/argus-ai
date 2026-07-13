@@ -4,7 +4,11 @@ Testa endpoints CRUD de pessoas incluindo criação, busca, atualização,
 soft delete e verificação de isolamento multi-tenant.
 """
 
+import pytest
 from httpx import AsyncClient
+
+from app.core.security import criar_access_token, hash_senha
+from app.models.usuario import Usuario
 
 
 class TestCriarPessoa:
@@ -226,14 +230,44 @@ class TestObterPessoa:
 
 
 class TestDeletarPessoa:
-    """Testes do endpoint DELETE /api/v1/pessoas/{id}."""
+    """Testes do endpoint DELETE /api/v1/pessoas/{id}. Restrito a administradores."""
 
-    async def test_soft_delete_pessoa(self, client: AsyncClient, auth_headers: dict):
-        """Testa soft delete de pessoa retorna 204.
+    @pytest.fixture
+    async def admin_usuario(self, db_session, guarnicao):
+        """Fixture de usuário admin com sessão ativa."""
+        u = Usuario(
+            nome="Admin Teste Pessoas",
+            matricula="ADMPESSOA01",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao.id,
+            is_admin=True,
+            session_id="admin-pessoa-session-id",
+        )
+        db_session.add(u)
+        await db_session.flush()
+        return u
+
+    @pytest.fixture
+    async def admin_headers(self, admin_usuario):
+        """Headers de autenticação Bearer para o admin."""
+        token = criar_access_token(
+            {
+                "sub": str(admin_usuario.id),
+                "guarnicao_id": admin_usuario.guarnicao_id,
+                "sid": admin_usuario.session_id,
+            }
+        )
+        return {"Authorization": f"Bearer {token}"}
+
+    async def test_soft_delete_pessoa(
+        self, client: AsyncClient, auth_headers: dict, admin_headers: dict
+    ):
+        """Testa soft delete de pessoa por admin retorna 204.
 
         Args:
             client: Cliente HTTP assincrónico.
-            auth_headers: Headers com Bearer token válido.
+            auth_headers: Headers com Bearer token válido (para criar a pessoa).
+            admin_headers: Headers de admin (para apagar).
         """
         create_response = await client.post(
             "/api/v1/pessoas/",
@@ -244,6 +278,91 @@ class TestDeletarPessoa:
 
         response = await client.delete(
             f"/api/v1/pessoas/{pessoa_id}",
-            headers=auth_headers,
+            headers=admin_headers,
         )
         assert response.status_code == 204
+
+    async def test_soft_delete_pessoa_sem_ser_admin_retorna_403(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Usuário comum não pode apagar pessoa (achado #04/2026-07-13)."""
+        create_response = await client.post(
+            "/api/v1/pessoas/",
+            json={"nome": "Protegida"},
+            headers=auth_headers,
+        )
+        pessoa_id = create_response.json()["id"]
+
+        response = await client.delete(
+            f"/api/v1/pessoas/{pessoa_id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 403
+
+
+class TestAtualizarPessoa:
+    """Testes do endpoint PATCH /api/v1/pessoas/{id}. Restrito a administradores."""
+
+    @pytest.fixture
+    async def admin_usuario(self, db_session, guarnicao):
+        """Fixture de usuário admin com sessão ativa."""
+        u = Usuario(
+            nome="Admin Teste Pessoas Patch",
+            matricula="ADMPESSOA02",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao.id,
+            is_admin=True,
+            session_id="admin-pessoa-patch-session-id",
+        )
+        db_session.add(u)
+        await db_session.flush()
+        return u
+
+    @pytest.fixture
+    async def admin_headers(self, admin_usuario):
+        """Headers de autenticação Bearer para o admin."""
+        token = criar_access_token(
+            {
+                "sub": str(admin_usuario.id),
+                "guarnicao_id": admin_usuario.guarnicao_id,
+                "sid": admin_usuario.session_id,
+            }
+        )
+        return {"Authorization": f"Bearer {token}"}
+
+    async def test_admin_atualiza_pessoa_retorna_200(
+        self, client: AsyncClient, auth_headers: dict, admin_headers: dict
+    ):
+        """Admin consegue editar pessoa via PATCH."""
+        create_response = await client.post(
+            "/api/v1/pessoas/",
+            json={"nome": "Nome Original"},
+            headers=auth_headers,
+        )
+        pessoa_id = create_response.json()["id"]
+
+        response = await client.patch(
+            f"/api/v1/pessoas/{pessoa_id}",
+            json={"nome": "Nome Corrigido"},
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["nome"] == "NOME CORRIGIDO"
+
+    async def test_atualizar_pessoa_sem_ser_admin_retorna_403(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Usuário comum não pode editar pessoa (achado #04/2026-07-13)."""
+        create_response = await client.post(
+            "/api/v1/pessoas/",
+            json={"nome": "Protegida"},
+            headers=auth_headers,
+        )
+        pessoa_id = create_response.json()["id"]
+
+        response = await client.patch(
+            f"/api/v1/pessoas/{pessoa_id}",
+            json={"nome": "Hackeado"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 403

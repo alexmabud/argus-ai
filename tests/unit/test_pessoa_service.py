@@ -8,13 +8,13 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import decrypt, hash_for_search
-from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
+from app.core.exceptions import AcessoNegadoError, ConflitoDadosError, NaoEncontradoError
 from app.core.security import hash_senha
 from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
-from app.schemas.pessoa import EnderecoCreate, PessoaCreate
+from app.schemas.pessoa import EnderecoCreate, PessoaCreate, PessoaUpdate
 from app.services.pessoa_service import PessoaService
 
 
@@ -196,11 +196,15 @@ class TestDesativarPessoa:
     ):
         """Testa soft delete marca pessoa como inativa.
 
+        Mutação de pessoa é restrita a administradores (achado #04/
+        2026-07-13) — usuario precisa de is_admin para desativar.
+
         Args:
             db_session: Sessão do banco de testes.
             guarnicao: Fixture de guarnição.
             usuario: Fixture de usuário.
         """
+        usuario.is_admin = True
         service = PessoaService(db_session)
         data = PessoaCreate(nome="Para Desativar")
         pessoa = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
@@ -209,6 +213,71 @@ class TestDesativarPessoa:
         desativada = await service.desativar(pessoa.id, usuario)
         assert desativada.ativo is False
         assert desativada.desativado_em is not None
+
+    async def test_desativar_sem_ser_admin_levanta_acesso_negado(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario
+    ):
+        """Usuário comum (is_admin=False) não pode desativar pessoa."""
+        service = PessoaService(db_session)
+        data = PessoaCreate(nome="Protegida")
+        admin_bootstrap = Usuario(
+            nome="Bootstrap",
+            matricula="BOOT-01",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao.id,
+            is_admin=True,
+        )
+        db_session.add(admin_bootstrap)
+        await db_session.flush()
+        pessoa = await service.criar(
+            data=data, user_id=admin_bootstrap.id, guarnicao_id=guarnicao.id
+        )
+
+        with pytest.raises(AcessoNegadoError):
+            await service.desativar(pessoa.id, usuario)
+
+
+class TestAtualizarPessoa:
+    """Testes de autorização do PATCH de pessoa (achado #04/2026-07-13)."""
+
+    async def test_admin_atualiza_pessoa_com_sucesso(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario
+    ):
+        """Admin consegue editar pessoa mesmo sem ser da mesma guarnição."""
+        usuario.is_admin = True
+        service = PessoaService(db_session)
+        pessoa = await service.criar(
+            data=PessoaCreate(nome="Original"), user_id=usuario.id, guarnicao_id=guarnicao.id
+        )
+
+        atualizada = await service.atualizar(
+            pessoa.id, PessoaUpdate(nome="Atualizado"), usuario
+        )
+
+        assert atualizada.nome == "ATUALIZADO"
+
+    async def test_atualizar_sem_ser_admin_levanta_acesso_negado(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario
+    ):
+        """Usuário comum (is_admin=False) não pode editar pessoa."""
+        service = PessoaService(db_session)
+        admin_bootstrap = Usuario(
+            nome="Bootstrap",
+            matricula="BOOT-02",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao.id,
+            is_admin=True,
+        )
+        db_session.add(admin_bootstrap)
+        await db_session.flush()
+        pessoa = await service.criar(
+            data=PessoaCreate(nome="Protegida"),
+            user_id=admin_bootstrap.id,
+            guarnicao_id=guarnicao.id,
+        )
+
+        with pytest.raises(AcessoNegadoError):
+            await service.atualizar(pessoa.id, PessoaUpdate(nome="Hackeado"), usuario)
 
 
 class TestAdminPermissoes:

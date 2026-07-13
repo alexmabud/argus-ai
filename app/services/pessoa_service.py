@@ -140,13 +140,20 @@ class PessoaService:
 
         Raises:
             NaoEncontradoError: Se pessoa não existe.
+            AcessoNegadoError: Se o usuário não é administrador.
             ConflitoDadosError: Se novo CPF já cadastrado por outra pessoa.
         """
+        if not (user.is_admin or user.is_super_admin):
+            raise AcessoNegadoError("Apenas administradores podem editar pessoas")
+
         pessoa = await self.repo.get(pessoa_id)
         if not pessoa:
             raise NaoEncontradoError("Pessoa")
-        # Pessoas são cadastros globais — qualquer usuário autenticado pode editar,
-        # independente da guarnição. Isolamento aplica-se apenas a abordagens.
+        # Pessoas são cadastros globais (qualquer autenticado LÊ, independente da
+        # guarnição) — mas mutação é restrita a administradores (achado #04/
+        # 2026-07-13): o cadastro nacional é compartilhado entre equipes, então
+        # qualquer operador podia editar/apagar o registro de qualquer outra
+        # equipe. Isolamento por guarnição segue não se aplicando a leitura.
 
         update_data = data.model_dump(exclude_unset=True)
 
@@ -287,11 +294,15 @@ class PessoaService:
 
         Raises:
             NaoEncontradoError: Se pessoa não existe.
+            AcessoNegadoError: Se o usuário não é administrador.
         """
+        if not (user.is_admin or user.is_super_admin):
+            raise AcessoNegadoError("Apenas administradores podem apagar pessoas")
+
         pessoa = await self.repo.get(pessoa_id)
         if not pessoa:
             raise NaoEncontradoError("Pessoa")
-        # Pessoas são cadastros globais — sem isolamento de guarnição.
+        # Cadastro global (achado #04/2026-07-13) — ver nota em atualizar().
 
         await self.repo.soft_delete(pessoa, deleted_by_id=user.id)
 

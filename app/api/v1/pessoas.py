@@ -259,7 +259,7 @@ async def atualizar_pessoa(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> PessoaRead:
-    """Atualiza dados de uma pessoa existente.
+    """Atualiza dados de uma pessoa existente. Restrito a administradores.
 
     Permite atualização parcial (PATCH). Se CPF alterado, re-criptografa
     com Fernet e recalcula hash SHA-256.
@@ -269,18 +269,19 @@ async def atualizar_pessoa(
         pessoa_id: ID da pessoa a atualizar.
         data: Dados de atualização parcial.
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado (precisa ser admin ou super-admin).
 
     Returns:
         PessoaRead com dados atualizados.
 
     Raises:
         NaoEncontradoError: Se pessoa não existe.
-        AcessoNegadoError: Se pessoa de outra guarnição.
+        AcessoNegadoError: Se o usuário não é administrador.
         ConflitoDadosError: Se novo CPF já cadastrado.
 
     Status Code:
         200: Pessoa atualizada com sucesso.
+        403: Usuário não é administrador.
         404: Pessoa não encontrada.
         409: CPF duplicado.
         429: Rate limit (30/min).
@@ -314,7 +315,7 @@ async def deletar_pessoa(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> None:
-    """Soft delete de pessoa (ativo=False).
+    """Soft delete de pessoa (ativo=False). Restrito a administradores.
 
     Marca a pessoa como inativa sem remoção física do banco.
     Registra auditoria da operação.
@@ -323,14 +324,15 @@ async def deletar_pessoa(
         request: Objeto Request do FastAPI.
         pessoa_id: ID da pessoa a desativar.
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado (precisa ser admin ou super-admin).
 
     Raises:
         NaoEncontradoError: Se pessoa não existe.
-        AcessoNegadoError: Se pessoa de outra guarnição.
+        AcessoNegadoError: Se o usuário não é administrador.
 
     Status Code:
         204: Pessoa desativada com sucesso.
+        403: Usuário não é administrador.
     """
     service = PessoaService(db)
     await service.desativar(pessoa_id, user)
