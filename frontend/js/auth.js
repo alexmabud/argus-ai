@@ -50,18 +50,28 @@ class AuthManager {
     return user;
   }
 
-  logout() {
-    // Avisa o backend para limpar o cookie HTTPOnly. Faz best-effort —
-    // mesmo se a chamada falhar, descartamos tokens locais.
-    api.post("/auth/logout").catch(() => {});
+  async logout() {
+    // Avisa o backend para limpar o cookie HTTPOnly. Best-effort — mesmo se
+    // a chamada falhar, seguimos limpando o estado local.
+    await api.post("/auth/logout").catch(() => {});
     api.clearTokens();
     this.user = null;
     localStorage.removeItem("argus_user");
-    // Limpa dados sensíveis locais (PII no IndexedDB + respostas de API
-    // cacheadas no Service Worker) — evita vazamento em dispositivo compartilhado.
-    if (typeof clearLocalDB === "function") clearLocalDB().catch(() => {});
+    await this.purgeLocalStorage();
+  }
+
+  async purgeLocalStorage() {
+    // Limpa dados sensíveis locais (PII no IndexedDB cifrado + respostas
+    // cacheadas no Service Worker) e AGUARDA a conclusão — achado
+    // #11/2026-07-13: antes disso era fire-and-forget, então a UI liberava
+    // a tela de login antes da limpeza terminar, deixando uma janela em que
+    // o próximo operador no mesmo device podia ver dados da sessão anterior.
+    // Usado tanto no logout explícito quanto no evento auth:expired.
+    if (typeof clearLocalDB === "function") {
+      await clearLocalDB().catch(() => {});
+    }
     if (self.caches) {
-      caches
+      await caches
         .keys()
         .then((keys) =>
           Promise.all(keys.filter((k) => k.startsWith("argus-")).map((k) => caches.delete(k))),
@@ -82,7 +92,7 @@ class AuthManager {
       // — deslogar no boot offline causaria perda de dados de campo não
       // sincronizados. Mantém a sessão existente (cookie HttpOnly + argus_user).
       if (err && err.status === 401) {
-        this.logout();
+        await this.logout();
         return null;
       }
       return this.user;

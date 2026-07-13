@@ -169,12 +169,19 @@ function app() {
       window.addEventListener("online", () => { this.online = true; });
       window.addEventListener("offline", () => { this.online = false; });
 
-      // Escutar expiracao de auth
+      // Escutar expiracao de auth. Purga IndexedDB + Cache Storage antes de
+      // liberar a tela de login — mesmo risco de vazamento entre operadores
+      // em device compartilhado que o logout explícito (achado #11/2026-07-13).
       window.addEventListener("auth:expired", () => {
-        this.authenticated = false;
-        this.user = null;
-        this.currentPage = "login";
-        this.$nextTick(() => this.renderLogin());
+        auth
+          .purgeLocalStorage()
+          .catch(() => {})
+          .finally(() => {
+            this.authenticated = false;
+            this.user = null;
+            this.currentPage = "login";
+            this.$nextTick(() => this.renderLogin());
+          });
       });
 
       // Escutar navegacao por evento customizado
@@ -502,9 +509,13 @@ function app() {
 
     /**
      * Realiza logout e retorna para tela de login.
+     *
+     * Aguarda a purga de IndexedDB/Cache Storage antes de liberar a tela de
+     * login (achado #11/2026-07-13) — troca de operador no mesmo device não
+     * pode correr com a limpeza ainda em background.
      */
-    logout() {
-      auth.logout();
+    async logout() {
+      await auth.logout().catch(() => {});
       window.dispatchEvent(new CustomEvent("wm:stop"));
       this.authenticated = false;
       this.user = null;
