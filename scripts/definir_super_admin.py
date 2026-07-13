@@ -42,6 +42,12 @@ async def main(matricula: str) -> None:
         await session.commit()
     await engine.dispose()
     print(f"OK: '{matricula}' agora é super-admin.")
+    print(
+        "ATENÇÃO: conta mais privilegiada do sistema. Faça login e habilite o TOTP "
+        "(POST /admin/2fa/setup + /admin/2fa/verify) antes de considerar o "
+        "ambiente pronto para produção — o login aceita senha isolada até o "
+        "2FA ser configurado."
+    )
 
 
 if __name__ == "__main__":

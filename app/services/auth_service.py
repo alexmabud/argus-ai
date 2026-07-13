@@ -68,8 +68,10 @@ class AuthService:
         - **Usuário comum**: senha de uso único (substituída por hash inutilizável
           após o primeiro login) e sessão exclusiva (novo session_id invalida
           tokens anteriores em outros dispositivos).
-        - **Admin**: senha permanente reutilizável e session_id estável, permitindo
-          sessões simultâneas em múltiplos dispositivos (celular + desktop).
+        - **Admin/super-admin**: senha permanente reutilizável e session_id
+          estável, permitindo sessões simultâneas em múltiplos dispositivos
+          (celular + desktop). TOTP é exigido em ambos quando ``totp_secret``
+          está configurado (2FA obrigatório para contas privilegiadas).
 
         Args:
             matricula: Matrícula do agente.
@@ -100,8 +102,9 @@ class AuthService:
             await self.db.commit()
             raise CredenciaisInvalidasError()
 
-        # Rejeita senha provisória expirada (apenas usuários comuns — admin isento).
-        if not usuario.is_admin and usuario.senha_expira_em and usuario.senha_expira_em < agora:
+        # Rejeita senha provisória expirada (apenas usuários comuns — admin/super-admin isentos).
+        eh_privilegiado = usuario.is_admin or usuario.is_super_admin
+        if not eh_privilegiado and usuario.senha_expira_em and usuario.senha_expira_em < agora:
             await self.audit.log(
                 usuario_id=usuario.id,
                 acao="LOGIN_FAILED",
@@ -114,7 +117,13 @@ class AuthService:
 
         # Verificar TOTP ANTES de zerar fail counter — evita bypass de lockout:
         # senha correta + TOTP errado não deve resetar tentativas_falhas.
-        if usuario.is_admin and usuario.totp_secret:
+        # super-admin conta como privilegiado aqui: bootstrap (definir_super_admin.py)
+        # só liga is_super_admin, então checar apenas is_admin deixava a conta mais
+        # poderosa do sistema logar só com senha mesmo com TOTP configurado. Mesma
+        # política de "bootstrap/enrollment" do admin comum se aplica: sem
+        # totp_secret ainda (pré-enrollment via POST /admin/2fa/setup, que já
+        # aceita is_super_admin), o login segue sem exigir código.
+        if eh_privilegiado and usuario.totp_secret:
             totp_ok = False
             if totp_code:
                 try:
@@ -137,10 +146,10 @@ class AuthService:
         usuario.tentativas_falhas = 0
         usuario.bloqueado_ate = None
 
-        if usuario.is_admin:
-            # Admin: senha permanente e sessão compartilhável entre dispositivos.
-            # session_id é gerado apenas se ainda não existe; mantido nos demais
-            # logins para que tokens de celular e desktop coexistam.
+        if eh_privilegiado:
+            # Admin/super-admin: senha permanente e sessão compartilhável entre
+            # dispositivos. session_id é gerado apenas se ainda não existe; mantido
+            # nos demais logins para que tokens de celular e desktop coexistam.
             if usuario.session_id is None:
                 usuario.session_id = str(uuid.uuid4())
             novo_session_id = usuario.session_id
