@@ -2,10 +2,19 @@
 """Script de anonimização periódica de dados sensíveis (LGPD).
 
 Anonimiza registros soft-deleted há mais tempo que DATA_RETENTION_DAYS.
-Sobrescreve campos sensíveis (nome, CPF, embeddings), apaga os arquivos de
-foto do storage S3/R2 e limpa as URLs/embeddings no banco. Registra os IDs
-afetados (pessoa/foto) para trilha de auditoria. Deve ser executado
+Sobrescreve campos sensíveis (nome, CPF, nome da mãe, URLs de foto de perfil,
+endereços/geolocalização, embeddings), apaga os arquivos de foto do storage
+S3/R2 e limpa as URLs/embeddings no banco. Registra os IDs afetados
+(pessoa/foto/endereço) para trilha de auditoria. Deve ser executado
 periodicamente via cron ou scheduler.
+
+Fora de escopo (decisão explícita): ``PessoaObservacao.texto`` (observações
+operacionais) não é sobrescrito por este script. O modelo
+(``app/models/pessoa_observacao.py``) documenta soft delete como garantia de
+"nunca perder dados" para a trilha operacional — redigir/anonimizar texto
+livre nessa tabela é uma decisão de produto/jurídica própria (pode conter
+referências cruzadas a outras pessoas ainda ativas) e requer tratamento
+dedicado, não uma sobrescrita mecânica de campo.
 
 Uso:
     python scripts/anonimizar_dados.py [--dry-run]
@@ -24,9 +33,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config import settings
+from app.models.endereco import EnderecoPessoa
 from app.models.foto import Foto
 from app.models.pessoa import Pessoa
-from app.services.storage_service import StorageService, normalize_storage_url
+from app.services.storage_service import StorageService, storage_key
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("anonimizar")
@@ -34,27 +44,9 @@ logger = logging.getLogger("anonimizar")
 # Configuração
 RETENTION_DAYS = int(os.getenv("DATA_RETENTION_DAYS", "1825"))  # 5 anos
 
-# Marcador para arquivo_url (coluna NOT NULL) após apagar o arquivo do storage.
-_URL_ANONIMIZADA = "ANONIMIZADO"
-
-
-def _storage_key(url: str | None) -> str | None:
-    """Extrai a chave do objeto no storage a partir da URL da foto.
-
-    Converte a URL (absoluta legada ou relativa ``/storage/bucket/key``) para a
-    chave relativa ao bucket, usada por ``StorageService.delete``.
-
-    Args:
-        url: URL armazenada em ``Foto.arquivo_url``/``thumbnail_url`` ou None.
-
-    Returns:
-        Chave do objeto (ex.: ``fotos/uuid.jpg``) ou None se não derivável.
-    """
-    norm = normalize_storage_url(url)
-    if not norm or not norm.startswith("/storage/"):
-        return None
-    _bucket, _sep, key = norm[len("/storage/") :].partition("/")
-    return key or None
+# Marcador para colunas de texto NOT NULL (arquivo_url, endereco) após a
+# anonimização — não há valor válido para "sem dado" nessas colunas.
+_VALOR_ANONIMIZADO = "ANONIMIZADO"
 
 
 async def anonimizar_pessoas(session: AsyncSession, cutoff: datetime, dry_run: bool) -> int:
@@ -86,10 +78,13 @@ async def anonimizar_pessoas(session: AsyncSession, cutoff: datetime, dry_run: b
     for pessoa in pessoas:
         pessoa.nome = "ANONIMIZADO"
         pessoa.apelido = None
-        pessoa.cpf_criptografado = None
+        pessoa.nome_mae = None
+        pessoa.cpf_encrypted = None
         pessoa.cpf_hash = None
         pessoa.observacoes = None
         pessoa.data_nascimento = None
+        pessoa.foto_principal_url = None
+        pessoa.foto_principal_thumb_url = None
         logger.info("Pessoa %d anonimizada", pessoa.id)
 
     await session.flush()
@@ -122,7 +117,7 @@ async def anonimizar_fotos(
         .where(
             Pessoa.desativado_em.isnot(None),
             Pessoa.desativado_em < cutoff,
-            Foto.arquivo_url != _URL_ANONIMIZADA,
+            Foto.arquivo_url != _VALOR_ANONIMIZADO,
         )
     )
     result = await session.execute(query)
@@ -135,7 +130,7 @@ async def anonimizar_fotos(
     assert storage is not None  # garantido pelo caller fora do dry-run
     for foto in fotos:
         for url in (foto.arquivo_url, foto.thumbnail_url):
-            key = _storage_key(url)
+            key = storage_key(url)
             if not key:
                 continue
             try:
@@ -144,12 +139,60 @@ async def anonimizar_fotos(
                 logger.warning("Falha ao apagar foto %d do storage (key=%s)", foto.id, key)
         foto.embedding_face = None
         foto.thumbnail_url = None
-        foto.arquivo_url = _URL_ANONIMIZADA
+        foto.arquivo_url = _VALOR_ANONIMIZADO
         logger.info("Foto %d (pessoa %s) apagada do storage e limpa", foto.id, foto.pessoa_id)
 
     await session.flush()
     logger.info("%d fotos apagadas do storage e limpas", len(fotos))
     return len(fotos)
+
+
+async def anonimizar_enderecos(session: AsyncSession, cutoff: datetime, dry_run: bool) -> int:
+    """Remove dados de localização de endereços de pessoas anonimizadas.
+
+    Sobrescreve logradouro, bairro, cidade, estado, referências de
+    localidade e o ponto geográfico (PostGIS) dos endereços vinculados a
+    pessoas soft-deleted antes da data de corte, eliminando o vetor de
+    reidentificação por endereço/geolocalização.
+
+    Args:
+        session: Sessão assíncrona do SQLAlchemy.
+        cutoff: Data limite.
+        dry_run: Se True, apenas conta sem modificar.
+
+    Returns:
+        Número de endereços anonimizados.
+    """
+    query = (
+        select(EnderecoPessoa)
+        .join(Pessoa, EnderecoPessoa.pessoa_id == Pessoa.id)
+        .where(
+            Pessoa.desativado_em.isnot(None),
+            Pessoa.desativado_em < cutoff,
+            EnderecoPessoa.endereco != _VALOR_ANONIMIZADO,
+        )
+    )
+    result = await session.execute(query)
+    enderecos = result.scalars().all()
+
+    if dry_run:
+        logger.info("[DRY-RUN] %d endereços seriam anonimizados", len(enderecos))
+        return len(enderecos)
+
+    for endereco in enderecos:
+        endereco.endereco = _VALOR_ANONIMIZADO
+        endereco.bairro = None
+        endereco.cidade = None
+        endereco.estado = None
+        endereco.estado_id = None
+        endereco.cidade_id = None
+        endereco.bairro_id = None
+        endereco.localizacao = None
+        logger.info("Endereço %d (pessoa %s) anonimizado", endereco.id, endereco.pessoa_id)
+
+    await session.flush()
+    logger.info("%d endereços anonimizados", len(enderecos))
+    return len(enderecos)
 
 
 async def main():
@@ -179,6 +222,7 @@ async def main():
             async with session.begin():
                 pessoas_count = await anonimizar_pessoas(session, cutoff, dry_run)
                 fotos_count = await anonimizar_fotos(session, cutoff, dry_run, storage)
+                enderecos_count = await anonimizar_enderecos(session, cutoff, dry_run)
     finally:
         if storage is not None:
             await storage.shutdown()
@@ -187,6 +231,7 @@ async def main():
     logger.info("=== Concluído ===")
     logger.info("Pessoas anonimizadas: %d", pessoas_count)
     logger.info("Fotos processadas: %d", fotos_count)
+    logger.info("Endereços anonimizados: %d", enderecos_count)
 
 
 if __name__ == "__main__":
