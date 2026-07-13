@@ -2,12 +2,22 @@
 # backup_to_clouds.sh — Backup diário do Argus AI para Oracle Object Storage e Google Drive
 #
 # O que faz, em ordem:
-#   1. Pega o dump mais recente do banco em /mnt/banco/backups → Oracle + GDrive
+#   1. Cifra o dump mais recente do banco (GPG AES256) → Oracle + GDrive
 #   2. Cifra o .env com GPG simétrico (AES256) → Oracle + GDrive
-#   3. Empacota /mnt/banco/grafana em tar.gz → Oracle + GDrive
+#   3. Empacota /mnt/banco/grafana em tar.gz, cifra (GPG AES256) → Oracle + GDrive
 #   4. Sincroniza /mnt/fotos → apenas GDrive (storage maior)
 #   5. Aplica retenção (apaga arquivos remotos > 7 dias)
 #   6. Atualiza métrica Prometheus de último backup bem-sucedido
+#
+# Achado #06/2026-07-13: banco e Grafana subiam em texto claro (só o .env já
+# era cifrado) — agora os três usam o mesmo GPG simétrico AES256. As FOTOS
+# (passo 4) continuam sem cifra: GPG por arquivo quebraria o sync incremental
+# do rclone (recifraria tudo toda noite) — a forma correta é um remote
+# "gdrive-crypt" (rclone crypt) por cima do "gdrive" existente, que cifra
+# transparentemente mantendo o diff incremental. Isso exige configuração
+# manual na VM (nova senha de criptografia, novo remote) — ver
+# scripts/setup_rclone.sh. Documentado como risco residual aceito até essa
+# migração ser feita.
 #
 # Pré-requisitos:
 #   - rclone instalado e configurado com remotes "oracle" e "gdrive"
@@ -49,9 +59,20 @@ abort() {
 }
 
 cleanup() {
-    rm -f /tmp/argus_env_${DATE}.gpg /tmp/argus_grafana_${DATE}.tar.gz
+    rm -f /tmp/argus_env_${DATE}.gpg /tmp/argus_grafana_${DATE}.tar.gz \
+        /tmp/argus_db_${DATE}.dump.gpg /tmp/argus_grafana_${DATE}.tar.gz.gpg
 }
 trap cleanup EXIT
+
+# Cifra um arquivo com GPG simétrico AES256 usando a mesma passphrase do
+# .env (achado #06/2026-07-13). Uso: cifrar_gpg <origem> <destino.gpg>
+cifrar_gpg() {
+    gpg --batch --yes --passphrase-file "$GPG_PASS_FILE" \
+        --cipher-algo AES256 \
+        --symmetric \
+        --output "$2" \
+        "$1"
+}
 
 # ── Pre-flight ───────────────────────────────────────────────────────────────
 log "=== Backup Argus AI → Clouds (run $RUN_ID) ==="
@@ -68,38 +89,42 @@ command -v gpg >/dev/null || abort "gpg não instalado"
 rclone listremotes 2>/dev/null | grep -q '^oracle:' || abort "remote 'oracle' não configurado (rode 'rclone config')"
 rclone listremotes 2>/dev/null | grep -q '^gdrive:' || abort "remote 'gdrive' não configurado (rode 'rclone config')"
 
-# ── 1. Banco PostgreSQL (dump mais recente) ──────────────────────────────────
+# ── 1. Banco PostgreSQL (dump mais recente, cifrado) ─────────────────────────
 LATEST_DUMP=$(ls -1t "$BACKUP_DIR"/argus_*.dump 2>/dev/null | head -1)
 [ -n "$LATEST_DUMP" ] || abort "Nenhum dump em $BACKUP_DIR (container db-backup rodando?)"
 
-DUMP_BASENAME="argus_${DATE}.dump"
-log "Banco: $LATEST_DUMP → $DUMP_BASENAME ($(du -h "$LATEST_DUMP" | cut -f1))"
-rclone copyto "$LATEST_DUMP" "$ORACLE_REMOTE/banco/$DUMP_BASENAME" --log-level NOTICE
-rclone copyto "$LATEST_DUMP" "$GDRIVE_REMOTE/banco/$DUMP_BASENAME" --log-level NOTICE
+DB_GPG="/tmp/argus_db_${DATE}.dump.gpg"
+log "Banco: cifrando $LATEST_DUMP com GPG (AES256)"
+cifrar_gpg "$LATEST_DUMP" "$DB_GPG"
+
+DUMP_BASENAME="argus_${DATE}.dump.gpg"
+log "Banco cifrado: $(du -h "$DB_GPG" | cut -f1) → $DUMP_BASENAME"
+rclone copyto "$DB_GPG" "$ORACLE_REMOTE/banco/$DUMP_BASENAME" --log-level NOTICE
+rclone copyto "$DB_GPG" "$GDRIVE_REMOTE/banco/$DUMP_BASENAME" --log-level NOTICE
 
 # ── 2. .env criptografado ────────────────────────────────────────────────────
 ENV_GPG="/tmp/argus_env_${DATE}.gpg"
 log "ENV: cifrando com GPG (AES256)"
-gpg --batch --yes --passphrase-file "$GPG_PASS_FILE" \
-    --cipher-algo AES256 \
-    --symmetric \
-    --output "$ENV_GPG" \
-    "$ENV_FILE"
+cifrar_gpg "$ENV_FILE" "$ENV_GPG"
 
 ENV_BASENAME="env_${DATE}.gpg"
 log "ENV cifrado: $(du -h "$ENV_GPG" | cut -f1) → $ENV_BASENAME"
 rclone copyto "$ENV_GPG" "$ORACLE_REMOTE/env/$ENV_BASENAME" --log-level NOTICE
 rclone copyto "$ENV_GPG" "$GDRIVE_REMOTE/env/$ENV_BASENAME" --log-level NOTICE
 
-# ── 3. Grafana ───────────────────────────────────────────────────────────────
+# ── 3. Grafana (empacotado e cifrado) ─────────────────────────────────────────
 GRAFANA_TAR="/tmp/argus_grafana_${DATE}.tar.gz"
 log "Grafana: empacotando $GRAFANA_DIR"
 tar -czf "$GRAFANA_TAR" -C "$(dirname "$GRAFANA_DIR")" "$(basename "$GRAFANA_DIR")"
 
-GRAFANA_BASENAME="grafana_${DATE}.tar.gz"
-log "Grafana: $(du -h "$GRAFANA_TAR" | cut -f1) → $GRAFANA_BASENAME"
-rclone copyto "$GRAFANA_TAR" "$ORACLE_REMOTE/grafana/$GRAFANA_BASENAME" --log-level NOTICE
-rclone copyto "$GRAFANA_TAR" "$GDRIVE_REMOTE/grafana/$GRAFANA_BASENAME" --log-level NOTICE
+GRAFANA_GPG="/tmp/argus_grafana_${DATE}.tar.gz.gpg"
+log "Grafana: cifrando com GPG (AES256)"
+cifrar_gpg "$GRAFANA_TAR" "$GRAFANA_GPG"
+
+GRAFANA_BASENAME="grafana_${DATE}.tar.gz.gpg"
+log "Grafana cifrado: $(du -h "$GRAFANA_GPG" | cut -f1) → $GRAFANA_BASENAME"
+rclone copyto "$GRAFANA_GPG" "$ORACLE_REMOTE/grafana/$GRAFANA_BASENAME" --log-level NOTICE
+rclone copyto "$GRAFANA_GPG" "$GDRIVE_REMOTE/grafana/$GRAFANA_BASENAME" --log-level NOTICE
 
 # ── 4. Fotos (apenas Google Drive — Oracle tem só 10GB) ──────────────────────
 log "Fotos: sync $FOTOS_DIR → $GDRIVE_REMOTE/fotos/"

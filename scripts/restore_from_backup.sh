@@ -102,10 +102,17 @@ confirm "Continuar?" || { say "Cancelado."; exit 0; }
 
 # ── 5. Banco ─────────────────────────────────────────────────────────────────
 if [ "$DO_BANCO" = true ]; then
+    DUMP_GPG="$WORK_DIR/argus_${RESTORE_DATE}.dump.gpg"
     DUMP_FILE="$WORK_DIR/argus_${RESTORE_DATE}.dump"
-    say "Baixando dump do banco..."
-    rclone copy "$REMOTE/banco/argus_${RESTORE_DATE}.dump" "$WORK_DIR/" --log-level NOTICE
-    [ -f "$DUMP_FILE" ] || { err "Dump não baixou: $DUMP_FILE"; exit 1; }
+    say "Baixando dump cifrado do banco..."
+    rclone copy "$REMOTE/banco/argus_${RESTORE_DATE}.dump.gpg" "$WORK_DIR/" --log-level NOTICE
+    [ -f "$DUMP_GPG" ] || { err "Dump cifrado não baixou: $DUMP_GPG"; exit 1; }
+
+    say "Decifrando dump do banco (vai pedir a senha GPG salva no seu cofre de senhas)..."
+    gpg --batch --yes --output "$DUMP_FILE" --decrypt "$DUMP_GPG" || {
+        err "Falha ao decifrar o dump — senha errada?"
+        exit 1
+    }
 
     warn "Vou DROPAR e RECRIAR o banco argus_db. Toda alteração depois de $RESTORE_DATE será perdida."
     confirm "Continuar com o restore do banco?" || { say "Pulando banco."; DO_BANCO=false; }
@@ -157,9 +164,16 @@ fi
 
 # ── 7. Grafana ──────────────────────────────────────────────────────────────
 if [ "$DO_GRAFANA" = true ]; then
+    GR_GPG="$WORK_DIR/grafana_${RESTORE_DATE}.tar.gz.gpg"
     GR_TAR="$WORK_DIR/grafana_${RESTORE_DATE}.tar.gz"
-    say "Baixando backup do Grafana..."
-    rclone copy "$REMOTE/grafana/grafana_${RESTORE_DATE}.tar.gz" "$WORK_DIR/" --log-level NOTICE
+    say "Baixando backup cifrado do Grafana..."
+    rclone copy "$REMOTE/grafana/grafana_${RESTORE_DATE}.tar.gz.gpg" "$WORK_DIR/" --log-level NOTICE
+
+    say "Decifrando backup do Grafana (vai pedir a senha GPG salva no seu cofre de senhas)..."
+    gpg --batch --yes --output "$GR_TAR" --decrypt "$GR_GPG" || {
+        err "Falha ao decifrar o backup do Grafana — senha errada?"
+        exit 1
+    }
 
     warn "Vou parar o container Grafana, sobrescrever /mnt/banco/grafana e reiniciar."
     confirm "Continuar com o restore do Grafana?" || { say "Pulando Grafana."; DO_GRAFANA=false; }

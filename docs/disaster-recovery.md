@@ -15,10 +15,15 @@ pode ser que você não tenha acesso à VM nem ao cofre de senhas.
 
 | Item | Frequência | Oracle Object Storage | Google Drive | Retenção |
 |---|---|:---:|:---:|---|
-| Dump do banco (`argus_*.dump`) | Diário (07h BRT pelo `db-backup`, replicado às 03h pelas nuvens) | ✅ | ✅ | 7 dias |
+| Dump do banco (`argus_*.dump.gpg`, GPG AES256) | Diário (07h BRT pelo `db-backup`, replicado às 03h pelas nuvens) | ✅ | ✅ | 7 dias |
 | `.env` criptografado (GPG AES256) | Diário | ✅ | ✅ | 7 dias |
-| Grafana (`/mnt/banco/grafana` em tar.gz) | Diário | ✅ | ✅ | 7 dias |
+| Grafana (`/mnt/banco/grafana` em tar.gz, GPG AES256) | Diário | ✅ | ✅ | 7 dias |
 | Fotos/uploads (`/mnt/fotos`) | Diário (espelho via `rclone sync`) | ❌ | ✅ | espelhado |
+
+> **Fotos sem cifra (risco residual aceito, achado #06/2026-07-13):** GPG por
+> arquivo quebraria o sync incremental do rclone. A forma correta é um
+> remote `rclone crypt` sobre o `gdrive` — pendente de configuração manual
+> na VM (nova senha + novo remote, ver `scripts/setup_rclone.sh`).
 | Backup local na VM (`/mnt/banco/backups`) | Diário (container `db-backup`) | — | — | 7 dias |
 
 ### Localizações físicas
