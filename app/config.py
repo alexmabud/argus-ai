@@ -201,6 +201,10 @@ class Settings(BaseSettings):
     EMBEDDING_CACHE_TTL: int = 3600  # 1h cache de embeddings de busca
 
     # Face Recognition
+    # Limiar mínimo de similaridade cosseno (0-1) para considerar duas fotos
+    # o mesmo rosto em buscar-rosto. 0.6 é o valor já usado em produção antes
+    # desta config existir de fato — repositório de fotos tinha esse mesmo
+    # número hardcoded, ignorando esta variável (achado #26/2026-07-13).
     FACE_SIMILARITY_THRESHOLD: float = 0.6
 
     # Geocoding

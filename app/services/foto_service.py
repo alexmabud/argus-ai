@@ -18,6 +18,7 @@ from PIL import UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import AcessoNegadoError, NaoEncontradoError, QuotaExcedidaError
 from app.core.permissions import TenantFilter
 from app.models.foto import Foto
@@ -260,6 +261,7 @@ class FotoService:
         image_bytes: bytes,
         face_service: FaceService,
         top_k: int = 5,
+        threshold: float | None = None,
     ) -> list[dict]:
         """Busca pessoas por similaridade facial via pgvector.
 
@@ -272,6 +274,10 @@ class FotoService:
             image_bytes: Imagem com rosto para busca em bytes.
             face_service: Serviço InsightFace para extração de embedding.
             top_k: Número máximo de resultados.
+            threshold: Limiar mínimo de similaridade 0-1 (opcional). Se
+                None, usa settings.FACE_SIMILARITY_THRESHOLD — antes o
+                repositório sempre aplicava seu próprio default hardcoded
+                (0.6), ignorando a configuração (achado #26/2026-07-13).
 
         Returns:
             Lista de dicionários com foto, pessoa e similaridade.
@@ -281,7 +287,11 @@ class FotoService:
         if embedding is None:
             return []
 
-        results = await self.repo.buscar_por_similaridade_facial(embedding, top_k=top_k)
+        if threshold is None:
+            threshold = settings.FACE_SIMILARITY_THRESHOLD
+        results = await self.repo.buscar_por_similaridade_facial(
+            embedding, top_k=top_k, threshold=threshold
+        )
 
         # Carregar pessoas vinculadas às fotos em um único SELECT
         pessoa_ids = [row[0].pessoa_id for row in results if row[0].pessoa_id]

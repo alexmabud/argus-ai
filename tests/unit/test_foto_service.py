@@ -251,6 +251,45 @@ class TestBuscarPorRosto:
 
         assert results[0]["similaridade"] == 0.9877
 
+    @pytest.mark.asyncio
+    async def test_buscar_por_rosto_usa_threshold_de_settings_por_padrao(self):
+        """Sem threshold explícito, repassa settings.FACE_SIMILARITY_THRESHOLD ao repo.
+
+        Achado #26/2026-07-13: antes o service não passava threshold nenhum
+        para o repositório, que sempre aplicava seu próprio default hardcoded
+        (0.6) — a configuração de settings nunca chegava a valer, mesmo que
+        alterada via env.
+        """
+        from app.config import settings
+
+        service = self._make_service()
+        embedding = np.array([0.1] * 512)
+        face_service = MagicMock()
+        face_service.extrair_embedding.return_value = embedding
+        service.repo.buscar_por_similaridade_facial = AsyncMock(return_value=[])
+
+        await service.buscar_por_rosto(image_bytes=b"fake_image", face_service=face_service)
+
+        service.repo.buscar_por_similaridade_facial.assert_awaited_once()
+        kwargs = service.repo.buscar_por_similaridade_facial.call_args.kwargs
+        assert kwargs["threshold"] == settings.FACE_SIMILARITY_THRESHOLD
+
+    @pytest.mark.asyncio
+    async def test_buscar_por_rosto_threshold_explicito_sobrepoe_settings(self):
+        """threshold explícito tem prioridade sobre settings.FACE_SIMILARITY_THRESHOLD."""
+        service = self._make_service()
+        embedding = np.array([0.1] * 512)
+        face_service = MagicMock()
+        face_service.extrair_embedding.return_value = embedding
+        service.repo.buscar_por_similaridade_facial = AsyncMock(return_value=[])
+
+        await service.buscar_por_rosto(
+            image_bytes=b"fake_image", face_service=face_service, threshold=0.9
+        )
+
+        kwargs = service.repo.buscar_por_similaridade_facial.call_args.kwargs
+        assert kwargs["threshold"] == 0.9
+
 
 class TestUploadFotoThumbnail:
     """Testes para geração de thumbnail no fluxo de upload_foto."""
