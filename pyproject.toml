@@ -36,7 +36,7 @@ dependencies = [
     # AI / RAG
     "numpy>=1.26.0",
     "sentence-transformers>=5.5.1",
-    "pymupdf>=1.23.0",
+    "pymupdf>=1.28.0",
     # Image
     "pillow>=12.2.0",
     "pillow-heif>=0.18.0",
