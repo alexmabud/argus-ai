@@ -11,7 +11,7 @@ groups:
         title: CPU Alta
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 5m
         annotations:
           summary: CPU alta na VM
@@ -43,7 +43,7 @@ groups:
         title: CPU Crítica
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 10m
         annotations:
           summary: "CPU CRÍTICA na VM"
@@ -75,7 +75,7 @@ groups:
         title: RAM Alta
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 5m
         annotations:
           summary: RAM alta na VM
@@ -107,7 +107,7 @@ groups:
         title: Disco de Fotos Cheio
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 2m
         annotations:
           summary: Disco /mnt/fotos com pouco espaço
@@ -139,7 +139,7 @@ groups:
         title: Disco do Sistema Crítico
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 2m
         annotations:
           summary: "Disco do sistema CRÍTICO"
@@ -212,7 +212,7 @@ groups:
         title: Alta Taxa de Erros HTTP 5xx
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 5m
         annotations:
           summary: Alta taxa de erros na API
@@ -244,7 +244,7 @@ groups:
         title: Latência Alta na API
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 5m
         annotations:
           summary: Endpoint com latência alta
@@ -405,7 +405,7 @@ groups:
         title: Disco de Fotos vai encher em 7 dias
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 30m
         annotations:
           summary: Disco /mnt/fotos vai encher em ~7 dias
@@ -472,7 +472,7 @@ groups:
         title: Certificado SSL Expirando
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 1h
         annotations:
           summary: Certificado SSL expira em menos de 15 dias

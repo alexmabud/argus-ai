@@ -18,6 +18,12 @@ DOMAIN = os.environ.get("DOMAIN", "arguseye.duckdns.org")
 
 BRT = timezone(timedelta(hours=-3))
 
+#: Acumula falhas de consulta ao Prometheus durante um run de main() — usado
+#: para expor a degradação no relatório e no exit code (achado #28/2026-07-13).
+#: Reiniciada no começo de main() para não vazar estado entre chamadas
+#: (ex.: testes que rodam main() mais de uma vez no mesmo processo).
+_query_errors: list[str] = []
+
 
 def query(promql: str) -> float | None:
     """Consulta um valor escalar no Prometheus.
@@ -41,9 +47,11 @@ def query(promql: str) -> float | None:
             return float(results[0]["value"][1])
         return None
     except Exception as exc:
-        # Erro de conexão/HTTP/parse NÃO é "sem dados": registra em stderr para
-        # não mascarar um Prometheus inacessível como métrica vazia no relatório.
+        # Erro de conexão/HTTP/parse NÃO é "sem dados": registra em stderr E
+        # acumula em _query_errors para não mascarar um Prometheus
+        # inacessível como métrica vazia no relatório (achado #28/2026-07-13).
         print(f"[reporter] erro ao consultar Prometheus ({promql!r}): {exc}", file=sys.stderr)
+        _query_errors.append(promql)
         return None
 
 
@@ -70,13 +78,24 @@ def query_range_max(promql: str, hours: int = 24) -> float | None:
             },
             timeout=15,
         )
+        resp.raise_for_status()
         data = resp.json()
         results = data.get("data", {}).get("result", [])
         if not results:
             return None
         all_values = [float(v[1]) for r in results for v in r["values"] if v[1] != "NaN"]
         return max(all_values) if all_values else None
-    except Exception:
+    except Exception as exc:
+        # Mesmo tratamento de `query()` (achado #28/2026-07-13): antes esta
+        # função engolia QUALQUER erro (rede, HTTP, parse) em silêncio e
+        # devolvia None — indistinguível de "sem dados no período". CPU/RAM
+        # máx e pico de latência p95 usam esta função; um Prometheus fora do
+        # ar virava "—" no relatório em vez de um alerta de falha.
+        print(
+            f"[reporter] erro ao consultar Prometheus (range, {promql!r}): {exc}",
+            file=sys.stderr,
+        )
+        _query_errors.append(promql)
         return None
 
 
@@ -121,9 +140,7 @@ def backup_status(
     if timestamp is None:
         return "❓ nunca registrado"
     now = datetime.now(tz=BRT)
-    scheduled_today = now.replace(
-        hour=scheduled_hour_brt, minute=0, second=0, microsecond=0
-    )
+    scheduled_today = now.replace(hour=scheduled_hour_brt, minute=0, second=0, microsecond=0)
     last_scheduled = (
         scheduled_today if scheduled_today <= now else scheduled_today - timedelta(days=1)
     )
@@ -180,14 +197,22 @@ def send_telegram(message: str) -> None:
 
 
 def main() -> None:
-    """Coleta métricas do Prometheus e envia relatório diário no Telegram."""
+    """Coleta métricas do Prometheus e envia relatório diário no Telegram.
+
+    Raises:
+        SystemExit: Código 2 se alguma consulta ao Prometheus falhou (rede,
+            HTTP, parse) — o relatório ainda é enviado (dado parcial é
+            melhor que nenhum), mas com um aviso explícito no topo da
+            mensagem, e o exit code sinaliza o run como degradado para quem
+            monitora o cron (achado #28/2026-07-13). Falha ao enviar o
+            Telegram em si continua saindo com código 1 (send_telegram).
+    """
+    _query_errors.clear()
     now = datetime.now(tz=BRT)
     data_str = now.strftime("%d/%m/%Y")
 
     # VM
-    cpu_max = query_range_max(
-        "100 - (avg(irate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)"
-    )
+    cpu_max = query_range_max("100 - (avg(irate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)")
     ram_pct_max = query_range_max(
         "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100"
     )
@@ -223,11 +248,7 @@ def main() -> None:
 
     # Calcular taxa de erro
     taxa_erro_str = "—"
-    if (
-        total_requests is not None
-        and total_erros is not None
-        and total_requests > 0
-    ):
+    if total_requests is not None and total_erros is not None and total_requests > 0:
         taxa = (total_erros / total_requests) * 100
         taxa_erro_str = f"{taxa:.2f}%"
 
@@ -253,24 +274,34 @@ def main() -> None:
         ram_used = (ram_pct_max / 100 * ram_gb_num) if ram_pct_max else None
         ram_line = f"{fmt(ram_used, 'GB')} / {ram_gb_num:.0f}GB ({fmt(ram_pct_max, '%')} máx)"
 
-    msg = f"""📊 *ARGUS AI — Relatório Diário*
+    # Aviso explícito no topo se alguma consulta falhou de verdade (rede/HTTP/
+    # parse) — não deixa o relatório parecer "tudo ok" com métricas faltando
+    # por Prometheus indisponível (achado #28/2026-07-13).
+    aviso_falha = (
+        f"⚠️ *{len(_query_errors)} consulta(s) ao Prometheus falharam* — "
+        "métricas abaixo podem estar incompletas (ver logs do reporter).\n\n"
+        if _query_errors
+        else ""
+    )
+
+    msg = f"""{aviso_falha}📊 *ARGUS AI — Relatório Diário*
 📅 {data_str}
 
 🖥️ *VM*
-├── CPU máx: {fmt(cpu_max, '%')}
+├── CPU máx: {fmt(cpu_max, "%")}
 ├── RAM máx: {ram_line}
-└── Disco fotos: {fmt(disco_pct, '%')} ({fmt(disco_livre_gb, 'GB livres')})
+└── Disco fotos: {fmt(disco_pct, "%")} ({fmt(disco_livre_gb, "GB livres")})
 
 📡 *API*
-├── Total requests: {fmt(total_requests, '', 0)}
-├── Pico: {fmt(pico_req_min, ' req/min', 0)}
-├── Latência p95 (24h): {fmt(latencia_p95, 's')}
-├── Pico p95 (janela 5min): {fmt(latencia_p95_pico, 's')}{pico_alerta}
-└── Erros 5xx: {fmt(total_erros, '', 0)} ({taxa_erro_str})
+├── Total requests: {fmt(total_requests, "", 0)}
+├── Pico: {fmt(pico_req_min, " req/min", 0)}
+├── Latência p95 (24h): {fmt(latencia_p95, "s")}
+├── Pico p95 (janela 5min): {fmt(latencia_p95_pico, "s")}{pico_alerta}
+└── Erros 5xx: {fmt(total_erros, "", 0)} ({taxa_erro_str})
 
 🗄️ *Banco e Cache*
-├── Conexões PG: {fmt(pg_connections, '', 0)}
-└── Redis hit rate: {fmt(redis_hit_rate, '%')}
+├── Conexões PG: {fmt(pg_connections, "", 0)}
+└── Redis hit rate: {fmt(redis_hit_rate, "%")}
 
 💾 *Backup*
 ├── Local (banco): {backup_local_status}
@@ -279,6 +310,13 @@ def main() -> None:
 🔗 [Ver dashboard completo](https://{DOMAIN}/grafana)"""
 
     send_telegram(msg)
+    if _query_errors:
+        print(
+            f"[{now.strftime('%Y-%m-%d %H:%M')}] Relatório enviado com "
+            f"{len(_query_errors)} consulta(s) ao Prometheus falhas — run degradado.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     print(f"[{now.strftime('%Y-%m-%d %H:%M')}] Relatório enviado com sucesso.")
 
 

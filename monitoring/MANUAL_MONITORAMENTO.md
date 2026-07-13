@@ -15,7 +15,7 @@ Quando volta ao normal, vem uma mensagem `✅ RESOLVIDO`.
 | ⚠️ | `warning` — atenção, mas não urgente |
 | ✅ | resolvido |
 
-São **15 regras de alerta** ativas, divididas em 4 grupos.
+São **18 regras de alerta** ativas, divididas em 5 grupos.
 
 ---
 
@@ -86,7 +86,7 @@ São **15 regras de alerta** ativas, divididas em 4 grupos.
 
 ---
 
-## 💾 Grupo 4: Disco, Storage e Backup (4 alertas)
+## 💾 Grupo 4: Disco, Storage e Backup (6 alertas)
 
 ### ⚠️ Disco de Fotos vai encher em 7 dias
 - **Dispara**: projeção linear (últimas 6h) indica disco zerar em menos de 7 dias
@@ -107,6 +107,25 @@ São **15 regras de alerta** ativas, divididas em 4 grupos.
 - **Dispara**: mais de **26h** sem novo dump em `/backups`
 - **Significa**: container `db-backup` parou ou `pg_dump` está falhando
 - **Ação**: `docker logs argus-ai-db-backup-1` pra ver mensagem de erro
+
+### 🔴 Backup Offsite (nuvens) Atrasado
+- **Dispara**: mais de **30h** sem novo backup para Oracle Object Storage/Google Drive
+- **Significa**: `backup_to_clouds.sh` (cron root, 03h BRT) parou ou está falhando — perda do backup fora do host
+- **Ação**: `/var/log/argus-backup-clouds` e o cron do root; ver `docs/disaster-recovery.md`
+
+### 🔴 Disco de Dados (/mnt/banco) Crítico
+- **Dispara**: `/mnt/banco` (Postgres, backups, Prometheus, Grafana) > **85%**
+- **Significa**: se encher, o banco para de escrever
+- **Ação**: expandir o volume ou limpar dados antigos
+
+---
+
+## 🔍 Grupo 5: Meta-Monitoramento (1 alerta)
+
+### 🔴 Alvo de Métrica Offline (scrape falhando)
+- **Dispara**: algum exporter (node/postgres/redis/blackbox) parou de responder ao scrape do Prometheus
+- **Significa**: os OUTROS alertas desse exporter ficam cegos — sem dado novo, não disparam sozinhos. Este é o alerta que pega esse ponto cego
+- **Ação**: `docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml ps` pra achar qual exporter caiu, depois `restart` nele
 
 ---
 
