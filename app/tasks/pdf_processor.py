@@ -19,18 +19,26 @@ from app.utils.s3 import extrair_key_da_url
 
 logger = logging.getLogger("argus")
 
+#: Teto de páginas processadas por PDF — boletins de ocorrência reais têm
+#: poucas páginas; um PDF hostil com contagem de páginas absurda (objetos
+#: repetidos/aninhados, "PDF bomb") poderia travar o worker por muito tempo
+#: mesmo dentro do limite de 50 MB de upload. Acima do teto, processa só as
+#: primeiras N páginas e loga — não falha a ocorrência inteira por causa de
+#: um documento anormalmente grande (achado #17/2026-07-13).
+MAX_PDF_PAGES = 500
+
 
 def extrair_texto_pdf(pdf_bytes: bytes) -> str:
     """Extrai texto de PDF usando PyMuPDF.
 
-    Percorre todas as páginas do PDF e extrai texto com layout
-    preservado. Páginas vazias são ignoradas.
+    Percorre as páginas do PDF (até MAX_PDF_PAGES) e extrai texto com
+    layout preservado. Páginas vazias são ignoradas.
 
     Args:
         pdf_bytes: Conteúdo do PDF em bytes.
 
     Returns:
-        Texto extraído concatenado de todas as páginas.
+        Texto extraído concatenado das páginas processadas.
 
     Raises:
         RuntimeError: Se PyMuPDF não estiver instalado.
@@ -38,9 +46,17 @@ def extrair_texto_pdf(pdf_bytes: bytes) -> str:
     if fitz is None:
         raise RuntimeError("PyMuPDF (fitz) não instalado — processamento de PDF indisponível")
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    total_paginas = doc.page_count
+    if total_paginas > MAX_PDF_PAGES:
+        logger.warning(
+            "PDF com %d páginas excede o teto de %d — processando só as primeiras %d",
+            total_paginas,
+            MAX_PDF_PAGES,
+            MAX_PDF_PAGES,
+        )
     textos = []
-    for page in doc:
-        texto = page.get_text()
+    for i in range(min(total_paginas, MAX_PDF_PAGES)):
+        texto = doc[i].get_text()
         if texto.strip():
             textos.append(texto.strip())
     doc.close()

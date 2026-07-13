@@ -28,6 +28,7 @@ from app.core.upload_validation import (
     is_heic,
     ler_upload_com_limite,
     normalizar_imagem_para_reconhecimento,
+    validar_dimensoes_imagem,
     validar_magic_bytes_imagem,
     validar_magic_bytes_pdf,
 )
@@ -150,6 +151,7 @@ async def upload_foto(
     # Leitura em chunks (previne OOM) + validação de magic bytes (anti-spoofing)
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
+    validar_dimensoes_imagem(file_bytes)
 
     # Normaliza HEIC→JPEG e corrige rotação EXIF antes de prosseguir
     original_content_type = file.content_type or "image/jpeg"
@@ -348,6 +350,7 @@ async def buscar_por_rosto(
 
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
+    validar_dimensoes_imagem(file_bytes)
     file_bytes = await normalizar_imagem_para_reconhecimento(file_bytes)
     service = FotoService(db)
     results = await service.buscar_por_rosto(
@@ -415,6 +418,7 @@ async def extrair_placa(
 
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
+    validar_dimensoes_imagem(file_bytes)
     if is_heic(file_bytes):
         file_bytes = await converter_heic_para_jpeg(file_bytes)
     ocr = OCRService()
@@ -477,6 +481,7 @@ async def upload_midia_abordagem(
     _image_mimes = {"image/jpeg", "image/png", "image/webp"}
     if content_type in _image_mimes:
         validar_magic_bytes_imagem(file_bytes)
+        validar_dimensoes_imagem(file_bytes)
     elif content_type == "application/pdf":
         validar_magic_bytes_pdf(file_bytes)
 

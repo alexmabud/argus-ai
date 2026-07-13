@@ -86,6 +86,46 @@ class TestValidarMagicBytesImagem:
         assert exc.value.status_code == 400
 
 
+class TestValidarDimensoesImagem:
+    """Testes para validar_dimensoes_imagem (achado #17/2026-07-13)."""
+
+    def test_aceita_imagem_dentro_do_limite(self):
+        """Imagem pequena, bem dentro do teto, deve passar sem erro."""
+        from app.core.upload_validation import validar_dimensoes_imagem
+
+        validar_dimensoes_imagem(_jpeg_bytes_sem_exif(size=(200, 100)))
+
+    def test_rejeita_imagem_acima_do_teto_de_pixels(self):
+        """Imagem cujo width*height excede max_pixels deve ser rejeitada com 400."""
+        from app.core.upload_validation import validar_dimensoes_imagem
+
+        # 100x100 = 10_000 px — usa um teto bem menor que isso para não
+        # precisar gerar uma imagem real gigante só para o teste.
+        with pytest.raises(HTTPException) as exc:
+            validar_dimensoes_imagem(_jpeg_bytes_sem_exif(size=(100, 100)), max_pixels=9_999)
+        assert exc.value.status_code == 400
+        assert "pixels" in exc.value.detail.lower()
+
+    def test_tolera_bytes_nao_decodificaveis(self):
+        """Magic bytes válidos mas corpo corrompido: não rejeita aqui.
+
+        Não há decompression bomb possível se o header nem decodifica — o
+        resto do pipeline (thumbnail, correção EXIF) já tolera esse caso
+        de forma estabelecida (passa os bytes originais adiante).
+        """
+        from app.core.upload_validation import validar_dimensoes_imagem
+
+        validar_dimensoes_imagem(b"\xff\xd8\xff" + b"\x00" * 50)
+
+    def test_usa_max_image_pixels_como_default(self):
+        """Sem max_pixels explícito, usa a constante MAX_IMAGE_PIXELS do módulo."""
+        from app.core.upload_validation import MAX_IMAGE_PIXELS, validar_dimensoes_imagem
+
+        assert MAX_IMAGE_PIXELS > 0
+        # Imagem pequena passa com o default real (não mockado).
+        validar_dimensoes_imagem(_jpeg_bytes_sem_exif(size=(50, 50)))
+
+
 class TestConverterHeicParaJpeg:
     """Testes para converter_heic_para_jpeg."""
 

@@ -48,3 +48,37 @@ class TestExtrairTextoPdf:
         """Deve levantar exceção para bytes não-PDF."""
         with pytest.raises(Exception):
             extrair_texto_pdf(b"nao sou um pdf")
+
+    def test_extrai_texto_de_pdf_simples(self):
+        """Caminho feliz: extrai o texto de um PDF de uma página."""
+        import fitz
+
+        doc = fitz.open()
+        page = doc.new_page()
+        page.insert_text((72, 72), "Boletim de Ocorrencia teste")
+        pdf_bytes = doc.tobytes()
+        doc.close()
+
+        texto = extrair_texto_pdf(pdf_bytes)
+        assert "Boletim de Ocorrencia teste" in texto
+
+    def test_respeita_teto_de_paginas(self, monkeypatch):
+        """PDF acima do teto de páginas processa só as primeiras N (achado #17/2026-07-13)."""
+        import fitz
+
+        from app.tasks import pdf_processor
+
+        monkeypatch.setattr(pdf_processor, "MAX_PDF_PAGES", 3)
+
+        doc = fitz.open()
+        for i in range(5):
+            page = doc.new_page()
+            page.insert_text((72, 72), f"pagina-{i}")
+        pdf_bytes = doc.tobytes()
+        doc.close()
+
+        texto = pdf_processor.extrair_texto_pdf(pdf_bytes)
+        assert "pagina-0" in texto
+        assert "pagina-2" in texto
+        assert "pagina-3" not in texto
+        assert "pagina-4" not in texto
