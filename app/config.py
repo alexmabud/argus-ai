@@ -210,10 +210,21 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:8000", "http://localhost:3000"]
 
-    # Proxies cujo X-Forwarded-For pode ser confiado (Caddy local, por padrao).
-    # Requests de IPs fora desta lista terao o XFF ignorado — atacante externo
-    # nao consegue inflar o header para burlar rate limit.
+    # Proxies cujo X-Forwarded-For pode ser confiado, por IP exato (loopback,
+    # por padrao — cobre dev/quando a API roda sem container na frente).
+    # Requests de IPs fora desta lista (ou fora de TRUSTED_PROXY_HOSTNAMES)
+    # terao o XFF ignorado — atacante externo nao consegue inflar o header
+    # para burlar rate limit/login_guard.
     TRUSTED_PROXIES: list[str] = ["127.0.0.1", "::1"]
+
+    # Proxies confiados por HOSTNAME (achado #14/2026-07-13): em produção, a
+    # API vê a requisição chegar do container do Caddy na rede Docker
+    # (argus-network), não de loopback — TRUSTED_PROXIES sozinho nunca batia,
+    # então o X-Forwarded-For nunca era honrado e rate limit/login_guard por
+    # IP viam sempre o IP interno do Caddy (todo mundo compartilhando o mesmo
+    # "IP"). Resolvido via DNS a cada checagem (não cacheado) para não confiar
+    # num IP obsoleto se o container do Caddy for recriado com outro IP.
+    TRUSTED_PROXY_HOSTNAMES: list[str] = []
 
     # LGPD
     DATA_RETENTION_DAYS: int = 1825  # 5 anos
