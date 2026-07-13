@@ -79,12 +79,50 @@ jobs:
           install-deps: none
 
       - name: Install pip-audit
-        run: python -m pip install pip-audit
+        run: python -m pip install pip-audit packaging
 
-      - name: Audit pinned lock file (if present)
+      - name: Check requirements.lock satisfies pyproject.toml floors
+        # achado #20/2026-07-13: um piso elevado em pyproject.toml (bump manual
+        # ou merge de PR do Dependabot) sem regenerar requirements.lock
+        # (`make lock`) passava batido — o build de produção continuava
+        # instalando a versão antiga, abaixo do piso declarado, sem que
+        # nenhum lint/teste acusasse. Não é diff bruto do lock inteiro: como
+        # pyproject usa ">=" sem teto, pip-compile resolve versões mais novas
+        # com o tempo mesmo sem mudança nenhuma — isso é esperado, não é
+        # drift real. Só falha quando o lock fica ABAIXO do piso declarado.
+        run: python scripts/check_lock_drift.py
+
+      - name: Audit pinned lock file (bloqueante — igual ao que vai pra produção)
         if: hashFiles('requirements.lock') != ''
-        continue-on-error: true
-        run: pip-audit -r requirements.lock --desc
+        # achado #20/2026-07-13: pip-audit rodava com continue-on-error,
+        # então uma CVE nova em requirements.lock nunca derrubava o CI.
+        # --ignore-vuln documenta vulnerabilidades JÁ conhecidas (achado
+        # #32/2026-07-13, upgrade de starlette/aiohttp/python-multipart/torch
+        # ainda pendente) para não travar todo PR por um problema pré-existente
+        # não introduzido por ele — qualquer CVE NOVA (não listada abaixo)
+        # ainda derruba o job. Revisar esta lista ao fechar a issue #32.
+        run: |
+          pip-audit -r requirements.lock --desc \
+            --ignore-vuln PYSEC-2026-237 \
+            --ignore-vuln PYSEC-2026-2104 \
+            --ignore-vuln PYSEC-2026-2105 \
+            --ignore-vuln PYSEC-2026-2106 \
+            --ignore-vuln PYSEC-2026-2107 \
+            --ignore-vuln PYSEC-2026-2108 \
+            --ignore-vuln PYSEC-2026-2109 \
+            --ignore-vuln PYSEC-2026-2110 \
+            --ignore-vuln PYSEC-2026-2111 \
+            --ignore-vuln PYSEC-2026-2112 \
+            --ignore-vuln PYSEC-2026-2113 \
+            --ignore-vuln PYSEC-2026-161 \
+            --ignore-vuln PYSEC-2026-248 \
+            --ignore-vuln PYSEC-2026-249 \
+            --ignore-vuln PYSEC-2026-2280 \
+            --ignore-vuln PYSEC-2026-2281 \
+            --ignore-vuln PYSEC-2026-3036 \
+            --ignore-vuln PYSEC-2026-3037 \
+            --ignore-vuln PYSEC-2026-3040 \
+            --ignore-vuln CVE-2025-3000
 
       - name: Generate requirements from pyproject.toml
         run: |

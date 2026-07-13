@@ -17,8 +17,12 @@ WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'argus_app')
 --    escapada com segurança pelo psql (nível superior, fora de $$).
 ALTER ROLE argus_app WITH LOGIN PASSWORD :'app_pwd';
 
--- 3) Conectar ao banco e usar o schema
-GRANT CONNECT ON DATABASE argus_db TO argus_app;
+-- 3) Conectar ao banco e usar o schema. CONNECT usa o nome do banco atual
+--    (current_database(), via \gexec) em vez de "argus_db" fixo, para que o
+--    mesmo script sirva o banco de testes do CI (argus_test) sem edição —
+--    quem quer que rode este script já está conectado ao banco certo.
+SELECT format('GRANT CONNECT ON DATABASE %I TO argus_app', current_database())
+\gexec
 GRANT USAGE ON SCHEMA public TO argus_app;
 
 -- 4) DML nas tabelas EXISTENTES (F1)
@@ -30,14 +34,26 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO argus_app;
 -- 6) EXECUTE em funções existentes (F7 — pgvector/PostGIS/etc.)
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO argus_app;
 
--- 7) DEFAULT PRIVILEGES — tabelas/sequences/funções FUTURAS criadas por argus (F2)
---    SEM ISSO, toda migration futura cria objetos invisíveis ao argus_app.
-ALTER DEFAULT PRIVILEGES FOR ROLE argus IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO argus_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE argus IN SCHEMA public
-  GRANT USAGE, SELECT ON SEQUENCES TO argus_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE argus IN SCHEMA public
-  GRANT EXECUTE ON FUNCTIONS TO argus_app;
+-- 7) DEFAULT PRIVILEGES para o dono atual (current_user — "argus" em produção,
+--    "test" no serviço Postgres do CI) — tabelas/sequences/funções FUTURAS
+--    criadas por ele (F2). SEM ISSO, toda migration futura cria objetos
+--    invisíveis ao argus_app. Dinâmico pelo mesmo motivo do passo 3: o script
+--    roda também no CI, onde o dono não se chama "argus".
+SELECT format(
+  'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO argus_app',
+  current_user
+)
+\gexec
+SELECT format(
+  'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO argus_app',
+  current_user
+)
+\gexec
+SELECT format(
+  'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO argus_app',
+  current_user
+)
+\gexec
 
 -- 8) Garantir que argus_app NÃO tem CREATE no schema (revoga o default do public)
 REVOKE CREATE ON SCHEMA public FROM argus_app;
