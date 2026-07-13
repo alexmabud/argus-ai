@@ -4,14 +4,22 @@ Define estruturas de requisição e resposta para login, registro, refresh de to
 e leitura de dados de usuários e guarnições.
 """
 
+import re
 from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.config import settings
 from app.models.usuario import POSTOS_GRADUACAO
 from app.schemas.bpm import BpmRead
 from app.schemas.validators import UpperStr, UpperStrReq
 from app.services.storage_service import normalize_storage_url
+
+#: Restringe foto_url a chaves geradas pelo próprio servidor em
+#: StorageService.generate_key("avatares", ...) — /storage/{bucket}/avatares/{key},
+#: sem subpaths. Impede que o usuário aponte o próprio avatar para qualquer outro
+#: objeto do bucket (PDFs, fotos de outra pessoa, objetos órfãos).
+_AVATAR_PATH_RE = re.compile(rf"^/storage/{re.escape(settings.S3_BUCKET)}/avatares/[^/]+$")
 
 
 class LoginRequest(BaseModel):
@@ -230,11 +238,14 @@ class PerfilUpdate(BaseModel):
     @field_validator("foto_url")
     @classmethod
     def validar_foto_url(cls, v: str | None) -> str | None:
-        """Restringe foto_url a paths internos /storage/...
+        """Restringe foto_url a chaves de avatar geradas pelo servidor.
 
-        Bloqueia URLs externas que policial pode gravar no perfil — outros
-        usuarios que abrirem a ficha pingariam o servidor do atacante
-        exfiltrando IP + referer.
+        Bloqueia URLs externas (policial poderia gravar uma URL de atacante
+        no perfil — outros usuarios que abrirem a ficha pingariam o servidor
+        exfiltrando IP + referer) E bloqueia apontar o avatar para qualquer
+        outro objeto do bucket (PDF de ocorrência, foto de outra pessoa,
+        objeto órfão) — só aceita o padrão /storage/{bucket}/avatares/{key}
+        que POST /perfil/foto realmente gera.
 
         Args:
             v: Valor de foto_url a validar.
@@ -243,10 +254,10 @@ class PerfilUpdate(BaseModel):
             O valor se valido, None se nao fornecido.
 
         Raises:
-            ValueError: Se foto_url nao comecar com /storage/.
+            ValueError: Se foto_url não apontar para uma chave de avatar.
         """
-        if v is not None and not v.startswith("/storage/"):
-            raise ValueError("foto_url deve ser um path interno /storage/...")
+        if v is not None and not _AVATAR_PATH_RE.match(v):
+            raise ValueError("foto_url deve apontar para um avatar gerado pelo servidor")
         return v
 
 

@@ -138,8 +138,11 @@ def _get_obj_routing(return_value: dict) -> AsyncMock:
 
 
 @pytest.mark.asyncio
-async def test_storage_proxy_streama_chunks_do_s3(client, auth_headers, fake_storage):
+async def test_storage_proxy_streama_chunks_do_s3(
+    client, auth_headers, fake_storage, db_session: AsyncSession
+):
     """Proxy deve usar StreamingResponse e iter_chunks para conteúdo não-imagem (PDF)."""
+    await _indexar_foto(db_session, "fotos/x.jpg")
     body = _FakeStreamingBody([b"hello ", b"world"])
     # Usa application/pdf: não-imagem preserva o path de streaming (sem marcação).
     fake_storage.get_object = _get_obj_routing(
@@ -166,13 +169,16 @@ async def test_storage_proxy_streama_chunks_do_s3(client, auth_headers, fake_sto
 
 
 @pytest.mark.asyncio
-async def test_storage_proxy_nao_repassa_if_none_match_ao_s3(client, auth_headers, fake_storage):
+async def test_storage_proxy_nao_repassa_if_none_match_ao_s3(
+    client, auth_headers, fake_storage, db_session: AsyncSession
+):
     """O proxy NÃO repassa If-None-Match ao S3 e nunca devolve 304.
 
     Como o proxy pode transformar os bytes (marca d'água), o ETag do original
     não valida o conteúdo servido. Honrar a requisição condicional fazia o
     browser servir cópias antigas sem marca. Agora sempre busca e serve 200.
     """
+    await _indexar_foto(db_session, "fotos/x.jpg")
     body = _FakeStreamingBody([b"x"])
     fake_storage.get_object = _get_obj_routing(
         {"Body": body, "ContentType": "application/pdf", "ETag": '"abc"'}
@@ -190,8 +196,16 @@ async def test_storage_proxy_nao_repassa_if_none_match_ao_s3(client, auth_header
 
 
 @pytest.mark.asyncio
-async def test_storage_proxy_retorna_404_para_nosuchkey(client, auth_headers, fake_storage):
-    """NoSuchKey do S3 deve virar 404 do proxy."""
+async def test_storage_proxy_retorna_404_para_nosuchkey(
+    client, auth_headers, fake_storage, db_session: AsyncSession
+):
+    """NoSuchKey do S3 deve virar 404 do proxy.
+
+    A Foto é indexada para exercitar o mapeamento NoSuchKey→404 (achado do
+    S3), não o default-deny de objeto órfão (achado #08) — comportamentos
+    distintos que agora convergem no mesmo status code.
+    """
+    await _indexar_foto(db_session, "fotos/missing.jpg")
     error = ClientError(
         {
             "Error": {"Code": "NoSuchKey", "Message": "Not found"},
@@ -223,6 +237,28 @@ async def test_storage_proxy_rejeita_bucket_diferente(client, auth_headers, fake
 
 
 @pytest.mark.asyncio
+async def test_storage_proxy_objeto_orfao_retorna_404_sem_chamar_s3(
+    client, auth_headers, fake_storage
+):
+    """Objeto sem Foto/Ocorrencia/avatar de Usuario correspondente é default-deny.
+
+    Achado #08/2026-07-13: antes, qualquer chave sem linha indexada era
+    servida sem checagem — só o `NoSuchKey` do S3 (achado de existência real
+    no bucket) resultava em 404. Agora a ausência de registro já barra antes
+    de tocar no S3.
+    """
+    fake_storage.get_object = AsyncMock()
+
+    response = await client.get(
+        f"/storage/{settings.S3_BUCKET}/fotos/nao-indexada.jpg",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 404
+    fake_storage.get_object.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_storage_proxy_sem_autenticacao_retorna_401(client, fake_storage):
     """Sem JWT, o proxy não pode liberar arquivos privados."""
     fake_storage.get_object = AsyncMock()
@@ -239,6 +275,20 @@ async def _outra_equipe(db_session: AsyncSession, bpm: Bpm) -> Guarnicao:
     db_session.add(g)
     await db_session.flush()
     return g
+
+
+async def _indexar_foto(db_session: AsyncSession, path: str) -> Foto:
+    """Cria uma Foto mínima apontando para ``path`` (sem pessoa/abordagem).
+
+    O proxy agora é default-deny para objetos sem linha indexada (achado
+    #08/2026-07-13) — testes que só exercitam mecânica de streaming/cache/
+    watermark (não autorização) precisam de uma Foto real para não colidir
+    com o 404 de "objeto órfão".
+    """
+    foto = Foto(arquivo_url=f"/storage/{settings.S3_BUCKET}/{path}", data_hora=datetime.now())
+    db_session.add(foto)
+    await db_session.flush()
+    return foto
 
 
 @pytest.mark.asyncio
@@ -404,12 +454,15 @@ async def test_storage_proxy_libera_midia_de_abordagem_propria(
 
 
 @pytest.mark.asyncio
-async def test_storage_proxy_marca_imagem_inline(client, auth_headers, fake_storage):
+async def test_storage_proxy_marca_imagem_inline(
+    client, auth_headers, fake_storage, db_session: AsyncSession
+):
     """Imagem servida pelo proxy volta marcada (bytes != original)."""
     import io
 
     from PIL import Image
 
+    await _indexar_foto(db_session, "fotos/uuid_x.jpg")
     buf = io.BytesIO()
     Image.new("RGB", (800, 600), (100, 100, 100)).save(buf, format="JPEG")
     original = buf.getvalue()
@@ -431,7 +484,7 @@ async def test_storage_proxy_marca_imagem_inline(client, auth_headers, fake_stor
 
 @pytest.mark.asyncio
 async def test_storage_proxy_marca_imagem_com_content_type_jpg_nao_padrao(
-    client, auth_headers, fake_storage
+    client, auth_headers, fake_storage, db_session: AsyncSession
 ):
     """Imagem com content-type não-padrão (image/jpg) também é marcada.
 
@@ -443,6 +496,7 @@ async def test_storage_proxy_marca_imagem_com_content_type_jpg_nao_padrao(
 
     from PIL import Image
 
+    await _indexar_foto(db_session, "fotos/uuid_jpg.jpg")
     buf = io.BytesIO()
     Image.new("RGB", (800, 600), (100, 100, 100)).save(buf, format="JPEG")
     original = buf.getvalue()
@@ -463,7 +517,7 @@ async def test_storage_proxy_marca_imagem_com_content_type_jpg_nao_padrao(
 
 @pytest.mark.asyncio
 async def test_storage_proxy_ignora_if_none_match_de_imagem_e_marca(
-    client, auth_headers, fake_storage
+    client, auth_headers, fake_storage, db_session: AsyncSession
 ):
     """Imagem com If-None-Match (cache antigo) NÃO recebe 304 — é remarcada.
 
@@ -476,6 +530,7 @@ async def test_storage_proxy_ignora_if_none_match_de_imagem_e_marca(
 
     from PIL import Image
 
+    await _indexar_foto(db_session, "thumbs/x_thumb.jpg")
     buf = io.BytesIO()
     Image.new("RGB", (300, 300), (100, 100, 100)).save(buf, format="JPEG")
     original = buf.getvalue()
@@ -518,7 +573,7 @@ async def test_storage_proxy_rejeita_prefixo_wm(client, auth_headers, fake_stora
 
 @pytest.mark.asyncio
 async def test_storage_proxy_cache_hit_retorna_sem_chamar_original(
-    client, auth_headers, fake_storage
+    client, auth_headers, fake_storage, db_session: AsyncSession
 ):
     """No fast-path (cache hit no MinIO), o original não é baixado do S3.
 
@@ -529,6 +584,7 @@ async def test_storage_proxy_cache_hit_retorna_sem_chamar_original(
 
     from PIL import Image
 
+    await _indexar_foto(db_session, "fotos/cached.jpg")
     pre_marked = io.BytesIO()
     Image.new("RGB", (200, 200), (10, 20, 30)).save(pre_marked, format="JPEG")
     pre_marked_bytes = pre_marked.getvalue()

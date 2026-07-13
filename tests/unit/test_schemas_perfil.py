@@ -117,3 +117,21 @@ def test_perfil_update_aceita_foto_url_none():
     """foto_url=None deve continuar valido (campo opcional)."""
     schema = PerfilUpdate(nome="Agente Teste", foto_url=None)
     assert schema.foto_url is None
+
+
+def test_perfil_update_rejeita_foto_url_fora_do_prefixo_avatares():
+    """foto_url interno mas fora de avatares/ deve ser rejeitado.
+
+    Achado #08/2026-07-13: antes, qualquer path /storage/... era aceito —
+    um usuário podia apontar o próprio avatar para o PDF de uma ocorrência
+    de outra equipe, uma foto de outra pessoa ou um objeto órfão no bucket.
+    Só a chave gerada por POST /perfil/foto (prefixo avatares/) é aceita.
+    """
+    with pytest.raises(ValidationError, match="foto_url"):
+        PerfilUpdate(nome="Agente Teste", foto_url="/storage/argus/pdfs/rap_outra_equipe.pdf")
+
+
+def test_perfil_update_rejeita_foto_url_com_subpath_em_avatares():
+    """Subpath dentro de avatares/ (path traversal) deve ser rejeitado."""
+    with pytest.raises(ValidationError, match="foto_url"):
+        PerfilUpdate(nome="Agente Teste", foto_url="/storage/argus/avatares/../pdfs/x.pdf")

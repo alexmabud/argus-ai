@@ -209,8 +209,13 @@ def create_app() -> FastAPI:
         # a ficha da pessoa mostra as fotos e o GPS das abordagens de todas as
         # equipes para qualquer usuario autenticado. O isolamento_abordagens atua
         # apenas na LISTAGEM de relatorios/consultas (_filtros_consulta), nunca na
-        # midia. Ja o PDF de ocorrencia (RAP) e documento tenant-scoped. Assets
-        # nao registrados em banco passam sem checagem (uploads ainda nao indexados).
+        # midia. Ja o PDF de ocorrencia (RAP) e documento tenant-scoped. Avatares
+        # de perfil (Usuario.foto_url) tambem sao globais (visiveis a qualquer
+        # autenticado, como as fotos). Qualquer objeto SEM linha correspondente
+        # em nenhuma das tres tabelas e default-deny (404) — nao existe upload
+        # legitimo que produza uma chave sem registro; um path orfao so aparece
+        # por enumeracao/objeto residual, e servi-lo sem checagem e a lacuna do
+        # achado #08/2026-07-13.
         url_publica = f"/storage/{path}"
         foto = (
             await db.execute(
@@ -227,6 +232,15 @@ def create_app() -> FastAPI:
             ).scalar_one_or_none()
             if ocorrencia is not None:
                 TenantFilter.check_ownership(ocorrencia, user)
+            else:
+                avatar_dono = (
+                    await db.execute(select(Usuario.id).where(Usuario.foto_url == url_publica))
+                ).scalar_one_or_none()
+                if avatar_dono is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Arquivo não encontrado",
+                    )
 
         storage = StorageService.get()
         wm_ckey = WatermarkService.cache_key(user.matricula, key)
