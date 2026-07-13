@@ -75,19 +75,21 @@ async def processar_pdf_task(ctx: dict, ocorrencia_id: int) -> dict:
 
     async with db_factory() as db:
         try:
-            # 1. Buscar ocorrência
+            # 1. Buscar ocorrência (só ativa — achado #21/2026-07-13: mesma
+            # defesa do face_processor contra job enfileirado antes de um
+            # soft delete reprocessar um registro já apagado).
             from sqlalchemy import select
 
             result = await db.execute(
                 select(Ocorrencia)
-                .where(Ocorrencia.id == ocorrencia_id)
+                .where(Ocorrencia.id == ocorrencia_id, Ocorrencia.ativo.is_(True))
                 .with_for_update(skip_locked=True)
             )
             ocorrencia = result.scalar_one_or_none()
 
             if ocorrencia is None:
-                logger.error("Ocorrência %d não encontrada", ocorrencia_id)
-                return {"status": "erro", "motivo": "Ocorrência não encontrada"}
+                logger.info("Ocorrência %d não encontrada ou inativa, pulando", ocorrencia_id)
+                return {"status": "erro", "motivo": "Ocorrência não encontrada ou inativa"}
 
             if ocorrencia.processada:
                 logger.info("Ocorrência %d já processada, pulando", ocorrencia_id)

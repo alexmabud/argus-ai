@@ -47,15 +47,20 @@ async def processar_face_task(ctx: dict, foto_id: int) -> dict:
 
     async with db_factory() as db:
         try:
-            # 1. Buscar foto
+            # 1. Buscar foto (só ativa — achado #21/2026-07-13: sem o filtro,
+            # um job enfileirado antes de um soft delete reprocessava e
+            # repopulava embedding_face de uma foto já apagada, desfazendo
+            # silenciosamente o soft delete/direito de eliminação).
             result = await db.execute(
-                select(Foto).where(Foto.id == foto_id).with_for_update(skip_locked=True)
+                select(Foto)
+                .where(Foto.id == foto_id, Foto.ativo.is_(True))
+                .with_for_update(skip_locked=True)
             )
             foto = result.scalar_one_or_none()
 
             if foto is None:
-                logger.error("Foto %d não encontrada", foto_id)
-                return {"status": "erro", "motivo": "Foto não encontrada"}
+                logger.info("Foto %d não encontrada ou inativa, pulando", foto_id)
+                return {"status": "erro", "motivo": "Foto não encontrada ou inativa"}
 
             if foto.face_processada:
                 logger.info("Foto %d já processada, pulando", foto_id)
