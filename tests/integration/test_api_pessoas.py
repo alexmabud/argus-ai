@@ -110,6 +110,28 @@ class TestListarPessoas:
         data = response.json()
         assert len(data) >= 2
 
+    async def test_listar_pessoas_mascara_cpf(self, client: AsyncClient, auth_headers: dict):
+        """GET /pessoas/ não deve devolver CPF completo (achado #16/2026-07-13).
+
+        Listagem em massa expõe só cpf_masked; o CPF completo fica
+        reservado ao detalhe (GET /pessoas/{id}), que audita o acesso.
+        """
+        await client.post(
+            "/api/v1/pessoas/",
+            json={"nome": "Pessoa CPF Lista", "cpf": "111.222.333-96"},
+            headers=auth_headers,
+        )
+        response = await client.get(
+            "/api/v1/pessoas/",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        alvo = next(p for p in data if p["nome"] == "PESSOA CPF LISTA")
+        assert alvo["cpf"] is None
+        assert alvo["cpf_masked"] is not None
+        assert "111" not in alvo["cpf_masked"]
+
     async def test_listar_pessoas_expoe_foto_principal_thumb_url(
         self, client: AsyncClient, auth_headers: dict, db_session, guarnicao
     ):

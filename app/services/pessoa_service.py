@@ -514,6 +514,35 @@ class PessoaService:
         return bairro_txt, cidade_txt, estado_txt
 
     @staticmethod
+    def mask_cpf_encrypted(
+        cpf_encrypted: str | None, context_id: int | str | None = None
+    ) -> str | None:
+        """Mascara CPF a partir do valor cifrado bruto (***.***.***-XX).
+
+        Variante de mask_cpf() que não exige uma instância de Pessoa
+        carregada — usada por consultas em massa (analytics) que trabalham
+        com linhas de SELECT (Pessoa.cpf_encrypted) em vez de objetos ORM
+        completos (achado #16/2026-07-13).
+
+        Args:
+            cpf_encrypted: Valor cifrado do CPF, ou None.
+            context_id: ID da pessoa, só para a mensagem de log em falha.
+
+        Returns:
+            CPF mascarado no formato "***.***.***-XX" ou None se sem CPF
+            ou falha ao descriptografar.
+        """
+        if not cpf_encrypted:
+            return None
+        try:
+            cpf = decrypt(cpf_encrypted)
+            clean = cpf.replace(".", "").replace("-", "")
+            return f"***.***.*{clean[-3]}-{clean[-2:]}"
+        except Exception:
+            logger.warning("Falha ao descriptografar CPF da pessoa %s", context_id)
+            return None
+
+    @staticmethod
     def mask_cpf(pessoa: Pessoa) -> str | None:
         """Mascara CPF para exibição segura (***.***.***-XX).
 
@@ -527,15 +556,7 @@ class PessoaService:
             CPF mascarado no formato "***.***.***-XX" ou None se
             pessoa não possui CPF cadastrado.
         """
-        if not pessoa.cpf_encrypted:
-            return None
-        try:
-            cpf = decrypt(pessoa.cpf_encrypted)
-            clean = cpf.replace(".", "").replace("-", "")
-            return f"***.***.*{clean[-3]}-{clean[-2:]}"
-        except Exception:
-            logger.warning("Falha ao descriptografar CPF da pessoa %s", pessoa.id)
-            return None
+        return PessoaService.mask_cpf_encrypted(pessoa.cpf_encrypted, context_id=pessoa.id)
 
     @staticmethod
     def decrypt_cpf(pessoa: Pessoa) -> str | None:
