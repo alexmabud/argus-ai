@@ -1,6 +1,7 @@
 """Testes do toggle de isolamento de abordagens por equipe."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -119,3 +120,88 @@ async def test_detalhe_abordagem_de_outra_equipe_isolamento_on_404(
     await db_session.flush()
     response = await client.get(f"/api/v1/abordagens/{abordagem_b.id}", headers=auth_headers)
     assert response.status_code == 404
+
+
+class TestFotosAbordagemAuthz:
+    """Testes de autorização de GET /fotos/abordagem/{id} (achado #22/2026-07-13)."""
+
+    async def test_listar_fotos_de_abordagem_de_outra_equipe_isolamento_off(
+        self, client: AsyncClient, auth_headers, abordagem_b
+    ):
+        """Com isolamento OFF, usuário de A lista fotos de abordagem de B (200)."""
+        response = await client.get(
+            f"/api/v1/fotos/abordagem/{abordagem_b.id}", headers=auth_headers
+        )
+        assert response.status_code == 200
+
+    async def test_listar_fotos_de_abordagem_de_outra_equipe_isolamento_on_404(
+        self, client: AsyncClient, auth_headers, db_session, guarnicao, abordagem_b
+    ):
+        """Com isolamento ON, listar fotos de abordagem de B retorna 404 para A.
+
+        Antes desta correção, qualquer autenticado listava fotos de
+        QUALQUER abordagem só sabendo o ID — o endpoint não checava
+        isolamento_abordagens nenhum.
+        """
+        guarnicao.isolamento_abordagens = True
+        await db_session.flush()
+        response = await client.get(
+            f"/api/v1/fotos/abordagem/{abordagem_b.id}", headers=auth_headers
+        )
+        assert response.status_code == 404
+
+
+class TestCriarOcorrenciaAbordagemAuthz:
+    """Testes de autorização de abordagem_id em POST /ocorrencias/ (achado #22/2026-07-13)."""
+
+    async def _post_ocorrencia(
+        self, client: AsyncClient, headers: dict, abordagem_id: int, numero: str
+    ):
+        """Faz POST multipart em /ocorrencias/ com storage mockado."""
+        mock_storage = AsyncMock()
+        mock_storage.upload = AsyncMock(return_value="https://r2.example.com/pdfs/fake.pdf")
+        mock_storage.generate_key = lambda prefix, filename: f"{prefix}/fake.pdf"
+        with patch("app.services.ocorrencia_service.StorageService") as mock_cls:
+            mock_cls.get = lambda: mock_storage
+            return await client.post(
+                "/api/v1/ocorrencias/",
+                data={
+                    "numero_ocorrencia": numero,
+                    "abordagem_id": str(abordagem_id),
+                    "data_ocorrencia": date.today().isoformat(),
+                },
+                files={"arquivo_pdf": ("bo.pdf", b"%PDF-1.7 fake content", "application/pdf")},
+                headers=headers,
+            )
+
+    async def test_criar_ocorrencia_com_abordagem_de_outra_equipe_isolamento_off(
+        self, client: AsyncClient, auth_headers, abordagem_b
+    ):
+        """Com isolamento OFF, vincular ocorrência à abordagem de B é aceito (201)."""
+        response = await self._post_ocorrencia(
+            client, auth_headers, abordagem_b.id, "RAP 2026/AUTHZ-OFF"
+        )
+        assert response.status_code == 201
+
+    async def test_criar_ocorrencia_com_abordagem_de_outra_equipe_isolamento_on_404(
+        self, client: AsyncClient, auth_headers, db_session, guarnicao, abordagem_b
+    ):
+        """Com isolamento ON, vincular ocorrência à abordagem de B é rejeitado (404).
+
+        Antes desta correção, abordagem_id era gravado sem nenhuma validação
+        de existência ou de escopo — um abordagem_id de outra equipe (ou
+        inexistente) era aceito silenciosamente.
+        """
+        guarnicao.isolamento_abordagens = True
+        await db_session.flush()
+        response = await self._post_ocorrencia(
+            client, auth_headers, abordagem_b.id, "RAP 2026/AUTHZ-ON"
+        )
+        assert response.status_code == 404
+
+    async def test_criar_ocorrencia_com_abordagem_inexistente_404(
+        self, client: AsyncClient, auth_headers
+    ):
+        """abordagem_id inexistente é rejeitado (404), não gravado silenciosamente."""
+        response = await self._post_ocorrencia(client, auth_headers, 999999, "RAP 2026/INEXISTENTE")
+        assert response.status_code == 404

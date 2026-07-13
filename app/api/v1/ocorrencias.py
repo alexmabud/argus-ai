@@ -11,6 +11,8 @@ from datetime import date
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.abordagens import _filtro_abordagem
+from app.core.exceptions import NaoEncontradoError
 from app.core.rate_limit import limiter
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_pdf
 from app.database.session import get_db
@@ -60,6 +62,7 @@ async def criar_ocorrencia(
 
     Status Code:
         201: Ocorrência criada, processamento em background.
+        404: abordagem_id informado não encontrado ou fora do escopo do usuário.
         429: Rate limit (10/min).
     """
     if arquivo_pdf.content_type != "application/pdf":
@@ -73,17 +76,30 @@ async def criar_ocorrencia(
     validar_magic_bytes_pdf(pdf_bytes)
 
     assert user.guarnicao_id is not None
+    # Mesma regra de isolamento_abordagens usada na ficha da abordagem — o
+    # service valida abordagem_id (se informado) contra este escopo antes de
+    # vincular. Antes, qualquer abordagem_id passava sem checagem nenhuma,
+    # inclusive de outra equipe com isolamento ativado (achado #22/2026-07-13).
+    guarnicao_id_filtro, bpm_id_filtro = _filtro_abordagem(user)
     service = OcorrenciaService(db)
-    ocorrencia = await service.criar(
-        numero_ocorrencia=numero_ocorrencia,
-        abordagem_id=abordagem_id,
-        nomes_envolvidos=nomes_envolvidos,
-        data_ocorrencia=data_ocorrencia,
-        arquivo_pdf=pdf_bytes,
-        filename=arquivo_pdf.filename or "ocorrencia.pdf",
-        usuario_id=user.id,
-        guarnicao_id=user.guarnicao_id,
-    )
+    try:
+        ocorrencia = await service.criar(
+            numero_ocorrencia=numero_ocorrencia,
+            abordagem_id=abordagem_id,
+            nomes_envolvidos=nomes_envolvidos,
+            data_ocorrencia=data_ocorrencia,
+            arquivo_pdf=pdf_bytes,
+            filename=arquivo_pdf.filename or "ocorrencia.pdf",
+            usuario_id=user.id,
+            guarnicao_id=user.guarnicao_id,
+            guarnicao_id_filtro=guarnicao_id_filtro,
+            bpm_id_filtro=bpm_id_filtro,
+        )
+    except NaoEncontradoError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Abordagem não encontrada",
+        )
     audit = AuditService(db)
     await audit.log(
         usuario_id=user.id,
