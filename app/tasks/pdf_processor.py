@@ -3,6 +3,15 @@
 Processa PDFs de boletins de ocorrência: download do S3, extração de
 texto via PyMuPDF (fitz), chunking semântico e geração de embedding
 vetorial para busca semântica via pgvector.
+
+Nota de segurança (achado #21/2026-07-13): mesma observação do
+face_processor — a task recebe apenas ``ocorrencia_id``, sem contexto de
+usuário/sessão. A revalidação possível aqui é no dado (``ativo=True``, já
+implementada abaixo), não em autorização de usuário. Quem impede um
+``ocorrencia_id`` arbitrário ser enfileirado é a rede e a credencial do
+Redis (só a API deve conseguir publicar nesta fila) — Redis continua trust
+boundary de infra; esta revalidação no worker é mitigação em profundidade,
+não substitui isolar a rede do Redis.
 """
 
 import asyncio

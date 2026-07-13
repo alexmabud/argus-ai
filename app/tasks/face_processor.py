@@ -3,6 +3,16 @@
 Processa fotos enviadas: download do S3, extração de embedding facial
 de 512 dimensões via InsightFace e atualização no banco para busca
 por similaridade via pgvector.
+
+Nota de segurança (achado #21/2026-07-13): a task recebe apenas ``foto_id``,
+sem contexto de usuário/sessão — jobs de background não têm "quem pediu"
+para revalidar. A revalidação possível aqui é no dado (``ativo=True``, já
+implementada abaixo), não em autorização de usuário. Quem efetivamente
+impede um `foto_id` arbitrário/de outro escopo ser enfileirado é a rede e a
+credencial do Redis (só a API deve conseguir publicar nesta fila) — Redis
+continua trust boundary de infra; esta revalidação no worker é mitigação em
+profundidade (evita reprocessar registro apagado), não substitui isolar a
+rede do Redis.
 """
 
 import asyncio
