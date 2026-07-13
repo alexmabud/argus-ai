@@ -58,6 +58,11 @@ docker compose -f docker-compose.prod.yml exec -T db \
 - **`ALTER DEFAULT PRIVILEGES FOR ROLE argus`** — toda tabela/sequence/função **futura**
   criada por migrations já nasce com DML para o `argus_app` (F2). **É o item que exige staging.**
 - `REVOKE CREATE ON SCHEMA public` do `argus_app` e do `PUBLIC` — sem DDL.
+- `REVOKE DELETE, UPDATE ON audit_logs` do `argus_app` — trilha de auditoria vira
+  append-only mesmo para o papel de runtime (nem uma injeção SQL nem um bug de
+  código apagam/alteram auditoria). **Adicionado após o provisionamento inicial —
+  se seu ambiente já rodou este script antes dessa mudança, rode de novo (é
+  idempotente) para aplicar só o REVOKE novo.**
 
 Verificação rápida do papel criado:
 ```bash

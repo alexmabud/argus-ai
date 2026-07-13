@@ -42,3 +42,20 @@ ALTER DEFAULT PRIVILEGES FOR ROLE argus IN SCHEMA public
 -- 8) Garantir que argus_app NÃO tem CREATE no schema (revoga o default do public)
 REVOKE CREATE ON SCHEMA public FROM argus_app;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;  -- endurece o schema p/ todos
+
+-- 9) audit_logs é append-only por design (LGPD — trilha nunca é alterada nem
+--    apagada pela aplicação). O GRANT DML do passo 4 inclui DELETE/UPDATE em
+--    TODAS as tabelas; revoga especificamente aqui para que nem uma injeção
+--    SQL nem um bug de código consigam apagar/alterar auditoria via argus_app.
+--    INSERT/SELECT continuam liberados (é como a API grava e lê auditoria).
+--
+--    ATENÇÃO — este REVOKE não é retroativo a um DROP+CREATE futuro: o
+--    DEFAULT PRIVILEGES do passo 7 concede SELECT/INSERT/UPDATE/DELETE a
+--    QUALQUER tabela nova criada pelo dono (não sabe excluir audit_logs
+--    especificamente — Postgres não tem "default privileges por tabela").
+--    Se audit_logs for algum dia recriada (DROP TABLE + CREATE TABLE, ex.:
+--    um rebuild de migration, ou testes que rodam Base.metadata.create_all),
+--    ela renasce com DELETE/UPDATE liberados de novo — rode este script
+--    (ou pelo menos este REVOKE) de novo depois. `alembic upgrade head` via
+--    ALTER TABLE normal não aciona isso (só DROP+CREATE aciona).
+REVOKE DELETE, UPDATE ON audit_logs FROM argus_app;
