@@ -26,7 +26,7 @@ services:
       -c log_line_prefix='%m [%p] %u@%d '
     environment:
       POSTGRES_USER: ${DB_USER:-argus}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD obrigatório em produção}
       POSTGRES_DB: ${DB_NAME:-argus_db}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-argus} -d ${DB_NAME:-argus_db}"]
@@ -75,13 +75,19 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${APP_DB_USER:-argus_app}:${APP_DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
-      MIGRATION_DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
+      DATABASE_URL: postgresql://${APP_DB_USER:-argus_app}:${APP_DB_PASSWORD:?APP_DB_PASSWORD obrigatório em produção}@db:5432/${DB_NAME:-argus_db}
+      MIGRATION_DATABASE_URL: postgresql://${DB_USER:-argus}:${DB_PASSWORD:?DB_PASSWORD obrigatório em produção}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD obrigatório em produção}@redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
       # Necessário para métricas Prometheus corretas com múltiplos workers gunicorn
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
+      # Worker arq esperados p/ métrica argus_worker_alive (achado #12/2026-07-13)
+      WORKER_IDS: worker-1,worker-2
+      # Caddy é quem a API vê como client.host na rede Docker — sem isso,
+      # X-Forwarded-For nunca é honrado e rate limit/login_guard por IP veem
+      # sempre o IP do Caddy, não do cliente real (achado #14/2026-07-13).
+      TRUSTED_PROXY_HOSTNAMES: '["caddy"]'
     expose:
       - "8000"
     healthcheck:
@@ -108,10 +114,12 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${APP_DB_USER:-argus_app}:${APP_DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
+      DATABASE_URL: postgresql://${APP_DB_USER:-argus_app}:${APP_DB_PASSWORD:?APP_DB_PASSWORD obrigatório em produção}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD obrigatório em produção}@redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
+      # Identifica esta instância p/ health-check individual (achado #12/2026-07-13)
+      WORKER_ID: worker-1
     healthcheck:
       test: ["CMD", "sh", "-c", "grep -q arq /proc/1/cmdline"]
       interval: 30s
@@ -138,10 +146,12 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${APP_DB_USER:-argus_app}:${APP_DB_PASSWORD}@db:5432/${DB_NAME:-argus_db}
+      DATABASE_URL: postgresql://${APP_DB_USER:-argus_app}:${APP_DB_PASSWORD:?APP_DB_PASSWORD obrigatório em produção}@db:5432/${DB_NAME:-argus_db}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD obrigatório em produção}@redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: https://${DOMAIN:-arguseye.duckdns.org}/storage
+      # Identifica esta instância p/ health-check individual (achado #12/2026-07-13)
+      WORKER_ID: worker-2
     healthcheck:
       test: ["CMD", "sh", "-c", "grep -q arq /proc/1/cmdline"]
       interval: 30s
@@ -222,7 +232,7 @@ services:
     environment:
       PGHOST: db
       PGUSER: ${DB_USER:-argus}
-      PGPASSWORD: ${DB_PASSWORD}
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD obrigatório em produção}
       PGDATABASE: ${DB_NAME:-argus_db}
     entrypoint: >
       /bin/sh -c "

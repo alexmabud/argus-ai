@@ -150,6 +150,20 @@ class TestSecretKeyValidation:
             with pytest.raises(ValueError, match="placeholder"):
                 Settings()
 
+    def test_secret_key_rejeita_placeholder_real_do_env_production_example(self):
+        """SECRET_KEY igual ao placeholder real de .env.production.example é rejeitada.
+
+        Achado #09/2026-07-13: TROCAR-GERAR-COM-OPENSSL-RAND-HEX-32 tem 36
+        caracteres (passa o mínimo de 32) e não batia com o set antigo de
+        placeholders — passava incólume se o deploy.sh não substituísse por
+        algum motivo. O prefixo "trocar" pega esse e variantes futuras.
+        """
+        env = dict(_BASE_ENV)
+        env["SECRET_KEY"] = "TROCAR-GERAR-COM-OPENSSL-RAND-HEX-32"
+        with patch.dict("os.environ", env, clear=True):
+            with pytest.raises(ValueError, match="placeholder"):
+                Settings()
+
     def test_secret_key_aceita_valor_forte(self):
         """SECRET_KEY com 64 caracteres aleatorios deve ser aceita."""
         env = dict(_BASE_ENV)

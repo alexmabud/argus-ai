@@ -56,23 +56,44 @@ cmd_setup() {
         log "Criando .env a partir do exemplo..."
         cp .env.production.example .env
 
-        # Gerar chaves automaticamente. ENCRYPTION_KEY (Fernet) é obrigatória
-        # para a criptografia LGPD — abortar se 'cryptography' não existir
-        # (jamais gravar placeholder e seguir com chave inválida).
+        # Gerar automaticamente todo secret que PODE ser gerado (não exige
+        # decisão humana). ENCRYPTION_KEY (Fernet) é obrigatória para a
+        # criptografia LGPD — abortar se 'cryptography' não existir (jamais
+        # gravar placeholder e seguir com chave inválida). DOMAIN fica de
+        # fora — não há valor gerável, exige o domínio real do operador.
         SECRET_KEY=$(openssl rand -hex 32)
         if ! ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" 2>/dev/null); then
             error "python3 + 'cryptography' são necessários para gerar ENCRYPTION_KEY (LGPD). Instale: pip install cryptography"
         fi
         DB_PASSWORD=$(openssl rand -hex 16)
+        APP_DB_PASSWORD=$(openssl rand -hex 16)
+        REDIS_PASSWORD=$(openssl rand -hex 16)
+        S3_ACCESS_KEY=$(openssl rand -hex 16)
+        S3_SECRET_KEY=$(openssl rand -hex 24)
 
         sed -i "s/TROCAR-GERAR-COM-OPENSSL-RAND-HEX-32/$SECRET_KEY/" .env
         sed -i "s|TROCAR-GERAR-COM-FERNET|$ENCRYPTION_KEY|" .env
         sed -i "s/TROCAR-SENHA-FORTE-AQUI/$DB_PASSWORD/" .env
+        sed -i "s/TROCAR-SENHA-FORTE-APP/$APP_DB_PASSWORD/" .env
+        sed -i "s/TROCAR-SENHA-FORTE-REDIS/$REDIS_PASSWORD/" .env
+        sed -i "s/SEU_R2_ACCESS_KEY/$S3_ACCESS_KEY/" .env
+        sed -i "s/SEU_R2_SECRET_KEY/$S3_SECRET_KEY/" .env
 
-        log "Chaves SECRET_KEY/ENCRYPTION_KEY/DB_PASSWORD geradas em .env"
-        log "IMPORTANTE: edite .env e defina as variáveis ainda obrigatórias"
-        log "  (REDIS_PASSWORD, APP_DB_PASSWORD, S3_*, DOMAIN, LLM/CORS):"
-        log "  nano .env"
+        log "Chaves/senhas geradas em .env: SECRET_KEY, ENCRYPTION_KEY, DB_PASSWORD,"
+        log "  APP_DB_PASSWORD, REDIS_PASSWORD, S3_ACCESS_KEY, S3_SECRET_KEY"
+        log "IMPORTANTE: DOMAIN não pode ser gerado — edite .env e defina o domínio real"
+        log "  (e CORS_ORIGINS/LLM se aplicável): nano .env"
+    fi
+
+    # 4b. Fail-fast: nenhum placeholder conhecido pode sobreviver até o
+    # 'docker compose up' — sem isso, o setup seguia adiante e só falhava
+    # (ou pior, subia com segredo fraco) depois do build, silenciosamente
+    # (achado #09/2026-07-13).
+    if grep -qE '^(SECRET_KEY|ENCRYPTION_KEY|DB_PASSWORD|APP_DB_PASSWORD|REDIS_PASSWORD|S3_ACCESS_KEY|S3_SECRET_KEY)=(TROCAR|SEU_)' .env; then
+        error "Placeholder não substituído em .env — verifique SECRET_KEY, ENCRYPTION_KEY, DB_PASSWORD, APP_DB_PASSWORD, REDIS_PASSWORD, S3_ACCESS_KEY, S3_SECRET_KEY antes de continuar."
+    fi
+    if grep -qE '^DOMAIN=(seu-dominio\.com)?$' .env; then
+        error "DOMAIN não configurado em .env — defina seu domínio real (nano .env) antes de continuar."
     fi
 
     # 5. Build e start (Caddy provisiona TLS/HTTPS automaticamente)

@@ -122,18 +122,27 @@ class Settings(BaseSettings):
 
         Recusa valores curtos (<32) ou placeholders conhecidos do .env.example.
         Falha rapido no startup em vez de servir trafego com chave fraca.
+
+        Achado #09/2026-07-13: o placeholder real usado em
+        .env.production.example ("TROCAR-GERAR-COM-OPENSSL-RAND-HEX-32", 36
+        chars) passava incólume — mais longo que o mínimo de 32 e não batia
+        com o set antigo (que checava uma string totalmente diferente,
+        "gerar-chave-segura-..."). O prefixo "trocar" pega qualquer
+        placeholder desse padrão, atual ou futuro, sem precisar listar cada
+        variante literal.
         """
         if len(v) < 32:
             raise ValueError(
                 "SECRET_KEY deve ter no minimo 32 caracteres (gere com: openssl rand -hex 32)"
             )
+        v_lower = v.lower()
         placeholders_inseguros = {
             "changeme",
             "secret",
             "default",
             "gerar-chave-segura-com-openssl-rand-hex-32",
         }
-        if v.lower() in placeholders_inseguros:
+        if v_lower in placeholders_inseguros or v_lower.startswith("trocar"):
             raise ValueError(
                 "SECRET_KEY usa placeholder inseguro — substitua por chave gerada "
                 "com `openssl rand -hex 32`"
