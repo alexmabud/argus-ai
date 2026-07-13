@@ -59,19 +59,31 @@ async def _audit_background(
     detalhes: dict,
     ip_address: str | None,
     user_agent: str | None,
+    recurso: str = "foto",
 ) -> None:
     """Registra uma entrada de auditoria abrindo sessão própria.
 
     Não usa a sessão do request — ela pode já estar fechada quando
     a BackgroundTask executar.
 
+    Política fail-open explícita (achado #25/2026-07-13): esta função roda
+    como BackgroundTask, ou seja, sempre DEPOIS da resposta HTTP já ter sido
+    enviada ao cliente — uma falha aqui (DB fora do ar, etc.) não pode e não
+    deve impedir o streaming do arquivo, que já aconteceu. O único efeito
+    de uma falha é a ausência da linha de auditoria; ela nunca é silenciosa
+    de verdade, pois cai em logger.exception (visível em log/alerta), mas
+    não há retry nem bloqueio do request original.
+
     Args:
         usuario_id: ID do usuário autenticado.
         acao: Código da ação ("VIEW_MIDIA" ou "DOWNLOAD_MIDIA").
-        recurso_id: ID da Foto no banco (pode ser None).
+        recurso_id: ID do recurso no banco (pode ser None).
         detalhes: Dicionário com asset_key e matrícula.
         ip_address: IP do cliente.
         user_agent: User-Agent do cliente.
+        recurso: Tipo do recurso acessado ("foto", "ocorrencia" ou "usuario"
+            para avatar) — antes sempre fixo em "foto", mesmo para PDF de
+            ocorrência (achado #25/2026-07-13).
     """
     try:
         async with AsyncSessionLocal() as db:
@@ -79,7 +91,7 @@ async def _audit_background(
             await audit.log(
                 usuario_id=usuario_id,
                 acao=acao,
-                recurso="foto",
+                recurso=recurso,
                 recurso_id=recurso_id,
                 detalhes=detalhes,
                 ip_address=ip_address,
@@ -122,20 +134,24 @@ def log_view(
     foto_id: int | None = None,
     ip_address: str | None = None,
     user_agent: str | None = None,
+    recurso: str = "foto",
 ) -> None:
     """Agenda auditoria de VIEW em background, de-duplicada por 10 minutos.
 
-    Deve ser chamada apenas para visualizações de imagem em tamanho cheio
-    (não thumbnails) para evitar ruído no log de auditoria.
+    Cobre tanto imagem com watermark quanto PDF/vídeo servidos in-line pelo
+    proxy /storage (achado #25/2026-07-13 — antes só a variante com
+    watermark, sempre imagem, deixava trilha).
 
     Args:
         background_tasks: FastAPI BackgroundTasks do request atual.
         usuario_id: ID do usuário autenticado.
         matricula: Matrícula do usuário (usada na chave de de-dupe).
         asset_key: Key do asset no MinIO.
-        foto_id: ID da Foto no banco (opcional).
+        foto_id: ID do recurso no banco (Foto, Ocorrencia ou Usuario/avatar
+            conforme `recurso`; opcional).
         ip_address: IP do cliente.
         user_agent: User-Agent do cliente.
+        recurso: Tipo do recurso acessado ("foto", "ocorrencia" ou "usuario").
     """
 
     async def _run() -> None:
@@ -150,6 +166,7 @@ def log_view(
             detalhes={"asset_key": asset_key, "matricula": matricula},
             ip_address=ip_address,
             user_agent=user_agent,
+            recurso=recurso,
         )
 
     background_tasks.add_task(_run)

@@ -108,6 +108,37 @@ async def test_log_view_redis_indisponivel_loga_mesmo_assim(monkeypatch):
     mock_audit.assert_awaited_once()
 
 
+async def test_log_view_recurso_customizado_propaga(monkeypatch):
+    """log_view propaga recurso!="foto" (ex.: "ocorrencia") até _audit_background.
+
+    Achado #25/2026-07-13: antes recurso era sempre hardcoded "foto" em
+    _audit_background, mesmo para PDF de Ocorrencia servido via /storage.
+
+    Args:
+        monkeypatch: Fixture pytest para patch temporário.
+    """
+    mock_audit = AsyncMock()
+    mock_dedup = AsyncMock(return_value=True)
+    monkeypatch.setattr(mod, "_audit_background", mock_audit)
+    monkeypatch.setattr(mod, "_dedup_view", mock_dedup)
+
+    bt = BackgroundTasks()
+    log_view(
+        bt,
+        usuario_id=1,
+        matricula="GM-1",
+        asset_key="pdfs/bo.pdf",
+        foto_id=99,
+        recurso="ocorrencia",
+    )
+    await _run_tasks(bt)
+
+    mock_audit.assert_awaited_once()
+    kwargs = mock_audit.call_args.kwargs
+    assert kwargs["recurso"] == "ocorrencia"
+    assert kwargs["recurso_id"] == 99
+
+
 async def test_audit_background_abre_sessao_propria(monkeypatch):
     """_audit_background abre AsyncSessionLocal própria (não usa sessão do request).
 

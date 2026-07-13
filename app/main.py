@@ -227,6 +227,11 @@ def create_app() -> FastAPI:
         # por enumeracao/objeto residual, e servi-lo sem checagem e a lacuna do
         # achado #08/2026-07-13.
         url_publica = f"/storage/{path}"
+        # Resolve também o tipo/ID do recurso para a trilha de auditoria VIEW
+        # abaixo (achado #25/2026-07-13) — antes só PDF/vídeo (não-imagem)
+        # ficava de fora do log_view; imagem com watermark já era coberta.
+        recurso_tipo = "foto"
+        recurso_id_audit: int | None = None
         foto = (
             await db.execute(
                 select(Foto.id).where(
@@ -234,6 +239,8 @@ def create_app() -> FastAPI:
                 )
             )
         ).scalar_one_or_none()
+        if foto is not None:
+            recurso_id_audit = foto
         if foto is None:
             ocorrencia = (
                 await db.execute(
@@ -242,6 +249,8 @@ def create_app() -> FastAPI:
             ).scalar_one_or_none()
             if ocorrencia is not None:
                 TenantFilter.check_ownership(ocorrencia, user)
+                recurso_tipo = "ocorrencia"
+                recurso_id_audit = ocorrencia.id
             else:
                 avatar_dono = (
                     await db.execute(select(Usuario.id).where(Usuario.foto_url == url_publica))
@@ -251,6 +260,8 @@ def create_app() -> FastAPI:
                         status_code=status.HTTP_404_NOT_FOUND,
                         detail="Arquivo não encontrado",
                     )
+                recurso_tipo = "usuario"
+                recurso_id_audit = avatar_dono
 
         storage = StorageService.get()
         wm_ckey = WatermarkService.cache_key(user.matricula, key)
@@ -263,6 +274,8 @@ def create_app() -> FastAPI:
                 usuario_id=user.id,
                 matricula=user.matricula,
                 asset_key=key,
+                foto_id=recurso_id_audit,
+                recurso=recurso_tipo,
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
             )
@@ -315,6 +328,8 @@ def create_app() -> FastAPI:
                 usuario_id=user.id,
                 matricula=user.matricula,
                 asset_key=key,
+                foto_id=recurso_id_audit,
+                recurso=recurso_tipo,
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
             )
@@ -327,6 +342,24 @@ def create_app() -> FastAPI:
         # Não-imagem (PDF, vídeo): streaming dos bytes originais. Mantém o ETag
         # (válido pois o conteúdo não é transformado), mas o proxy não honra
         # requisições condicionais — sempre devolve 200 (ver fetch acima).
+        # Auditoria VIEW (achado #25/2026-07-13): antes só a variante com
+        # watermark (imagem) deixava trilha — PDF de ocorrência/mídia de
+        # abordagem streamava sem nenhum registro de quem acessou. Política
+        # fail-open explícita: log_view roda em BackgroundTask *depois* da
+        # resposta já enviada ao cliente — uma falha ao gravar a auditoria
+        # (ex.: DB fora do ar) nunca impede o streaming, só fica em
+        # logger.exception (ver _audit_background em access_audit.py).
+        log_view(
+            background_tasks,
+            usuario_id=user.id,
+            matricula=user.matricula,
+            asset_key=key,
+            foto_id=recurso_id_audit,
+            recurso=recurso_tipo,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
         headers = {"Cache-Control": "private, max-age=3600"}
         if etag:
             headers["ETag"] = etag

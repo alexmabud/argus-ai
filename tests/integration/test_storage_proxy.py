@@ -603,3 +603,84 @@ async def test_storage_proxy_cache_hit_retorna_sem_chamar_original(
     assert resp.content == pre_marked_bytes
     # Exatamente uma chamada: a do cache wm/, não do original
     assert fake_storage.get_object.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_pdf_registra_audit_view(
+    client, auth_headers, fake_storage, db_session: AsyncSession, usuario
+):
+    """GET de PDF via /storage aciona log_view com o recurso/ID corretos.
+
+    Achado #25/2026-07-13: antes, só a variante com watermark (sempre
+    imagem) deixava trilha de auditoria — PDF/vídeo streamado in-line
+    (achado #08 default-deny já garantia autorização, mas não o log).
+
+    log_view é mockado em vez de checar uma linha real em audit_logs: a
+    task roda em BackgroundTask, numa conexão própria (AsyncSessionLocal)
+    independente da sessão de teste (db_session) — nesta suíte, db_session
+    nunca comita (isolamento entre testes via rollback implícito), então
+    uma segunda conexão jamais veria o usuário/guarnição de fixture ainda
+    não commitados. A cobertura de que log_view→_audit_background persiste
+    corretamente já está em tests/unit/services/test_access_audit.py.
+    """
+    from unittest.mock import MagicMock, patch
+
+    await _indexar_foto(db_session, "pdfs/laudo.pdf")
+    body = _FakeStreamingBody([b"%PDF-1.7 fake"])
+    fake_storage.get_object = _get_obj_routing(
+        {"Body": body, "ContentType": "application/pdf", "ETag": '"pdf1"'}
+    )
+
+    with patch("app.main.log_view", MagicMock()) as mock_log_view:
+        response = await client.get(
+            f"/storage/{settings.S3_BUCKET}/pdfs/laudo.pdf",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        mock_log_view.assert_called_once()
+        kwargs = mock_log_view.call_args.kwargs
+        assert kwargs["recurso"] == "foto"
+        assert kwargs["asset_key"] == "pdfs/laudo.pdf"
+        assert kwargs["usuario_id"] == usuario.id
+
+
+@pytest.mark.asyncio
+async def test_storage_proxy_pdf_ocorrencia_registra_audit_view_com_recurso_correto(
+    client, auth_headers, fake_storage, db_session: AsyncSession, usuario, guarnicao
+):
+    """GET de PDF de ocorrência via /storage aciona log_view com recurso="ocorrencia".
+
+    Antes da correção do achado #25, a auditoria era sempre hardcoded como
+    recurso="foto", mesmo quando o objeto acessado era o PDF de uma
+    Ocorrencia (RAP) — recurso_id apontaria para um ID de Foto inexistente
+    ou ficaria None, perdendo a rastreabilidade real do acesso. Ver nota
+    sobre mock de log_view no teste acima.
+    """
+    from datetime import date
+    from unittest.mock import MagicMock, patch
+
+    ocorrencia = Ocorrencia(
+        numero_ocorrencia="RAP 2026/AUDIT-PDF",
+        arquivo_pdf_url=f"/storage/{settings.S3_BUCKET}/pdfs/bo.pdf",
+        data_ocorrencia=date.today(),
+        usuario_id=usuario.id,
+        guarnicao_id=guarnicao.id,
+    )
+    db_session.add(ocorrencia)
+    await db_session.flush()
+
+    body = _FakeStreamingBody([b"%PDF-1.7 fake"])
+    fake_storage.get_object = _get_obj_routing(
+        {"Body": body, "ContentType": "application/pdf", "ETag": '"pdf2"'}
+    )
+
+    with patch("app.main.log_view", MagicMock()) as mock_log_view:
+        response = await client.get(
+            f"/storage/{settings.S3_BUCKET}/pdfs/bo.pdf",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        mock_log_view.assert_called_once()
+        kwargs = mock_log_view.call_args.kwargs
+        assert kwargs["recurso"] == "ocorrencia"
+        assert kwargs["foto_id"] == ocorrencia.id
