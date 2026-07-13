@@ -113,3 +113,13 @@ class WorkerSettings:
     max_jobs = 5
     job_timeout = 600  # 10 minutos
     max_tries = 3  # retry automático em caso de falha
+    # Health-check por instância (achado #12/2026-07-13): com WORKER_ID setado
+    # (docker-compose.prod.yml define um valor distinto por worker/worker-2),
+    # cada processo grava sua própria chave no Redis em vez de todos
+    # compartilharem "arq:queue:health-check" — o último a escrever "esconde"
+    # os outros mortos. Sem WORKER_ID (dev, 1 worker só), mantém o default do arq.
+    # Intervalo curto (default do arq é 3600s) para a métrica refletir a
+    # realidade em minutos, não em horas.
+    health_check_interval = 60
+    if settings.WORKER_ID:
+        health_check_key = f"arq:health-check:{settings.WORKER_ID}"

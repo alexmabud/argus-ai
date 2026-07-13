@@ -92,6 +92,17 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
 
+    # Identidade deste worker arq (usada como sufixo da health-check key no
+    # Redis, para permitir monitorar múltiplos workers individualmente — ver
+    # WORKER_IDS). Vazio = comportamento padrão do arq (chave única, não
+    # distingue instâncias).
+    WORKER_ID: str = ""
+    # Lista (separada por vírgula) dos worker_id esperados em produção — usada
+    # pela API para publicar a métrica argus_worker_alive{worker_id=...} no
+    # /metrics, permitindo alertar por instância (achado #12/2026-07-13: antes
+    # a métrica agregada de comandos Redis não caía com só 1 de N workers morto).
+    WORKER_IDS: str = ""
+
     # Auth
     SECRET_KEY: str
     SENHA_PROVISORIA_EXPIRE_HOURS: int = 24

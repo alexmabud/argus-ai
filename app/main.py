@@ -6,6 +6,8 @@ modelos de ML e ciclo de vida de conexões com banco de dados. Inclui
 proxy reverso para storage S3/MinIO para evitar mixed-content em HTTPS.
 """
 
+import asyncio
+import contextlib
 import logging
 import traceback
 from contextlib import asynccontextmanager
@@ -27,6 +29,7 @@ from app.core.logging_config import setup_logging
 from app.core.middleware import LoggingMiddleware, SecurityHeadersMiddleware
 from app.core.permissions import TenantFilter
 from app.core.rate_limit import limiter
+from app.core.worker_health import loop_worker_health
 from app.database.session import engine, get_db
 from app.dependencies import get_current_user
 from app.models.foto import Foto
@@ -67,8 +70,15 @@ async def lifespan(app: FastAPI):
     # Cliente S3 singleton — reutiliza TCP/TLS entre requests.
     await StorageService.get().startup()
 
+    # Métrica argus_worker_alive por instância (achado #12/2026-07-13) — no-op
+    # se WORKER_IDS não estiver configurado (dev/single-worker).
+    worker_health_task = asyncio.create_task(loop_worker_health())
+
     yield
     # Shutdown
+    worker_health_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await worker_health_task
     await StorageService.get().shutdown()
     await engine.dispose()
 
