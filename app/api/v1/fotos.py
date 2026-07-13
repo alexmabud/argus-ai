@@ -22,7 +22,7 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rate_limit import limiter
+from app.core.rate_limit import _get_user_rate_limit_key, limiter
 from app.core.upload_validation import (
     converter_heic_para_jpeg,
     is_heic,
@@ -308,6 +308,10 @@ async def listar_fotos_abordagem(
 
 @router.post("/buscar-rosto", response_model=BuscaRostoResponse)
 @limiter.limit("10/minute")
+# Segundo limite, por usuário autenticado (achado #07/2026-07-13): o limite
+# por IP acima não impede um usuário escalar scraping biométrico rotacionando
+# rede/IP com a mesma credencial. Mesmo teto — os dois precisam passar.
+@limiter.limit("10/minute", key_func=_get_user_rate_limit_key)
 async def buscar_por_rosto(
     request: Request,
     file: UploadFile,

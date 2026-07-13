@@ -66,6 +66,38 @@ def _get_real_client_ip(request: Request) -> str:
     return client_host or "unknown"
 
 
+def _get_user_rate_limit_key(request: Request) -> str:
+    """Chave de rate limit pelo usuário autenticado (claim `sub` do JWT).
+
+    Complementa o limite por IP (achado #07/2026-07-13 — controle
+    compensatório da busca facial): o limite por IP sozinho não impede um
+    usuário autenticado de rotacionar IP/rede para escalar scraping
+    biométrico com a mesma credencial. Decodifica o token diretamente (sem
+    tocar o banco) — o dependency `get_current_user` da rota já valida a
+    sessão de verdade; aqui só precisamos de uma chave estável por usuário.
+
+    Sem token válido, cai no IP (a rota exige autenticação de qualquer
+    forma — `get_current_user` rejeita antes de a lógica do endpoint rodar).
+
+    Args:
+        request: Objeto Request do Starlette.
+
+    Returns:
+        "user:{id}" quando há um JWT válido, senão o IP real do cliente.
+    """
+    auth_header = request.headers.get("authorization", "")
+    token = (
+        auth_header.removeprefix("Bearer ").strip()
+        if auth_header.lower().startswith("bearer ")
+        else request.cookies.get(ACCESS_TOKEN_COOKIE)
+    )
+    if token:
+        payload = decodificar_token(token)
+        if payload and payload.get("sub"):
+            return f"user:{payload['sub']}"
+    return _get_real_client_ip(request)
+
+
 #: Instância global de limiter usado em todos os endpoints.
 #: Usa IP real do cliente como chave e Redis para armazenamento distribuído.
 limiter = Limiter(
