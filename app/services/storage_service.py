@@ -51,6 +51,26 @@ def normalize_storage_url(url: str | None) -> str | None:
     return url
 
 
+def storage_key(url: str | None) -> str | None:
+    """Extrai a chave do objeto no bucket a partir de uma URL de storage.
+
+    Converte a URL (absoluta legada ou relativa /storage/bucket/key) para a
+    chave relativa ao bucket, usada por ``StorageService.delete``/``download``.
+
+    Args:
+        url: URL do arquivo no storage (absoluta, relativa ou marcador de
+            anonimização) ou None.
+
+    Returns:
+        Chave do objeto (ex.: "fotos/uuid.jpg") ou None se não derivável.
+    """
+    norm = normalize_storage_url(url)
+    if not norm or not norm.startswith("/storage/"):
+        return None
+    _bucket, _sep, key = norm[len("/storage/") :].partition("/")
+    return key or None
+
+
 class StorageService:
     """Serviço S3-compatible com cliente persistente (reusa TCP keep-alive).
 

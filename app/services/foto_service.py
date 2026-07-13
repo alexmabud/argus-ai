@@ -25,7 +25,7 @@ from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.repositories.foto_repo import FotoRepository
 from app.services.audit_service import AuditService
-from app.services.storage_service import StorageService
+from app.services.storage_service import StorageService, storage_key
 from app.utils.imaging import gerar_thumbnail
 
 if TYPE_CHECKING:
@@ -311,8 +311,10 @@ class FotoService:
         """Remove foto via soft delete, restrito a administradores.
 
         Permite corrigir fotos categorizadas incorretamente (ex: foto de
-        arma/droga enviada como "rosto"). Não remove o arquivo do storage,
-        apenas marca o registro como inativo.
+        arma/droga enviada como "rosto"). Apaga o(s) arquivo(s) (original e
+        thumbnail) do storage S3/R2 e zera o embedding facial — direito de
+        eliminação (LGPD) exercido no momento do delete, sem esperar a
+        varredura periódica de retenção (``scripts/anonimizar_dados.py``).
 
         Args:
             foto_id: ID da foto a desativar.
@@ -322,7 +324,7 @@ class FotoService:
             user_agent: User-Agent do cliente (opcional).
 
         Returns:
-            Foto desativada (ativo=False).
+            Foto desativada (ativo=False), sem embedding e sem blob no storage.
 
         Raises:
             AcessoNegadoError: Se o usuário não é administrador, ou se a
@@ -337,6 +339,20 @@ class FotoService:
             raise NaoEncontradoError("Foto")
         TenantFilter.check_ownership(foto, user)
 
+        # Known gap: não purga variantes já cacheadas em wm/v1/{hash(matrícula)}/{key}
+        # (WatermarkService) — usuários que já visualizaram a foto podem seguir
+        # servindo a cópia marcada em cache até expirar. Purga completa exigiria
+        # list_objects por todo o prefixo wm/v1/ (sem índice pelo key original).
+        for url in (foto.arquivo_url, foto.thumbnail_url):
+            key = storage_key(url)
+            if not key:
+                continue
+            try:
+                await self.storage.delete(key)
+            except Exception:
+                logger.warning("Falha ao apagar foto %d do storage (key=%s)", foto.id, key)
+
+        foto.embedding_face = None
         await self.repo.soft_delete(foto, deleted_by_id=user.id)
 
         # Recalcular foto de perfil se a foto desativada era de rosto —

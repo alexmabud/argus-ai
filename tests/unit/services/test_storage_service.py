@@ -5,6 +5,22 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.services import storage_service as ss_module
+from app.services.storage_service import storage_key
+
+
+def test_storage_key_relativo():
+    """URL relativa /storage/bucket/key resolve para a chave relativa ao bucket."""
+    assert storage_key("/storage/argus-fotos/fotos/uuid.jpg") == "fotos/uuid.jpg"
+
+
+def test_storage_key_none():
+    """URL None não gera chave."""
+    assert storage_key(None) is None
+
+
+def test_storage_key_sem_prefixo_storage():
+    """Marcador de valor anonimizado (sem prefixo /storage/) não é uma chave válida."""
+    assert storage_key("ANONIMIZADO") is None
 
 
 @pytest.mark.asyncio

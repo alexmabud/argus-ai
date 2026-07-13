@@ -524,6 +524,80 @@ class TestDesativarFoto:
         with pytest.raises(NaoEncontradoError):
             await service.desativar(99999, usuario)
 
+    async def test_desativar_zera_embedding_e_apaga_original_e_thumbnail_do_storage(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, pessoa: Pessoa, usuario: Usuario
+    ):
+        """Desativar exerce o direito de eliminação (LGPD) na hora, não só em 5 anos.
+
+        Regressão do achado #02/2026-07-13: soft delete deixava o embedding
+        buscável e o blob no storage indefinidamente (só a varredura de
+        retenção de ``anonimizar_dados.py`` limpava, e só se a Pessoa também
+        fosse soft-deleted).
+        """
+        usuario.is_admin = True
+
+        storage_mock = MagicMock()
+        storage_mock.generate_key = MagicMock(return_value="fotos/teste.jpg")
+        storage_mock.upload = AsyncMock(return_value="/storage/argus-fotos/fotos/teste.jpg")
+        storage_mock.delete = AsyncMock()
+
+        with patch("app.services.foto_service.StorageService.get", return_value=storage_mock):
+            service = FotoService(db_session)
+
+        foto = await service.upload_foto(
+            file_bytes=b"fake-image-bytes",
+            filename="teste.jpg",
+            content_type="image/jpeg",
+            pessoa_id=pessoa.id,
+            abordagem_id=None,
+            veiculo_id=None,
+            tipo="rosto",
+            latitude=None,
+            longitude=None,
+            user_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+        foto.embedding_face = np.random.rand(512).tolist()
+        foto.thumbnail_url = "/storage/argus-fotos/fotos/teste_thumb.jpg"
+        await db_session.flush()
+
+        desativada = await service.desativar(foto.id, usuario)
+
+        assert desativada.embedding_face is None
+        storage_mock.delete.assert_any_call("fotos/teste.jpg")
+        storage_mock.delete.assert_any_call("fotos/teste_thumb.jpg")
+
+    async def test_desativar_nao_quebra_se_storage_delete_falhar(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, pessoa: Pessoa, usuario: Usuario
+    ):
+        """Falha ao apagar do storage não deve impedir o soft delete (best-effort)."""
+        usuario.is_admin = True
+
+        storage_mock = MagicMock()
+        storage_mock.generate_key = MagicMock(return_value="fotos/teste.jpg")
+        storage_mock.upload = AsyncMock(return_value="/storage/argus-fotos/fotos/teste.jpg")
+        storage_mock.delete = AsyncMock(side_effect=RuntimeError("S3 indisponível"))
+
+        with patch("app.services.foto_service.StorageService.get", return_value=storage_mock):
+            service = FotoService(db_session)
+
+        foto = await service.upload_foto(
+            file_bytes=b"fake-image-bytes",
+            filename="teste.jpg",
+            content_type="image/jpeg",
+            pessoa_id=pessoa.id,
+            abordagem_id=None,
+            veiculo_id=None,
+            tipo="rosto",
+            latitude=None,
+            longitude=None,
+            user_id=usuario.id,
+            guarnicao_id=guarnicao.id,
+        )
+
+        desativada = await service.desativar(foto.id, usuario)
+        assert desativada.ativo is False
+
 
 class TestRecomputeFotoPrincipal:
     """Testes para recomputo de Pessoa.foto_principal_url ao desativar/enviar fotos.

@@ -248,8 +248,9 @@ async def deletar_foto(
     """Remove foto via soft delete. Restrito a administradores.
 
     Permite corrigir fotos categorizadas incorretamente (ex: foto de
-    arma/droga enviada como "rosto"). Não remove o arquivo do storage,
-    apenas marca o registro como inativo.
+    arma/droga enviada como "rosto"). Apaga o arquivo (original e
+    thumbnail) do storage e zera o embedding facial — o registro em si
+    permanece (soft delete), mas sem dado biométrico buscável nem blob.
 
     Args:
         request: Objeto Request do FastAPI.
