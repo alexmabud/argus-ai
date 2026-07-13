@@ -54,6 +54,25 @@ class TestCriarVeiculo:
         with pytest.raises(ConflitoDadosError):
             await service.criar(data=data2, user_id=usuario.id, guarnicao_id=guarnicao.id)
 
+    async def test_criar_veiculo_client_id_duplicado_retorna_existente(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario
+    ):
+        """Testa que client_id duplicado retorna o veículo já criado, sem duplicar.
+
+        Deduplicação de sync offline (achado #18/2026-07-13): um retry do
+        mesmo item da fila offline não deve criar um segundo veículo.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário.
+        """
+        service = VeiculoService(db_session)
+        data = VeiculoCreate(placa="OFF1L23", modelo="Gol", client_id="offline-veiculo-123")
+        primeira = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+        segunda = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+        assert primeira.id == segunda.id
+
 
 class TestBuscarVeiculo:
     """Testes de busca de veículo."""

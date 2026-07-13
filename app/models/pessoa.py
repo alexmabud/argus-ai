@@ -39,6 +39,8 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
             usada em listagens para reduzir tráfego. Pode ser None em
             registros legados (anteriores ao backfill).
         observacoes: Anotações sobre a pessoa.
+        client_id: ID único gerado no frontend offline para deduplicação de
+            sync (achado #18/2026-07-13) — único apenas quando não-null.
         guarnicao_id: ID da guarnição (isolamento multi-tenant).
         enderecos: Relacionamento com EndereçosPessoa.
         abordagens: Relacionamento M:N com Abordagens via AbordagemPessoa.
@@ -65,6 +67,7 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     foto_principal_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     foto_principal_thumb_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    client_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     enderecos = relationship("EnderecoPessoa", back_populates="pessoa", lazy="selectin")
     abordagens = relationship("AbordagemPessoa", back_populates="pessoa", lazy="selectin")
@@ -109,4 +112,10 @@ class Pessoa(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
             postgresql_ops={"nome_mae": "gin_trgm_ops"},
         ),
         Index("idx_pessoa_guarnicao", "guarnicao_id"),
+        Index(
+            "idx_pessoa_client_id",
+            "client_id",
+            unique=True,
+            postgresql_where="client_id IS NOT NULL",
+        ),
     )

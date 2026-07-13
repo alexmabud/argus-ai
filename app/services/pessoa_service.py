@@ -61,9 +61,11 @@ class PessoaService:
     ) -> Pessoa:
         """Cria nova pessoa com CPF criptografado.
 
-        Se CPF informado, criptografa com Fernet (AES-256) e gera hash
-        SHA-256 para busca. Verifica unicidade do CPF por hash dentro
-        da mesma guarnição antes de criar.
+        Se client_id informado, verifica primeiro se já existe pessoa com
+        este client_id (deduplicação de sync offline, achado #18/2026-07-13)
+        e retorna a existente sem duplicar. Se CPF informado, criptografa
+        com Fernet (AES-256) e gera hash SHA-256 para busca. Verifica
+        unicidade do CPF por hash dentro da mesma guarnição antes de criar.
 
         Args:
             data: Dados de criação da pessoa (nome, cpf, nascimento, etc).
@@ -73,11 +75,18 @@ class PessoaService:
             user_agent: User-Agent do cliente (opcional).
 
         Returns:
-            Pessoa criada com ID atribuído pelo banco.
+            Pessoa criada com ID atribuído pelo banco, ou pessoa existente
+            com o mesmo client_id (idempotência de sync offline).
 
         Raises:
             ConflitoDadosError: Se CPF já cadastrado na mesma guarnição.
         """
+        # Deduplicação por client_id (offline sync)
+        if data.client_id:
+            existing_client = await self.repo.get_by_client_id(data.client_id)
+            if existing_client:
+                return existing_client
+
         cpf_encrypted = None
         cpf_hash = None
         if data.cpf:
@@ -96,11 +105,21 @@ class PessoaService:
             nome_mae=data.nome_mae,
             observacoes=data.observacoes,
             guarnicao_id=guarnicao_id,
+            client_id=data.client_id,
         )
 
         try:
             await self.repo.create(pessoa)
         except IntegrityError:
+            # Race: outra requisição concorrente inseriu o MESMO client_id (ou
+            # CPF) entre o dedup-check acima e este flush. Rollback é necessário
+            # para liberar a transação abortada antes de re-consultar (mesmo
+            # padrão de AbordagemService.criar).
+            await self.db.rollback()
+            if data.client_id:
+                existing_client = await self.repo.get_by_client_id(data.client_id)
+                if existing_client:
+                    return existing_client
             raise ConflitoDadosError("Pessoa com este CPF já cadastrada")
 
         await self.audit.log(

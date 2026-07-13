@@ -184,7 +184,28 @@ async function enqueueSync(tipo, dados, fotos = []) {
     criadoEm: new Date().toISOString(),
     tentativas: 0,
     clientId: crypto.randomUUID(),
+    // Guarnição da sessão no momento do registro offline — usada em
+    // getPendingSync para detectar troca de equipe antes de sincronizar
+    // (achado #18/2026-07-13). null se indisponível (ex.: perfil incompleto).
+    guarnicaoId: typeof auth !== "undefined" && auth.user ? auth.user.guarnicao_id : null,
   });
+}
+
+/**
+ * Limpa a fila local de sincronização quando a guarnição do usuário muda.
+ *
+ * Itens enfileirados offline sob a guarnição anterior não podem ser
+ * sincronizados com segurança sob a sessão atual — sincronizá-los atribuiria
+ * o registro de campo à equipe nova, um vazamento entre tenants (achado
+ * #18/2026-07-13). Best-effort: nunca lança.
+ */
+async function purgeSyncQueueOnTeamChange() {
+  try {
+    const database = await initDB();
+    await database.syncQueue.clear();
+  } catch {
+    /* best-effort */
+  }
 }
 
 /**
@@ -221,6 +242,12 @@ function _sincronizavel(item) {
  * Itens marcados como `failed` por erro transitório (rede/5xx) voltam a ser
  * tentados até MAX_SYNC_ATTEMPTS, evitando a perda silenciosa de dados de
  * campo que ficavam presos em `failed` para sempre.
+ *
+ * Itens enfileirados sob uma guarnição diferente da sessão atual (equipe do
+ * operador trocada após o registro offline, antes da fila sincronizar) são
+ * quarentenados em vez de liberados — sincronizá-los agora atribuiria o
+ * registro à equipe errada (achado #18/2026-07-13). Ficam em `failed` e
+ * "estacionam" após MAX_SYNC_ATTEMPTS como qualquer outra falha permanente.
  */
 async function getPendingSync() {
   const database = await initDB();
@@ -230,8 +257,21 @@ async function getPendingSync() {
   if (items.length && localStorage.getItem("argus_db_secret")) {
     await ensureCryptoReady();
   }
-  for (const item of items) item.dados = await _decryptDados(item.dados);
-  return items;
+  const guarnicaoAtual = typeof auth !== "undefined" && auth.user ? auth.user.guarnicao_id : null;
+  const liberados = [];
+  for (const item of items) {
+    if (
+      item.guarnicaoId != null &&
+      guarnicaoAtual != null &&
+      item.guarnicaoId !== guarnicaoAtual
+    ) {
+      await markFailed(item.id, "Item pertence a outra equipe — sincronização bloqueada");
+      continue;
+    }
+    item.dados = await _decryptDados(item.dados);
+    liberados.push(item);
+  }
+  return liberados;
 }
 
 /**

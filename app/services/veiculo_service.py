@@ -63,8 +63,11 @@ class VeiculoService:
     ) -> Veiculo:
         """Cria novo veículo com normalização de placa.
 
-        Normaliza a placa para uppercase sem traços e verifica unicidade
-        global antes de criar. Registra evento de auditoria.
+        Se client_id informado, verifica primeiro se já existe veículo com
+        este client_id (deduplicação de sync offline, achado #18/2026-07-13)
+        e retorna o existente sem duplicar. Normaliza a placa para uppercase
+        sem traços e verifica unicidade global antes de criar. Registra
+        evento de auditoria.
 
         Args:
             data: Dados de criação do veículo (placa, modelo, cor, etc).
@@ -74,11 +77,18 @@ class VeiculoService:
             user_agent: User-Agent do cliente (opcional).
 
         Returns:
-            Veículo criado com ID atribuído pelo banco.
+            Veículo criado com ID atribuído pelo banco, ou veículo existente
+            com o mesmo client_id (idempotência de sync offline).
 
         Raises:
             ConflitoDadosError: Se placa já cadastrada no sistema.
         """
+        # Deduplicação por client_id (offline sync)
+        if data.client_id:
+            existing_client = await self.repo.get_by_client_id(data.client_id)
+            if existing_client:
+                return existing_client
+
         placa_normalizada = self._normalizar_placa(data.placa)
 
         existing = await self.repo.get_by_placa(placa_normalizada)
@@ -93,12 +103,19 @@ class VeiculoService:
             tipo=data.tipo,
             observacoes=data.observacoes,
             guarnicao_id=guarnicao_id,
+            client_id=data.client_id,
         )
 
         try:
             await self.repo.create(veiculo)
         except IntegrityError:
+            # Race: outra requisição concorrente inseriu a MESMA placa (ou
+            # client_id) entre o dedup-check acima e este flush.
             await self.db.rollback()
+            if data.client_id:
+                existing_client = await self.repo.get_by_client_id(data.client_id)
+                if existing_client:
+                    return existing_client
             raise ConflitoDadosError("Veículo com esta placa já cadastrado")
 
         await self.audit.log(

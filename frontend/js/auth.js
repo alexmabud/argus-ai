@@ -82,9 +82,21 @@ class AuthManager {
 
   async fetchMe() {
     try {
+      const guarnicaoAnterior = this.user ? this.user.guarnicao_id : undefined;
       const user = await api.get("/auth/me");
       this.user = user;
       localStorage.setItem("argus_user", JSON.stringify(user));
+      // Guarnição mudou desde a última sessão conhecida (ex.: admin trocou a
+      // equipe do operador) — itens presos na fila offline local sob a
+      // guarnição anterior vazariam para a equipe nova se sincronizados
+      // agora. Limpa a fila local (achado #18/2026-07-13).
+      if (
+        guarnicaoAnterior !== undefined &&
+        guarnicaoAnterior !== user.guarnicao_id &&
+        typeof purgeSyncQueueOnTeamChange === "function"
+      ) {
+        await purgeSyncQueueOnTeamChange();
+      }
       return user;
     } catch (err) {
       // Só desloga em falha de AUTENTICAÇÃO (401). Erro de rede/offline (status

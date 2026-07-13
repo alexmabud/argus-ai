@@ -25,6 +25,9 @@ class VeiculoCreate(BaseModel):
         ano: Ano de fabricação.
         tipo: Tipo de veículo (ex: "Carro", "Moto", "Caminhão").
         observacoes: Anotações adicionais.
+        client_id: ID único gerado no frontend offline, para deduplicação
+            de sync (achado #18/2026-07-13). Opcional — None em criação
+            online direta.
     """
 
     placa: str = Field(..., min_length=7, max_length=10)
@@ -33,6 +36,7 @@ class VeiculoCreate(BaseModel):
     ano: int | None = None
     tipo: UpperStr = Field(None, max_length=50)
     observacoes: UpperStr = Field(None, max_length=500)
+    client_id: str | None = Field(None, max_length=100)
 
     @field_validator("placa")
     @classmethod

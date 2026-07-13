@@ -25,6 +25,8 @@ class Veiculo(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
         ano: Ano de fabricação.
         tipo: Tipo de veículo (ex: "Carro", "Moto", "Caminhão").
         observacoes: Anotações adicionais.
+        client_id: ID único gerado no frontend offline para deduplicação de
+            sync (achado #18/2026-07-13) — único apenas quando não-null.
         guarnicao_id: ID da guarnição (isolamento multi-tenant).
 
     Nota:
@@ -41,5 +43,14 @@ class Veiculo(Base, TimestampMixin, SoftDeleteMixin, MultiTenantMixin):
     ano: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tipo: Mapped[str | None] = mapped_column(String(50), nullable=True)
     observacoes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    client_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    __table_args__ = (Index("idx_veiculo_guarnicao", "guarnicao_id"),)
+    __table_args__ = (
+        Index("idx_veiculo_guarnicao", "guarnicao_id"),
+        Index(
+            "idx_veiculo_client_id",
+            "client_id",
+            unique=True,
+            postgresql_where="client_id IS NOT NULL",
+        ),
+    )

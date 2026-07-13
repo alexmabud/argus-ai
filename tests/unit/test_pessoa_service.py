@@ -109,6 +109,25 @@ class TestCriarPessoa:
         )
         assert pessoa.nome_mae == "MARIA DAS DORES"
 
+    async def test_criar_pessoa_client_id_duplicado_retorna_existente(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario
+    ):
+        """Testa que client_id duplicado retorna a pessoa já criada, sem duplicar.
+
+        Deduplicação de sync offline (achado #18/2026-07-13): um retry do
+        mesmo item da fila offline não deve criar uma segunda pessoa.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário.
+        """
+        service = PessoaService(db_session)
+        data = PessoaCreate(nome="Pessoa Offline", client_id="offline-pessoa-123")
+        primeira = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+        segunda = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+        assert primeira.id == segunda.id
+
 
 class TestBuscarPessoa:
     """Testes de busca de pessoa."""
