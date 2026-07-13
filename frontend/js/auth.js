@@ -23,8 +23,8 @@ class AuthManager {
   }
 
   isAuthenticated() {
-    // api.token é só in-memory (não persiste). Após reload, cookie HttpOnly
-    // garante a autenticação; argus_user (localStorage) indica sessão ativa.
+    // Cookie HttpOnly garante a autenticação real; argus_user (localStorage)
+    // é só o indicador local de sessão ativa (não guarda credencial).
     return !!this.user;
   }
 
@@ -35,8 +35,9 @@ class AuthManager {
   async login(matricula, senha, totpCode = null) {
     const payload = { matricula, senha };
     if (totpCode) payload.totp_code = totpCode;
-    const data = await api.post("/auth/login", payload);
-    api.setTokens(data.access_token, data.refresh_token);
+    // Tokens chegam via cookie HttpOnly (Set-Cookie) — o corpo não traz mais
+    // access_token/refresh_token (achado #13/2026-07-13).
+    await api.post("/auth/login", payload);
 
     // Buscar dados do usuário
     const user = await api.get("/auth/me");

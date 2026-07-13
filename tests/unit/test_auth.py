@@ -15,8 +15,9 @@ class TestLogin:
     async def test_login_success(self, client: AsyncClient, usuario):
         """Testa login bem-sucedido com credenciais válidas.
 
-        Verifica se o endpoint retorna status 200 e tokens válidos
-        (access_token e refresh_token) com tipo bearer.
+        Verifica se o endpoint retorna 200, entrega os tokens via cookies
+        HttpOnly (achado #13/2026-07-13 — nunca no corpo JSON) e confirma
+        a autenticação no corpo.
 
         Args:
             client: Cliente HTTP assincrónico para testes.
@@ -31,9 +32,11 @@ class TestLogin:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "access_token" in data
-        assert "refresh_token" in data
-        assert data["token_type"] == "bearer"
+        assert data["autenticado"] is True
+        assert "access_token" not in data
+        assert "refresh_token" not in data
+        assert "argus_access_token" in response.cookies
+        assert "argus_refresh_token" in response.cookies
 
     async def test_login_wrong_password(self, client: AsyncClient, usuario):
         """Testa rejeição de login com senha incorreta.
@@ -79,8 +82,8 @@ class TestRefresh:
     async def test_refresh_success(self, client: AsyncClient, usuario):
         """Testa renovação bem-sucedida de access_token com refresh_token.
 
-        Verifica se o endpoint retorna status 200 e novos tokens válidos
-        quando um refresh_token válido é fornecido.
+        Verifica se o endpoint retorna 200 e entrega os novos tokens via
+        cookies HttpOnly — nunca no corpo JSON (achado #13/2026-07-13).
 
         Args:
             client: Cliente HTTP assincrónico para testes.
@@ -99,8 +102,11 @@ class TestRefresh:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "access_token" in data
-        assert "refresh_token" in data
+        assert data["autenticado"] is True
+        assert "access_token" not in data
+        assert "refresh_token" not in data
+        assert "argus_access_token" in response.cookies
+        assert "argus_refresh_token" in response.cookies
 
     async def test_refresh_with_access_token_fails(self, client: AsyncClient, usuario):
         """Testa rejeição ao usar access_token no lugar de refresh_token.

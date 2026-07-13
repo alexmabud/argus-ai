@@ -241,9 +241,17 @@ class AuthService:
             raise CredenciaisInvalidasError()
 
         # Rotação de sessão: usuário comum recebe um novo sid a cada refresh,
-        # invalidando o refresh token anterior. Admin mantém o sid para preservar
-        # a sessão compartilhada entre dispositivos (mesma regra do login).
-        if usuario.is_admin:
+        # invalidando o refresh token anterior. Admin/super-admin mantém o sid
+        # para preservar a sessão compartilhada entre dispositivos (mesma regra
+        # do login — issue 03/2026-07-13 corrigiu login() para tratar
+        # is_super_admin como privilegiado; aqui replica a mesma checagem).
+        #
+        # Decisão (achado #13/2026-07-13): mantido sid estável mesmo para
+        # admin — rotacionar sempre fecharia o replay de refresh token roubado,
+        # mas quebraria sessão multi-dispositivo (já em uso). TOTP obrigatório
+        # (issue 03) + cookie HttpOnly mitigam parcialmente; risco residual
+        # aceito nesta rodada.
+        if usuario.is_admin or usuario.is_super_admin:
             novo_sid = sid
         else:
             novo_sid = str(uuid.uuid4())

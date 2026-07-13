@@ -7,20 +7,14 @@
 class ApiClient {
   constructor() {
     this.baseUrl = "/api/v1";
-    // Tokens não ficam em localStorage — autenticação via cookie HttpOnly.
-    // argus_user (perfil não-credencial) permanece em localStorage para UX offline.
-    this.token = null;
+    // Tokens não ficam em localStorage nem em memória no client — autenticação
+    // é 100% via cookie HttpOnly. argus_user (perfil não-credencial) permanece
+    // em localStorage para UX offline. O corpo JSON de login/refresh não traz
+    // mais tokens (achado #13/2026-07-13) — não há o que guardar aqui.
     this._refreshPromise = null;
   }
 
-  setTokens(access, _refresh) {
-    // Mantém token em memória para requests síncronos do ciclo de vida atual.
-    // Cookie argus_access_token (HttpOnly) é a fonte canônica — não persiste em localStorage.
-    this.token = access;
-  }
-
   clearTokens() {
-    this.token = null;
     localStorage.removeItem("argus_user");
     // Limpar vestígios de versões anteriores que salvavam tokens em localStorage
     localStorage.removeItem("argus_token");
@@ -131,8 +125,7 @@ class ApiClient {
             credentials: "same-origin",
           });
           if (response.ok) {
-            const data = await response.json();
-            this.setTokens(data.access_token, null);
+            // Novo access_token já veio via Set-Cookie — nada a guardar aqui.
             return "ok";
           }
           // 401 = sessão realmente inválida no servidor, não adianta tentar de novo
@@ -171,7 +164,6 @@ class ApiClient {
   async downloadBlob(path) {
     const url = `${this.baseUrl}${path}`;
     // Autenticação via cookie HttpOnly (same-origin) — consistente com request().
-    // Não depende de this.token/this.refreshToken (que somem após F5).
     const options = { method: "GET", credentials: "same-origin" };
     let response = await fetch(url, options);
     if (response.status === 401) {

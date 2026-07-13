@@ -37,7 +37,14 @@ class LoginRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """Resposta com tokens de acesso e refresh.
+    """Par de tokens JWT de acesso e refresh — uso interno (service → router).
+
+    NUNCA retornado diretamente como corpo de resposta HTTP: o router usa os
+    valores para popular os cookies HttpOnly (``set_access_cookie``/
+    ``set_refresh_cookie``) e devolve ``AuthSuccessResponse`` ao cliente.
+    Ver achado #13/2026-07-13 — tokens em claro no corpo JSON são legíveis
+    por qualquer script da página (XSS) ou extensão de navegador, enquanto
+    os cookies já são o canal canônico.
 
     Attributes:
         access_token: Token JWT de acesso (curta duração).
@@ -48,6 +55,19 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+
+class AuthSuccessResponse(BaseModel):
+    """Confirmação de login/refresh bem-sucedido — sem tokens no corpo.
+
+    Os tokens JWT são entregues exclusivamente via cookies HttpOnly
+    (``Set-Cookie`` na resposta); o corpo JSON não carrega nenhum segredo.
+
+    Attributes:
+        autenticado: Sempre True — a própria resposta 200 já confirma.
+    """
+
+    autenticado: bool = True
 
 
 class RefreshRequest(BaseModel):

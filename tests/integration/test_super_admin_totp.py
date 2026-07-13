@@ -12,7 +12,7 @@ import pytest
 
 from app.core.crypto import encrypt
 from app.core.exceptions import CredenciaisInvalidasError
-from app.core.security import hash_senha, verificar_senha
+from app.core.security import criar_refresh_token, hash_senha, verificar_senha
 from app.models.usuario import Usuario
 from app.services.auth_service import AuthService
 
@@ -108,3 +108,31 @@ async def test_super_admin_sem_is_admin_tem_senha_permanente_e_sessao_estavel(
 
     assert verificar_senha("senha-forte", dono.senha_hash), "senha não deveria virar uso único"
     assert dono.session_id is not None
+
+
+@pytest.mark.asyncio
+async def test_super_admin_sem_is_admin_mantem_sid_no_refresh(db_session, guarnicao):
+    """Super-admin (is_admin=False) mantém o sid estável no refresh.
+
+    Sem essa paridade, o refresh cairia no ramo de "usuário comum" (rotaciona
+    sid a cada refresh), quebrando a sessão multi-dispositivo do super-admin —
+    mesma classe de bug do achado #03, agora em refresh() em vez de login().
+    """
+    dono = Usuario(
+        nome="Dono do Sistema",
+        matricula="DONO005",
+        senha_hash=hash_senha("senha-forte"),
+        guarnicao_id=guarnicao.id,
+        is_admin=False,
+        is_super_admin=True,
+        session_id="sid-dono-fixo",
+    )
+    db_session.add(dono)
+    await db_session.flush()
+
+    token = criar_refresh_token({"sub": str(dono.id), "sid": "sid-dono-fixo"})
+    novos = await AuthService(db_session).refresh(token)
+
+    assert novos.access_token
+    await db_session.refresh(dono)
+    assert dono.session_id == "sid-dono-fixo"  # não rotacionou
