@@ -48,3 +48,29 @@ def test_toda_query_prometheus_e_instant():
 
     sem_instant = [uid for uid, model in queries if model.get("instant") is not True]
     assert not sem_instant, f"regras sem instant:true (vão quebrar sempre): {sem_instant}"
+
+
+def _find_rule(uid: str) -> dict:
+    """Retorna a regra com o `uid` informado (falha se não existir)."""
+    config = yaml.safe_load(RULES_PATH.read_text())
+    for group in config["groups"]:
+        for rule in group["rules"]:
+            if rule["uid"] == uid:
+                return rule
+    raise AssertionError(f"regra '{uid}' não encontrada em rules.yml")
+
+
+def test_worker_parado_nao_co_dispara_com_redis_down():
+    """alert-worker-parado não deve disparar quando a causa raiz é o Redis caído.
+
+    Revisão pós-#12/2026-07-13: app/core/worker_health.py grava
+    argus_worker_alive=0 para TODOS os workers quando o Redis está
+    inacessível (fail-closed) — sem gating por redis_up, este alerta
+    co-dispara com alert-redis-down para o mesmo incidente, reintroduzindo a
+    duplicidade/desdiagnóstico que a versão anterior à #12 evitava.
+    """
+    rule = _find_rule("alert-worker-parado")
+    query_a = next(e["model"] for e in rule["data"] if e["model"]["refId"] == "A")
+    expr = query_a["expr"]
+    assert "argus_worker_alive" in expr
+    assert "redis_up" in expr, "expr precisa de redis_up p/ não co-disparar com Redis Offline"

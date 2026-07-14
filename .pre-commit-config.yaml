@@ -16,3 +16,11 @@ repos:
       - id: detect-private-key
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
+
+  # Achado #32/2026-07-13: baseline auditado (88 falsos-positivos confirmados:
+  # revision IDs do Alembic, credenciais placeholder em docs/exemplos, fixtures de teste)
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']

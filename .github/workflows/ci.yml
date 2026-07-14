@@ -24,6 +24,11 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
+  # requirements.lock é compilado e hash-pinado sob Python 3.12, o mesmo
+  # runtime do Dockerfile.prod — o job de testes usa esta versão (não
+  # PYTHON_VERSION) para que "instalar do lock" realmente signifique
+  # "instalar o que vai pra produção" (achado #20/2026-07-13).
+  PYTHON_VERSION_LOCK: "3.12"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
 defaults:
@@ -65,7 +70,10 @@ jobs:
   test:
     name: Tests (pytest)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 25min não sobrava folga depois que o job passou a instalar o lock
+    # completo (extra vision: torch/insightface/onnxruntime/easyocr) em vez
+    # de resolver ranges soltos do pyproject.toml (achado #20/2026-07-13).
+    timeout-minutes: 40
 
     services:
       db:
@@ -122,11 +130,8 @@ jobs:
       - name: Setup Python
         uses: ./.github/actions/setup-python-env
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          install-deps: dev
-
-      - name: Install additional test dependencies
-        run: python -m pip install aioboto3
+          python-version: ${{ env.PYTHON_VERSION_LOCK }}
+          install-deps: dev-locked
 
       - name: Install PostGIS in database container
         run: |
@@ -155,6 +160,31 @@ jobs:
           DATABASE_URL="$MIG_URL" MIGRATION_DATABASE_URL="$MIG_URL" alembic upgrade head
           DATABASE_URL="$MIG_URL" MIGRATION_DATABASE_URL="$MIG_URL" alembic current | tee /tmp/alembic_current.txt
           grep -q "(head)" /tmp/alembic_current.txt || { echo "ERRO: nao chegou a um head unico"; exit 1; }
+
+      - name: Migrar argus_test (schema real antes de provisionar o papel)
+        # Bug de CI encontrado por revisão de segurança pós-#20/2026-07-13: só a
+        # "Migration smoke" acima migra um banco (o throwaway argus_migtest,
+        # criado só pra validar a cadeia de migrations do zero) — argus_test em
+        # si nunca era migrado antes deste ponto. create_app_role.sql (passo
+        # seguinte) faz REVOKE numa tabela nomeada (audit_logs), que falha se a
+        # tabela não existir — só passava localmente porque o Postgres de dev já
+        # tinha schema de execuções anteriores; num runner limpo, sempre falhava.
+        run: alembic upgrade head
+
+      - name: Provision argus_app role (papel DML-only para testes)
+        # achado #20/2026-07-13: os testes de tests/integration/test_db_role_argus_app.py
+        # ficavam sempre skipados no CI por falta de APP_DATABASE_URL — o papel
+        # nunca era exercitado fora de execução manual. scripts/create_app_role.sql
+        # é idempotente e já roda contra o banco/dono atuais (current_database()/
+        # current_user), então serve tanto produção (argus/argus_db) quanto CI
+        # (test/argus_test) sem edição.
+        env:
+          PGPASSWORD: test
+          APP_ROLE_PASSWORD: ci-argus-app-test-password
+        run: |
+          psql -h localhost -U test -d argus_test -v app_pwd="$APP_ROLE_PASSWORD" \
+            -v ON_ERROR_STOP=1 -f scripts/create_app_role.sql
+          echo "APP_DATABASE_URL=postgresql://argus_app:${APP_ROLE_PASSWORD}@localhost:5432/argus_test" >> "$GITHUB_ENV"
 
       - name: Run tests
         run: pytest -v --cov=app --cov-report=term-missing --tb=short

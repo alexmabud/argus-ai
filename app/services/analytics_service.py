@@ -15,10 +15,10 @@ from sqlalchemy import cast, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.types import Date as DateType
 
-from app.core.crypto import decrypt
 from app.models.abordagem import Abordagem, AbordagemPessoa
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
+from app.services.pessoa_service import PessoaService
 from app.services.storage_service import normalize_storage_url
 
 BRT = ZoneInfo("America/Sao_Paulo")
@@ -177,7 +177,7 @@ class AnalyticsService:
 
         Returns:
             Lista de dicionários com id, nome, apelido, total_abordagens,
-            ultima_abordagem, cpf e foto_url.
+            ultima_abordagem, cpf (mascarado, achado #16/2026-07-13) e foto_url.
         """
         limit = min(limit, 100)
 
@@ -218,7 +218,7 @@ class AnalyticsService:
                     "apelido": row[2],
                     "total_abordagens": int(row[3]),
                     "ultima_abordagem": row[4].isoformat() if row[4] else None,
-                    "cpf": decrypt(row[5]) if row[5] else None,
+                    "cpf": PessoaService.mask_cpf_encrypted(row[5], context_id=row[0]),
                     "foto_url": normalize_storage_url(row[6]),
                 }
                 for row in rows
@@ -454,7 +454,8 @@ class AnalyticsService:
             data: Data no formato "YYYY-MM-DD" (ex: "2026-03-14").
 
         Returns:
-            Lista de dicionários com id, nome, cpf e foto_url.
+            Lista de dicionários com id, nome, cpf (mascarado, achado
+            #16/2026-07-13) e foto_url.
         """
         data_obj = date.fromisoformat(data)
 
@@ -482,12 +483,11 @@ class AnalyticsService:
 
         pessoas = []
         for row in rows:
-            cpf = decrypt(row[2]) if row[2] else None
             pessoas.append(
                 {
                     "id": row[0],
                     "nome": row[1],
-                    "cpf": cpf,
+                    "cpf": PessoaService.mask_cpf_encrypted(row[2], context_id=row[0]),
                     "foto_url": normalize_storage_url(row[3]),
                 }
             )

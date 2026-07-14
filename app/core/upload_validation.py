@@ -49,6 +49,14 @@ _PDF_MAGIC = b"%PDF"
 #: Tamanho do chunk para leitura incremental (64 KB).
 _CHUNK_SIZE = 65_536
 
+#: Teto de pixels (largura × altura) para qualquer imagem processada —
+#: bloqueia decompression bombs (arquivo pequeno em disco, gigantesco
+#: decodificado) antes do InsightFace/EasyOCR/Pillow tentarem alocar os
+#: pixels (achado #17/2026-07-13). 40 MP cobre folgadamente fotos de celular
+#: (12-50 MP típico); pouco abaixo do default do Pillow (~89 MP) para
+#: verificação explícita e rápida (lê só o header, sem decodificar).
+MAX_IMAGE_PIXELS = 40_000_000
+
 
 def validar_magic_bytes_imagem(file_bytes: bytes) -> None:
     """Valida que o conteúdo do arquivo corresponde a uma imagem real.
@@ -86,6 +94,42 @@ def validar_magic_bytes_imagem(file_bytes: bytes) -> None:
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Conteúdo do arquivo não corresponde a uma imagem válida (JPEG, PNG, WebP ou HEIC)",
     )
+
+
+def validar_dimensoes_imagem(file_bytes: bytes, max_pixels: int = MAX_IMAGE_PIXELS) -> None:
+    """Rejeita imagens com dimensões absurdas (decompression bomb).
+
+    `Image.open` é lazy — só lê o header (dimensões) sem decodificar os
+    pixels, então esta checagem é barata mesmo para um arquivo hostil.
+    Chame ANTES de qualquer decodificação real (thumbnail, InsightFace,
+    EasyOCR, correção de EXIF) — essas etapas decodificam os pixels
+    inteiros e são onde um arquivo pequeno "explode" em memória.
+
+    Arquivo com magic bytes válidos mas corpo corrompido/truncado (falha ao
+    ler o header) NÃO é rejeitado aqui — não há como ser uma decompression
+    bomb se nem o header decodifica, e o restante do pipeline (thumbnail,
+    correção de EXIF) já tolera esse caso de forma estabelecida (passa os
+    bytes originais adiante). Rejeitar só quando o header É lido com
+    sucesso e as dimensões excedem o teto.
+
+    Args:
+        file_bytes: Bytes já validados por `validar_magic_bytes_imagem`.
+        max_pixels: Teto de largura × altura (padrão `MAX_IMAGE_PIXELS`).
+
+    Raises:
+        HTTPException: 400 se a imagem excede o teto de pixels.
+    """
+    try:
+        with Image.open(BytesIO(file_bytes)) as img:
+            largura, altura = img.size
+    except (UnidentifiedImageError, OSError):
+        return
+
+    if largura * altura > max_pixels:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Imagem excede o limite de {max_pixels:,} pixels ({largura}x{altura})",
+        )
 
 
 async def converter_heic_para_jpeg(file_bytes: bytes) -> bytes:

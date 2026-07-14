@@ -3,6 +3,15 @@
 Processa PDFs de boletins de ocorrência: download do S3, extração de
 texto via PyMuPDF (fitz), chunking semântico e geração de embedding
 vetorial para busca semântica via pgvector.
+
+Nota de segurança (achado #21/2026-07-13): mesma observação do
+face_processor — a task recebe apenas ``ocorrencia_id``, sem contexto de
+usuário/sessão. A revalidação possível aqui é no dado (``ativo=True``, já
+implementada abaixo), não em autorização de usuário. Quem impede um
+``ocorrencia_id`` arbitrário ser enfileirado é a rede e a credencial do
+Redis (só a API deve conseguir publicar nesta fila) — Redis continua trust
+boundary de infra; esta revalidação no worker é mitigação em profundidade,
+não substitui isolar a rede do Redis.
 """
 
 import asyncio
@@ -19,18 +28,26 @@ from app.utils.s3 import extrair_key_da_url
 
 logger = logging.getLogger("argus")
 
+#: Teto de páginas processadas por PDF — boletins de ocorrência reais têm
+#: poucas páginas; um PDF hostil com contagem de páginas absurda (objetos
+#: repetidos/aninhados, "PDF bomb") poderia travar o worker por muito tempo
+#: mesmo dentro do limite de 50 MB de upload. Acima do teto, processa só as
+#: primeiras N páginas e loga — não falha a ocorrência inteira por causa de
+#: um documento anormalmente grande (achado #17/2026-07-13).
+MAX_PDF_PAGES = 500
+
 
 def extrair_texto_pdf(pdf_bytes: bytes) -> str:
     """Extrai texto de PDF usando PyMuPDF.
 
-    Percorre todas as páginas do PDF e extrai texto com layout
-    preservado. Páginas vazias são ignoradas.
+    Percorre as páginas do PDF (até MAX_PDF_PAGES) e extrai texto com
+    layout preservado. Páginas vazias são ignoradas.
 
     Args:
         pdf_bytes: Conteúdo do PDF em bytes.
 
     Returns:
-        Texto extraído concatenado de todas as páginas.
+        Texto extraído concatenado das páginas processadas.
 
     Raises:
         RuntimeError: Se PyMuPDF não estiver instalado.
@@ -38,9 +55,17 @@ def extrair_texto_pdf(pdf_bytes: bytes) -> str:
     if fitz is None:
         raise RuntimeError("PyMuPDF (fitz) não instalado — processamento de PDF indisponível")
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    total_paginas = doc.page_count
+    if total_paginas > MAX_PDF_PAGES:
+        logger.warning(
+            "PDF com %d páginas excede o teto de %d — processando só as primeiras %d",
+            total_paginas,
+            MAX_PDF_PAGES,
+            MAX_PDF_PAGES,
+        )
     textos = []
-    for page in doc:
-        texto = page.get_text()
+    for i in range(min(total_paginas, MAX_PDF_PAGES)):
+        texto = doc[i].get_text()
         if texto.strip():
             textos.append(texto.strip())
     doc.close()
@@ -75,19 +100,21 @@ async def processar_pdf_task(ctx: dict, ocorrencia_id: int) -> dict:
 
     async with db_factory() as db:
         try:
-            # 1. Buscar ocorrência
+            # 1. Buscar ocorrência (só ativa — achado #21/2026-07-13: mesma
+            # defesa do face_processor contra job enfileirado antes de um
+            # soft delete reprocessar um registro já apagado).
             from sqlalchemy import select
 
             result = await db.execute(
                 select(Ocorrencia)
-                .where(Ocorrencia.id == ocorrencia_id)
+                .where(Ocorrencia.id == ocorrencia_id, Ocorrencia.ativo.is_(True))
                 .with_for_update(skip_locked=True)
             )
             ocorrencia = result.scalar_one_or_none()
 
             if ocorrencia is None:
-                logger.error("Ocorrência %d não encontrada", ocorrencia_id)
-                return {"status": "erro", "motivo": "Ocorrência não encontrada"}
+                logger.info("Ocorrência %d não encontrada ou inativa, pulando", ocorrencia_id)
+                return {"status": "erro", "motivo": "Ocorrência não encontrada ou inativa"}
 
             if ocorrencia.processada:
                 logger.info("Ocorrência %d já processada, pulando", ocorrencia_id)

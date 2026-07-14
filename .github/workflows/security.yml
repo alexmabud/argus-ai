@@ -26,6 +26,13 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
+  # requirements.lock é gerado/travado sob 3.12 (PYTHON_VERSION_LOCK em
+  # ci.yml) — o job dependency-audit precisa instalar exatamente esse lock
+  # pra auditar de verdade, então precisa da MESMA versão de Python. Bug de
+  # CI encontrado por revisão de segurança: dependency-audit rodava sob 3.11
+  # (PYTHON_VERSION geral, usado por jobs que não instalam o lock, como
+  # sast) e falhava ao instalar pacotes com piso >=3.12 (ex.: tifffile).
+  PYTHON_VERSION_LOCK: "3.12"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
 defaults:
@@ -75,16 +82,61 @@ jobs:
       - name: Setup Python
         uses: ./.github/actions/setup-python-env
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION_LOCK }}
           install-deps: none
 
       - name: Install pip-audit
-        run: python -m pip install pip-audit
+        run: python -m pip install pip-audit packaging
 
-      - name: Audit pinned lock file (if present)
+      - name: Check requirements.lock satisfies pyproject.toml floors
+        # achado #20/2026-07-13: um piso elevado em pyproject.toml (bump manual
+        # ou merge de PR do Dependabot) sem regenerar requirements.lock
+        # (`make lock`) passava batido — o build de produção continuava
+        # instalando a versão antiga, abaixo do piso declarado, sem que
+        # nenhum lint/teste acusasse. Não é diff bruto do lock inteiro: como
+        # pyproject usa ">=" sem teto, pip-compile resolve versões mais novas
+        # com o tempo mesmo sem mudança nenhuma — isso é esperado, não é
+        # drift real. Só falha quando o lock fica ABAIXO do piso declarado.
+        run: python scripts/check_lock_drift.py
+
+      - name: Audit pinned lock file (bloqueante — igual ao que vai pra produção)
         if: hashFiles('requirements.lock') != ''
-        continue-on-error: true
-        run: pip-audit -r requirements.lock --desc
+        # achado #20/2026-07-13: pip-audit rodava com continue-on-error,
+        # então uma CVE nova em requirements.lock nunca derrubava o CI.
+        # --ignore-vuln documenta vulnerabilidades JÁ conhecidas para não travar
+        # todo PR por um problema pré-existente não introduzido por ele —
+        # qualquer CVE NOVA (não listada abaixo) ainda derruba o job.
+        # Achado #32/2026-07-13: starlette (PYSEC-2026-161/248/249/2280/2281)
+        # corrigido via bump de prometheus-fastapi-instrumentator p/ >=8.0
+        # (forçou starlette >=1.0, removendo o cap <0.137 do fastapi — verificado
+        # manualmente que 0.139.0+starlette 1.3.1+instrumentator 8.0.2 funcionam
+        # juntos). aiohttp/python-multipart/torch seguem pendentes — upgrade
+        # requer avaliação própria (breaking changes maiores esperados).
+        # PYSEC-2026-3447 (setuptools 81.0.0, corrigido em 83.0.0): torch==2.12.0
+        # exige setuptools<82 — não dá pra atualizar sem bump de torch (fora de
+        # escopo, mesmo motivo do aiohttp/python-multipart acima). A CVE é sobre
+        # bypass de exclusão de MANIFEST.in via normalização Unicode ao montar
+        # sdist em filesystem macOS (APFS/HFS+) — não se aplica aqui: deploy é
+        # Linux/Docker, e o pipeline consome wheels pré-buildadas via
+        # requirements.lock, nunca constrói sdist a partir de árvore não confiável.
+        run: |
+          pip-audit -r requirements.lock --desc \
+            --ignore-vuln PYSEC-2026-237 \
+            --ignore-vuln PYSEC-2026-2104 \
+            --ignore-vuln PYSEC-2026-2105 \
+            --ignore-vuln PYSEC-2026-2106 \
+            --ignore-vuln PYSEC-2026-2107 \
+            --ignore-vuln PYSEC-2026-2108 \
+            --ignore-vuln PYSEC-2026-2109 \
+            --ignore-vuln PYSEC-2026-2110 \
+            --ignore-vuln PYSEC-2026-2111 \
+            --ignore-vuln PYSEC-2026-2112 \
+            --ignore-vuln PYSEC-2026-2113 \
+            --ignore-vuln PYSEC-2026-3036 \
+            --ignore-vuln PYSEC-2026-3037 \
+            --ignore-vuln PYSEC-2026-3040 \
+            --ignore-vuln PYSEC-2026-3447 \
+            --ignore-vuln CVE-2025-3000
 
       - name: Generate requirements from pyproject.toml
         run: |

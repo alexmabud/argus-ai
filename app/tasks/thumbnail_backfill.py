@@ -3,6 +3,13 @@
 Gera ``thumbnail_url`` para fotos cadastradas antes da introdução do
 campo. Skip se a foto já tem thumb, é soft-deleted ou não é imagem.
 Idempotente: re-execuções na mesma foto são seguras.
+
+Nota de segurança (achado #21/2026-07-13): mesma observação de
+face_processor/pdf_processor — a task recebe apenas ``foto_id``, sem
+contexto de usuário/sessão. Quem impede um ``foto_id`` arbitrário ser
+enfileirado é a rede e a credencial do Redis (só a API deve conseguir
+publicar nesta fila); o filtro ``ativo=True`` abaixo é mitigação em
+profundidade, não substitui isolar a rede do Redis.
 """
 
 import asyncio

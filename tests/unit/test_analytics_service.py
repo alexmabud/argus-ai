@@ -99,7 +99,12 @@ class TestPessoasRecorrentes:
         assert "LIMIT 200" not in compiled
 
     async def test_pessoas_retorna_formato_correto(self):
-        """Deve retornar lista com id, nome, apelido, total, ultima, cpf e foto."""
+        """Deve retornar lista com id, nome, apelido, total, ultima, cpf mascarado e foto.
+
+        Achado #16/2026-07-13: analytics em massa não devolve mais CPF
+        completo (decrypt puro) — só a versão mascarada, mesma política de
+        listar_pessoas.
+        """
         from unittest.mock import patch
 
         db = AsyncMock()
@@ -111,14 +116,14 @@ class TestPessoasRecorrentes:
         db.execute = AsyncMock(return_value=mock_result)
         service = AnalyticsService(db)
 
-        with patch("app.services.analytics_service.decrypt", return_value="123.456.789-00"):
+        with patch("app.services.pessoa_service.decrypt", return_value="123.456.789-00"):
             result = await service.pessoas_recorrentes(guarnicao_id=1)
 
         assert len(result) == 1
         assert result[0]["id"] == 1
         assert result[0]["nome"] == "João"
         assert result[0]["total_abordagens"] == 5
-        assert result[0]["cpf"] == "123.456.789-00"
+        assert result[0]["cpf"] == "***.***.*9-00"
         assert result[0]["foto_url"] == "https://r2.example.com/foto.jpg"
 
 
@@ -315,7 +320,10 @@ class TestPessoasDoDia:
     """Testes para AnalyticsService.pessoas_do_dia()."""
 
     async def test_retorna_lista_com_campos_corretos(self):
-        """Deve retornar id, nome, cpf e foto_url das pessoas do dia."""
+        """Deve retornar id, nome, cpf mascarado e foto_url das pessoas do dia.
+
+        Achado #16/2026-07-13: CPF completo não sai mais em massa aqui.
+        """
         from unittest.mock import patch
 
         db = AsyncMock()
@@ -326,13 +334,13 @@ class TestPessoasDoDia:
         db.execute = AsyncMock(return_value=mock_result)
         service = AnalyticsService(db)
 
-        with patch("app.services.analytics_service.decrypt", return_value="123.456.789-00"):
+        with patch("app.services.pessoa_service.decrypt", return_value="123.456.789-00"):
             result = await service.pessoas_do_dia(guarnicao_id=1, data="2026-03-14")
 
         assert len(result) == 1
         assert result[0]["id"] == 1
         assert result[0]["nome"] == "João Silva"
-        assert result[0]["cpf"] == "123.456.789-00"
+        assert result[0]["cpf"] == "***.***.*9-00"
         assert result[0]["foto_url"] == "https://r2.example.com/foto.jpg"
 
     async def test_sem_pessoas_retorna_lista_vazia(self):

@@ -78,7 +78,11 @@ async def main() -> None:
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async with session_factory() as session:
-        # 1. Apagar audit_logs primeiro (FK -> usuarios.id)
+        # 1. Apagar audit_logs primeiro (FK -> usuarios.id). audit_logs é
+        # append-only para o papel de runtime argus_app (REVOKE DELETE/UPDATE
+        # em create_app_role.sql) — este script roda fora desse path: é uma
+        # ferramenta manual de dev/DEBUG, bloqueada em produção por
+        # _guard_producao(), com credenciais de dono (não argus_app).
         await session.execute(delete(AuditLog))
         await session.flush()
 

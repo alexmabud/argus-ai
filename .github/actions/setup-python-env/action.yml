@@ -10,7 +10,7 @@ inputs:
     required: false
     default: "3.11"
   install-deps:
-    description: "Quais deps instalar: none, lint, dev, security"
+    description: "Quais deps instalar: none, lint, dev, dev-locked, security"
     required: false
     default: "none"
 
@@ -39,6 +39,35 @@ runs:
       run: |
         python -m pip install --upgrade setuptools wheel
         python -m pip install -e ".[dev]"
+
+    - name: Install runtime deps from requirements.lock (hash-verified, igual ao Dockerfile.prod)
+      if: inputs.install-deps == 'dev-locked'
+      shell: bash
+      # achado #20/2026-07-13: CI testava contra ranges soltos do pyproject.toml,
+      # nunca contra as versões exatas com hash que de fato vão pra produção.
+      # Sequência espelha Dockerfile.prod passo a passo (mesmos motivos lá
+      # documentados):
+      # 1) -e . --no-deps registra o pacote local sem resolver suas próprias
+      #    dependências (essas vêm do lock, hash-verificadas).
+      # 2) Torch/torchvision CPU-only ANTES do lock: a wheel default do PyPI
+      #    é CUDA (~3GB); instalando a CPU primeiro com a MESMA versão travada
+      #    no lock, o --require-hashes abaixo considera torch já satisfeito e
+      #    não baixa a wheel CUDA por cima.
+      # 3) Lock completo (inclui extra vision — InsightFace/EasyOCR/onnxruntime
+      #    são parte do produto real, não plugins opcionais de teste).
+      # 4) requirements.lock também trava nvidia-*/triton (resolvidos junto do
+      #    torch do PyPI) que a wheel CPU não usa — sem remover, ~5GB de peso
+      #    morto por execução (medido: reduz venv de 5.5GB para ~2.1GB).
+      # 5) Ferramentas de dev/test não são shippadas em prod — instalam à
+      #    parte, sem exigência de hash.
+      run: |
+        python -m pip install --upgrade setuptools wheel
+        python -m pip install -e . --no-deps
+        python -m pip install torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/cpu
+        python -m pip install --require-hashes -r requirements.lock
+        PKGS="$(python -m pip list --format=freeze | grep -iE '^(nvidia-|triton==)' | cut -d= -f1)"
+        if [ -n "$PKGS" ]; then python -m pip uninstall -y $PKGS; fi
+        python -m pip install pytest pytest-asyncio pytest-cov httpx factory-boy
 
     - name: Install security dependencies
       if: inputs.install-deps == 'security'

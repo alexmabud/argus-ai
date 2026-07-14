@@ -104,6 +104,26 @@ class BaseRepository(Generic[T]):
         await self.db.flush()
         return obj
 
+    async def get_by_client_id(self, client_id: str) -> T | None:
+        """Busca um recurso pelo client_id (deduplicação de sync offline).
+
+        Só faz sentido para modelos com o campo `client_id` (Abordagem,
+        Pessoa, Veiculo) — as três implementações antes deste método existir
+        eram idênticas byte a byte, movidas aqui para evitar drift entre elas
+        (revisão pós-#18/2026-07-13). Sem filtro de tenant ou soft delete: o
+        fluxo de sync precisa achar o registro vencedor da corrida
+        independente de guarnição/ativo para devolver idempotentemente.
+
+        Args:
+            client_id: Identificador gerado no cliente no registro offline.
+
+        Returns:
+            Objeto do modelo com este client_id, ou None se não encontrado.
+        """
+        query = select(self.model).where(getattr(self.model, "client_id") == client_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
     async def update(self, obj: T, data: dict) -> T:
         """Atualiza um recurso existente.
 

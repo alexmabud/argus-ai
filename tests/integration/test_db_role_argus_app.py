@@ -1,8 +1,10 @@
 """Testes do papel argus_app (DML-only).
 
 Garantem que o usuário de runtime da aplicação NÃO pode executar DDL
-(CREATE/DROP/ALTER) mas PODE executar DML (SELECT/INSERT/UPDATE/DELETE).
-Defesa em profundidade: limita o blast radius de uma eventual injeção.
+(CREATE/DROP/ALTER) mas PODE executar DML (SELECT/INSERT/UPDATE/DELETE) —
+exceto em ``audit_logs``, que é append-only mesmo para argus_app (achado
+#05/2026-07-13). Defesa em profundidade: limita o blast radius de uma
+eventual injeção.
 """
 
 import os
@@ -10,6 +12,8 @@ import os
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
+
+from app.config import settings
 
 # URL do papel restrito. Em CI/local pode não existir → skip.
 APP_DB_URL = os.getenv("APP_DATABASE_URL", "")
@@ -19,9 +23,36 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+@pytest.fixture
+async def _revoke_audit_logs_reaplicado(setup_db):
+    """Reaplica o REVOKE DELETE/UPDATE em audit_logs para argus_app.
+
+    O fixture ``setup_db`` (conftest) faz DROP+CREATE de TODAS as
+    tabelas antes de cada teste — inclusive ``audit_logs``. Quando a tabela
+    renasce, ``ALTER DEFAULT PRIVILEGES FOR ROLE argus`` (create_app_role.sql,
+    passo 7) concede SELECT/INSERT/UPDATE/DELETE de novo automaticamente
+    (Postgres não tem "default privileges por tabela" — não sabe excluir
+    audit_logs). Sem isso, os testes de append-only veriam o estado antes do
+    REVOKE do script, não o estado real de produção (onde a tabela nunca é
+    recriada). Depende explicitamente de ``setup_db`` para garantir a ordem.
+    """
+    owner_url = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+    engine = create_async_engine(owner_url, poolclass=None)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("REVOKE DELETE, UPDATE ON audit_logs FROM argus_app"))
+    finally:
+        await engine.dispose()
+
+
 @pytest.mark.asyncio
-async def test_argus_app_nao_pode_criar_tabela() -> None:
-    """argus_app deve receber permission denied ao tentar DDL."""
+async def test_argus_app_nao_pode_criar_tabela(setup_db) -> None:
+    """argus_app deve receber permission denied ao tentar DDL.
+
+    Depende de ``setup_db`` (não é mais autouse desde o achado #32/2026-07-13)
+    por consistência com os demais testes deste arquivo, ainda que este em
+    particular não leia tabela pré-existente.
+    """
     engine = create_async_engine(
         APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
     )
@@ -35,7 +66,7 @@ async def test_argus_app_nao_pode_criar_tabela() -> None:
 
 
 @pytest.mark.asyncio
-async def test_argus_app_nao_pode_dropar_tabela() -> None:
+async def test_argus_app_nao_pode_dropar_tabela(setup_db) -> None:
     """argus_app não pode DROP de tabela existente.
 
     DROP exige ser DONO da tabela (não é um privilégio concedível via GRANT),
@@ -43,6 +74,10 @@ async def test_argus_app_nao_pode_dropar_tabela() -> None:
     "permission denied" emitido para CREATE/DML negados. Aceitamos ambas
     as formas: o que importa é que a operação é recusada por falta de
     privilégio (InsufficientPrivilegeError).
+
+    Depende de ``setup_db`` para garantir que ``usuarios`` existe — sem isso
+    o DROP falharia com "table does not exist" em vez do erro de privilégio
+    que este teste verifica (achado #32/2026-07-13 tornou setup_db opt-in).
     """
     engine = create_async_engine(
         APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
@@ -58,12 +93,15 @@ async def test_argus_app_nao_pode_dropar_tabela() -> None:
 
 
 @pytest.mark.asyncio
-async def test_argus_app_pode_ler_e_escrever() -> None:
+async def test_argus_app_pode_ler_e_escrever(setup_db) -> None:
     """argus_app PODE de fato fazer SELECT/INSERT/UPDATE/DELETE.
 
     Antes este teste só fazia SELECT count(*) — não provava que o DML real
     (INSERT/UPDATE/DELETE) é permitido. Agora exercita o ciclo completo em uma
     tabela existente (bpm), net-zero (insere e apaga a própria linha de teste).
+
+    Depende de ``setup_db`` para garantir que ``bpm`` existe (achado
+    #32/2026-07-13 tornou setup_db opt-in).
     """
     engine = create_async_engine(
         APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
@@ -91,5 +129,58 @@ async def test_argus_app_pode_ler_e_escrever() -> None:
             # DELETE (limpa a linha de teste — net-zero)
             dele = await conn.execute(text("DELETE FROM bpm WHERE nome = :n"), {"n": nome})
             assert dele.rowcount == 1
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_argus_app_pode_inserir_audit_log(setup_db) -> None:
+    """argus_app PODE inserir em audit_logs — é assim que a API audita ações.
+
+    Depende de ``setup_db`` para garantir que ``audit_logs`` existe (achado
+    #32/2026-07-13 tornou setup_db opt-in).
+    """
+    engine = create_async_engine(
+        APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
+    )
+    try:
+        async with engine.begin() as conn:
+            res = await conn.execute(
+                text(
+                    "INSERT INTO audit_logs (acao, recurso, timestamp) "
+                    "VALUES ('LOGIN', 'auth', now()) RETURNING id"
+                )
+            )
+            assert res.scalar() is not None
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_argus_app_nao_pode_apagar_audit_log(_revoke_audit_logs_reaplicado) -> None:
+    """argus_app NÃO pode DELETE em audit_logs — trilha é append-only mesmo p/ runtime."""
+    engine = create_async_engine(
+        APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
+    )
+    try:
+        async with engine.begin() as conn:
+            with pytest.raises(Exception) as exc:
+                await conn.execute(text("DELETE FROM audit_logs"))
+            assert "permission denied" in str(exc.value).lower()
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_argus_app_nao_pode_alterar_audit_log(_revoke_audit_logs_reaplicado) -> None:
+    """argus_app NÃO pode UPDATE em audit_logs — trilha é append-only mesmo p/ runtime."""
+    engine = create_async_engine(
+        APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
+    )
+    try:
+        async with engine.begin() as conn:
+            with pytest.raises(Exception) as exc:
+                await conn.execute(text("UPDATE audit_logs SET acao = 'FORJADO'"))
+            assert "permission denied" in str(exc.value).lower()
     finally:
         await engine.dispose()

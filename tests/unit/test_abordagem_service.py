@@ -382,3 +382,57 @@ async def test_listar_sem_filtro_retorna_global(db_session: AsyncSession, guarni
     service = AbordagemService(db_session)
     result = await service.listar(guarnicao_id=None, bpm_id=None)
     assert any(ab.id == a.id for ab in result)
+
+
+class TestVerificarEscopo:
+    """Testes de AbordagemService.verificar_escopo (revisão pós-#22/2026-07-13).
+
+    Checagem leve de autorização (sem eager load) que substituiu o uso de
+    buscar_detalhe só para validar escopo em fotos.py/ocorrencia_service.py —
+    mesma regra de prioridade (guarnicao_id > bpm_id > global).
+    """
+
+    async def test_nao_levanta_quando_abordagem_esta_na_guarnicao(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, abordagem: Abordagem
+    ):
+        """Não levanta erro quando a abordagem pertence à guarnição informada."""
+        service = AbordagemService(db_session)
+        await service.verificar_escopo(abordagem.id, guarnicao.id)
+
+    async def test_levanta_quando_abordagem_e_de_outra_guarnicao(
+        self, db_session: AsyncSession, abordagem: Abordagem
+    ):
+        """Levanta NaoEncontradoError quando a abordagem é de outra guarnição."""
+        service = AbordagemService(db_session)
+        with pytest.raises(NaoEncontradoError):
+            await service.verificar_escopo(abordagem.id, guarnicao_id=999999)
+
+    async def test_nao_levanta_quando_abordagem_esta_no_bpm(
+        self, db_session: AsyncSession, abordagem: Abordagem, guarnicao: Guarnicao
+    ):
+        """Escopo por BPM (guarnicao_id=None) aceita abordagem de guarnição do mesmo BPM."""
+        service = AbordagemService(db_session)
+        await service.verificar_escopo(abordagem.id, guarnicao_id=None, bpm_id=guarnicao.bpm_id)
+
+    async def test_levanta_quando_abordagem_e_de_outro_bpm(
+        self, db_session: AsyncSession, abordagem: Abordagem
+    ):
+        """Levanta NaoEncontradoError quando a abordagem é de guarnição de outro BPM."""
+        service = AbordagemService(db_session)
+        with pytest.raises(NaoEncontradoError):
+            await service.verificar_escopo(abordagem.id, guarnicao_id=None, bpm_id=999999)
+
+    async def test_nao_levanta_em_escopo_global(
+        self, db_session: AsyncSession, abordagem: Abordagem
+    ):
+        """Sem guarnicao_id nem bpm_id (equipe sem isolamento), aceita qualquer abordagem ativa."""
+        service = AbordagemService(db_session)
+        await service.verificar_escopo(abordagem.id, guarnicao_id=None, bpm_id=None)
+
+    async def test_levanta_quando_abordagem_nao_existe(
+        self, db_session: AsyncSession, guarnicao: Guarnicao
+    ):
+        """Levanta NaoEncontradoError para abordagem_id inexistente."""
+        service = AbordagemService(db_session)
+        with pytest.raises(NaoEncontradoError):
+            await service.verificar_escopo(999999, guarnicao.id)

@@ -22,12 +22,14 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rate_limit import limiter
+from app.api.v1.abordagens import _filtro_abordagem
+from app.core.rate_limit import _get_user_rate_limit_key, limiter
 from app.core.upload_validation import (
     converter_heic_para_jpeg,
     is_heic,
     ler_upload_com_limite,
     normalizar_imagem_para_reconhecimento,
+    validar_dimensoes_imagem,
     validar_magic_bytes_imagem,
     validar_magic_bytes_pdf,
 )
@@ -150,6 +152,7 @@ async def upload_foto(
     # Leitura em chunks (previne OOM) + validação de magic bytes (anti-spoofing)
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
+    validar_dimensoes_imagem(file_bytes)
 
     # Normaliza HEIC→JPEG e corrige rotação EXIF antes de prosseguir
     original_content_type = file.content_type or "image/jpeg"
@@ -248,8 +251,9 @@ async def deletar_foto(
     """Remove foto via soft delete. Restrito a administradores.
 
     Permite corrigir fotos categorizadas incorretamente (ex: foto de
-    arma/droga enviada como "rosto"). Não remove o arquivo do storage,
-    apenas marca o registro como inativo.
+    arma/droga enviada como "rosto"). Apaga o arquivo (original e
+    thumbnail) do storage e zera o embedding facial — o registro em si
+    permanece (soft delete), mas sem dado biométrico buscável nem blob.
 
     Args:
         request: Objeto Request do FastAPI.
@@ -299,14 +303,40 @@ async def listar_fotos_abordagem(
 
     Returns:
         Lista de FotoRead ordenadas por data/hora decrescente.
+
+    Raises:
+        HTTPException 403: Usuário sem guarnição atribuída.
+        HTTPException 404: Abordagem não encontrada ou fora do escopo do usuário.
+
+    Status Code:
+        200: Lista retornada.
+        403: Usuário sem guarnição.
+        404: Abordagem não encontrada/fora de escopo.
+        429: Rate limit (30/min).
     """
+    if user.guarnicao_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário sem guarnição atribuída",
+        )
+    guarnicao_id_filtro, bpm_id_filtro = _filtro_abordagem(user)
+    # NaoEncontradoError já é HTTPException(404) — propaga direto sem
+    # try/except redundante no router (revisão pós-#22/2026-07-13). A
+    # checagem de escopo (achado #22/2026-07-13) e a listagem ficam no
+    # service, não no router.
     service = FotoService(db)
-    fotos = await service.listar_por_abordagem(abordagem_id, skip=skip, limit=limit)
+    fotos = await service.listar_por_abordagem_verificado(
+        abordagem_id, guarnicao_id_filtro, bpm_id_filtro, skip=skip, limit=limit
+    )
     return [FotoRead.model_validate(f) for f in fotos]
 
 
 @router.post("/buscar-rosto", response_model=BuscaRostoResponse)
 @limiter.limit("10/minute")
+# Segundo limite, por usuário autenticado (achado #07/2026-07-13): o limite
+# por IP acima não impede um usuário escalar scraping biométrico rotacionando
+# rede/IP com a mesma credencial. Mesmo teto — os dois precisam passar.
+@limiter.limit("10/minute", key_func=_get_user_rate_limit_key)
 async def buscar_por_rosto(
     request: Request,
     file: UploadFile,
@@ -343,6 +373,7 @@ async def buscar_por_rosto(
 
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
+    validar_dimensoes_imagem(file_bytes)
     file_bytes = await normalizar_imagem_para_reconhecimento(file_bytes)
     service = FotoService(db)
     results = await service.buscar_por_rosto(
@@ -410,6 +441,7 @@ async def extrair_placa(
 
     file_bytes = await ler_upload_com_limite(file, MAX_IMAGE_SIZE)
     validar_magic_bytes_imagem(file_bytes)
+    validar_dimensoes_imagem(file_bytes)
     if is_heic(file_bytes):
         file_bytes = await converter_heic_para_jpeg(file_bytes)
     ocr = OCRService()
@@ -472,6 +504,7 @@ async def upload_midia_abordagem(
     _image_mimes = {"image/jpeg", "image/png", "image/webp"}
     if content_type in _image_mimes:
         validar_magic_bytes_imagem(file_bytes)
+        validar_dimensoes_imagem(file_bytes)
     elif content_type == "application/pdf":
         validar_magic_bytes_pdf(file_bytes)
 

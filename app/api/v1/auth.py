@@ -19,15 +19,19 @@ from app.core.auth_cookie import (
 from app.core.exceptions import ContaBloqueadaError, CredenciaisInvalidasError
 from app.core.login_guard import ip_bloqueado, registrar_falha_ip, resetar_ip
 from app.core.rate_limit import _get_real_client_ip, limiter
-from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_imagem
+from app.core.upload_validation import (
+    ler_upload_com_limite,
+    validar_dimensoes_imagem,
+    validar_magic_bytes_imagem,
+)
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.schemas.auth import (
+    AuthSuccessResponse,
     LoginRequest,
     PerfilUpdate,
     RefreshRequest,
-    TokenResponse,
     UsuarioRead,
 )
 from app.services import notification_service
@@ -38,15 +42,15 @@ from app.services.storage_service import StorageService
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=AuthSuccessResponse)
 @limiter.limit("10/minute")
 async def login(
     request: Request,
     response: Response,
     data: LoginRequest,
     db: AsyncSession = Depends(get_db),
-) -> TokenResponse:
-    """Autentica um agente e retorna tokens de acesso.
+) -> AuthSuccessResponse:
+    """Autentica um agente e entrega os tokens via cookies HttpOnly.
 
     Valida as credenciais (matrícula e senha) e gera tokens JWT de acesso
     (curta duração) e refresh (longa duração). Registra evento de login
@@ -58,7 +62,8 @@ async def login(
         db: Sessão do banco de dados (injetada automaticamente).
 
     Returns:
-        TokenResponse: Tokens JWT de acesso e refresh.
+        AuthSuccessResponse: Confirmação — sem tokens no corpo (achado
+        #13/2026-07-13; tokens só nos cookies HttpOnly Set-Cookie).
 
     Raises:
         CredenciaisInvalidasError: Se matrícula não existe ou senha é inválida.
@@ -70,8 +75,8 @@ async def login(
         429: Muitas requisições no período (rate limit: 10/minuto).
 
     Note:
-        O access_token deve ser incluído no header Authorization (Bearer)
-        para requisições subsequentes.
+        O access_token é entregue via cookie HttpOnly e enviado
+        automaticamente pelo browser nas requisições subsequentes.
     """
     ip = _get_real_client_ip(request)
     user_agent = request.headers.get("user-agent")
@@ -105,17 +110,17 @@ async def login(
     # Cookies HTTPOnly: access (path=/) e refresh (path restrito ao /refresh).
     set_access_cookie(response, tokens.access_token)
     set_refresh_cookie(response, tokens.refresh_token)
-    return tokens
+    return AuthSuccessResponse()
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh", response_model=AuthSuccessResponse)
 @limiter.limit("30/minute")
 async def refresh(
     request: Request,
     response: Response,
     data: RefreshRequest,
     db: AsyncSession = Depends(get_db),
-) -> TokenResponse:
+) -> AuthSuccessResponse:
     """Renova o token de acesso usando um refresh token.
 
     Valida o refresh token e gera novos tokens de acesso e refresh.
@@ -127,7 +132,8 @@ async def refresh(
         db: Sessão do banco de dados (injetada automaticamente).
 
     Returns:
-        TokenResponse: Novos tokens JWT de acesso e refresh.
+        AuthSuccessResponse: Confirmação — sem tokens no corpo (achado
+        #13/2026-07-13; tokens só nos cookies HttpOnly Set-Cookie).
 
     Raises:
         CredenciaisInvalidasError: Se o refresh token é inválido ou o
@@ -149,7 +155,7 @@ async def refresh(
     await db.commit()
     set_access_cookie(response, tokens.access_token)
     set_refresh_cookie(response, tokens.refresh_token)
-    return tokens
+    return AuthSuccessResponse()
 
 
 @router.post("/logout", status_code=204)
@@ -296,13 +302,17 @@ async def upload_foto_perfil(
 
     Raises:
         AuthenticationError: Se token inválido.
+        HTTPException: 400 se formato inválido ou dimensões excedem o teto
+            (decompression bomb), 413 se exceder 5 MB.
 
     Status Code:
         200: Upload realizado com sucesso.
+        400: Formato inválido ou dimensões da imagem excedem o teto.
         401: Não autenticado.
     """
     file_bytes = await ler_upload_com_limite(foto, max_size=5 * 1024 * 1024)
     validar_magic_bytes_imagem(file_bytes)
+    validar_dimensoes_imagem(file_bytes)
     storage = StorageService.get()
     key = storage.generate_key("avatares", foto.filename or "foto.jpg")
     url = await storage.upload(file_bytes, key, content_type=foto.content_type or "image/jpeg")

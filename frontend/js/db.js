@@ -23,64 +23,145 @@ let db = null;
 // (cachePessoas) ou no logout (clearLocalDB).
 let _pessoasDecryptCache = null;
 
+// Idem para veículos (achado #19/2026-07-13) — mesmo padrão de memoização.
+let _veiculosDecryptCache = null;
+
 // --- Crypto helpers (AES-256-GCM via Web Crypto API) ---
 let _cryptoKey = null;
 
+// Trava de inicialização: sem isto, duas chamadas concorrentes a
+// ensureCryptoReady() antes da primeira resolver geram e persistem CADA UMA
+// sua própria chave (revisão pós-#19/2026-07-13) — a que "perde" a corrida de
+// escrita no IndexedDB deixa o que foi cifrado sob ela ilegível. Promise
+// compartilhada garante que só a primeira chamada executa a inicialização;
+// as demais aguardam o mesmo resultado.
+let _cryptoReadyPromise = null;
+
 /**
- * Deriva chave AES-256 a partir de um segredo (ex: token JWT).
- * Usa PBKDF2 com salt fixo por dispositivo (armazenado em localStorage).
+ * Garante que a chave de criptografia do IndexedDB está ativa.
+ *
+ * A chave AES-256-GCM é gerada não-extraível (extractable=false) e
+ * persistida como CryptoKey nativo em um object store dedicado do próprio
+ * IndexedDB — nunca como bytes em localStorage. Antes, a chave era derivada
+ * (PBKDF2) de um segredo salvo em localStorage: qualquer XSS conseguia ler
+ * esse segredo em claro e decifrar todo o cache local offline, derrotando o
+ * propósito da cifra at-rest (achado #19/2026-07-13). Uma chave não-extraível
+ * pode ser usada para encrypt/decrypt via crypto.subtle, mas seus bytes brutos
+ * nunca podem ser exportados — nem por um script injetado na própria página.
  */
-async function initCryptoKey(secret) {
+async function ensureCryptoReady() {
+  if (_cryptoKey) return _cryptoKey;
+  if (_cryptoReadyPromise) return _cryptoReadyPromise;
+  _cryptoReadyPromise = _ensureCryptoReadyImpl();
+  try {
+    return await _cryptoReadyPromise;
+  } finally {
+    _cryptoReadyPromise = null;
+  }
+}
+
+async function _ensureCryptoReadyImpl() {
   if (_cryptoKey) return _cryptoKey;
 
-  let salt = localStorage.getItem("argus_db_salt");
-  if (!salt) {
-    salt = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
-    localStorage.setItem("argus_db_salt", salt);
+  const database = await initDB();
+  const stored = await database.cryptoKeys.get("indexeddb-key");
+  if (stored) {
+    _cryptoKey = stored.key;
+    return _cryptoKey;
   }
+
+  // Deriva a chave do esquema PBKDF2 anterior ANTES de gerar a nova — usada
+  // só para migrar itens já enfileirados offline (revisão pós-#19/2026-07-13:
+  // sem isto, dados reais de campo pendentes no deploy ficavam permanentemente
+  // ilegíveis, já que o segredo antigo é apagado logo abaixo).
+  const oldKey = await _deriveOldKey().catch(() => null);
+
+  _cryptoKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
+    "encrypt",
+    "decrypt",
+  ]);
+  await database.cryptoKeys.put({ id: "indexeddb-key", key: _cryptoKey });
+
+  if (oldKey) {
+    await _migrarFilaParaChaveNova(database, oldKey);
+  }
+
+  // Migração do esquema antigo (PBKDF2 + segredo em localStorage): qualquer
+  // cache de pessoas/veículos cifrado com a chave anterior fica ilegível sob
+  // a chave nova — descarta em vez de exibir ciphertext bruto na
+  // autocomplete até o próximo recache online. Tabelas vazias em instalação
+  // nova tornam isto um no-op inofensivo. A fila de sync NÃO é descartada
+  // aqui — foi migrada acima (dados reais de campo, ao contrário do cache).
+  await database.pessoas.clear().catch(() => {});
+  await database.veiculos.clear().catch(() => {});
+  _pessoasDecryptCache = null;
+  _veiculosDecryptCache = null;
+  localStorage.removeItem("argus_db_secret");
+  localStorage.removeItem("argus_db_salt");
+
+  return _cryptoKey;
+}
+
+/**
+ * Deriva a chave AES-256 do esquema PBKDF2 anterior à chave não-extraível
+ * (achado #19/2026-07-13), usada só transitoriamente para migrar itens já
+ * enfileirados — nunca para cifrar dado novo (encryptField/encryptBlob
+ * sempre usam _cryptoKey, gerada por generateKey). Retorna null se este
+ * dispositivo nunca teve o esquema antigo ativo (instalação nova).
+ */
+async function _deriveOldKey() {
+  const secret = localStorage.getItem("argus_db_secret");
+  const salt = localStorage.getItem("argus_db_salt");
+  if (!secret || !salt) return null;
 
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(secret), "PBKDF2", false, [
     "deriveKey",
   ]);
-
-  _cryptoKey = await crypto.subtle.deriveKey(
+  return crypto.subtle.deriveKey(
     { name: "PBKDF2", salt: enc.encode(salt), iterations: 100000, hash: "SHA-256" },
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,
-    ["encrypt", "decrypt"],
+    ["decrypt"],
   );
-  return _cryptoKey;
 }
 
 /**
- * Garante que a chave de criptografia do IndexedDB está ativa.
- *
- * Sem isto, _cryptoKey ficava null e encryptField/decryptField devolviam
- * texto puro — PII em claro no IndexedDB. Deriva a chave de um segredo
- * aleatório por instalação (argus_db_secret em localStorage), gerado no
- * primeiro login e apagado no logout (ver clearLocalDB). Sobrevive a F5.
+ * Re-cifra o campo `dados` de cada item pendente da fila sob a chave nova,
+ * decifrando primeiro com a chave PBKDF2 antiga. Item que falhar a
+ * decifração antiga (já em claro, corrompido, ou nunca cifrado) fica como
+ * estava — best-effort por item, uma falha isolada não aborta a migração
+ * dos demais itens nem o boot da aplicação.
  */
-async function ensureCryptoReady() {
-  let secret = localStorage.getItem("argus_db_secret");
-  if (!secret) {
-    secret = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
-    localStorage.setItem("argus_db_secret", secret);
+async function _migrarFilaParaChaveNova(database, oldKey) {
+  const items = await database.syncQueue.toArray();
+  for (const item of items) {
+    if (typeof item.dados !== "string" || !item.dados) continue;
+    try {
+      const buf = Uint8Array.from(atob(item.dados), (c) => c.charCodeAt(0));
+      const iv = buf.slice(0, 12);
+      const ct = buf.slice(12);
+      const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, oldKey, ct);
+      const texto = new TextDecoder().decode(plain);
+      await database.syncQueue.update(item.id, { dados: await encryptField(texto) });
+    } catch {
+      /* ciphertext não decifra sob a chave antiga — deixa como está */
+    }
   }
-  return initCryptoKey(secret);
 }
 
 /**
  * Apaga todos os dados locais sensíveis (logout em dispositivo compartilhado).
  *
- * Remove o banco IndexedDB (PII de pessoas + fila offline) e o segredo/salt
- * de criptografia. O Cache Storage do Service Worker é limpo separadamente
- * em auth.logout(). Best-effort: nunca lança.
+ * Remove o banco IndexedDB inteiro (PII de pessoas/veículos, fila offline e
+ * a chave de criptografia não-extraível). O Cache Storage do Service Worker
+ * é limpo separadamente em auth.logout(). Best-effort: nunca lança.
  */
 async function clearLocalDB() {
   _cryptoKey = null;
   _pessoasDecryptCache = null;
+  _veiculosDecryptCache = null;
   try {
     if (db) {
       db.close();
@@ -94,15 +175,25 @@ async function clearLocalDB() {
   } catch {
     /* best-effort */
   }
+  // Resíduo do esquema anterior (pré-#19) — limpeza defensiva.
   localStorage.removeItem("argus_db_secret");
   localStorage.removeItem("argus_db_salt");
 }
 
 /**
  * Criptografa string com AES-256-GCM. Retorna base64(iv + ciphertext).
+ *
+ * Lança se a chave ainda não estiver pronta, em vez de devolver o texto
+ * puro em silêncio — antes, uma chave ausente fazia PII ser gravada sem
+ * cifra no IndexedDB sem nenhum sinal de erro (achado #19/2026-07-13).
+ * Chamadores que persistem dado sensível devem aguardar ensureCryptoReady()
+ * antes (todos os pontos de escrita deste módulo já fazem isso).
  */
 async function encryptField(plaintext) {
-  if (!_cryptoKey || !plaintext) return plaintext;
+  if (!plaintext) return plaintext;
+  if (!_cryptoKey) {
+    throw new Error("Chave de criptografia local indisponível — chame ensureCryptoReady() antes");
+  }
   const enc = new TextEncoder();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, _cryptoKey, enc.encode(plaintext));
@@ -142,6 +233,63 @@ async function decryptPessoa(p) {
   return { ...p, nome: await decryptField(p.nome), apelido: await decryptField(p.apelido) };
 }
 
+/**
+ * Criptografa campos sensíveis de um objeto veículo (achado #19/2026-07-13).
+ *
+ * Placa identifica o veículo (e indiretamente o motorista/local); mesmo
+ * tratamento de nome/apelido de pessoa.
+ */
+async function encryptVeiculo(v) {
+  return {
+    ...v,
+    placa: await encryptField(v.placa),
+    modelo: await encryptField(v.modelo),
+    cor: await encryptField(v.cor),
+  };
+}
+
+/**
+ * Descriptografa campos sensíveis de um objeto veículo.
+ */
+async function decryptVeiculo(v) {
+  return {
+    ...v,
+    placa: await decryptField(v.placa),
+    modelo: await decryptField(v.modelo),
+    cor: await decryptField(v.cor),
+  };
+}
+
+/**
+ * Criptografa um Blob (foto) com AES-256-GCM.
+ *
+ * Retorna um envelope serializável pelo IndexedDB (ArrayBuffer cifrado +
+ * IV + content-type), nunca o Blob em claro — fotos na fila offline
+ * ficavam persistidas sem cifra (achado #19/2026-07-13).
+ */
+async function encryptBlob(blob) {
+  if (!_cryptoKey) {
+    throw new Error("Chave de criptografia local indisponível — chame ensureCryptoReady() antes");
+  }
+  const buf = await blob.arrayBuffer();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, _cryptoKey, buf);
+  return { _cifrado: true, iv: Array.from(iv), ciphertext, type: blob.type };
+}
+
+/**
+ * Descriptografa um envelope produzido por encryptBlob() de volta a um Blob.
+ *
+ * Tolerante a itens legados da fila gravados antes da cifra de fotos
+ * (Blob puro, não-envelope) — devolvidos como estão.
+ */
+async function decryptBlob(envelope) {
+  if (!envelope || !envelope._cifrado) return envelope; // legado: Blob em claro
+  const iv = new Uint8Array(envelope.iv);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, _cryptoKey, envelope.ciphertext);
+  return new Blob([plain], { type: envelope.type });
+}
+
 async function initDB() {
   if (db) return db;
 
@@ -163,6 +311,11 @@ async function initDB() {
     veiculos: "id, placa, modelo",
     passagens: "id, lei, artigo, nome_crime",
   });
+  // v2: store dedicado para a CryptoKey não-extraível (achado #19/2026-07-13).
+  // Adição pura de tabela — Dexie migra instalações existentes sem callback.
+  db.version(2).stores({
+    cryptoKeys: "id",
+  });
 
   return db;
 }
@@ -172,19 +325,54 @@ async function initDB() {
  */
 async function enqueueSync(tipo, dados, fotos = []) {
   const database = await initDB();
-  // `fotos` (Blob/File) é persistido nativamente pelo IndexedDB para que a
-  // mídia não se perca ao sincronizar uma abordagem criada offline (#5 auditoria).
+  await ensureCryptoReady();
+  // Fotos (Blob/File) cifradas com o mesmo padrão dos demais dados sensíveis
+  // — antes eram persistidas em claro no IndexedDB (achado #19/2026-07-13).
+  // Decifradas de volta em getPendingSync antes do upload.
+  const fotosCifradas = await Promise.all(
+    fotos.map(async (foto) => ({ ...foto, blob: await encryptBlob(foto.blob) })),
+  );
   return database.syncQueue.add({
     tipo,
     // PII do payload (nomes, observação, GPS, pessoas, veículos) cifrada
     // at-rest no IndexedDB; decriptada em getPendingSync antes do envio (G3-2).
     dados: await encryptField(JSON.stringify(dados)),
-    fotos,
+    fotos: fotosCifradas,
     status: "pending",
     criadoEm: new Date().toISOString(),
     tentativas: 0,
     clientId: crypto.randomUUID(),
+    // Guarnição da sessão no momento do registro offline — usada em
+    // getPendingSync para detectar troca de equipe antes de sincronizar
+    // (achado #18/2026-07-13). null se indisponível (ex.: perfil incompleto).
+    guarnicaoId: typeof auth !== "undefined" && auth.user ? auth.user.guarnicao_id : null,
   });
+}
+
+/**
+ * Limpa a fila local de sincronização quando a guarnição do usuário muda.
+ *
+ * Itens enfileirados offline sob a guarnição anterior não podem ser
+ * sincronizados com segurança sob a sessão atual — sincronizá-los atribuiria
+ * o registro de campo à equipe nova, um vazamento entre tenants (achado
+ * #18/2026-07-13). Remove só os itens presos sob uma guarnição diferente da
+ * nova — itens sem guarnição registrada (null) ou já sob a guarnição nova
+ * são preservados (revisão pós-#18: a versão anterior limpava a fila
+ * INTEIRA, inclusive itens recém-enfileirados já sob a equipe nova, ex. no
+ * fluxo comum de auto-atribuição de guarnição ao sincronizar pela primeira
+ * vez). Best-effort: nunca lança.
+ *
+ * @param {number|null} novaGuarnicaoId - guarnição da sessão atual (pós-troca).
+ */
+async function purgeSyncQueueOnTeamChange(novaGuarnicaoId) {
+  try {
+    const database = await initDB();
+    await database.syncQueue
+      .filter((item) => item.guarnicaoId != null && item.guarnicaoId !== novaGuarnicaoId)
+      .delete();
+  } catch {
+    /* best-effort */
+  }
 }
 
 /**
@@ -221,17 +409,50 @@ function _sincronizavel(item) {
  * Itens marcados como `failed` por erro transitório (rede/5xx) voltam a ser
  * tentados até MAX_SYNC_ATTEMPTS, evitando a perda silenciosa de dados de
  * campo que ficavam presos em `failed` para sempre.
+ *
+ * Itens enfileirados sob uma guarnição diferente da sessão atual (equipe do
+ * operador trocada após o registro offline, antes da fila sincronizar) são
+ * quarentenados em vez de liberados — sincronizá-los agora atribuiria o
+ * registro à equipe errada (achado #18/2026-07-13). Ficam em `failed` e
+ * "estacionam" após MAX_SYNC_ATTEMPTS como qualquer outra falha permanente.
  */
 async function getPendingSync() {
   const database = await initDB();
   const items = await database.syncQueue.filter(_sincronizavel).toArray();
   // Garante a chave antes de decriptar (evita falso failed se o sync disparar
-  // antes do ensureCryptoReady do boot). Só quando há itens e segredo presente.
-  if (items.length && localStorage.getItem("argus_db_secret")) {
+  // antes do ensureCryptoReady do boot).
+  if (items.length) {
     await ensureCryptoReady();
   }
-  for (const item of items) item.dados = await _decryptDados(item.dados);
-  return items;
+  const guarnicaoAtual = typeof auth !== "undefined" && auth.user ? auth.user.guarnicao_id : null;
+  const liberados = [];
+  for (const item of items) {
+    // guarnicaoAtual===null também quarentena (ex.: operador desatribuído de
+    // equipe enquanto offline) — antes exigia AMBOS não-nulos, então um
+    // guarnicaoAtual nulo liberava o item sem checar (revisão pós-#18).
+    if (item.guarnicaoId != null && item.guarnicaoId !== guarnicaoAtual) {
+      await markFailed(item.id, "Item pertence a outra equipe — sincronização bloqueada");
+      continue;
+    }
+    // Decifração isolada por item: um item corrompido/ilegível (chave
+    // trocada, ciphertext inválido) não pode travar a fila inteira — antes,
+    // uma exceção aqui propagava para fora de getPendingSync() e bloqueava
+    // TODOS os itens, inclusive os saudáveis, indefinidamente (revisão
+    // pós-#19/2026-07-13).
+    try {
+      item.dados = await _decryptDados(item.dados);
+      if (item.fotos && item.fotos.length) {
+        item.fotos = await Promise.all(
+          item.fotos.map(async (foto) => ({ ...foto, blob: await decryptBlob(foto.blob) })),
+        );
+      }
+    } catch {
+      await markFailed(item.id, "Falha ao decifrar item — dados locais corrompidos ou ilegíveis");
+      continue;
+    }
+    liberados.push(item);
+  }
+  return liberados;
 }
 
 /**
@@ -269,6 +490,7 @@ async function countPending() {
  */
 async function cachePessoas(pessoas) {
   const database = await initDB();
+  await ensureCryptoReady();
   const encrypted = await Promise.all(pessoas.map(encryptPessoa));
   await database.pessoas.bulkPut(encrypted);
   _pessoasDecryptCache = null; // invalida o cache decriptado (dados mudaram)
@@ -276,10 +498,15 @@ async function cachePessoas(pessoas) {
 
 /**
  * Cache local de veículos para autocomplete offline.
+ * Campos sensíveis (placa, modelo, cor) são criptografados com AES-GCM,
+ * mesmo padrão de pessoas (achado #19/2026-07-13).
  */
 async function cacheVeiculos(veiculos) {
   const database = await initDB();
-  await database.veiculos.bulkPut(veiculos);
+  await ensureCryptoReady();
+  const encrypted = await Promise.all(veiculos.map(encryptVeiculo));
+  await database.veiculos.bulkPut(encrypted);
+  _veiculosDecryptCache = null; // invalida o cache decriptado (dados mudaram)
 }
 
 /**
@@ -300,13 +527,20 @@ async function searchPessoasLocal(query) {
 }
 
 /**
- * Busca veículos no cache local.
+ * Busca veículos no cache local (descriptografa antes de filtrar).
+ *
+ * Placa/modelo cifrados (achado #19/2026-07-13) não podem mais ser filtrados
+ * pelo índice nativo do Dexie — decripta o cache uma vez e reutiliza nas
+ * buscas seguintes, mesmo padrão de memoização de searchPessoasLocal.
  */
 async function searchVeiculosLocal(query) {
   const database = await initDB();
   const q = query.toUpperCase();
-  return database.veiculos
+  if (_veiculosDecryptCache === null) {
+    const all = await database.veiculos.toArray();
+    _veiculosDecryptCache = await Promise.all(all.map(decryptVeiculo));
+  }
+  return _veiculosDecryptCache
     .filter((v) => v.placa.includes(q) || (v.modelo && v.modelo.toUpperCase().includes(q)))
-    .limit(10)
-    .toArray();
+    .slice(0, 10);
 }

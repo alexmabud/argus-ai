@@ -23,6 +23,8 @@ async def test_login_gera_session_id(mock_db):
     usuario.guarnicao_id = 1
     usuario.session_id = None
     usuario.is_admin = False
+    usuario.is_super_admin = False
+    usuario.totp_secret = None
     usuario.bloqueado_ate = None
     usuario.tentativas_falhas = 0
     usuario.senha_expira_em = None  # sem TTL — não deve bloquear
@@ -55,6 +57,8 @@ async def test_login_invalida_senha_apos_uso(mock_db):
     usuario.guarnicao_id = None
     usuario.session_id = None
     usuario.is_admin = False
+    usuario.is_super_admin = False
+    usuario.totp_secret = None
     usuario.bloqueado_ate = None
     usuario.tentativas_falhas = 0
     usuario.senha_expira_em = None  # sem TTL — não deve bloquear

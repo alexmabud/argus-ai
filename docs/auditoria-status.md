@@ -201,7 +201,7 @@ APP_DATABASE_URL); suíte completa confirmada ao fim. ci.yml validado (YAML).
 | G9-3 | Busca facial/OCR só testava 401 | Similaridade pgvector exercitada com embeddings 512-dim sintéticos (sem InsightFace) | `b83b3e3` |
 | G9-4 | Asserts frouxos `in (400,401)` em auth | `== 401` (todos são `CredenciaisInvalidasError`) | `5f5ed90` |
 | G9-5 | Sem testes p/ crypto/login_guard/auth_cookie | Novos testes: crypto (round-trip+hash), auth_cookie (flags), login_guard (bloqueio+reset) | `fd9161a` |
-| G9-6 | Fixture `setup_db` autouse acopla unit ao banco | **Known-debt documentado**: desacoplar exige opt-in em ~94 arquivos de teste (autouse session-scoped); risco alto vs valor — adiado | — |
+| G9-6 | Fixture `setup_db` autouse acopla unit ao banco | Resolvido (achado #32/2026-07-13): `setup_db` deixou de ser autouse; virou dependência de `db_session`/`client`. Zero opt-in por arquivo — os ~50 arquivos unit sem `db_session`/`client` param de tocar o banco automaticamente | `57f405e` |
 | G9-7 | Teste tautológico de LIMIT | Inspeciona a statement compilada, exige `LIMIT 100` (cap) | `5f5ed90` |
 | G9-8 | Sem smoke de migrations no CI | Passo no CI: `alembic upgrade head` em banco limpo, exige head único | `cf00252` |
 

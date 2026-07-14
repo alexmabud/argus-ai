@@ -52,26 +52,34 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         img_extra = " http://localhost:9000" if settings.DEBUG else ""
         # CSP sem 'unsafe-inline':
         # - script-src mantem 'unsafe-eval' (Alpine.js padrao usa new Function
-        #   para interpretar x-data/x-show; remover quebraria o PWA).
+        #   para interpretar x-data/x-show; remover exige migrar pra build
+        #   sem eval do Alpine — decisão HITL em aberto, achado #30/2026-07-13).
         # - style-src precisa de 'unsafe-inline' enquanto tivermos style="..."
         #   embutido em templates (frontend/js/app.js gera HTML com style inline
         #   para animacoes). Migrar tudo pra classes CSS eh refactor maior.
         # - inline onclick foi removido em favor de data-navigate-to + delegated
         #   listener, permitindo retirar 'unsafe-inline' de script-src.
+        # - CDNs (jsdelivr/tailwindcss/unpkg) e nominatim.openstreetmap removidos
+        #   do header (achado #30/2026-07-13): todo o vendor JS é self-hosted em
+        #   frontend/vendor/ há tempo (grep confirma zero uso real dessas origens
+        #   em frontend/), e a geocodificação reversa via Nominatim roda no
+        #   backend (app/services/geocoding_service.py), nunca no browser — essas
+        #   origens só ampliavam a superfície de uma eventual XSS sem nenhum
+        #   benefício funcional. *.tile.openstreetmap.org fica: é o Leaflet
+        #   buscando tiles de mapa direto do browser (uso real, confirmado).
+        # - fonts.googleapis.com/fonts.gstatic.com foram removidos junto com os
+        #   CDNs acima, mas frontend/css/app.css:6 ainda faz @import de lá — o
+        #   grep original só cobriu JS/HTML, não CSS. Restaurados (revisão pós-
+        #   #30/2026-07-13); self-hospedar as fontes é uma opção melhor a longo
+        #   prazo, mas é uma mudança maior (assets binários) fora do escopo desta
+        #   correção pontual.
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-eval' "
-            "https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://unpkg.com; "
-            "style-src 'self' 'unsafe-inline' "
-            "https://cdn.jsdelivr.net https://cdn.tailwindcss.com "
-            "https://fonts.googleapis.com https://unpkg.com; "
-            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
-            "img-src 'self' data: blob: "
-            f"https://*.tile.openstreetmap.org https://unpkg.com{img_extra}; "
-            "connect-src 'self' "
-            "https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com "
-            "https://nominatim.openstreetmap.org https://fonts.googleapis.com "
-            "https://fonts.gstatic.com"
+            "script-src 'self' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            f"img-src 'self' data: blob: https://*.tile.openstreetmap.org{img_extra}; "
+            "connect-src 'self'"
         )
         return response
 

@@ -5,7 +5,6 @@ com normalização de placa, verificação de unicidade e auditoria
 de todas as mutações.
 """
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
@@ -15,6 +14,7 @@ from app.models.veiculo import Veiculo
 from app.repositories.veiculo_repo import VeiculoRepository
 from app.schemas.veiculo import VeiculoCreate, VeiculoUpdate
 from app.services.audit_service import AuditService
+from app.services.client_id_dedup import criar_com_retry_client_id
 
 
 class VeiculoService:
@@ -63,8 +63,11 @@ class VeiculoService:
     ) -> Veiculo:
         """Cria novo veículo com normalização de placa.
 
-        Normaliza a placa para uppercase sem traços e verifica unicidade
-        global antes de criar. Registra evento de auditoria.
+        Se client_id informado, verifica primeiro se já existe veículo com
+        este client_id (deduplicação de sync offline, achado #18/2026-07-13)
+        e retorna o existente sem duplicar. Normaliza a placa para uppercase
+        sem traços e verifica unicidade global antes de criar. Registra
+        evento de auditoria.
 
         Args:
             data: Dados de criação do veículo (placa, modelo, cor, etc).
@@ -74,11 +77,18 @@ class VeiculoService:
             user_agent: User-Agent do cliente (opcional).
 
         Returns:
-            Veículo criado com ID atribuído pelo banco.
+            Veículo criado com ID atribuído pelo banco, ou veículo existente
+            com o mesmo client_id (idempotência de sync offline).
 
         Raises:
             ConflitoDadosError: Se placa já cadastrada no sistema.
         """
+        # Deduplicação por client_id (offline sync)
+        if data.client_id:
+            existing_client = await self.repo.get_by_client_id(data.client_id)
+            if existing_client:
+                return existing_client
+
         placa_normalizada = self._normalizar_placa(data.placa)
 
         existing = await self.repo.get_by_placa(placa_normalizada)
@@ -93,13 +103,20 @@ class VeiculoService:
             tipo=data.tipo,
             observacoes=data.observacoes,
             guarnicao_id=guarnicao_id,
+            client_id=data.client_id,
         )
 
-        try:
-            await self.repo.create(veiculo)
-        except IntegrityError:
-            await self.db.rollback()
-            raise ConflitoDadosError("Veículo com esta placa já cadastrado")
+        veiculo, foi_criado = await criar_com_retry_client_id(
+            self.db,
+            self.repo,
+            veiculo,
+            data.client_id,
+            ConflitoDadosError("Veículo com esta placa já cadastrado"),
+        )
+        if not foi_criado:
+            # Corrida: outra requisição concorrente já criou este veículo —
+            # nada foi de fato criado por esta chamada, não registra CREATE.
+            return veiculo
 
         await self.audit.log(
             usuario_id=user_id,

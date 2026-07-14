@@ -106,16 +106,21 @@ class SyncService:
                 error=f"Tipo desconhecido: {item.tipo}",
             )
 
-        await handler(item.dados, user)
+        await handler(item.dados, item.client_id, user)
         await self.db.commit()
 
         return SyncItemResult(client_id=item.client_id, status="ok")
 
-    async def _sync_abordagem(self, dados: dict, user: Usuario) -> None:
+    async def _sync_abordagem(self, dados: dict, client_id: str, user: Usuario) -> None:
         """Sincroniza abordagem offline.
 
         Args:
             dados: Payload da abordagem.
+            client_id: client_id do SyncItem (nível de protocolo). Abordagem
+                prioriza o client_id embutido em `dados` — necessário porque o
+                fluxo com fotos (sync.js _syncAbordagemComFotos) faz POST
+                direto em /abordagens/ com este mesmo `dados`, fora do batch
+                de sync, e precisa do client_id disponível ali também.
             user: Usuário autenticado.
         """
         from app.schemas.abordagem import AbordagemCreate
@@ -128,11 +133,14 @@ class SyncService:
             endereco_texto=dados.get("endereco_texto"),
             observacao=dados.get("observacao"),
             origem=dados.get("origem", "offline"),
-            client_id=dados.get("client_id"),
+            client_id=dados.get("client_id") or client_id,
             pessoa_ids=dados.get("pessoa_ids", []),
             veiculo_ids=dados.get("veiculo_ids", []),
             passagens=[],
         )
+        # guarnicao_id garantido pela dependência get_current_user_with_guarnicao
+        # no router de sync (achado #18/2026-07-13) — assert só narrowing de tipo,
+        # mesmo padrão usado nos demais routers após esta dependência.
         assert user.guarnicao_id is not None
         await service.criar(
             data=data,
@@ -140,11 +148,13 @@ class SyncService:
             guarnicao_id=user.guarnicao_id,
         )
 
-    async def _sync_pessoa(self, dados: dict, user: Usuario) -> None:
+    async def _sync_pessoa(self, dados: dict, client_id: str, user: Usuario) -> None:
         """Sincroniza pessoa offline.
 
         Args:
             dados: Payload da pessoa.
+            client_id: client_id do SyncItem, usado para deduplicação
+                (achado #18/2026-07-13).
             user: Usuário autenticado.
         """
         from app.schemas.pessoa import PessoaCreate
@@ -156,7 +166,11 @@ class SyncService:
             data_nascimento=dados.get("data_nascimento"),
             apelido=dados.get("apelido"),
             observacoes=dados.get("observacoes"),
+            client_id=client_id,
         )
+        # guarnicao_id garantido pela dependência get_current_user_with_guarnicao
+        # no router de sync (achado #18/2026-07-13) — assert só narrowing de tipo,
+        # mesmo padrão usado nos demais routers após esta dependência.
         assert user.guarnicao_id is not None
         await service.criar(
             data=data,
@@ -164,11 +178,13 @@ class SyncService:
             guarnicao_id=user.guarnicao_id,
         )
 
-    async def _sync_veiculo(self, dados: dict, user: Usuario) -> None:
+    async def _sync_veiculo(self, dados: dict, client_id: str, user: Usuario) -> None:
         """Sincroniza veículo offline.
 
         Args:
             dados: Payload do veículo.
+            client_id: client_id do SyncItem, usado para deduplicação
+                (achado #18/2026-07-13).
             user: Usuário autenticado.
         """
         from app.schemas.veiculo import VeiculoCreate
@@ -181,7 +197,11 @@ class SyncService:
             ano=dados.get("ano"),
             tipo=dados.get("tipo"),
             observacoes=dados.get("observacoes"),
+            client_id=client_id,
         )
+        # guarnicao_id garantido pela dependência get_current_user_with_guarnicao
+        # no router de sync (achado #18/2026-07-13) — assert só narrowing de tipo,
+        # mesmo padrão usado nos demais routers após esta dependência.
         assert user.guarnicao_id is not None
         await service.criar(
             data=data,

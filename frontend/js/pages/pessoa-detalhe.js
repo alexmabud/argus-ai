@@ -7,8 +7,14 @@
  */
 
 function renderPessoaDetalhe(appState) {
-  const pessoaId = appState._pessoaId;
-  if (!pessoaId) {
+  // Achado #30/2026-07-13: pessoaId é interpolado literalmente em atributos
+  // HTML (x-data="{ ...pessoaDetalhePage(${pessoaId}) }") mais abaixo — sem
+  // validar como inteiro antes, um valor com aspas quebraria o atributo e
+  // injetaria HTML/JS arbitrário. parseInt + Number.isInteger garante que só
+  // um número puro chega ao template, fechando o vetor independente de onde
+  // o valor se originou.
+  const pessoaId = Number.parseInt(appState._pessoaId, 10);
+  if (!Number.isInteger(pessoaId) || pessoaId <= 0) {
     return `<p style="color: var(--color-text-muted)">Nenhuma pessoa selecionada.</p>`;
   }
 

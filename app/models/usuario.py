@@ -54,8 +54,9 @@ class Usuario(Base, TimestampMixin, SoftDeleteMixin):
             Senhas geradas pelo admin expiram em SENHA_PROVISORIA_EXPIRE_HOURS horas.
             Zerado no primeiro login bem-sucedido. Admin é isento de expiração.
         totp_secret: Secret TOTP cifrado com Fernet (AES-256). NULL = sem 2FA configurado.
-            Apenas admins usam 2FA. Login de admin sem secret funciona normalmente
-            (fase de bootstrap/enrollment). Enrollment via POST /admin/2fa/setup.
+            Apenas admins e super-admin usam 2FA. Login sem secret funciona
+            normalmente (fase de bootstrap/enrollment). Enrollment via
+            POST /admin/2fa/setup.
         guarnicao_id: ID da Equipe (guarnição) à qual o usuário pertence.
             FK para guarnicoes.id, nullable. Usuários sem equipe aparecem
             na aba "Sem Equipe" do painel admin e têm acesso restrito

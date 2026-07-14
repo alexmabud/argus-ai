@@ -11,7 +11,7 @@ groups:
         title: CPU Alta
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 5m
         annotations:
           summary: CPU alta na VM
@@ -43,7 +43,7 @@ groups:
         title: CPU Crítica
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 10m
         annotations:
           summary: "CPU CRÍTICA na VM"
@@ -75,7 +75,7 @@ groups:
         title: RAM Alta
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 5m
         annotations:
           summary: RAM alta na VM
@@ -107,7 +107,7 @@ groups:
         title: Disco de Fotos Cheio
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 2m
         annotations:
           summary: Disco /mnt/fotos com pouco espaço
@@ -139,7 +139,7 @@ groups:
         title: Disco do Sistema Crítico
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 2m
         annotations:
           summary: "Disco do sistema CRÍTICO"
@@ -212,7 +212,7 @@ groups:
         title: Alta Taxa de Erros HTTP 5xx
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 5m
         annotations:
           summary: Alta taxa de erros na API
@@ -244,7 +244,7 @@ groups:
         title: Latência Alta na API
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 5m
         annotations:
           summary: Endpoint com latência alta
@@ -354,22 +354,37 @@ groups:
       - uid: alert-worker-parado
         title: Worker arq Parado
         condition: threshold
-        noDataState: OK
-        execErrState: OK
-        for: 10m
+        # NÃO usar OK aqui: ausência da métrica argus_worker_alive indica que
+        # a API não conseguiu publicar o gauge (Redis fora, ou WORKER_IDS não
+        # configurado) — mascarar isso com OK repetia o bug original
+        # (achado #12/2026-07-13).
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 5m
         annotations:
           summary: "Worker arq parado"
-          description: "Nenhum comando Redis processado há 10min e Redis está no ar. Worker (containers argus-ai-worker-*) provavelmente caiu ou travou. Tasks em fila não estão sendo consumidas."
+          description: "Pelo menos um worker arq (WORKER_IDS: worker-1,worker-2 — 2 instâncias esperadas) está sem health-check fresca no Redis há 5min. Container correspondente (argus-ai-worker-1/2) provavelmente caiu ou travou. Ver métrica argus_worker_alive{worker_id=...} para identificar qual."
         labels:
           severity: warning
         data:
-          # Atividade do worker = comandos no Redis (worker polla a cada ~300ms)
+          # Health-check individual por worker_id (achado #12/2026-07-13):
+          # a métrica antiga (rate de comandos Redis agregada) não caía com
+          # só 1 de N workers morto — o outro seguia gerando tráfego. Agora
+          # cada worker grava sua própria chave no Redis (WORKER_ID em
+          # app/worker.py) e a API publica argus_worker_alive por instância.
+          #
+          # `* (redis_up == bool 1)` (revisão pós-#12/2026-07-13): quando o
+          # Redis cai, app/core/worker_health.py grava argus_worker_alive=0
+          # para TODOS os workers (fail-closed) — sem este fator, este alerta
+          # co-disparava com "Redis Offline" pelo mesmo incidente,
+          # reintroduzindo a duplicidade/desdiagnóstico que a versão antiga
+          # (`rate(...) * redis_up`) evitava. Só dispara quando o worker está
+          # de fato parado E o Redis está de pé.
           - refId: A
-            relativeTimeRange: {from: 600, to: 0}
+            relativeTimeRange: {from: 300, to: 0}
             datasourceUid: prometheus-argus
             model:
-              # Multiplica por redis_up pra não disparar junto com alert-redis-down
-              expr: rate(redis_commands_processed_total[5m]) * redis_up
+              expr: (min(argus_worker_alive) < bool 1) * (redis_up == bool 1)
               refId: A
               instant: true
               range: false
@@ -380,8 +395,10 @@ groups:
               refId: threshold
               expression: A
               conditions:
-                # < 0.1 ops/s = praticamente parado (em uso normal são ~3-4 ops/s)
-                - evaluator: {type: lt, params: [0.1]}
+                # A == 1 → pelo menos um worker_id monitorado está com a
+                # health-check ausente/expirada E o Redis está de pé (ver
+                # comentário da expr acima).
+                - evaluator: {type: gte, params: [1]}
                   operator: {type: and}
                   query: {params: [A]}
                   reducer: {type: avg}
@@ -397,7 +414,7 @@ groups:
         title: Disco de Fotos vai encher em 7 dias
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 30m
         annotations:
           summary: Disco /mnt/fotos vai encher em ~7 dias
@@ -464,7 +481,7 @@ groups:
         title: Certificado SSL Expirando
         condition: threshold
         noDataState: OK
-        execErrState: OK
+        execErrState: Alerting
         for: 1h
         annotations:
           summary: Certificado SSL expira em menos de 15 dias

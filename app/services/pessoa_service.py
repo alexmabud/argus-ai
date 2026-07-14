@@ -23,6 +23,7 @@ from app.repositories.pessoa_repo import PessoaRepository
 from app.schemas.pessoa import EnderecoCreate, EnderecoUpdate, PessoaCreate, PessoaUpdate
 from app.schemas.vinculo_manual import VinculoManualCreate
 from app.services.audit_service import AuditService
+from app.services.client_id_dedup import criar_com_retry_client_id
 
 logger = logging.getLogger("argus")
 
@@ -61,9 +62,11 @@ class PessoaService:
     ) -> Pessoa:
         """Cria nova pessoa com CPF criptografado.
 
-        Se CPF informado, criptografa com Fernet (AES-256) e gera hash
-        SHA-256 para busca. Verifica unicidade do CPF por hash dentro
-        da mesma guarnição antes de criar.
+        Se client_id informado, verifica primeiro se já existe pessoa com
+        este client_id (deduplicação de sync offline, achado #18/2026-07-13)
+        e retorna a existente sem duplicar. Se CPF informado, criptografa
+        com Fernet (AES-256) e gera hash SHA-256 para busca. Verifica
+        unicidade do CPF por hash dentro da mesma guarnição antes de criar.
 
         Args:
             data: Dados de criação da pessoa (nome, cpf, nascimento, etc).
@@ -73,11 +76,18 @@ class PessoaService:
             user_agent: User-Agent do cliente (opcional).
 
         Returns:
-            Pessoa criada com ID atribuído pelo banco.
+            Pessoa criada com ID atribuído pelo banco, ou pessoa existente
+            com o mesmo client_id (idempotência de sync offline).
 
         Raises:
             ConflitoDadosError: Se CPF já cadastrado na mesma guarnição.
         """
+        # Deduplicação por client_id (offline sync)
+        if data.client_id:
+            existing_client = await self.repo.get_by_client_id(data.client_id)
+            if existing_client:
+                return existing_client
+
         cpf_encrypted = None
         cpf_hash = None
         if data.cpf:
@@ -96,12 +106,20 @@ class PessoaService:
             nome_mae=data.nome_mae,
             observacoes=data.observacoes,
             guarnicao_id=guarnicao_id,
+            client_id=data.client_id,
         )
 
-        try:
-            await self.repo.create(pessoa)
-        except IntegrityError:
-            raise ConflitoDadosError("Pessoa com este CPF já cadastrada")
+        pessoa, foi_criada = await criar_com_retry_client_id(
+            self.db,
+            self.repo,
+            pessoa,
+            data.client_id,
+            ConflitoDadosError("Pessoa com este CPF já cadastrada"),
+        )
+        if not foi_criada:
+            # Corrida: outra requisição concorrente já criou esta pessoa —
+            # nada foi de fato criado por esta chamada, não registra CREATE.
+            return pessoa
 
         await self.audit.log(
             usuario_id=user_id,
@@ -140,13 +158,20 @@ class PessoaService:
 
         Raises:
             NaoEncontradoError: Se pessoa não existe.
+            AcessoNegadoError: Se o usuário não é administrador.
             ConflitoDadosError: Se novo CPF já cadastrado por outra pessoa.
         """
+        if not (user.is_admin or user.is_super_admin):
+            raise AcessoNegadoError("Apenas administradores podem editar pessoas")
+
         pessoa = await self.repo.get(pessoa_id)
         if not pessoa:
             raise NaoEncontradoError("Pessoa")
-        # Pessoas são cadastros globais — qualquer usuário autenticado pode editar,
-        # independente da guarnição. Isolamento aplica-se apenas a abordagens.
+        # Pessoas são cadastros globais (qualquer autenticado LÊ, independente da
+        # guarnição) — mas mutação é restrita a administradores (achado #04/
+        # 2026-07-13): o cadastro nacional é compartilhado entre equipes, então
+        # qualquer operador podia editar/apagar o registro de qualquer outra
+        # equipe. Isolamento por guarnição segue não se aplicando a leitura.
 
         update_data = data.model_dump(exclude_unset=True)
 
@@ -287,11 +312,15 @@ class PessoaService:
 
         Raises:
             NaoEncontradoError: Se pessoa não existe.
+            AcessoNegadoError: Se o usuário não é administrador.
         """
+        if not (user.is_admin or user.is_super_admin):
+            raise AcessoNegadoError("Apenas administradores podem apagar pessoas")
+
         pessoa = await self.repo.get(pessoa_id)
         if not pessoa:
             raise NaoEncontradoError("Pessoa")
-        # Pessoas são cadastros globais — sem isolamento de guarnição.
+        # Cadastro global (achado #04/2026-07-13) — ver nota em atualizar().
 
         await self.repo.soft_delete(pessoa, deleted_by_id=user.id)
 
@@ -503,6 +532,35 @@ class PessoaService:
         return bairro_txt, cidade_txt, estado_txt
 
     @staticmethod
+    def mask_cpf_encrypted(
+        cpf_encrypted: str | None, context_id: int | str | None = None
+    ) -> str | None:
+        """Mascara CPF a partir do valor cifrado bruto (***.***.***-XX).
+
+        Variante de mask_cpf() que não exige uma instância de Pessoa
+        carregada — usada por consultas em massa (analytics) que trabalham
+        com linhas de SELECT (Pessoa.cpf_encrypted) em vez de objetos ORM
+        completos (achado #16/2026-07-13).
+
+        Args:
+            cpf_encrypted: Valor cifrado do CPF, ou None.
+            context_id: ID da pessoa, só para a mensagem de log em falha.
+
+        Returns:
+            CPF mascarado no formato "***.***.***-XX" ou None se sem CPF
+            ou falha ao descriptografar.
+        """
+        if not cpf_encrypted:
+            return None
+        try:
+            cpf = decrypt(cpf_encrypted)
+            clean = cpf.replace(".", "").replace("-", "")
+            return f"***.***.*{clean[-3]}-{clean[-2:]}"
+        except Exception:
+            logger.warning("Falha ao descriptografar CPF da pessoa %s", context_id)
+            return None
+
+    @staticmethod
     def mask_cpf(pessoa: Pessoa) -> str | None:
         """Mascara CPF para exibição segura (***.***.***-XX).
 
@@ -516,15 +574,7 @@ class PessoaService:
             CPF mascarado no formato "***.***.***-XX" ou None se
             pessoa não possui CPF cadastrado.
         """
-        if not pessoa.cpf_encrypted:
-            return None
-        try:
-            cpf = decrypt(pessoa.cpf_encrypted)
-            clean = cpf.replace(".", "").replace("-", "")
-            return f"***.***.*{clean[-3]}-{clean[-2:]}"
-        except Exception:
-            logger.warning("Falha ao descriptografar CPF da pessoa %s", pessoa.id)
-            return None
+        return PessoaService.mask_cpf_encrypted(pessoa.cpf_encrypted, context_id=pessoa.id)
 
     @staticmethod
     def decrypt_cpf(pessoa: Pessoa) -> str | None:

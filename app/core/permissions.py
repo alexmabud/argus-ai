@@ -43,6 +43,16 @@ class TenantFilter:
         (is_admin=True) ignoram esta verificação e podem operar em
         qualquer guarnição.
 
+        Nota (achado #24/2026-07-13): revisão de segurança propôs restringir
+        este bypass a is_super_admin ou a uma permissão explícita `pode_*`
+        com audit obrigatório, para reduzir o raio de um admin comprometido
+        de qualquer equipe. Decisão reafirmada: manter como está — a
+        auditoria anterior (2026-06-27) já fechou o modelo de tenant
+        nacional/global com controles compensatórios apenas, sem criar RBAC
+        novo (D-G2-2). Restringir o bypass de is_admin exigiria exatamente
+        essa nova permissão; contradiz a decisão já tomada. Ver também
+        achado #23 em app/dependencies.py (mesmo domínio de decisão).
+
         Args:
             resource: Objeto de recurso a verificar.
             user: Objeto usuário com atributo guarnicao_id.

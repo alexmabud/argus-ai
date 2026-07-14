@@ -54,6 +54,24 @@ if [[ ! $REPLY =~ ^[Ss]$ ]]; then
     exit 0
 fi
 
+# Confirmação SEPARADA e explícita para --with-prod-key: a chave-mestra de
+# produção decifrando CPFs numa máquina de dev é o item de maior impacto
+# LGPD deste script — não deve passar despercebido dentro do "Continuar?"
+# genérico acima, nem só por causa de um alias/muscle-memory com KEY=1
+# (achado #10/2026-07-13).
+if [[ "$WITH_PROD_KEY" == "1" ]]; then
+    echo ""
+    echo " ⚠️  --with-prod-key: a ENCRYPTION_KEY de PRODUCAO sera copiada para este"
+    echo "    dispositivo, tornando os CPFs do dump DECIFRAVEIS localmente."
+    echo ""
+    read -p " Confirma trazer a chave-mestra de producao? [s/N] " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Ss]$ ]]; then
+        echo "Cancelado."
+        exit 0
+    fi
+fi
+
 # ─── 1/6 ── pg_dump na VM ─────────────────────────────────────
 echo ""
 echo "═══ 1/6 pg_dump no servidor ═══"
@@ -108,20 +126,38 @@ fi
 echo ""
 echo "═══ 5/6 Restore do Postgres local ═══"
 docker compose up -d db
-# Espera DB ficar pronto
+# Espera DB ficar pronto — aborta (não segue mudo) se nunca ficar pronto,
+# senão os comandos seguintes falham com erro de conexão confuso em vez de
+# uma mensagem clara (achado #10/2026-07-13).
+DB_PRONTO=0
 for i in {1..30}; do
     if docker exec argus-db pg_isready -U argus -d postgres >/dev/null 2>&1; then
+        DB_PRONTO=1
         break
     fi
     sleep 1
 done
+if [[ "$DB_PRONTO" != "1" ]]; then
+    echo "ERRO: Postgres local não ficou pronto em 30s — abortando antes de tocar no banco." >&2
+    exit 1
+fi
 # Mata conexoes ativas e recria banco
 docker exec argus-db psql -U argus -d postgres -c \
     "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='argus_db' AND pid<>pg_backend_pid();" >/dev/null
 docker exec argus-db psql -U argus -d postgres -c "DROP DATABASE IF EXISTS argus_db;"
 docker exec argus-db psql -U argus -d postgres -c "CREATE DATABASE argus_db OWNER argus;"
-# Restore
-docker exec -i argus-db pg_restore -U argus -d argus_db --no-owner --no-privileges < "$DUMP_FILE"
+# Restore — captura o rc (|| ...=$?) em vez de deixar o `set -e` abortar no
+# meio: sem isso, uma falha aqui deixava o banco local DROPADO e recriado
+# vazio (ou parcialmente restaurado), sem nenhuma mensagem acionável
+# (mesmo padrão de restore_from_backup.sh, achado #10/2026-07-13).
+restore_rc=0
+docker exec -i argus-db pg_restore -U argus -d argus_db --no-owner --no-privileges < "$DUMP_FILE" || restore_rc=$?
+if [[ "$restore_rc" != "0" ]]; then
+    echo "ERRO: pg_restore falhou (rc=$restore_rc) — banco local 'argus_db' pode estar vazio ou" >&2
+    echo "  parcialmente restaurado. Rode o sync de novo, ou restaure manualmente a partir de" >&2
+    echo "  $DUMP_FILE." >&2
+    exit 1
+fi
 echo "Postgres restaurado"
 
 # ─── 6/6 ── Restore MinIO local ───────────────────────────────
@@ -133,6 +169,11 @@ docker run --rm \
     -v "$FOTOS_DIR:/src:ro" \
     alpine sh -c "rm -rf /data/* /data/.minio.sys 2>/dev/null || true; cp -a /src/. /data/"
 docker compose up -d minio
+# Reexecuta o init de buckets/politicas (mc mb/anonymous set none) mesmo
+# apos a copia bruta dos arquivos — o .minio.sys copiado de prod nem sempre
+# preserva o estado de bucket/policy esperado pelo compose local, e sem
+# reexecutar o init isso falha silenciosamente (achado #10/2026-07-13).
+docker compose up -d minio-init
 echo "MinIO restaurado"
 
 echo ""

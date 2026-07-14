@@ -92,6 +92,17 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
 
+    # Identidade deste worker arq (usada como sufixo da health-check key no
+    # Redis, para permitir monitorar múltiplos workers individualmente — ver
+    # WORKER_IDS). Vazio = comportamento padrão do arq (chave única, não
+    # distingue instâncias).
+    WORKER_ID: str = ""
+    # Lista (separada por vírgula) dos worker_id esperados em produção — usada
+    # pela API para publicar a métrica argus_worker_alive{worker_id=...} no
+    # /metrics, permitindo alertar por instância (achado #12/2026-07-13: antes
+    # a métrica agregada de comandos Redis não caía com só 1 de N workers morto).
+    WORKER_IDS: str = ""
+
     # Auth
     SECRET_KEY: str
     SENHA_PROVISORIA_EXPIRE_HOURS: int = 24
@@ -111,18 +122,27 @@ class Settings(BaseSettings):
 
         Recusa valores curtos (<32) ou placeholders conhecidos do .env.example.
         Falha rapido no startup em vez de servir trafego com chave fraca.
+
+        Achado #09/2026-07-13: o placeholder real usado em
+        .env.production.example ("TROCAR-GERAR-COM-OPENSSL-RAND-HEX-32", 36
+        chars) passava incólume — mais longo que o mínimo de 32 e não batia
+        com o set antigo (que checava uma string totalmente diferente,
+        "gerar-chave-segura-..."). O prefixo "trocar" pega qualquer
+        placeholder desse padrão, atual ou futuro, sem precisar listar cada
+        variante literal.
         """
         if len(v) < 32:
             raise ValueError(
                 "SECRET_KEY deve ter no minimo 32 caracteres (gere com: openssl rand -hex 32)"
             )
+        v_lower = v.lower()
         placeholders_inseguros = {
             "changeme",
             "secret",
             "default",
             "gerar-chave-segura-com-openssl-rand-hex-32",
         }
-        if v.lower() in placeholders_inseguros:
+        if v_lower in placeholders_inseguros or v_lower.startswith("trocar"):
             raise ValueError(
                 "SECRET_KEY usa placeholder inseguro — substitua por chave gerada "
                 "com `openssl rand -hex 32`"
@@ -181,6 +201,10 @@ class Settings(BaseSettings):
     EMBEDDING_CACHE_TTL: int = 3600  # 1h cache de embeddings de busca
 
     # Face Recognition
+    # Limiar mínimo de similaridade cosseno (0-1) para considerar duas fotos
+    # o mesmo rosto em buscar-rosto. 0.6 é o valor já usado em produção antes
+    # desta config existir de fato — repositório de fotos tinha esse mesmo
+    # número hardcoded, ignorando esta variável (achado #26/2026-07-13).
     FACE_SIMILARITY_THRESHOLD: float = 0.6
 
     # Geocoding
@@ -199,10 +223,21 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:8000", "http://localhost:3000"]
 
-    # Proxies cujo X-Forwarded-For pode ser confiado (Caddy local, por padrao).
-    # Requests de IPs fora desta lista terao o XFF ignorado — atacante externo
-    # nao consegue inflar o header para burlar rate limit.
+    # Proxies cujo X-Forwarded-For pode ser confiado, por IP exato (loopback,
+    # por padrao — cobre dev/quando a API roda sem container na frente).
+    # Requests de IPs fora desta lista (ou fora de TRUSTED_PROXY_HOSTNAMES)
+    # terao o XFF ignorado — atacante externo nao consegue inflar o header
+    # para burlar rate limit/login_guard.
     TRUSTED_PROXIES: list[str] = ["127.0.0.1", "::1"]
+
+    # Proxies confiados por HOSTNAME (achado #14/2026-07-13): em produção, a
+    # API vê a requisição chegar do container do Caddy na rede Docker
+    # (argus-network), não de loopback — TRUSTED_PROXIES sozinho nunca batia,
+    # então o X-Forwarded-For nunca era honrado e rate limit/login_guard por
+    # IP viam sempre o IP interno do Caddy (todo mundo compartilhando o mesmo
+    # "IP"). Resolvido via DNS a cada checagem (não cacheado) para não confiar
+    # num IP obsoleto se o container do Caddy for recriado com outro IP.
+    TRUSTED_PROXY_HOSTNAMES: list[str] = []
 
     # LGPD
     DATA_RETENTION_DAYS: int = 1825  # 5 anos

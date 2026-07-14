@@ -23,8 +23,8 @@ class AuthManager {
   }
 
   isAuthenticated() {
-    // api.token é só in-memory (não persiste). Após reload, cookie HttpOnly
-    // garante a autenticação; argus_user (localStorage) indica sessão ativa.
+    // Cookie HttpOnly garante a autenticação real; argus_user (localStorage)
+    // é só o indicador local de sessão ativa (não guarda credencial).
     return !!this.user;
   }
 
@@ -35,8 +35,9 @@ class AuthManager {
   async login(matricula, senha, totpCode = null) {
     const payload = { matricula, senha };
     if (totpCode) payload.totp_code = totpCode;
-    const data = await api.post("/auth/login", payload);
-    api.setTokens(data.access_token, data.refresh_token);
+    // Tokens chegam via cookie HttpOnly (Set-Cookie) — o corpo não traz mais
+    // access_token/refresh_token (achado #13/2026-07-13).
+    await api.post("/auth/login", payload);
 
     // Buscar dados do usuário
     const user = await api.get("/auth/me");
@@ -49,18 +50,28 @@ class AuthManager {
     return user;
   }
 
-  logout() {
-    // Avisa o backend para limpar o cookie HTTPOnly. Faz best-effort —
-    // mesmo se a chamada falhar, descartamos tokens locais.
-    api.post("/auth/logout").catch(() => {});
+  async logout() {
+    // Avisa o backend para limpar o cookie HTTPOnly. Best-effort — mesmo se
+    // a chamada falhar, seguimos limpando o estado local.
+    await api.post("/auth/logout").catch(() => {});
     api.clearTokens();
     this.user = null;
     localStorage.removeItem("argus_user");
-    // Limpa dados sensíveis locais (PII no IndexedDB + respostas de API
-    // cacheadas no Service Worker) — evita vazamento em dispositivo compartilhado.
-    if (typeof clearLocalDB === "function") clearLocalDB().catch(() => {});
+    await this.purgeLocalStorage();
+  }
+
+  async purgeLocalStorage() {
+    // Limpa dados sensíveis locais (PII no IndexedDB cifrado + respostas
+    // cacheadas no Service Worker) e AGUARDA a conclusão — achado
+    // #11/2026-07-13: antes disso era fire-and-forget, então a UI liberava
+    // a tela de login antes da limpeza terminar, deixando uma janela em que
+    // o próximo operador no mesmo device podia ver dados da sessão anterior.
+    // Usado tanto no logout explícito quanto no evento auth:expired.
+    if (typeof clearLocalDB === "function") {
+      await clearLocalDB().catch(() => {});
+    }
     if (self.caches) {
-      caches
+      await caches
         .keys()
         .then((keys) =>
           Promise.all(keys.filter((k) => k.startsWith("argus-")).map((k) => caches.delete(k))),
@@ -71,9 +82,21 @@ class AuthManager {
 
   async fetchMe() {
     try {
+      const guarnicaoAnterior = this.user ? this.user.guarnicao_id : undefined;
       const user = await api.get("/auth/me");
       this.user = user;
       localStorage.setItem("argus_user", JSON.stringify(user));
+      // Guarnição mudou desde a última sessão conhecida (ex.: admin trocou a
+      // equipe do operador) — itens presos na fila offline local sob a
+      // guarnição anterior vazariam para a equipe nova se sincronizados
+      // agora. Remove só esses itens (achado #18/2026-07-13).
+      if (
+        guarnicaoAnterior !== undefined &&
+        guarnicaoAnterior !== user.guarnicao_id &&
+        typeof purgeSyncQueueOnTeamChange === "function"
+      ) {
+        await purgeSyncQueueOnTeamChange(user.guarnicao_id);
+      }
       return user;
     } catch (err) {
       // Só desloga em falha de AUTENTICAÇÃO (401). Erro de rede/offline (status
@@ -81,7 +104,7 @@ class AuthManager {
       // — deslogar no boot offline causaria perda de dados de campo não
       // sincronizados. Mantém a sessão existente (cookie HttpOnly + argus_user).
       if (err && err.status === 401) {
-        this.logout();
+        await this.logout();
         return null;
       }
       return this.user;

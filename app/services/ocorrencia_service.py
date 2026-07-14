@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
 from app.models.ocorrencia import Ocorrencia
 from app.repositories.ocorrencia_repo import OcorrenciaRepository
+from app.services.abordagem_service import AbordagemService
 from app.services.audit_service import AuditService
 from app.services.storage_service import StorageService
 
@@ -55,26 +56,46 @@ class OcorrenciaService:
         filename: str,
         usuario_id: int,
         guarnicao_id: int,
+        guarnicao_id_filtro: int | None = None,
+        bpm_id_filtro: int | None = None,
     ) -> Ocorrencia:
         """Cria nova ocorrência com upload de PDF.
 
-        Faz upload do PDF para S3/R2, cria registro no banco (processada=False)
-        e registra audit log. O processamento do PDF (extração de texto +
+        Se abordagem_id informado, valida que a abordagem existe e está no
+        escopo de visibilidade do usuário (mesma regra de
+        isolamento_abordagens aplicada à ficha da abordagem) antes de
+        qualquer upload — evita vincular a uma abordagem de outra equipe
+        quando o isolamento está ativo (achado #22/2026-07-13). Faz upload
+        do PDF para S3/R2, cria registro no banco (processada=False) e
+        registra audit log. O processamento do PDF (extração de texto +
         embedding) é feito via arq worker em background.
 
         Args:
             numero_ocorrencia: Número único do BO.
-            abordagem_id: ID da abordagem associada.
+            abordagem_id: ID da abordagem associada (opcional).
             nomes_envolvidos: Nomes dos envolvidos separados por pipe (opcional).
             data_ocorrencia: Data real do fato ocorrido.
             arquivo_pdf: Conteúdo do PDF em bytes.
             filename: Nome original do arquivo PDF.
             usuario_id: ID do usuário que cadastrou.
-            guarnicao_id: ID da guarnição (multi-tenant).
+            guarnicao_id: ID da guarnição (multi-tenant) da própria ocorrência.
+            guarnicao_id_filtro: Escopo de visibilidade de abordagem do
+                usuário (None = global/sem isolamento ativo).
+            bpm_id_filtro: Escopo por BPM, usado quando guarnicao_id_filtro
+                é None e o isolamento está ativo no nível do BPM.
 
         Returns:
             Ocorrência criada com processada=False.
+
+        Raises:
+            NaoEncontradoError: Se abordagem_id informado não existe ou está
+                fora do escopo de visibilidade do usuário.
         """
+        if abordagem_id is not None:
+            await AbordagemService(self.db).verificar_escopo(
+                abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro
+            )
+
         key = self.storage.generate_key("pdfs", filename)
         url = await self.storage.upload(arquivo_pdf, key, content_type="application/pdf")
 

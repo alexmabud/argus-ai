@@ -61,32 +61,21 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (url.pathname.startsWith("/api/")) {
-    // API: network-first
+    // API: network-only. Respostas de /api/ nunca entram em Cache Storage
+    // (achado #11/2026-07-13) — a maioria carrega PII (pessoas, abordagens,
+    // fotos, ocorrências), e o Cache Storage não é limpo por sessão: um
+    // dispositivo compartilhado que troca de operador podia servir dados
+    // cacheados da sessão anterior enquanto offline. O caminho de dados
+    // offline-first de verdade é o IndexedDB (cifrado, ver db.js), não o
+    // Cache Storage — não há perda de funcionalidade offline aqui.
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (request.method === "GET" && response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone)).catch(() => {});
-          }
-          return response;
-        })
-        .catch(() => {
-          if (request.method === "GET") {
-            return caches.match(request).then(
-              (cached) =>
-                cached ||
-                new Response(
-                  JSON.stringify({ detail: "Sem conexão. Tente novamente." }),
-                  { status: 503, headers: { "Content-Type": "application/json" } }
-                )
-            );
-          }
-          return new Response(
+      fetch(request).catch(
+        () =>
+          new Response(
             JSON.stringify({ detail: "Sem conexão. Tente novamente." }),
             { status: 503, headers: { "Content-Type": "application/json" } }
-          );
-        })
+          )
+      )
     );
   } else {
     // Assets: network-first, fallback to cache

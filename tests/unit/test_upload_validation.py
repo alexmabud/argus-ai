@@ -86,6 +86,46 @@ class TestValidarMagicBytesImagem:
         assert exc.value.status_code == 400
 
 
+class TestValidarDimensoesImagem:
+    """Testes para validar_dimensoes_imagem (achado #17/2026-07-13)."""
+
+    def test_aceita_imagem_dentro_do_limite(self):
+        """Imagem pequena, bem dentro do teto, deve passar sem erro."""
+        from app.core.upload_validation import validar_dimensoes_imagem
+
+        validar_dimensoes_imagem(_jpeg_bytes_sem_exif(size=(200, 100)))
+
+    def test_rejeita_imagem_acima_do_teto_de_pixels(self):
+        """Imagem cujo width*height excede max_pixels deve ser rejeitada com 400."""
+        from app.core.upload_validation import validar_dimensoes_imagem
+
+        # 100x100 = 10_000 px — usa um teto bem menor que isso para não
+        # precisar gerar uma imagem real gigante só para o teste.
+        with pytest.raises(HTTPException) as exc:
+            validar_dimensoes_imagem(_jpeg_bytes_sem_exif(size=(100, 100)), max_pixels=9_999)
+        assert exc.value.status_code == 400
+        assert "pixels" in exc.value.detail.lower()
+
+    def test_tolera_bytes_nao_decodificaveis(self):
+        """Magic bytes válidos mas corpo corrompido: não rejeita aqui.
+
+        Não há decompression bomb possível se o header nem decodifica — o
+        resto do pipeline (thumbnail, correção EXIF) já tolera esse caso
+        de forma estabelecida (passa os bytes originais adiante).
+        """
+        from app.core.upload_validation import validar_dimensoes_imagem
+
+        validar_dimensoes_imagem(b"\xff\xd8\xff" + b"\x00" * 50)
+
+    def test_usa_max_image_pixels_como_default(self):
+        """Sem max_pixels explícito, usa a constante MAX_IMAGE_PIXELS do módulo."""
+        from app.core.upload_validation import MAX_IMAGE_PIXELS, validar_dimensoes_imagem
+
+        assert MAX_IMAGE_PIXELS > 0
+        # Imagem pequena passa com o default real (não mockado).
+        validar_dimensoes_imagem(_jpeg_bytes_sem_exif(size=(50, 50)))
+
+
 class TestConverterHeicParaJpeg:
     """Testes para converter_heic_para_jpeg."""
 
@@ -259,3 +299,63 @@ class TestNormalizarImagemParaReconhecimento:
 
         mock_convert.assert_called_once_with(heic_bytes)
         assert result[:3] == b"\xff\xd8\xff"
+
+
+class TestLerUploadComLimite:
+    """Testes para ler_upload_com_limite (achado #31/2026-07-13).
+
+    Sem cobertura de teste antes — o limite de tamanho (413) que protege
+    todos os endpoints de upload (fotos, mídia de abordagem, PDF de
+    ocorrência) contra OOM nunca tinha sido exercitado diretamente.
+    """
+
+    def _fake_upload_file(self, chunks: list[bytes]):
+        """Cria um mock de UploadFile cujo .read() emite os chunks dados em sequência."""
+        file = MagicMock()
+        iterator = iter([*chunks, b""])
+        file.read = AsyncMock(side_effect=lambda _n: next(iterator))
+        return file
+
+    @pytest.mark.asyncio
+    async def test_arquivo_dentro_do_limite_e_lido_por_completo(self):
+        """Arquivo menor que max_size é lido inteiro, sem levantar erro."""
+        from app.core.upload_validation import ler_upload_com_limite
+
+        chunks = [b"a" * 1000, b"b" * 1000]
+        file = self._fake_upload_file(chunks)
+
+        result = await ler_upload_com_limite(file, max_size=10_000)
+
+        assert result == b"a" * 1000 + b"b" * 1000
+
+    @pytest.mark.asyncio
+    async def test_arquivo_excede_limite_levanta_413(self):
+        """Arquivo maior que max_size levanta HTTPException 413, não OOM silencioso."""
+        from app.core.upload_validation import ler_upload_com_limite
+
+        chunks = [b"x" * 1000 for _ in range(20)]  # 20.000 bytes total
+        file = self._fake_upload_file(chunks)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await ler_upload_com_limite(file, max_size=5_000)
+
+        assert exc_info.value.status_code == 413
+
+    @pytest.mark.asyncio
+    async def test_aborta_assim_que_excede_nao_le_arquivo_inteiro(self):
+        """Aborta no primeiro chunk que estoura o limite — não drena o stream inteiro.
+
+        Ler em blocos e abortar cedo é o que protege contra OOM; se a função
+        lesse tudo antes de checar o tamanho, o limite não teria efeito
+        prático contra um upload de streaming muito grande.
+        """
+        from app.core.upload_validation import ler_upload_com_limite
+
+        chunks = [b"x" * 1000] * 100  # muito mais que o limite
+        file = self._fake_upload_file(chunks)
+
+        with pytest.raises(HTTPException):
+            await ler_upload_com_limite(file, max_size=1_500)
+
+        # Só deveria ter chamado .read() 2 vezes (1000 + 1000 > 1500, aborta).
+        assert file.read.await_count == 2

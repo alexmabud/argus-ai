@@ -6,6 +6,8 @@ modelos de ML e ciclo de vida de conexões com banco de dados. Inclui
 proxy reverso para storage S3/MinIO para evitar mixed-content em HTTPS.
 """
 
+import asyncio
+import contextlib
 import logging
 import traceback
 from contextlib import asynccontextmanager
@@ -27,6 +29,7 @@ from app.core.logging_config import setup_logging
 from app.core.middleware import LoggingMiddleware, SecurityHeadersMiddleware
 from app.core.permissions import TenantFilter
 from app.core.rate_limit import limiter
+from app.core.worker_health import loop_worker_health
 from app.database.session import engine, get_db
 from app.dependencies import get_current_user
 from app.models.foto import Foto
@@ -67,8 +70,15 @@ async def lifespan(app: FastAPI):
     # Cliente S3 singleton — reutiliza TCP/TLS entre requests.
     await StorageService.get().startup()
 
+    # Métrica argus_worker_alive por instância (achado #12/2026-07-13) — no-op
+    # se WORKER_IDS não estiver configurado (dev/single-worker).
+    worker_health_task = asyncio.create_task(loop_worker_health())
+
     yield
     # Shutdown
+    worker_health_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await worker_health_task
     await StorageService.get().shutdown()
     await engine.dispose()
 
@@ -209,9 +219,19 @@ def create_app() -> FastAPI:
         # a ficha da pessoa mostra as fotos e o GPS das abordagens de todas as
         # equipes para qualquer usuario autenticado. O isolamento_abordagens atua
         # apenas na LISTAGEM de relatorios/consultas (_filtros_consulta), nunca na
-        # midia. Ja o PDF de ocorrencia (RAP) e documento tenant-scoped. Assets
-        # nao registrados em banco passam sem checagem (uploads ainda nao indexados).
+        # midia. Ja o PDF de ocorrencia (RAP) e documento tenant-scoped. Avatares
+        # de perfil (Usuario.foto_url) tambem sao globais (visiveis a qualquer
+        # autenticado, como as fotos). Qualquer objeto SEM linha correspondente
+        # em nenhuma das tres tabelas e default-deny (404) — nao existe upload
+        # legitimo que produza uma chave sem registro; um path orfao so aparece
+        # por enumeracao/objeto residual, e servi-lo sem checagem e a lacuna do
+        # achado #08/2026-07-13.
         url_publica = f"/storage/{path}"
+        # Resolve também o tipo/ID do recurso para a trilha de auditoria VIEW
+        # abaixo (achado #25/2026-07-13) — antes só PDF/vídeo (não-imagem)
+        # ficava de fora do log_view; imagem com watermark já era coberta.
+        recurso_tipo = "foto"
+        recurso_id_audit: int | None = None
         foto = (
             await db.execute(
                 select(Foto.id).where(
@@ -219,6 +239,8 @@ def create_app() -> FastAPI:
                 )
             )
         ).scalar_one_or_none()
+        if foto is not None:
+            recurso_id_audit = foto
         if foto is None:
             ocorrencia = (
                 await db.execute(
@@ -227,6 +249,19 @@ def create_app() -> FastAPI:
             ).scalar_one_or_none()
             if ocorrencia is not None:
                 TenantFilter.check_ownership(ocorrencia, user)
+                recurso_tipo = "ocorrencia"
+                recurso_id_audit = ocorrencia.id
+            else:
+                avatar_dono = (
+                    await db.execute(select(Usuario.id).where(Usuario.foto_url == url_publica))
+                ).scalar_one_or_none()
+                if avatar_dono is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Arquivo não encontrado",
+                    )
+                recurso_tipo = "usuario"
+                recurso_id_audit = avatar_dono
 
         storage = StorageService.get()
         wm_ckey = WatermarkService.cache_key(user.matricula, key)
@@ -239,6 +274,8 @@ def create_app() -> FastAPI:
                 usuario_id=user.id,
                 matricula=user.matricula,
                 asset_key=key,
+                foto_id=recurso_id_audit,
+                recurso=recurso_tipo,
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
             )
@@ -291,6 +328,8 @@ def create_app() -> FastAPI:
                 usuario_id=user.id,
                 matricula=user.matricula,
                 asset_key=key,
+                foto_id=recurso_id_audit,
+                recurso=recurso_tipo,
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
             )
@@ -303,6 +342,24 @@ def create_app() -> FastAPI:
         # Não-imagem (PDF, vídeo): streaming dos bytes originais. Mantém o ETag
         # (válido pois o conteúdo não é transformado), mas o proxy não honra
         # requisições condicionais — sempre devolve 200 (ver fetch acima).
+        # Auditoria VIEW (achado #25/2026-07-13): antes só a variante com
+        # watermark (imagem) deixava trilha — PDF de ocorrência/mídia de
+        # abordagem streamava sem nenhum registro de quem acessou. Política
+        # fail-open explícita: log_view roda em BackgroundTask *depois* da
+        # resposta já enviada ao cliente — uma falha ao gravar a auditoria
+        # (ex.: DB fora do ar) nunca impede o streaming, só fica em
+        # logger.exception (ver _audit_background em access_audit.py).
+        log_view(
+            background_tasks,
+            usuario_id=user.id,
+            matricula=user.matricula,
+            asset_key=key,
+            foto_id=recurso_id_audit,
+            recurso=recurso_tipo,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
         headers = {"Cache-Control": "private, max-age=3600"}
         if etag:
             headers["ETag"] = etag

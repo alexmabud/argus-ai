@@ -25,6 +25,9 @@ class PessoaCreate(BaseModel):
         apelido: Apelido ou "nome de rua" (opcional, até 100 caracteres).
         nome_mae: Nome da mãe (opcional, até 300 caracteres).
         observacoes: Anotações sobre a pessoa (opcional).
+        client_id: ID único gerado no frontend offline, para deduplicação
+            de sync (achado #18/2026-07-13). Opcional — None em criação
+            online direta.
     """
 
     nome: UpperStrReq = Field(..., min_length=2, max_length=300)
@@ -33,6 +36,7 @@ class PessoaCreate(BaseModel):
     apelido: UpperStr = Field(None, max_length=100)
     nome_mae: UpperStr = Field(None, max_length=300)
     observacoes: UpperStr = None
+    client_id: str | None = Field(None, max_length=100)
 
 
 class PessoaUpdate(BaseModel):

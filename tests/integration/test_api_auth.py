@@ -10,6 +10,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth_cookie import ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE
 from app.models.audit_log import AuditLog
 from app.models.usuario import Usuario
 
@@ -29,7 +30,10 @@ class TestLogin:
     """Testes do endpoint POST /api/v1/auth/login."""
 
     async def test_login_valido_retorna_tokens(self, client: AsyncClient, usuario: Usuario):
-        """Testa login com credenciais válidas retorna tokens.
+        """Testa login com credenciais válidas entrega tokens via cookie.
+
+        Achado #13/2026-07-13: o corpo JSON não carrega mais os tokens —
+        só os cookies HttpOnly (Set-Cookie).
 
         Args:
             client: Cliente HTTP assincrónico.
@@ -41,8 +45,11 @@ class TestLogin:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "access_token" in data
-        assert "refresh_token" in data
+        assert data["autenticado"] is True
+        assert "access_token" not in data
+        assert "refresh_token" not in data
+        assert "argus_access_token" in response.cookies
+        assert "argus_refresh_token" in response.cookies
 
     async def test_login_senha_errada_retorna_erro(self, client: AsyncClient, usuario: Usuario):
         """Testa login com senha errada retorna 400 ou 401.
@@ -151,8 +158,9 @@ class TestLogout:
             headers=headers,
         )
         assert login.status_code == 200
-        refresh_token = login.json()["refresh_token"]
-        access_token = login.json()["access_token"]
+        # Tokens vêm só via cookie HttpOnly (achado #13/2026-07-13), não no corpo.
+        refresh_token = client.cookies.get(REFRESH_TOKEN_COOKIE)
+        access_token = client.cookies.get(ACCESS_TOKEN_COOKIE)
 
         # Logout com Bearer token (autenticado)
         await client.post(
@@ -202,7 +210,8 @@ class TestRefresh:
             json={"matricula": "TEST001", "senha": "senha123"},
         )
         assert login.status_code == 200
-        token_antigo = login.json()["refresh_token"]
+        # Token vem só via cookie HttpOnly (achado #13/2026-07-13), não no corpo.
+        token_antigo = client.cookies.get(REFRESH_TOKEN_COOKIE)
         await db_session.refresh(usuario)
         sid_apos_login = usuario.session_id
 
@@ -255,6 +264,44 @@ class TestRefresh:
 
         await db_session.refresh(admin)
         assert admin.session_id == "sid-admin-fixo"  # admin não rotaciona
+
+    async def test_refresh_admin_permite_reuso_do_token_risco_aceito(
+        self, client: AsyncClient, guarnicao, db_session: AsyncSession
+    ):
+        """Refresh token de admin pode ser reusado — risco residual aceito (achado #13/#31).
+
+        Documenta explicitamente em teste a mesma decisão já registrada em
+        comentário no AuthService.refresh(): como o sid do admin nunca
+        rotaciona (sessão multi-dispositivo), o MESMO refresh token
+        continua válido após já ter sido usado — diferente do usuário
+        comum, onde o token antigo é rejeitado (ver
+        test_refresh_rotaciona_sid_e_invalida_token_antigo). Isto é
+        intencional, não uma lacuna esquecida; se a decisão mudar no
+        futuro, este teste deve ser invertido para assert 401.
+        """
+        from app.core.security import criar_refresh_token, hash_senha
+        from app.services.auth_service import AuthService
+
+        admin = Usuario(
+            nome="Admin Replay",
+            matricula="ADMINREPLAY",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao.id,
+            session_id="sid-admin-replay",
+            is_admin=True,
+        )
+        db_session.add(admin)
+        await db_session.flush()
+
+        token = criar_refresh_token({"sub": str(admin.id), "sid": "sid-admin-replay"})
+
+        primeiro = await AuthService(db_session).refresh(token)
+        assert primeiro.access_token
+
+        # Reusa o MESMO token (não o novo emitido) — deve continuar funcionando,
+        # já que o sid do admin não mudou.
+        segundo = await AuthService(db_session).refresh(token)
+        assert segundo.access_token
 
 
 class TestMe:
@@ -355,7 +402,9 @@ class TestRefreshCookie:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert "access_token" in data
+        assert data["autenticado"] is True
+        assert "access_token" not in data
+        assert "argus_access_token" in resp.cookies
 
     async def test_logout_limpa_cookie_refresh(
         self, client: AsyncClient, usuario: Usuario, auth_headers: dict

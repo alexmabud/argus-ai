@@ -18,14 +18,16 @@ from PIL import UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import AcessoNegadoError, NaoEncontradoError, QuotaExcedidaError
 from app.core.permissions import TenantFilter
 from app.models.foto import Foto
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.repositories.foto_repo import FotoRepository
+from app.services.abordagem_service import AbordagemService
 from app.services.audit_service import AuditService
-from app.services.storage_service import StorageService
+from app.services.storage_service import StorageService, storage_key
 from app.utils.imaging import gerar_thumbnail
 
 if TYPE_CHECKING:
@@ -235,6 +237,43 @@ class FotoService:
         """
         return list(await self.repo.get_by_abordagem(abordagem_id, skip=skip, limit=limit))
 
+    async def listar_por_abordagem_verificado(
+        self,
+        abordagem_id: int,
+        guarnicao_id_filtro: int | None,
+        bpm_id_filtro: int | None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[Foto]:
+        """Lista fotos de uma abordagem após confirmar que está no escopo do usuário.
+
+        Antes de listar, confirma que `abordagem_id` existe e pertence ao
+        escopo de visibilidade informado (mesma regra de isolamento_abordagens
+        usada na ficha da abordagem) — sem isto, qualquer autenticado listava
+        fotos de QUALQUER abordagem só sabendo o ID, mesmo com isolamento
+        ativado (achado #22/2026-07-13). Usa uma checagem leve
+        (AbordagemService.verificar_escopo), não o eager load completo de
+        `buscar_detalhe` — o objeto Abordagem não é usado aqui, só sua
+        existência/escopo (revisão pós-#22/2026-07-13).
+
+        Args:
+            abordagem_id: ID da abordagem para buscar fotos.
+            guarnicao_id_filtro: Escopo de visibilidade por equipe (prevalece).
+            bpm_id_filtro: Escopo por BPM, usado se guarnicao_id_filtro é None.
+            skip: Registros a pular (OFFSET).
+            limit: Máximo de resultados (LIMIT).
+
+        Returns:
+            Lista de Fotos da abordagem ordenadas por data_hora decrescente.
+
+        Raises:
+            NaoEncontradoError: Se a abordagem não existe ou está fora do escopo.
+        """
+        await AbordagemService(self.db).verificar_escopo(
+            abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro
+        )
+        return await self.listar_por_abordagem(abordagem_id, skip=skip, limit=limit)
+
     async def recomputar_foto_principal(self, pessoa_id: int) -> None:
         """Recalcula a foto de perfil da pessoa a partir da foto de rosto ativa mais recente.
 
@@ -260,6 +299,7 @@ class FotoService:
         image_bytes: bytes,
         face_service: FaceService,
         top_k: int = 5,
+        threshold: float | None = None,
     ) -> list[dict]:
         """Busca pessoas por similaridade facial via pgvector.
 
@@ -272,6 +312,10 @@ class FotoService:
             image_bytes: Imagem com rosto para busca em bytes.
             face_service: Serviço InsightFace para extração de embedding.
             top_k: Número máximo de resultados.
+            threshold: Limiar mínimo de similaridade 0-1 (opcional). Se
+                None, usa settings.FACE_SIMILARITY_THRESHOLD — antes o
+                repositório sempre aplicava seu próprio default hardcoded
+                (0.6), ignorando a configuração (achado #26/2026-07-13).
 
         Returns:
             Lista de dicionários com foto, pessoa e similaridade.
@@ -281,7 +325,11 @@ class FotoService:
         if embedding is None:
             return []
 
-        results = await self.repo.buscar_por_similaridade_facial(embedding, top_k=top_k)
+        if threshold is None:
+            threshold = settings.FACE_SIMILARITY_THRESHOLD
+        results = await self.repo.buscar_por_similaridade_facial(
+            embedding, top_k=top_k, threshold=threshold
+        )
 
         # Carregar pessoas vinculadas às fotos em um único SELECT
         pessoa_ids = [row[0].pessoa_id for row in results if row[0].pessoa_id]
@@ -311,8 +359,10 @@ class FotoService:
         """Remove foto via soft delete, restrito a administradores.
 
         Permite corrigir fotos categorizadas incorretamente (ex: foto de
-        arma/droga enviada como "rosto"). Não remove o arquivo do storage,
-        apenas marca o registro como inativo.
+        arma/droga enviada como "rosto"). Apaga o(s) arquivo(s) (original e
+        thumbnail) do storage S3/R2 e zera o embedding facial — direito de
+        eliminação (LGPD) exercido no momento do delete, sem esperar a
+        varredura periódica de retenção (``scripts/anonimizar_dados.py``).
 
         Args:
             foto_id: ID da foto a desativar.
@@ -322,7 +372,7 @@ class FotoService:
             user_agent: User-Agent do cliente (opcional).
 
         Returns:
-            Foto desativada (ativo=False).
+            Foto desativada (ativo=False), sem embedding e sem blob no storage.
 
         Raises:
             AcessoNegadoError: Se o usuário não é administrador, ou se a
@@ -337,6 +387,20 @@ class FotoService:
             raise NaoEncontradoError("Foto")
         TenantFilter.check_ownership(foto, user)
 
+        # Known gap: não purga variantes já cacheadas em wm/v1/{hash(matrícula)}/{key}
+        # (WatermarkService) — usuários que já visualizaram a foto podem seguir
+        # servindo a cópia marcada em cache até expirar. Purga completa exigiria
+        # list_objects por todo o prefixo wm/v1/ (sem índice pelo key original).
+        for url in (foto.arquivo_url, foto.thumbnail_url):
+            key = storage_key(url)
+            if not key:
+                continue
+            try:
+                await self.storage.delete(key)
+            except Exception:
+                logger.warning("Falha ao apagar foto %d do storage (key=%s)", foto.id, key)
+
+        foto.embedding_face = None
         await self.repo.soft_delete(foto, deleted_by_id=user.id)
 
         # Recalcular foto de perfil se a foto desativada era de rosto —

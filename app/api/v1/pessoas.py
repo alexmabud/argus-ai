@@ -42,20 +42,24 @@ from app.services.pessoa_veiculo_service import PessoaVeiculoService
 router = APIRouter(prefix="/pessoas", tags=["Pessoas"])
 
 
-def _to_pessoa_read(pessoa, service: PessoaService) -> PessoaRead:
+def _to_pessoa_read(pessoa, service: PessoaService, *, mascarar_cpf: bool = False) -> PessoaRead:
     """Converte model Pessoa para schema PessoaRead com CPF completo e mascarado.
 
     Args:
         pessoa: Instância de Pessoa do banco.
         service: Instância de PessoaService para descriptografar/mascarar CPF.
+        mascarar_cpf: Se True, omite o CPF completo (só cpf_masked) — usado em
+            listagens em massa (achado #16/2026-07-13): devolver CPF integral
+            de N pessoas de uma vez, sem trilha de auditoria por item, expõe
+            o dado sensível em volume sem o mesmo controle do detalhe.
 
     Returns:
-        PessoaRead com cpf e cpf_masked preenchidos.
+        PessoaRead com cpf (None se mascarar_cpf) e cpf_masked preenchidos.
     """
     return PessoaRead(
         id=pessoa.id,
         nome=pessoa.nome,
-        cpf=service.decrypt_cpf(pessoa),
+        cpf=None if mascarar_cpf else service.decrypt_cpf(pessoa),
         cpf_masked=service.mask_cpf(pessoa),
         data_nascimento=pessoa.data_nascimento,
         apelido=pessoa.apelido,
@@ -140,13 +144,15 @@ async def listar_pessoas(
         user: Usuário autenticado.
 
     Returns:
-        Lista de PessoaRead.
+        Lista de PessoaRead com CPF mascarado (cpf_masked) — o CPF completo
+        (campo cpf) fica reservado ao detalhe (GET /{pessoa_id}), que audita
+        o acesso (achado #16/2026-07-13).
     """
     service = PessoaService(db)
     pessoas = await service.buscar(
         nome=nome, cpf=cpf, apelido=apelido, skip=skip, limit=limit, user=user
     )
-    return [_to_pessoa_read(p, service) for p in pessoas]
+    return [_to_pessoa_read(p, service, mascarar_cpf=True) for p in pessoas]
 
 
 @router.get("/{pessoa_id}", response_model=PessoaDetail)
@@ -259,7 +265,7 @@ async def atualizar_pessoa(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> PessoaRead:
-    """Atualiza dados de uma pessoa existente.
+    """Atualiza dados de uma pessoa existente. Restrito a administradores.
 
     Permite atualização parcial (PATCH). Se CPF alterado, re-criptografa
     com Fernet e recalcula hash SHA-256.
@@ -269,18 +275,19 @@ async def atualizar_pessoa(
         pessoa_id: ID da pessoa a atualizar.
         data: Dados de atualização parcial.
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado (precisa ser admin ou super-admin).
 
     Returns:
         PessoaRead com dados atualizados.
 
     Raises:
         NaoEncontradoError: Se pessoa não existe.
-        AcessoNegadoError: Se pessoa de outra guarnição.
+        AcessoNegadoError: Se o usuário não é administrador.
         ConflitoDadosError: Se novo CPF já cadastrado.
 
     Status Code:
         200: Pessoa atualizada com sucesso.
+        403: Usuário não é administrador.
         404: Pessoa não encontrada.
         409: CPF duplicado.
         429: Rate limit (30/min).
@@ -314,7 +321,7 @@ async def deletar_pessoa(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> None:
-    """Soft delete de pessoa (ativo=False).
+    """Soft delete de pessoa (ativo=False). Restrito a administradores.
 
     Marca a pessoa como inativa sem remoção física do banco.
     Registra auditoria da operação.
@@ -323,14 +330,15 @@ async def deletar_pessoa(
         request: Objeto Request do FastAPI.
         pessoa_id: ID da pessoa a desativar.
         db: Sessão do banco de dados.
-        user: Usuário autenticado.
+        user: Usuário autenticado (precisa ser admin ou super-admin).
 
     Raises:
         NaoEncontradoError: Se pessoa não existe.
-        AcessoNegadoError: Se pessoa de outra guarnição.
+        AcessoNegadoError: Se o usuário não é administrador.
 
     Status Code:
         204: Pessoa desativada com sucesso.
+        403: Usuário não é administrador.
     """
     service = PessoaService(db)
     await service.desativar(pessoa_id, user)
@@ -497,7 +505,9 @@ async def listar_abordagens_pessoa(
                 PessoaRead(
                     id=p.id,
                     nome=p.nome,
-                    cpf=pessoa_service.decrypt_cpf(p),
+                    # CPF mascarado — listagem em massa de coabordados
+                    # (achado #16/2026-07-13), mesma política de listar_pessoas.
+                    cpf=None,
                     cpf_masked=pessoa_service.mask_cpf(p),
                     data_nascimento=p.data_nascimento,
                     apelido=p.apelido,

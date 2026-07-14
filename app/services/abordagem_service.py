@@ -243,6 +243,31 @@ class AbordagemService:
             raise NaoEncontradoError("Abordagem")
         return abordagem
 
+    async def verificar_escopo(
+        self,
+        abordagem_id: int,
+        guarnicao_id: int | None,
+        bpm_id: int | None = None,
+    ) -> None:
+        """Verifica que a abordagem existe e está no escopo, sem carregar relacionamentos.
+
+        Checagem de autorização leve para rotas/serviços que só precisam
+        confirmar que uma abordagem_id pertence ao escopo do usuário antes de
+        operar sobre ela (ex.: listar fotos, anexar uma ocorrência) — usar
+        `buscar_detalhe` só para essa checagem descartava o eager load de 4
+        relacionamentos em seguida (revisão pós-#22/2026-07-13).
+
+        Args:
+            abordagem_id: Identificador da abordagem.
+            guarnicao_id: ID da guarnição para filtro por equipe (prevalece).
+            bpm_id: ID do BPM para filtro por BPM (usado se guarnicao_id=None).
+
+        Raises:
+            NaoEncontradoError: Se abordagem não existe ou não está no escopo.
+        """
+        if not await self.repo.existe_no_escopo(abordagem_id, guarnicao_id, bpm_id=bpm_id):
+            raise NaoEncontradoError("Abordagem")
+
     async def listar(
         self,
         guarnicao_id: int | None,

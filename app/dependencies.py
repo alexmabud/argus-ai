@@ -115,6 +115,11 @@ async def get_current_user_with_guarnicao(
     ("Geral") e atribui automaticamente. Isso evita erros em endpoints
     que dependem de guarnicao_id para criação de registros (MultiTenantMixin).
 
+    Nota (achado #23/2026-07-13): revisão de segurança propôs remover essa
+    auto-atribuição e exigir atribuição manual por admin. Decisão reafirmada:
+    manter como está — trade-off de UX aceito (D-G2-3, auditoria 2026-06-27).
+    Não é uma lacuna esquecida; é intencional.
+
     Args:
         user: Usuário autenticado via get_current_user.
         db: Sessão do banco de dados.
