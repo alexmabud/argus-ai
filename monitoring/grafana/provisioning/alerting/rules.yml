@@ -372,11 +372,19 @@ groups:
           # só 1 de N workers morto — o outro seguia gerando tráfego. Agora
           # cada worker grava sua própria chave no Redis (WORKER_ID em
           # app/worker.py) e a API publica argus_worker_alive por instância.
+          #
+          # `* (redis_up == bool 1)` (revisão pós-#12/2026-07-13): quando o
+          # Redis cai, app/core/worker_health.py grava argus_worker_alive=0
+          # para TODOS os workers (fail-closed) — sem este fator, este alerta
+          # co-disparava com "Redis Offline" pelo mesmo incidente,
+          # reintroduzindo a duplicidade/desdiagnóstico que a versão antiga
+          # (`rate(...) * redis_up`) evitava. Só dispara quando o worker está
+          # de fato parado E o Redis está de pé.
           - refId: A
             relativeTimeRange: {from: 300, to: 0}
             datasourceUid: prometheus-argus
             model:
-              expr: min(argus_worker_alive)
+              expr: (min(argus_worker_alive) < bool 1) * (redis_up == bool 1)
               refId: A
               instant: true
               range: false
@@ -387,9 +395,10 @@ groups:
               refId: threshold
               expression: A
               conditions:
-                # min == 0 → pelo menos um worker_id monitorado está com a
-                # health-check ausente/expirada.
-                - evaluator: {type: lt, params: [1]}
+                # A == 1 → pelo menos um worker_id monitorado está com a
+                # health-check ausente/expirada E o Redis está de pé (ver
+                # comentário da expr acima).
+                - evaluator: {type: gte, params: [1]}
                   operator: {type: and}
                   query: {params: [A]}
                   reducer: {type: avg}
