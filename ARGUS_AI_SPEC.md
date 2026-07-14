@@ -81,7 +81,7 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 - ✅ **Watermark rastreável** em 3 camadas (overlay client-side, marca queimada server-side com cache, auditoria de visualização/download)
 - ✅ **Multi-tenancy** operacional (isolamento por guarnição e por BPM)
 - ✅ **Autenticação JWT** (login, refresh, logout, sessão exclusiva via `session_id`)
-- ✅ **2FA (TOTP)** opcional + guarda de brute-force por IP (Redis)
+- ✅ **2FA (TOTP)**: obrigatório para admin/super-admin após enrollment (`POST /admin/2fa/setup`); opcional para usuário comum. Guarda de brute-force por IP (Redis) conta tanto senha quanto TOTP errados
 - ✅ **Gestão administrativa**: usuários, BPMs, equipes, super-admin + permissões granulares
 - ✅ **Rate limiting** e controle de acesso
 - ✅ **Audit log** completo
@@ -2505,6 +2505,32 @@ fechada) duas ações no `audit_log`:
   Redis com TTL de 10min (evita ruído de logs); fail-open se o Redis cair.
 - `DOWNLOAD_MIDIA` — download forçado, **sempre** registrado (exfiltração intencional).
 
+### Hardening da revisão de segurança (2026-07-13/14, 32 achados)
+
+**TOTP obrigatório para contas privilegiadas.** `AuthService.login` (`app/services/auth_service.py`)
+passou a exigir TOTP para admin/super-admin sempre que `usuario.totp_secret` já está
+configurado (pós-enrollment via `POST /admin/2fa/setup`) — antes só usuário comum tinha
+2FA de fato aplicado. TOTP incorreto conta para o mesmo contador de bloqueio por
+tentativas (`tentativas_falhas`) que senha errada, verificado *antes* de zerar o
+contador — senão senha certa + TOTP incorreto resetaria o lockout e um atacante com a
+senha em mãos poderia forçar bruta o código de 6 dígitos sem nunca ser bloqueado.
+
+**IP real do cliente atrás do proxy reverso (`TRUSTED_PROXY_HOSTNAMES`).** Rate limit e
+guarda de brute-force de login usavam `request.client.host`, que atrás do Caddy é sempre
+o IP do próprio Caddy — todo tráfego externo caía no mesmo balde de rate limit e o
+bloqueio por IP não isolava atacantes reais. `app/core/rate_limit.py` só honra o header
+`X-Forwarded-For` quando `client.host` está na lista `settings.TRUSTED_PROXY_HOSTNAMES`
+(resolvida para IPs — hostname Docker, ex. `"caddy"`; ver `docker-compose.prod.yml`);
+fora dessa lista, o `X-Forwarded-For` é ignorado (um atacante externo não pode simplesmente
+declarar o IP que quiser).
+
+**Decompression bomb em upload de imagem.** `app/core/upload_validation.py` adicionou
+`validar_dimensoes_imagem` — teto de 40 milhões de pixels (`MAX_IMAGE_PIXELS`), checado
+lendo só o header da imagem (`Image.open` é lazy, não decodifica pixels) *antes* de
+qualquer decodificação real (thumbnail, InsightFace, EasyOCR, correção EXIF). Sem isso,
+um arquivo pequeno em disco com dimensões absurdas podia estourar a memória do processo
+no momento em que o pipeline de reconhecimento facial decodificava os pixels de verdade.
+
 ---
 
 ## 13. LGPD E COMPLIANCE
@@ -3018,6 +3044,31 @@ jobs:
         run: pytest --cov=app -v
 ```
 
+### Health-check individual por instância de worker (achado #12/2026-07-13)
+
+O `arq` grava uma única health-check key no Redis por padrão, compartilhada entre todas
+as instâncias do mesmo `queue_name` — com dois workers em produção (`worker` + `worker-2`),
+a morte de um deles não derrubava a chave enquanto o outro seguisse vivo, mascarando o
+problema. `app/core/worker_health.py` expõe a métrica Prometheus
+`argus_worker_alive{worker_id=...}` (1 = health-check fresca, 0 = ausente/expirada/falha de
+conexão com Redis — fail-closed, nunca assume "vivo" na dúvida), lida periodicamente pela
+API a partir de `WORKER_IDS` (lista de IDs esperados, ex. `worker-1,worker-2`); cada worker
+grava sua própria chave a partir do seu `WORKER_ID` (`app/worker.py`). Ambos os env vars são
+fixados diretamente no `docker-compose.prod.yml` (não vêm de `.env`).
+
+O alerta Grafana `alert-worker-parado` (`monitoring/grafana/provisioning/alerting/rules.yml`)
+consome essa métrica com `(min(argus_worker_alive) < bool 1) * (redis_up == bool 1)` — o
+fator `redis_up` evita que ele co-dispare com "Redis Offline" quando a causa raiz é o Redis
+caído (que zera a métrica de todos os workers por fail-closed), reintroduzindo a
+duplicidade/desdiagnóstico que a métrica agregada antiga já evitava de outra forma.
+
+**Nome de container do `worker-2`.** Sem `container_name` explícito, o Compose nomeia como
+`<projeto>-<serviço>-<índice>`: o serviço `worker` (sem número) vira `argus-ai-worker-1`,
+mas o serviço `worker-2` (que já termina em número) virava `argus-ai-worker-2-1` — divergente
+do que a documentação operacional e a descrição do alerta esperavam. Corrigido fixando
+`container_name: argus-ai-worker-1` / `argus-ai-worker-2` explicitamente nos dois serviços
+(`docker-compose.prod.yml`), com teste de regressão em `tests/unit/test_docker_compose_prod.py`.
+
 ---
 
 ## 17. CONVENÇÕES E PADRÕES DE CÓDIGO
@@ -3117,6 +3168,50 @@ security/x  → correções de segurança
 **Contexto**: Dados de abordagens são operacionalmente sensíveis. Uma guarnição não deve ver dados de outra. A alternativa (banco separado por guarnição) é overkill para o MVP.
 
 **Consequência**: Toda query passa pelo `TenantFilter` que injeta o filtro de guarnição. Simples e eficaz. Pode evoluir para Row Level Security (RLS) do PostgreSQL no futuro.
+
+### ADR-007: Downgrade da migration inicial neutralizado (achado #27/2026-07-13)
+
+**Decisão**: `downgrade()` de `08ef2221d8ba_schema_inicial.py` (`down_revision=None`) levanta
+`NotImplementedError` em vez de executar os `DROP TABLE`/`DROP EXTENSION` autogerados.
+
+**Contexto**: Um `alembic downgrade` até essa revisão apaga todas as tabelas da aplicação e as
+extensões `vector`/`postgis`/`pg_trgm`. O corpo autogerado original ainda recriava manualmente
+tabelas internas do Tiger Geocoder do PostGIS, deixando o catálogo da extensão inconsistente
+mesmo após reinstalá-la. Não existe cenário de operação legítima em produção que precise
+descer até a migration zero — reverter uma migration recente nunca deveria ir além da revisão
+anterior a ela.
+
+**Consequência**: Downgrade explícito até a base agora falha alto (erro claro) em vez de
+apagar dados silenciosamente. Para descartar o banco de fato, o caminho é
+`scripts/restore_from_backup.sh`/`docs/disaster-recovery.md` ou `DROP DATABASE` explícito.
+
+### ADR-008: IP do cliente só confia em `X-Forwarded-For` de proxy conhecido (achado #14/2026-07-13)
+
+**Decisão**: `app/core/rate_limit.py` só honra `X-Forwarded-For` quando `request.client.host`
+está em `settings.TRUSTED_PROXY_HOSTNAMES` (hostnames Docker resolvidos para IP, ex. `"caddy"`);
+caso contrário usa `client.host` direto.
+
+**Contexto**: Atrás do Caddy, `client.host` é sempre o IP do proxy — sem essa checagem, rate
+limit e guarda de brute-force por IP tratavam todo tráfego externo como uma única origem
+(ineficaz) e, pior, um atacante podia forjar `X-Forwarded-For` livremente pra escapar do
+próprio limite ou incriminar outro IP.
+
+**Consequência**: Exige manter `TRUSTED_PROXY_HOSTNAMES` sincronizado com a topologia real de
+proxies (só o serviço `caddy` hoje); um proxy adicional não listado quebraria a resolução de
+IP silenciosamente (voltaria a ver o IP do proxy, não do cliente).
+
+### ADR-009: Health-check de worker por instância, não agregado (achado #12/2026-07-13)
+
+**Decisão**: Métrica Prometheus `argus_worker_alive{worker_id=...}` por instância
+(`app/core/worker_health.py`) substituindo a antiga taxa agregada de comandos Redis.
+
+**Contexto**: Com 2 workers atrás da mesma health-check key do `arq`, um worker podia cair
+e o outro mascarar o problema (chave seguia fresca). A métrica antiga (`rate(redis_commands_processed_total)`)
+também não distinguia "worker parado" de "app ociosa" com precisão.
+
+**Consequência**: Cada worker precisa de um `WORKER_ID` único (env var fixada no compose) e a
+API precisa saber a lista completa esperada (`WORKER_IDS`) pra detectar ausência. Acoplamento
+a mais entre compose e config da API, mas detecção de queda parcial que antes não existia.
 
 ---
 
