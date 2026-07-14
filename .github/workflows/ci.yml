@@ -161,6 +161,16 @@ jobs:
           DATABASE_URL="$MIG_URL" MIGRATION_DATABASE_URL="$MIG_URL" alembic current | tee /tmp/alembic_current.txt
           grep -q "(head)" /tmp/alembic_current.txt || { echo "ERRO: nao chegou a um head unico"; exit 1; }
 
+      - name: Migrar argus_test (schema real antes de provisionar o papel)
+        # Bug de CI encontrado por revisão de segurança pós-#20/2026-07-13: só a
+        # "Migration smoke" acima migra um banco (o throwaway argus_migtest,
+        # criado só pra validar a cadeia de migrations do zero) — argus_test em
+        # si nunca era migrado antes deste ponto. create_app_role.sql (passo
+        # seguinte) faz REVOKE numa tabela nomeada (audit_logs), que falha se a
+        # tabela não existir — só passava localmente porque o Postgres de dev já
+        # tinha schema de execuções anteriores; num runner limpo, sempre falhava.
+        run: alembic upgrade head
+
       - name: Provision argus_app role (papel DML-only para testes)
         # achado #20/2026-07-13: os testes de tests/integration/test_db_role_argus_app.py
         # ficavam sempre skipados no CI por falta de APP_DATABASE_URL — o papel

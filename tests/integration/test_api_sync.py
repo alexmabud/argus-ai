@@ -230,6 +230,8 @@ class TestSyncBatch:
         assert segunda.json()["results"][0]["status"] == "ok"
 
         rows = (
-            await db_session.execute(select(Pessoa).where(Pessoa.nome == "PESSOA RETRY SYNC"))
-        ).scalars().all()
+            (await db_session.execute(select(Pessoa).where(Pessoa.nome == "PESSOA RETRY SYNC")))
+            .scalars()
+            .all()
+        )
         assert len(rows) == 1

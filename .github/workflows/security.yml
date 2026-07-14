@@ -26,6 +26,13 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
+  # requirements.lock é gerado/travado sob 3.12 (PYTHON_VERSION_LOCK em
+  # ci.yml) — o job dependency-audit precisa instalar exatamente esse lock
+  # pra auditar de verdade, então precisa da MESMA versão de Python. Bug de
+  # CI encontrado por revisão de segurança: dependency-audit rodava sob 3.11
+  # (PYTHON_VERSION geral, usado por jobs que não instalam o lock, como
+  # sast) e falhava ao instalar pacotes com piso >=3.12 (ex.: tifffile).
+  PYTHON_VERSION_LOCK: "3.12"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
 defaults:
@@ -75,7 +82,7 @@ jobs:
       - name: Setup Python
         uses: ./.github/actions/setup-python-env
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION_LOCK }}
           install-deps: none
 
       - name: Install pip-audit
