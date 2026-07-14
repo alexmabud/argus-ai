@@ -59,19 +59,25 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         #   para animacoes). Migrar tudo pra classes CSS eh refactor maior.
         # - inline onclick foi removido em favor de data-navigate-to + delegated
         #   listener, permitindo retirar 'unsafe-inline' de script-src.
-        # - CDNs (jsdelivr/tailwindcss/unpkg/fonts.google*) e nominatim.openstreetmap
-        #   removidos do header (achado #30/2026-07-13): todo o vendor JS/CSS é
-        #   self-hosted em frontend/vendor/ há tempo (grep confirma zero uso real
-        #   dessas origens em frontend/), e a geocodificação reversa via Nominatim
-        #   roda no backend (app/services/geocoding_service.py), nunca no browser
-        #   — essas origens só ampliavam a superfície de uma eventual XSS sem
-        #   nenhum benefício funcional. *.tile.openstreetmap.org fica: é o Leaflet
+        # - CDNs (jsdelivr/tailwindcss/unpkg) e nominatim.openstreetmap removidos
+        #   do header (achado #30/2026-07-13): todo o vendor JS é self-hosted em
+        #   frontend/vendor/ há tempo (grep confirma zero uso real dessas origens
+        #   em frontend/), e a geocodificação reversa via Nominatim roda no
+        #   backend (app/services/geocoding_service.py), nunca no browser — essas
+        #   origens só ampliavam a superfície de uma eventual XSS sem nenhum
+        #   benefício funcional. *.tile.openstreetmap.org fica: é o Leaflet
         #   buscando tiles de mapa direto do browser (uso real, confirmado).
+        # - fonts.googleapis.com/fonts.gstatic.com foram removidos junto com os
+        #   CDNs acima, mas frontend/css/app.css:6 ainda faz @import de lá — o
+        #   grep original só cobriu JS/HTML, não CSS. Restaurados (revisão pós-
+        #   #30/2026-07-13); self-hospedar as fontes é uma opção melhor a longo
+        #   prazo, mas é uma mudança maior (assets binários) fora do escopo desta
+        #   correção pontual.
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "font-src 'self'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
             f"img-src 'self' data: blob: https://*.tile.openstreetmap.org{img_extra}; "
             "connect-src 'self'"
         )

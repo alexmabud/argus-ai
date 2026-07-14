@@ -65,13 +65,18 @@ async def test_csp_ainda_permite_unsafe_eval_ate_migracao_do_alpine():
 async def test_csp_nao_lista_cdns_orfas():
     """CSP não deve permitir origens de CDN que o frontend não usa mais.
 
-    Achado #30/2026-07-13: jsdelivr/tailwindcss.com/unpkg/fonts.google* e
+    Achado #30/2026-07-13: jsdelivr/tailwindcss.com/unpkg e
     nominatim.openstreetmap.org ficaram na CSP muito depois do frontend
     migrar pra vendor self-hosted (frontend/vendor/) e geocodificação
     reversa server-side (app/services/geocoding_service.py) — grep em
     frontend/ confirma zero referência real a essas origens. Cada uma
     listada era superfície extra pra uma eventual XSS carregar script de
     origem externa, sem nenhum benefício funcional.
+
+    fonts.googleapis.com/fonts.gstatic.com NÃO estão nesta lista: foram
+    removidas junto no achado #30, mas frontend/css/app.css:6 ainda faz
+    @import de lá (o grep original não cobriu CSS) — restauradas na revisão
+    pós-#30, ver test_csp_permite_google_fonts_em_uso_real abaixo.
     """
     app = create_app()
     transport = ASGITransport(app=app)
@@ -82,12 +87,31 @@ async def test_csp_nao_lista_cdns_orfas():
         "cdn.jsdelivr.net",
         "cdn.tailwindcss.com",
         "unpkg.com",
-        "fonts.googleapis.com",
-        "fonts.gstatic.com",
         "nominatim.openstreetmap.org",
     ]
     for origem in origens_orfas:
         assert origem not in csp, f"CSP não deveria mais listar {origem}"
+
+
+@pytest.mark.asyncio
+async def test_csp_permite_google_fonts_em_uso_real():
+    """CSP libera fonts.googleapis.com/fonts.gstatic.com — em uso real por app.css.
+
+    Revisão pós-#30/2026-07-13: frontend/css/app.css:6 faz
+    `@import url('https://fonts.googleapis.com/css2?...')` para JetBrains
+    Mono/IBM Plex Sans/Rajdhani; o CSP hardening original removeu essas
+    origens sem detectar o uso (grep cobriu JS/HTML, não CSS), quebrando a
+    tipografia em produção.
+    """
+    app = create_app()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/healthz")
+    csp = resp.headers.get("content-security-policy", "")
+    style_src = _extrair_diretiva(csp, "style-src")
+    font_src = _extrair_diretiva(csp, "font-src")
+    assert "https://fonts.googleapis.com" in style_src
+    assert "https://fonts.gstatic.com" in font_src
 
 
 @pytest.mark.asyncio
