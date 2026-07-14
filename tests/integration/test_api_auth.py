@@ -265,6 +265,44 @@ class TestRefresh:
         await db_session.refresh(admin)
         assert admin.session_id == "sid-admin-fixo"  # admin não rotaciona
 
+    async def test_refresh_admin_permite_reuso_do_token_risco_aceito(
+        self, client: AsyncClient, guarnicao, db_session: AsyncSession
+    ):
+        """Refresh token de admin pode ser reusado — risco residual aceito (achado #13/#31).
+
+        Documenta explicitamente em teste a mesma decisão já registrada em
+        comentário no AuthService.refresh(): como o sid do admin nunca
+        rotaciona (sessão multi-dispositivo), o MESMO refresh token
+        continua válido após já ter sido usado — diferente do usuário
+        comum, onde o token antigo é rejeitado (ver
+        test_refresh_rotaciona_sid_e_invalida_token_antigo). Isto é
+        intencional, não uma lacuna esquecida; se a decisão mudar no
+        futuro, este teste deve ser invertido para assert 401.
+        """
+        from app.core.security import criar_refresh_token, hash_senha
+        from app.services.auth_service import AuthService
+
+        admin = Usuario(
+            nome="Admin Replay",
+            matricula="ADMINREPLAY",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao.id,
+            session_id="sid-admin-replay",
+            is_admin=True,
+        )
+        db_session.add(admin)
+        await db_session.flush()
+
+        token = criar_refresh_token({"sub": str(admin.id), "sid": "sid-admin-replay"})
+
+        primeiro = await AuthService(db_session).refresh(token)
+        assert primeiro.access_token
+
+        # Reusa o MESMO token (não o novo emitido) — deve continuar funcionando,
+        # já que o sid do admin não mudou.
+        segundo = await AuthService(db_session).refresh(token)
+        assert segundo.access_token
+
 
 class TestMe:
     """Testes do endpoint GET /api/v1/auth/me."""

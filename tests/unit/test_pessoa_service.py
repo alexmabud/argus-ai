@@ -128,6 +128,41 @@ class TestCriarPessoa:
         segunda = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
         assert primeira.id == segunda.id
 
+    async def test_criar_pessoa_race_de_client_id_recupera_via_integrity_error(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario, monkeypatch
+    ):
+        """Duas requisições concorrentes com o mesmo client_id não duplicam nem quebram.
+
+        Achado #31/2026-07-13: o teste de dedup sequencial (acima) só prova o
+        check ANTES do insert — nunca exercitou de fato o catch de
+        IntegrityError que existe especificamente para a corrida real: duas
+        requisições passam pelo check "não existe ainda" antes de qualquer
+        uma commitar, a segunda leva IntegrityError do índice único parcial
+        no insert, e o service precisa recuperar (rollback + re-consulta)
+        em vez de propagar o erro. Simulado forçando get_by_client_id a
+        devolver None na chamada de dedup (como se a outra request ainda
+        não tivesse commitado), enquanto o client_id já existe de verdade
+        no banco — garante que o INSERT realmente colide.
+        """
+        from unittest.mock import AsyncMock
+
+        service = PessoaService(db_session)
+        data = PessoaCreate(nome="Pessoa Corrida", client_id="offline-race-456")
+
+        # Cria a pessoa "vencedora" da corrida diretamente (simula a outra request).
+        existente = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+
+        # Força o dedup-check desta chamada a não enxergar a pessoa recém-criada
+        # (só na primeira chamada) — o INSERT abaixo colide de verdade com o
+        # índice único parcial em client_id, disparando o IntegrityError real.
+        monkeypatch.setattr(
+            service.repo, "get_by_client_id", AsyncMock(side_effect=[None, existente])
+        )
+
+        resultado = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+
+        assert resultado.id == existente.id
+
 
 class TestBuscarPessoa:
     """Testes de busca de pessoa."""
@@ -269,9 +304,7 @@ class TestAtualizarPessoa:
             data=PessoaCreate(nome="Original"), user_id=usuario.id, guarnicao_id=guarnicao.id
         )
 
-        atualizada = await service.atualizar(
-            pessoa.id, PessoaUpdate(nome="Atualizado"), usuario
-        )
+        atualizada = await service.atualizar(pessoa.id, PessoaUpdate(nome="Atualizado"), usuario)
 
         assert atualizada.nome == "ATUALIZADO"
 

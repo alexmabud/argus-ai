@@ -45,6 +45,41 @@ async def test_atualizar_perfil_posto_invalido(client: AsyncClient, auth_headers
 
 
 @pytest.mark.asyncio
+async def test_atualizar_perfil_ignora_campos_de_privilegio(
+    client: AsyncClient, auth_headers, usuario, db_session
+):
+    """PUT /perfil não deixa o próprio usuário se promover a admin (achado #31/2026-07-13).
+
+    PerfilUpdate não declara is_admin/is_super_admin/guarnicao_id — Pydantic
+    descarta silenciosamente qualquer campo extra no JSON (mass assignment
+    protegido por whitelist de schema), e o endpoint faz atribuição campo a
+    campo, nunca um unpacking genérico do payload sobre o model. Este teste
+    prova isso na prática, não só por inspeção do schema.
+    """
+    assert usuario.is_admin is False
+    assert usuario.is_super_admin is False
+    guarnicao_original = usuario.guarnicao_id
+
+    response = await client.put(
+        "/api/v1/auth/perfil",
+        json={
+            "nome": "Agente Teste",
+            "is_admin": True,
+            "is_super_admin": True,
+            "guarnicao_id": 999999,
+            "admin_global": True,
+        },
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    await db_session.refresh(usuario)
+    assert usuario.is_admin is False
+    assert usuario.is_super_admin is False
+    assert usuario.guarnicao_id == guarnicao_original
+
+
+@pytest.mark.asyncio
 async def test_atualizar_perfil_sem_auth(client: AsyncClient):
     """Testa rejeição sem autenticação."""
     response = await client.put(
