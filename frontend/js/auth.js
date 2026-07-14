@@ -89,13 +89,13 @@ class AuthManager {
       // Guarnição mudou desde a última sessão conhecida (ex.: admin trocou a
       // equipe do operador) — itens presos na fila offline local sob a
       // guarnição anterior vazariam para a equipe nova se sincronizados
-      // agora. Limpa a fila local (achado #18/2026-07-13).
+      // agora. Remove só esses itens (achado #18/2026-07-13).
       if (
         guarnicaoAnterior !== undefined &&
         guarnicaoAnterior !== user.guarnicao_id &&
         typeof purgeSyncQueueOnTeamChange === "function"
       ) {
-        await purgeSyncQueueOnTeamChange();
+        await purgeSyncQueueOnTeamChange(user.guarnicao_id);
       }
       return user;
     } catch (err) {

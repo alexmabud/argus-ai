@@ -29,6 +29,14 @@ let _veiculosDecryptCache = null;
 // --- Crypto helpers (AES-256-GCM via Web Crypto API) ---
 let _cryptoKey = null;
 
+// Trava de inicialização: sem isto, duas chamadas concorrentes a
+// ensureCryptoReady() antes da primeira resolver geram e persistem CADA UMA
+// sua própria chave (revisão pós-#19/2026-07-13) — a que "perde" a corrida de
+// escrita no IndexedDB deixa o que foi cifrado sob ela ilegível. Promise
+// compartilhada garante que só a primeira chamada executa a inicialização;
+// as demais aguardam o mesmo resultado.
+let _cryptoReadyPromise = null;
+
 /**
  * Garante que a chave de criptografia do IndexedDB está ativa.
  *
@@ -43,6 +51,17 @@ let _cryptoKey = null;
  */
 async function ensureCryptoReady() {
   if (_cryptoKey) return _cryptoKey;
+  if (_cryptoReadyPromise) return _cryptoReadyPromise;
+  _cryptoReadyPromise = _ensureCryptoReadyImpl();
+  try {
+    return await _cryptoReadyPromise;
+  } finally {
+    _cryptoReadyPromise = null;
+  }
+}
+
+async function _ensureCryptoReadyImpl() {
+  if (_cryptoKey) return _cryptoKey;
 
   const database = await initDB();
   const stored = await database.cryptoKeys.get("indexeddb-key");
@@ -51,17 +70,28 @@ async function ensureCryptoReady() {
     return _cryptoKey;
   }
 
+  // Deriva a chave do esquema PBKDF2 anterior ANTES de gerar a nova — usada
+  // só para migrar itens já enfileirados offline (revisão pós-#19/2026-07-13:
+  // sem isto, dados reais de campo pendentes no deploy ficavam permanentemente
+  // ilegíveis, já que o segredo antigo é apagado logo abaixo).
+  const oldKey = await _deriveOldKey().catch(() => null);
+
   _cryptoKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
     "encrypt",
     "decrypt",
   ]);
   await database.cryptoKeys.put({ id: "indexeddb-key", key: _cryptoKey });
 
+  if (oldKey) {
+    await _migrarFilaParaChaveNova(database, oldKey);
+  }
+
   // Migração do esquema antigo (PBKDF2 + segredo em localStorage): qualquer
   // cache de pessoas/veículos cifrado com a chave anterior fica ilegível sob
   // a chave nova — descarta em vez de exibir ciphertext bruto na
   // autocomplete até o próximo recache online. Tabelas vazias em instalação
-  // nova tornam isto um no-op inofensivo.
+  // nova tornam isto um no-op inofensivo. A fila de sync NÃO é descartada
+  // aqui — foi migrada acima (dados reais de campo, ao contrário do cache).
   await database.pessoas.clear().catch(() => {});
   await database.veiculos.clear().catch(() => {});
   _pessoasDecryptCache = null;
@@ -70,6 +100,55 @@ async function ensureCryptoReady() {
   localStorage.removeItem("argus_db_salt");
 
   return _cryptoKey;
+}
+
+/**
+ * Deriva a chave AES-256 do esquema PBKDF2 anterior à chave não-extraível
+ * (achado #19/2026-07-13), usada só transitoriamente para migrar itens já
+ * enfileirados — nunca para cifrar dado novo (encryptField/encryptBlob
+ * sempre usam _cryptoKey, gerada por generateKey). Retorna null se este
+ * dispositivo nunca teve o esquema antigo ativo (instalação nova).
+ */
+async function _deriveOldKey() {
+  const secret = localStorage.getItem("argus_db_secret");
+  const salt = localStorage.getItem("argus_db_salt");
+  if (!secret || !salt) return null;
+
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(secret), "PBKDF2", false, [
+    "deriveKey",
+  ]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: enc.encode(salt), iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"],
+  );
+}
+
+/**
+ * Re-cifra o campo `dados` de cada item pendente da fila sob a chave nova,
+ * decifrando primeiro com a chave PBKDF2 antiga. Item que falhar a
+ * decifração antiga (já em claro, corrompido, ou nunca cifrado) fica como
+ * estava — best-effort por item, uma falha isolada não aborta a migração
+ * dos demais itens nem o boot da aplicação.
+ */
+async function _migrarFilaParaChaveNova(database, oldKey) {
+  const items = await database.syncQueue.toArray();
+  for (const item of items) {
+    if (typeof item.dados !== "string" || !item.dados) continue;
+    try {
+      const buf = Uint8Array.from(atob(item.dados), (c) => c.charCodeAt(0));
+      const iv = buf.slice(0, 12);
+      const ct = buf.slice(12);
+      const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, oldKey, ct);
+      const texto = new TextDecoder().decode(plain);
+      await database.syncQueue.update(item.id, { dados: await encryptField(texto) });
+    } catch {
+      /* ciphertext não decifra sob a chave antiga — deixa como está */
+    }
+  }
 }
 
 /**
@@ -276,12 +355,21 @@ async function enqueueSync(tipo, dados, fotos = []) {
  * Itens enfileirados offline sob a guarnição anterior não podem ser
  * sincronizados com segurança sob a sessão atual — sincronizá-los atribuiria
  * o registro de campo à equipe nova, um vazamento entre tenants (achado
- * #18/2026-07-13). Best-effort: nunca lança.
+ * #18/2026-07-13). Remove só os itens presos sob uma guarnição diferente da
+ * nova — itens sem guarnição registrada (null) ou já sob a guarnição nova
+ * são preservados (revisão pós-#18: a versão anterior limpava a fila
+ * INTEIRA, inclusive itens recém-enfileirados já sob a equipe nova, ex. no
+ * fluxo comum de auto-atribuição de guarnição ao sincronizar pela primeira
+ * vez). Best-effort: nunca lança.
+ *
+ * @param {number|null} novaGuarnicaoId - guarnição da sessão atual (pós-troca).
  */
-async function purgeSyncQueueOnTeamChange() {
+async function purgeSyncQueueOnTeamChange(novaGuarnicaoId) {
   try {
     const database = await initDB();
-    await database.syncQueue.clear();
+    await database.syncQueue
+      .filter((item) => item.guarnicaoId != null && item.guarnicaoId !== novaGuarnicaoId)
+      .delete();
   } catch {
     /* best-effort */
   }
@@ -339,19 +427,28 @@ async function getPendingSync() {
   const guarnicaoAtual = typeof auth !== "undefined" && auth.user ? auth.user.guarnicao_id : null;
   const liberados = [];
   for (const item of items) {
-    if (
-      item.guarnicaoId != null &&
-      guarnicaoAtual != null &&
-      item.guarnicaoId !== guarnicaoAtual
-    ) {
+    // guarnicaoAtual===null também quarentena (ex.: operador desatribuído de
+    // equipe enquanto offline) — antes exigia AMBOS não-nulos, então um
+    // guarnicaoAtual nulo liberava o item sem checar (revisão pós-#18).
+    if (item.guarnicaoId != null && item.guarnicaoId !== guarnicaoAtual) {
       await markFailed(item.id, "Item pertence a outra equipe — sincronização bloqueada");
       continue;
     }
-    item.dados = await _decryptDados(item.dados);
-    if (item.fotos && item.fotos.length) {
-      item.fotos = await Promise.all(
-        item.fotos.map(async (foto) => ({ ...foto, blob: await decryptBlob(foto.blob) })),
-      );
+    // Decifração isolada por item: um item corrompido/ilegível (chave
+    // trocada, ciphertext inválido) não pode travar a fila inteira — antes,
+    // uma exceção aqui propagava para fora de getPendingSync() e bloqueava
+    // TODOS os itens, inclusive os saudáveis, indefinidamente (revisão
+    // pós-#19/2026-07-13).
+    try {
+      item.dados = await _decryptDados(item.dados);
+      if (item.fotos && item.fotos.length) {
+        item.fotos = await Promise.all(
+          item.fotos.map(async (foto) => ({ ...foto, blob: await decryptBlob(foto.blob) })),
+        );
+      }
+    } catch {
+      await markFailed(item.id, "Falha ao decifrar item — dados locais corrompidos ou ilegíveis");
+      continue;
     }
     liberados.push(item);
   }
