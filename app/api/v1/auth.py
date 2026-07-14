@@ -19,7 +19,11 @@ from app.core.auth_cookie import (
 from app.core.exceptions import ContaBloqueadaError, CredenciaisInvalidasError
 from app.core.login_guard import ip_bloqueado, registrar_falha_ip, resetar_ip
 from app.core.rate_limit import _get_real_client_ip, limiter
-from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_imagem
+from app.core.upload_validation import (
+    ler_upload_com_limite,
+    validar_dimensoes_imagem,
+    validar_magic_bytes_imagem,
+)
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
@@ -298,13 +302,17 @@ async def upload_foto_perfil(
 
     Raises:
         AuthenticationError: Se token inválido.
+        HTTPException: 400 se formato inválido ou dimensões excedem o teto
+            (decompression bomb), 413 se exceder 5 MB.
 
     Status Code:
         200: Upload realizado com sucesso.
+        400: Formato inválido ou dimensões da imagem excedem o teto.
         401: Não autenticado.
     """
     file_bytes = await ler_upload_com_limite(foto, max_size=5 * 1024 * 1024)
     validar_magic_bytes_imagem(file_bytes)
+    validar_dimensoes_imagem(file_bytes)
     storage = StorageService.get()
     key = storage.generate_key("avatares", foto.filename or "foto.jpg")
     url = await storage.upload(file_bytes, key, content_type=foto.content_type or "image/jpeg")

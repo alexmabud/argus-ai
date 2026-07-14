@@ -1,9 +1,11 @@
 """Testes dos endpoints de perfil do usuário."""
 
+import io
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
+from PIL import Image
 
 
 @pytest.mark.asyncio
@@ -112,3 +114,28 @@ async def test_upload_foto_perfil(client: AsyncClient, auth_headers):
     assert response.status_code == 200
     data = response.json()
     assert data["foto_url"] == fake_url
+
+
+@pytest.mark.asyncio
+async def test_upload_foto_perfil_rejeita_dimensoes_excessivas(client: AsyncClient, auth_headers):
+    """Upload de avatar com dimensões acima do teto é rejeitado (revisão pós-#17/2026-07-13).
+
+    validar_dimensoes_imagem (decompression-bomb guard) tinha sido aplicada
+    em todos os uploads de fotos.py, mas o upload de avatar em auth.py foi
+    esquecido — este teste prova que o endpoint agora chama a validação.
+    """
+    from app.core.upload_validation import MAX_IMAGE_PIXELS
+
+    lado = int(MAX_IMAGE_PIXELS**0.5) + 100
+    img = Image.new("RGB", (lado, lado), color=(0, 255, 0))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+
+    with patch("app.api.v1.auth.StorageService"):
+        response = await client.post(
+            "/api/v1/auth/perfil/foto",
+            files={"foto": ("foto.jpg", buf.getvalue(), "image/jpeg")},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 400
