@@ -27,7 +27,7 @@ pytestmark = pytest.mark.skipif(
 async def _revoke_audit_logs_reaplicado(setup_db):
     """Reaplica o REVOKE DELETE/UPDATE em audit_logs para argus_app.
 
-    O fixture ``setup_db`` (conftest, autouse) faz DROP+CREATE de TODAS as
+    O fixture ``setup_db`` (conftest) faz DROP+CREATE de TODAS as
     tabelas antes de cada teste — inclusive ``audit_logs``. Quando a tabela
     renasce, ``ALTER DEFAULT PRIVILEGES FOR ROLE argus`` (create_app_role.sql,
     passo 7) concede SELECT/INSERT/UPDATE/DELETE de novo automaticamente

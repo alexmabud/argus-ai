@@ -29,10 +29,11 @@ from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.models.veiculo import Veiculo
 
-# Trava de segurança: o fixture autouse `setup_db` faz DROP/CREATE e TRUNCATE de
-# TODAS as tabelas. Se a DATABASE_URL não apontar para um banco de testes, isso
-# destrói o banco de dev/produção. Abortamos a coleta para impedir rodar `pytest`
-# direto contra `argus_db` — use `make test`, que aponta para `argus_test`.
+# Trava de segurança: o fixture `setup_db` (acionado por qualquer teste que use
+# `db_session`/`client`) faz DROP/CREATE e TRUNCATE de TODAS as tabelas. Se a
+# DATABASE_URL não apontar para um banco de testes, isso destrói o banco de
+# dev/produção. Abortamos a coleta para impedir rodar `pytest` direto contra
+# `argus_db` — use `make test`, que aponta para `argus_test`.
 _db_name = settings.DATABASE_URL.rsplit("/", 1)[-1].split("?")[0]
 if not _db_name.endswith("_test"):
     raise RuntimeError(
@@ -59,12 +60,16 @@ def test_engine():
     yield engine
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 async def setup_db(test_engine):
     """Fixture que prepara e limpa o banco de dados para cada teste.
 
     Cria todas as tabelas antes do teste e remove tudo após, garantindo
-    isolamento entre testes. Executa automaticamente para cada teste.
+    isolamento entre testes. Não é autouse (achado #32/2026-07-13): testes
+    unitários que não tocam o banco (schemas, services com repo mockado,
+    utils puros) não pagam o custo de DROP/CREATE/seed a cada execução.
+    É acionada indiretamente por qualquer teste que dependa de `db_session`
+    ou `client`, já que ambos a declaram como pré-requisito.
 
     Args:
         test_engine: Engine assincrónico de teste.
@@ -124,11 +129,15 @@ async def setup_db(test_engine):
 
 
 @pytest.fixture
-async def db_session(test_engine):
+async def db_session(test_engine, setup_db):
     """Fixture que fornece uma sessão do banco de dados para testes.
+
+    Depende de `setup_db` para garantir que as tabelas existem antes de
+    qualquer uso — todo teste que precisa do banco passa por aqui.
 
     Args:
         test_engine: Engine assincrónico de teste.
+        setup_db: Fixture que cria/limpa as tabelas (dependência de ordem).
 
     Returns:
         AsyncSession: Sessão assincrónica do SQLAlchemy para testes.
