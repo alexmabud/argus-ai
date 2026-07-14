@@ -46,8 +46,13 @@ async def _revoke_audit_logs_reaplicado(setup_db):
 
 
 @pytest.mark.asyncio
-async def test_argus_app_nao_pode_criar_tabela() -> None:
-    """argus_app deve receber permission denied ao tentar DDL."""
+async def test_argus_app_nao_pode_criar_tabela(setup_db) -> None:
+    """argus_app deve receber permission denied ao tentar DDL.
+
+    Depende de ``setup_db`` (não é mais autouse desde o achado #32/2026-07-13)
+    por consistência com os demais testes deste arquivo, ainda que este em
+    particular não leia tabela pré-existente.
+    """
     engine = create_async_engine(
         APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
     )
@@ -61,7 +66,7 @@ async def test_argus_app_nao_pode_criar_tabela() -> None:
 
 
 @pytest.mark.asyncio
-async def test_argus_app_nao_pode_dropar_tabela() -> None:
+async def test_argus_app_nao_pode_dropar_tabela(setup_db) -> None:
     """argus_app não pode DROP de tabela existente.
 
     DROP exige ser DONO da tabela (não é um privilégio concedível via GRANT),
@@ -69,6 +74,10 @@ async def test_argus_app_nao_pode_dropar_tabela() -> None:
     "permission denied" emitido para CREATE/DML negados. Aceitamos ambas
     as formas: o que importa é que a operação é recusada por falta de
     privilégio (InsufficientPrivilegeError).
+
+    Depende de ``setup_db`` para garantir que ``usuarios`` existe — sem isso
+    o DROP falharia com "table does not exist" em vez do erro de privilégio
+    que este teste verifica (achado #32/2026-07-13 tornou setup_db opt-in).
     """
     engine = create_async_engine(
         APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
@@ -84,12 +93,15 @@ async def test_argus_app_nao_pode_dropar_tabela() -> None:
 
 
 @pytest.mark.asyncio
-async def test_argus_app_pode_ler_e_escrever() -> None:
+async def test_argus_app_pode_ler_e_escrever(setup_db) -> None:
     """argus_app PODE de fato fazer SELECT/INSERT/UPDATE/DELETE.
 
     Antes este teste só fazia SELECT count(*) — não provava que o DML real
     (INSERT/UPDATE/DELETE) é permitido. Agora exercita o ciclo completo em uma
     tabela existente (bpm), net-zero (insere e apaga a própria linha de teste).
+
+    Depende de ``setup_db`` para garantir que ``bpm`` existe (achado
+    #32/2026-07-13 tornou setup_db opt-in).
     """
     engine = create_async_engine(
         APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
@@ -122,8 +134,12 @@ async def test_argus_app_pode_ler_e_escrever() -> None:
 
 
 @pytest.mark.asyncio
-async def test_argus_app_pode_inserir_audit_log() -> None:
-    """argus_app PODE inserir em audit_logs — é assim que a API audita ações."""
+async def test_argus_app_pode_inserir_audit_log(setup_db) -> None:
+    """argus_app PODE inserir em audit_logs — é assim que a API audita ações.
+
+    Depende de ``setup_db`` para garantir que ``audit_logs`` existe (achado
+    #32/2026-07-13 tornou setup_db opt-in).
+    """
     engine = create_async_engine(
         APP_DB_URL.replace("postgresql://", "postgresql+asyncpg://"), poolclass=None
     )
