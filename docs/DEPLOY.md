@@ -164,7 +164,34 @@ Após deploy, executar migrations (rodam como dono do banco, via `MIGRATION_DATA
 docker compose -f docker-compose.prod.yml exec api alembic upgrade head
 ```
 
-### 5.1. Bootstrap do super-admin (primeira subida)
+### 5.1. Índices vetoriais HNSW (pgvector) — plano para futuras migrations
+
+**Contexto (achado #27/2026-07-13):** os índices HNSW existentes em
+`fotos.embedding_face` e `ocorrencias.embedding`
+(`a1b2c3d4e5f6_server_default_ativo_e_indices_vetoriais.py`) foram criados
+com `CREATE INDEX` simples (sem `CONCURRENTLY`) — aceitável na época porque
+as tabelas estavam vazias/pequenas em produção. Essa migration já rodou e
+**não deve ser reescrita** (migration aplicada é histórico imutável).
+
+**Regra para qualquer migration futura** que crie, recrie ou faça `REINDEX`
+de um índice HNSW/IVFFlat em `fotos` ou `ocorrencias` (ex.: mudar parâmetros
+`m`/`ef_construction`, trocar `vector_cosine_ops`, adicionar embedding em
+coluna nova) contra um banco de produção com dados reais:
+
+1. **Sempre `CREATE INDEX CONCURRENTLY`** (fora de transação — Alembic exige
+   `op.execute("COMMIT")` antes ou `with op.get_context().autocommit_block():`
+   já que `CONCURRENTLY` não roda dentro de uma transação).
+2. **Agendar janela de manutenção** — mesmo `CONCURRENTLY` consome I/O/CPU
+   pesado durante o build (HNSW é notavelmente mais lento de construir que
+   IVFFlat) e pode degradar latência de queries de similaridade concorrentes
+   por um tempo, mesmo sem bloquear escritas.
+3. **Testar o tempo de build primeiro** contra uma cópia/restore com volume
+   de dados comparável ao de produção, para estimar a duração real da janela.
+4. Se `CONCURRENTLY` falhar no meio (deixa um índice `INVALID`), rodar
+   `DROP INDEX CONCURRENTLY` do índice inválido antes de tentar de novo —
+   nunca deixar um índice `INVALID` órfão em produção.
+
+### 5.2. Bootstrap do super-admin (primeira subida)
 
 Há **um único super-admin (dono)**: o único que promove/rebaixa admins e exclui
 usuários. Os demais admins são delegados, com permissões granulares definidas
