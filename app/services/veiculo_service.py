@@ -5,7 +5,6 @@ com normalização de placa, verificação de unicidade e auditoria
 de todas as mutações.
 """
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
@@ -15,6 +14,7 @@ from app.models.veiculo import Veiculo
 from app.repositories.veiculo_repo import VeiculoRepository
 from app.schemas.veiculo import VeiculoCreate, VeiculoUpdate
 from app.services.audit_service import AuditService
+from app.services.client_id_dedup import criar_com_retry_client_id
 
 
 class VeiculoService:
@@ -106,17 +106,17 @@ class VeiculoService:
             client_id=data.client_id,
         )
 
-        try:
-            await self.repo.create(veiculo)
-        except IntegrityError:
-            # Race: outra requisição concorrente inseriu a MESMA placa (ou
-            # client_id) entre o dedup-check acima e este flush.
-            await self.db.rollback()
-            if data.client_id:
-                existing_client = await self.repo.get_by_client_id(data.client_id)
-                if existing_client:
-                    return existing_client
-            raise ConflitoDadosError("Veículo com esta placa já cadastrado")
+        veiculo, foi_criado = await criar_com_retry_client_id(
+            self.db,
+            self.repo,
+            veiculo,
+            data.client_id,
+            ConflitoDadosError("Veículo com esta placa já cadastrado"),
+        )
+        if not foi_criado:
+            # Corrida: outra requisição concorrente já criou este veículo —
+            # nada foi de fato criado por esta chamada, não registra CREATE.
+            return veiculo
 
         await self.audit.log(
             usuario_id=user_id,

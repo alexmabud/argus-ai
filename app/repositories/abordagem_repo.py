@@ -7,7 +7,7 @@ carregamento eager de relacionamentos e deduplicação por client_id.
 from collections.abc import Sequence
 from datetime import date
 
-from sqlalchemy import and_, cast, false, func, or_, select
+from sqlalchemy import ColumnElement, and_, cast, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.types import Date
@@ -152,6 +152,49 @@ class AbordagemRepository(BaseRepository[Abordagem]):
         )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
+
+    async def existe_no_escopo(
+        self, id: int, guarnicao_id: int | None, bpm_id: int | None = None
+    ) -> bool:
+        """Verifica se a abordagem existe e está no escopo informado, sem eager load.
+
+        Mesma regra de prioridade e filtro de `get_detail`/`get_detail_by_bpm`/
+        `get_detail_global` (guarnicao_id > bpm_id > global), mas sem carregar
+        pessoas/veículos/fotos/ocorrências — para checagens de autorização que
+        só precisam confirmar pertencimento ao escopo, não o objeto completo
+        (revisão pós-#22/2026-07-13: `buscar_detalhe` era chamado só para essa
+        checagem, descartando o eager load inteiro em seguida).
+
+        Args:
+            id: Identificador da abordagem.
+            guarnicao_id: ID da guarnição para filtro por equipe (prevalece).
+            bpm_id: ID do BPM para filtro por BPM (usado se guarnicao_id=None).
+
+        Returns:
+            True se a abordagem existe, está ativa e está no escopo informado.
+        """
+        where: list[ColumnElement[bool]]
+        if guarnicao_id is not None:
+            where = [
+                Abordagem.id == id,
+                Abordagem.guarnicao_id == guarnicao_id,
+                Abordagem.ativo == True,  # noqa: E712
+            ]
+        elif bpm_id is not None:
+            guarnicao_ids_bpm = select(Guarnicao.id).where(
+                Guarnicao.bpm_id == bpm_id,
+                Guarnicao.ativo == True,  # noqa: E712
+            )
+            where = [
+                Abordagem.id == id,
+                Abordagem.ativo == True,  # noqa: E712
+                Abordagem.guarnicao_id.in_(guarnicao_ids_bpm),
+            ]
+        else:
+            where = [Abordagem.id == id, Abordagem.ativo == True]  # noqa: E712
+        query = select(Abordagem.id).where(*where)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none() is not None
 
     async def list_by_guarnicao(
         self,
@@ -645,18 +688,5 @@ class AbordagemRepository(BaseRepository[Abordagem]):
                 Abordagem.guarnicao_id.in_(guarnicao_ids_bpm),
             )
         )
-        result = await self.db.execute(query)
-        return result.scalar_one_or_none()
-
-    async def get_by_client_id(self, client_id: str) -> Abordagem | None:
-        """Busca abordagem por client_id para deduplicação offline.
-
-        Args:
-            client_id: ID único do cliente (gerado no frontend offline).
-
-        Returns:
-            Abordagem existente com este client_id ou None.
-        """
-        query = select(Abordagem).where(Abordagem.client_id == client_id)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()

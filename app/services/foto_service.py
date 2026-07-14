@@ -25,6 +25,7 @@ from app.models.foto import Foto
 from app.models.pessoa import Pessoa
 from app.models.usuario import Usuario
 from app.repositories.foto_repo import FotoRepository
+from app.services.abordagem_service import AbordagemService
 from app.services.audit_service import AuditService
 from app.services.storage_service import StorageService, storage_key
 from app.utils.imaging import gerar_thumbnail
@@ -235,6 +236,43 @@ class FotoService:
             Lista de Fotos da abordagem ordenadas por data_hora decrescente.
         """
         return list(await self.repo.get_by_abordagem(abordagem_id, skip=skip, limit=limit))
+
+    async def listar_por_abordagem_verificado(
+        self,
+        abordagem_id: int,
+        guarnicao_id_filtro: int | None,
+        bpm_id_filtro: int | None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[Foto]:
+        """Lista fotos de uma abordagem após confirmar que está no escopo do usuário.
+
+        Antes de listar, confirma que `abordagem_id` existe e pertence ao
+        escopo de visibilidade informado (mesma regra de isolamento_abordagens
+        usada na ficha da abordagem) — sem isto, qualquer autenticado listava
+        fotos de QUALQUER abordagem só sabendo o ID, mesmo com isolamento
+        ativado (achado #22/2026-07-13). Usa uma checagem leve
+        (AbordagemService.verificar_escopo), não o eager load completo de
+        `buscar_detalhe` — o objeto Abordagem não é usado aqui, só sua
+        existência/escopo (revisão pós-#22/2026-07-13).
+
+        Args:
+            abordagem_id: ID da abordagem para buscar fotos.
+            guarnicao_id_filtro: Escopo de visibilidade por equipe (prevalece).
+            bpm_id_filtro: Escopo por BPM, usado se guarnicao_id_filtro é None.
+            skip: Registros a pular (OFFSET).
+            limit: Máximo de resultados (LIMIT).
+
+        Returns:
+            Lista de Fotos da abordagem ordenadas por data_hora decrescente.
+
+        Raises:
+            NaoEncontradoError: Se a abordagem não existe ou está fora do escopo.
+        """
+        await AbordagemService(self.db).verificar_escopo(
+            abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro
+        )
+        return await self.listar_por_abordagem(abordagem_id, skip=skip, limit=limit)
 
     async def recomputar_foto_principal(self, pessoa_id: int) -> None:
         """Recalcula a foto de perfil da pessoa a partir da foto de rosto ativa mais recente.

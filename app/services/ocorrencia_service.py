@@ -92,7 +92,7 @@ class OcorrenciaService:
                 fora do escopo de visibilidade do usuário.
         """
         if abordagem_id is not None:
-            await AbordagemService(self.db).buscar_detalhe(
+            await AbordagemService(self.db).verificar_escopo(
                 abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro
             )
 

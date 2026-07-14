@@ -56,19 +56,6 @@ class VeiculoRepository(BaseRepository[Veiculo]):
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_by_client_id(self, client_id: str) -> Veiculo | None:
-        """Busca veículo por client_id para deduplicação offline.
-
-        Args:
-            client_id: ID único do cliente (gerado no frontend offline).
-
-        Returns:
-            Veículo existente com este client_id ou None.
-        """
-        query = select(Veiculo).where(Veiculo.client_id == client_id)
-        result = await self.db.execute(query)
-        return result.scalar_one_or_none()
-
     async def search_by_placa_partial(
         self,
         placa_partial: str,

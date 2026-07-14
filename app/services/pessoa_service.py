@@ -23,6 +23,7 @@ from app.repositories.pessoa_repo import PessoaRepository
 from app.schemas.pessoa import EnderecoCreate, EnderecoUpdate, PessoaCreate, PessoaUpdate
 from app.schemas.vinculo_manual import VinculoManualCreate
 from app.services.audit_service import AuditService
+from app.services.client_id_dedup import criar_com_retry_client_id
 
 logger = logging.getLogger("argus")
 
@@ -108,19 +109,17 @@ class PessoaService:
             client_id=data.client_id,
         )
 
-        try:
-            await self.repo.create(pessoa)
-        except IntegrityError:
-            # Race: outra requisição concorrente inseriu o MESMO client_id (ou
-            # CPF) entre o dedup-check acima e este flush. Rollback é necessário
-            # para liberar a transação abortada antes de re-consultar (mesmo
-            # padrão de AbordagemService.criar).
-            await self.db.rollback()
-            if data.client_id:
-                existing_client = await self.repo.get_by_client_id(data.client_id)
-                if existing_client:
-                    return existing_client
-            raise ConflitoDadosError("Pessoa com este CPF já cadastrada")
+        pessoa, foi_criada = await criar_com_retry_client_id(
+            self.db,
+            self.repo,
+            pessoa,
+            data.client_id,
+            ConflitoDadosError("Pessoa com este CPF já cadastrada"),
+        )
+        if not foi_criada:
+            # Corrida: outra requisição concorrente já criou esta pessoa —
+            # nada foi de fato criado por esta chamada, não registra CREATE.
+            return pessoa
 
         await self.audit.log(
             usuario_id=user_id,

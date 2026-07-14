@@ -23,7 +23,6 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.abordagens import _filtro_abordagem
-from app.core.exceptions import NaoEncontradoError
 from app.core.rate_limit import _get_user_rate_limit_key, limiter
 from app.core.upload_validation import (
     converter_heic_para_jpeg,
@@ -315,29 +314,20 @@ async def listar_fotos_abordagem(
         404: Abordagem não encontrada/fora de escopo.
         429: Rate limit (30/min).
     """
-    # Verifica que a abordagem existe e está no escopo de visibilidade do
-    # usuário (mesma regra de isolamento_abordagens usada na ficha da
-    # abordagem) antes de listar suas fotos — antes, qualquer autenticado
-    # listava fotos de QUALQUER abordagem só sabendo o ID, mesmo quando a
-    # equipe tem isolamento ativado (achado #22/2026-07-13).
     if user.guarnicao_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário sem guarnição atribuída",
         )
     guarnicao_id_filtro, bpm_id_filtro = _filtro_abordagem(user)
-    try:
-        await AbordagemService(db).buscar_detalhe(
-            abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro
-        )
-    except NaoEncontradoError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Abordagem não encontrada",
-        )
-
+    # NaoEncontradoError já é HTTPException(404) — propaga direto sem
+    # try/except redundante no router (revisão pós-#22/2026-07-13). A
+    # checagem de escopo (achado #22/2026-07-13) e a listagem ficam no
+    # service, não no router.
     service = FotoService(db)
-    fotos = await service.listar_por_abordagem(abordagem_id, skip=skip, limit=limit)
+    fotos = await service.listar_por_abordagem_verificado(
+        abordagem_id, guarnicao_id_filtro, bpm_id_filtro, skip=skip, limit=limit
+    )
     return [FotoRead.model_validate(f) for f in fotos]
 
 
