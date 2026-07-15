@@ -67,7 +67,7 @@ runs:
         python -m pip install --require-hashes -r requirements.lock
         PKGS="$(python -m pip list --format=freeze | grep -iE '^(nvidia-|triton==)' | cut -d= -f1)"
         if [ -n "$PKGS" ]; then python -m pip uninstall -y $PKGS; fi
-        python -m pip install pytest pytest-asyncio pytest-cov httpx factory-boy
+        python -m pip install pytest pytest-asyncio pytest-cov httpx factory-boy playwright
 
     - name: Install security dependencies
       if: inputs.install-deps == 'security'

@@ -71,6 +71,10 @@ dev = [
     "pip-audit>=2.7.0",
     # Achado #32/2026-07-13: scan de segredos (baseline auditado em .secrets.baseline).
     "detect-secrets>=1.5.0",
+    # Testes e2e de frontend (tests/e2e/frontend/) — dirige o Chromium contra
+    # harnesses com os arquivos reais do frontend. Requer `playwright install
+    # chromium` após a instalação do pacote.
+    "playwright>=1.40.0",
 ]
 vision = [
     "insightface>=1.0.1",

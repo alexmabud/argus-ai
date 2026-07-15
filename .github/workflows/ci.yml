@@ -133,6 +133,12 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION_LOCK }}
           install-deps: dev-locked
 
+      - name: Install Playwright Chromium
+        # tests/e2e/frontend/ dirige este browser contra harnesses com os
+        # arquivos reais do frontend; sem este step os testes sempre pulam
+        # via pytest.importorskip("playwright.sync_api").
+        run: playwright install --with-deps chromium
+
       - name: Install PostGIS in database container
         run: |
           docker exec $(docker ps -q --filter "ancestor=pgvector/pgvector:pg16") bash -c "
