@@ -73,8 +73,10 @@ dev = [
     "detect-secrets>=1.5.0",
     # Testes e2e de frontend (tests/e2e/frontend/) — dirige o Chromium contra
     # harnesses com os arquivos reais do frontend. Requer `playwright install
-    # chromium` após a instalação do pacote.
-    "playwright>=1.40.0",
+    # chromium` após a instalação do pacote. Pin exato (não é dependência
+    # hash-verificada via requirements.lock) para não divergir da versão
+    # instalada no CI (.github/actions/setup-python-env/action.yml).
+    "playwright==1.60.0",
 ]
 vision = [
     "insightface>=1.0.1",

@@ -133,10 +133,21 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION_LOCK }}
           install-deps: dev-locked
 
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-1.60.0
+
       - name: Install Playwright Chromium
         # tests/e2e/frontend/ dirige este browser contra harnesses com os
         # arquivos reais do frontend; sem este step os testes sempre pulam
-        # via pytest.importorskip("playwright.sync_api").
+        # via pytest.importorskip("playwright.sync_api")/try-except em
+        # chromium.launch() — continue-on-error preserva essa degradação
+        # graciosa também no nível do CI: uma falha transiente de rede/apt
+        # aqui não deve derrubar o job inteiro (que também roda os testes
+        # de backend, sem relação com isso).
+        continue-on-error: true
         run: playwright install --with-deps chromium
 
       - name: Install PostGIS in database container

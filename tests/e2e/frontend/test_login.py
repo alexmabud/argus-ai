@@ -47,6 +47,23 @@ def harness(tmp_path: Path) -> Path:
     return tmp_path / "login.html"
 
 
+def _aguardar_alpine_pronto(page: Page) -> None:
+    """Aguarda o Alpine terminar de inicializar o root ``app()`` do harness.
+
+    ``alpine.min.js`` carrega via ``<script defer>``, depois do HTML do
+    formulário já estar no DOM — preencher campos antes do Alpine
+    inicializar o ``x-model`` faria o boot sobrescrever os valores digitados
+    de volta para o estado inicial vazio. Espera a condição real em vez de
+    uma pausa fixa.
+
+    Args:
+        page: Página Playwright já navegada para o harness.
+    """
+    page.wait_for_function(
+        "() => window.Alpine && document.querySelector(\"[x-data='app()']\")?._x_dataStack"
+    )
+
+
 def _submeter(page: Page, matricula: str = "12345", senha: str = "segredo", totp: str = "") -> None:
     """Preenche e submete o formulário de login.
 
@@ -77,7 +94,7 @@ def test_login_com_sucesso_chama_onlogin(harness: Path) -> None:
             "window.__meStub = () => ({ id: 7, nome: 'AGENTE TESTE', matricula: '12345' });"
         )
         page.goto(f"file://{harness}")
-        page.wait_for_timeout(300)
+        _aguardar_alpine_pronto(page)
 
         _submeter(page)
 
@@ -110,7 +127,7 @@ def test_primeira_falha_revela_campo_totp_sem_chamar_onlogin(harness: Path) -> N
             "window.__loginStub = () => { throw new Error('Credenciais inválidas'); };"
         )
         page.goto(f"file://{harness}")
-        page.wait_for_timeout(300)
+        _aguardar_alpine_pronto(page)
 
         _submeter(page)
 
@@ -137,7 +154,7 @@ def test_segunda_falha_mostra_erro_real_do_backend(harness: Path) -> None:
             "window.__loginStub = () => { throw new Error('Credenciais inválidas'); };"
         )
         page.goto(f"file://{harness}")
-        page.wait_for_timeout(300)
+        _aguardar_alpine_pronto(page)
 
         _submeter(page)  # primeira falha: revela o campo TOTP
         _submeter(page, totp="000000")  # segunda falha: mostra o erro real
@@ -171,7 +188,7 @@ def test_segunda_tentativa_com_sucesso_apos_totp_completa_login(harness: Path) -
             """
         )
         page.goto(f"file://{harness}")
-        page.wait_for_timeout(300)
+        _aguardar_alpine_pronto(page)
 
         _submeter(page)  # primeira falha: revela o campo TOTP
         _submeter(page, totp="123456")  # segunda tentativa: sucesso

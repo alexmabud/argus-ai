@@ -17,14 +17,24 @@ window.api = {
       const stub = window.__loginStub || (() => ({}));
       return stub(body);
     }
-    return {};
+    // Sem branch para esta URL: falha alto e explícito em vez de devolver
+    // {} de sucesso silencioso, que mascararia um stub esquecido num teste
+    // futuro (ex. POST /auth/logout).
+    throw new Error(`Harness sem stub para POST ${url}`);
   },
   async get(url) {
     window.__calls.gets.push({ url });
     if (url === '/auth/me') {
       return window.__meStub ? window.__meStub() : { id: 1, nome: 'AGENTE TESTE' };
     }
-    return {};
+    throw new Error(`Harness sem stub para GET ${url}`);
+  },
+  // Real ApiClient.clearTokens() limpa localStorage; auth.js chama isso em
+  // logout()/fetchMe() ao receber 401. Nenhum teste atual exercita esses
+  // caminhos, mas sem isso um teste futuro que os exercite bateria em
+  // "api.clearTokens is not a function" em vez de um stub coerente.
+  clearTokens() {
+    localStorage.removeItem('argus_user');
   },
 };
 

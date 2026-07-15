@@ -26,7 +26,7 @@ Hoje o frontend (`frontend/` — PWA Alpine.js + Tailwind, sem build step) não 
 3. `pytest tests/e2e/frontend -v` em CI executa os 2 testes existentes de verdade (não aparecem como `skipped`) e passam.
 4. Novo `tests/e2e/frontend/test_login.py` cobre no mínimo: (a) login com sucesso chama `onLogin` com o usuário retornado pela API estubada; (b) credenciais inválidas mostra `erro` sem chamar `onLogin`; (c) resposta pedindo 2FA ativa `mostrarTotp`, e reenviar com o código completa o login.
 5. `make test` local roda os mesmos testes sem infra extra além de `playwright install chromium` (documentado no README novo).
-6. CI continua verde; timeout do job `test` (hoje 40min) mantém folga — se o download do Chromium consumir tempo relevante, medir e decidir sobre cache (`actions/cache` em `~/.cache/ms-playwright`) no Build.
+6. CI continua verde; timeout do job `test` (hoje 40min) mantém folga. **Atualização pós-review:** em vez de medir o tempo real e decidir depois, o `code-review` da branch já flagou o custo (~150MB de Chromium sem cache) e o risco de um step obrigatório derrubar o job inteiro numa falha transiente de rede/apt — decisão tomada direto: `actions/cache` em `~/.cache/ms-playwright` (chave pinada em `playwright-chromium-${{ runner.os }}-1.60.0`) + `continue-on-error: true` no step de instalação, preservando a degradação graciosa que os testes já tinham via `pytest.importorskip`/`try-except` em `chromium.launch()`.
 
 ## Decisions
 
