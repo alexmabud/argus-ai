@@ -380,11 +380,20 @@ groups:
           # reintroduzindo a duplicidade/desdiagnóstico que a versão antiga
           # (`rate(...) * redis_up`) evitava. Só dispara quando o worker está
           # de fato parado E o Redis está de pé.
+          #
+          # `on()` (achado 2026-07-15, ~21h de falso-positivo perpétuo): sem
+          # isso, o casamento padrão de vetores do PromQL exige que os dois
+          # lados tenham o MESMO conjunto de labels. `min(argus_worker_alive)`
+          # descarta todos os labels (min() sem `by()`), enquanto `redis_up`
+          # mantém `instance`/`job` — nunca batem, então a multiplicação
+          # retorna vetor vazio SEMPRE, independente do estado real. Com
+          # `noDataState: Alerting`, isso disparava a regra em toda avaliação,
+          # para sempre, mascarado como "worker parado" no Telegram.
           - refId: A
             relativeTimeRange: {from: 300, to: 0}
             datasourceUid: prometheus-argus
             model:
-              expr: (min(argus_worker_alive) < bool 1) * (redis_up == bool 1)
+              expr: (min(argus_worker_alive) < bool 1) * on() (redis_up == bool 1)
               refId: A
               instant: true
               range: false

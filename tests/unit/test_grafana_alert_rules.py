@@ -74,3 +74,24 @@ def test_worker_parado_nao_co_dispara_com_redis_down():
     expr = query_a["expr"]
     assert "argus_worker_alive" in expr
     assert "redis_up" in expr, "expr precisa de redis_up p/ não co-disparar com Redis Offline"
+
+
+def test_worker_parado_casa_vetores_com_on_explicito():
+    """A multiplicação em alert-worker-parado precisa de `on()` explícito.
+
+    Achado 2026-07-15 (~21h de falso-positivo contínuo): `min(argus_worker_alive)`
+    descarta todos os labels (min() sem `by()`), enquanto `redis_up` mantém
+    `instance`/`job`. Sem `on()`/`ignoring()`, o casamento padrão de vetores do
+    PromQL exige o MESMO conjunto de labels dos dois lados — um vazio, o outro
+    não, nunca batem. A multiplicação retorna vetor vazio SEMPRE (confirmado
+    ao vivo contra o Prometheus de produção), e com `noDataState: Alerting`
+    isso dispara a regra em toda avaliação, para sempre, independente do
+    estado real do worker/Redis.
+    """
+    rule = _find_rule("alert-worker-parado")
+    query_a = next(e["model"] for e in rule["data"] if e["model"]["refId"] == "A")
+    expr = query_a["expr"]
+    assert "on()" in expr, (
+        "sem `on()`, min(argus_worker_alive) (sem labels) * redis_up (com labels) "
+        "nunca da match -- vetor vazio sempre, alerta perpetuo via noDataState"
+    )
