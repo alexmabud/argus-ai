@@ -407,7 +407,16 @@ groups:
                 # A == 1 → pelo menos um worker_id monitorado está com a
                 # health-check ausente/expirada E o Redis está de pé (ver
                 # comentário da expr acima).
-                - evaluator: {type: gte, params: [1]}
+                #
+                # `gt: [0]`, não `gte: [1]` (achado 2026-07-15, causa raiz real
+                # dos 21h+ de alerta preso): o motor de expressão do Grafana só
+                # aceita [gt, lt, within_range, outside_range] como tipo de
+                # avaliador do threshold — `gte` não existe e falha a
+                # construção da regra em TODA avaliação ("failed to parse
+                # expression 'threshold': ... got gte"), forçando Alerting via
+                # execErrState mesmo com a query A saudável. Para um valor
+                # booleano 0/1, `> 0` é equivalente a `>= 1`.
+                - evaluator: {type: gt, params: [0]}
                   operator: {type: and}
                   query: {params: [A]}
                   reducer: {type: avg}

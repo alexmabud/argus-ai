@@ -95,3 +95,32 @@ def test_worker_parado_casa_vetores_com_on_explicito():
         "sem `on()`, min(argus_worker_alive) (sem labels) * redis_up (com labels) "
         "nunca da match -- vetor vazio sempre, alerta perpetuo via noDataState"
     )
+
+
+VALID_THRESHOLD_EVALUATORS = {"gt", "lt", "within_range", "outside_range"}
+
+
+def test_toda_condicao_threshold_usa_avaliador_valido():
+    """Todo `type: threshold` só aceita [gt, lt, within_range, outside_range].
+
+    Achado 2026-07-15 (causa raiz real de ~21h de alerta preso em
+    alert-worker-parado, anterior ao bug de vector matching): `gte`/`lte`
+    NÃO existem no motor de expressão do Grafana. Usar um desses quebra a
+    construção da regra em TODA avaliação ("failed to parse expression
+    'threshold': ... got gte"), e com execErrState: Alerting isso força o
+    estado Alerting permanentemente — mesmo com a query de dados saudável.
+    O erro só aparece no log do Grafana, nunca na UI de forma óbvia.
+    """
+    config = yaml.safe_load(RULES_PATH.read_text())
+    invalidos = []
+    for group in config["groups"]:
+        for rule in group["rules"]:
+            for entry in rule["data"]:
+                model = entry["model"]
+                if model.get("type") != "threshold":
+                    continue
+                for condition in model.get("conditions", []):
+                    tipo = condition["evaluator"]["type"]
+                    if tipo not in VALID_THRESHOLD_EVALUATORS:
+                        invalidos.append((rule["uid"], tipo))
+    assert not invalidos, f"avaliadores invalidos (quebram a regra sempre): {invalidos}"
