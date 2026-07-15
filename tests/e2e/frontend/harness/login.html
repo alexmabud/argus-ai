@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Harness e2e — login</title>
+<style>[x-cloak]{display:none!important}</style>
+<script>
+// ---- Stubs dos globais consumidos pelos arquivos reais do frontend ----
+// window.api substitui inteiro o ApiClient real (mesmo padrão do harness de
+// abordagem-nova): auth.js/login.js só dependem da interface get/post.
+window.__calls = { posts: [], gets: [], onLogin: [] };
+
+window.api = {
+  async post(url, body) {
+    window.__calls.posts.push({ url, body: JSON.parse(JSON.stringify(body)) });
+    if (url === '/auth/login') {
+      const stub = window.__loginStub || (() => ({}));
+      return stub(body);
+    }
+    return {};
+  },
+  async get(url) {
+    window.__calls.gets.push({ url });
+    if (url === '/auth/me') {
+      return window.__meStub ? window.__meStub() : { id: 1, nome: 'AGENTE TESTE' };
+    }
+    return {};
+  },
+};
+
+// Componente raiz stub — login.js localiza este host via
+// document.querySelector("[x-data='app()']") e chama onLogin(user) no
+// sucesso do login. A integração real com o app principal fica fora deste
+// harness — só o contrato onLogin(user) é verificado.
+function app() {
+  return {
+    onLogin(user) {
+      window.__calls.onLogin.push(user);
+    },
+  };
+}
+</script>
+<script src="auth.js"></script>
+<script src="login.js"></script>
+</head>
+<body>
+<div x-data="app()">
+  <div id="login-mount"></div>
+</div>
+<script>
+document.getElementById('login-mount').innerHTML = renderLoginPage();
+</script>
+<script defer src="alpine.min.js"></script>
+</body>
+</html>
