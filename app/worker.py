@@ -13,6 +13,7 @@ import logging
 from arq.connections import RedisSettings
 
 from app.config import settings
+from app.core.logging_config import setup_logging
 from app.tasks.face_processor import processar_face_task
 from app.tasks.pdf_processor import processar_pdf_task
 from app.tasks.thumbnail_backfill import gerar_thumbnail_backfill_task
@@ -33,6 +34,13 @@ async def startup(ctx: dict) -> None:
     from app.services.embedding_service import EmbeddingService
     from app.services.storage_service import StorageService
 
+    # Sem isso, o worker roda sem logging.basicConfig() nenhum: todo
+    # logger.info (inclusive das tasks de foto/PDF) é descartado em silêncio,
+    # porque o root logger sem config fica em WARNING por padrão. Só a API
+    # chamava setup_logging() (app/main.py), deixando o worker cego para
+    # diagnóstico de incidentes (achado 2026-07-15, investigação do
+    # alert-worker-parado).
+    setup_logging()
     logger.info("Iniciando worker arq...")
 
     try:
