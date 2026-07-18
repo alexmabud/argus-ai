@@ -8,7 +8,7 @@
 
 function renderAbordagemDetalhe() {
   return `
-    <div x-data="{ ...abordagemDetalhePage(), ...personPhotoModal() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
+    <div x-data="{ ...abordagemDetalhePage(), ...personPhotoModal(), ...cadastroPessoaModal() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
 
       <!-- Loading inicial -->
       <div x-show="loading" style="text-align:center;padding:48px 0;">
@@ -91,7 +91,11 @@ function renderAbordagemDetalhe() {
                           </button>
                         </template>
                         <div x-show="noResults" style="padding:12px;font-family:var(--font-body);font-size:14px;color:var(--color-text-muted);">
-                          Nenhuma pessoa encontrada.
+                          <p>Nenhuma pessoa encontrada.</p>
+                          <button @click="$dispatch('cadastrar-abordado-solicitado', { query: query })"
+                                  style="margin-top:8px;width:100%;text-align:left;color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
+                            + Cadastrar novo abordado
+                          </button>
                         </div>
                       </div>
 
@@ -309,6 +313,7 @@ function renderAbordagemDetalhe() {
       </template>
 
       ${personPhotoModalHTML()}
+      ${cadastroPessoaModalHTML()}
 
       <!-- Foto ampliada (mídia da abordagem — sem pessoa vinculada) -->
       <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
@@ -386,8 +391,16 @@ function abordagemDetalhePage() {
       }
     },
 
+    // Hook de cadastroPessoaModal() (ver frontend/js/components/cadastro-pessoa-modal.js):
+    // chamado no lugar de navegar pra ficha após criar a pessoa — vincula
+    // direto na abordagem aberta.
+    onPessoaCriada(pessoa) {
+      this.vincularPessoa(pessoa);
+    },
+
     async init() {
       this.$el.addEventListener('abordado-selecionado', (e) => this.vincularPessoa(e.detail.pessoa));
+      this.$el.addEventListener('cadastrar-abordado-solicitado', (e) => this.abrirCadastroPessoa(e.detail.query));
       const appEl = document.querySelector('[x-data]');
       const abordagemId = appEl && appEl._x_dataStack && appEl._x_dataStack[0] && appEl._x_dataStack[0]._abordagemId;
       if (!abordagemId) {

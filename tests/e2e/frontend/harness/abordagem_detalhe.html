@@ -39,10 +39,13 @@ window.api = {
   },
   async post(url, body) {
     window.__calls.posts.push({ url, body: JSON.parse(JSON.stringify(body)) });
+    if (url === '/pessoas/') {
+      return { id: 200, ...body };
+    }
     if (url === `/abordagens/${window.__abordagem.id}/pessoas`) {
       window.__abordagem = {
         ...window.__abordagem,
-        pessoas: [...window.__abordagem.pessoas, { id: body.pessoa_id, nome: FULANO.nome }],
+        pessoas: [...window.__abordagem.pessoas, { id: body.pessoa_id, nome: 'STUB' }],
       };
       return window.__abordagem;
     }
@@ -55,7 +58,9 @@ window.api = {
   async patch() { return window.__abordagem; },
 };
 window.validarCPF = () => true;
+window.formatarCPF = v => v;
 window.formatarPlaca = v => (v || '');
+window.parseDateBR = () => null;
 window.showToast = (msg, type) => window.__toasts.push({ msg, type });
 window.startVoice = () => false;
 window.stopVoice = () => {};
@@ -72,11 +77,14 @@ window.__state = () => {
     pessoaIds: (d.ab.pessoas || []).map(p => p.id),
     adicionandoAbordado: d.adicionandoAbordado,
     erroVincularPessoa: d.erroVincularPessoa,
+    showCadastroPessoa: d.showCadastroPessoa,
+    novaPessoaNome: d.novaPessoa.nome,
   };
 };
 </script>
 <script src="autocomplete.js"></script>
 <script src="person-photo-modal.js"></script>
+<script src="cadastro-pessoa-modal.js"></script>
 <script src="abordagem-detalhe.js"></script>
 </head>
 <body>

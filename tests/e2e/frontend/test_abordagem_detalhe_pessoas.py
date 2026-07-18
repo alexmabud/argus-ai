@@ -34,9 +34,10 @@ HARNESS_DIR = Path(__file__).parent / "harness"
 def harness(tmp_path: Path) -> Path:
     """Monta o harness em diretório temporário com os arquivos reais do frontend.
 
-    Copia ``autocomplete.js``, ``person-photo-modal.js`` e
-    ``abordagem-detalhe.js`` do projeto (sempre a versão atual do código)
-    junto com o HTML do harness e o Alpine vendorado.
+    Copia ``autocomplete.js``, ``person-photo-modal.js``,
+    ``cadastro-pessoa-modal.js`` e ``abordagem-detalhe.js`` do projeto
+    (sempre a versão atual do código) junto com o HTML do harness e o
+    Alpine vendorado.
 
     Returns:
         Caminho do HTML do harness pronto para abrir via file://.
@@ -44,6 +45,10 @@ def harness(tmp_path: Path) -> Path:
     shutil.copy(FRONTEND_JS / "components" / "autocomplete.js", tmp_path / "autocomplete.js")
     shutil.copy(
         FRONTEND_JS / "components" / "person-photo-modal.js", tmp_path / "person-photo-modal.js"
+    )
+    shutil.copy(
+        FRONTEND_JS / "components" / "cadastro-pessoa-modal.js",
+        tmp_path / "cadastro-pessoa-modal.js",
     )
     shutil.copy(FRONTEND_JS / "pages" / "abordagem-detalhe.js", tmp_path / "abordagem-detalhe.js")
     shutil.copy(HARNESS_DIR / "alpine.min.js", tmp_path / "alpine.min.js")
@@ -185,3 +190,57 @@ def test_dono_remove_pessoa_vinculada(harness: Path) -> None:
     assert 77 not in estado_depois["pessoaIds"]
     deletes = [c for c in calls["deletes"] if c["url"] == "/abordagens/42/pessoas/77"]
     assert len(deletes) == 1
+
+
+def test_dono_cadastra_pessoa_nova_inline_e_vincula(harness: Path) -> None:
+    """Dono busca nome sem resultado, cadastra pessoa nova inline e ela é vinculada.
+
+    Reproduz o fluxo completo: "+ Adicionar abordado" → busca sem
+    resultado → "+ Cadastrar novo abordado" → modal reaproveitado de
+    cadastro-pessoa-modal.js abre com o nome pré-preenchido → salvar
+    cria a pessoa (POST /pessoas/) e vincula automaticamente à
+    abordagem aberta (POST /abordagens/{id}/pessoas), sem navegar para
+    fora da tela de detalhe.
+    """
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script("window.__authUser = { id: 1 };")
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.get_by_role("button", name="+ Adicionar abordado").click()
+
+        busca = page.locator('input[placeholder="Buscar por nome ou CPF..."]')
+        busca.fill("PESSOA NOVA")
+        page.wait_for_timeout(500)
+
+        page.get_by_text("+ Cadastrar novo abordado").click()
+        page.wait_for_timeout(100)
+
+        estado_modal = page.evaluate("__state()")
+        assert estado_modal["showCadastroPessoa"] is True
+        assert estado_modal["novaPessoaNome"] == "PESSOA NOVA"
+
+        page.get_by_role("button", name="SALVAR PESSOA").click()
+        page.wait_for_timeout(300)
+
+        estado = page.evaluate("__state()")
+        calls = page.evaluate("__calls")
+        browser.close()
+
+    assert estado["showCadastroPessoa"] is False
+    assert estado["adicionandoAbordado"] is False
+    assert 200 in estado["pessoaIds"]
+
+    posts_pessoa = [c for c in calls["posts"] if c["url"] == "/pessoas/"]
+    assert len(posts_pessoa) == 1
+    assert posts_pessoa[0]["body"]["nome"] == "PESSOA NOVA"
+
+    posts_vinculo = [c for c in calls["posts"] if c["url"] == "/abordagens/42/pessoas"]
+    assert len(posts_vinculo) == 1
+    assert posts_vinculo[0]["body"] == {"pessoa_id": 200}

@@ -18,6 +18,11 @@
  *   Incluir no template: ${cadastroPessoaModalHTML()}
  *   Acionar: abrirCadastroPessoa() ou abrirCadastroPessoa('texto buscado')
  *   Acionar com aviso: abrirCadastroPessoa(null, true)
+ *
+ * Se o host expõe um método onPessoaCriada(pessoa), ele tem prioridade sobre
+ * viewPessoa e é chamado no lugar da navegação para a ficha — caso da tela
+ * de detalhe de abordagem, que vincula a pessoa recém-criada à abordagem
+ * aberta em vez de navegar para fora dela.
  */
 
 /**
@@ -340,8 +345,10 @@ function cadastroPessoaModal() {
 
     /**
      * Cria a pessoa e, se houver, endereço e foto associados. Ao final,
-     * navega para a ficha via viewPessoa do host (quando existir — preserva
-     * estado de busca da Consulta IA) ou, senão, navega diretamente.
+     * chama onPessoaCriada do host quando existir (ex.: vincular a pessoa a
+     * uma abordagem aberta), senão navega para a ficha via viewPessoa do
+     * host (preserva estado de busca da Consulta IA) ou, na ausência de
+     * ambos, navega direto para a ficha.
      */
     async criarPessoa() {
       const nome = this.novaPessoa.nome.trim();
@@ -392,7 +399,9 @@ function cadastroPessoaModal() {
 
         this.fecharCadastroPessoa();
         showToast("Pessoa cadastrada com sucesso!", "success");
-        if (typeof this.viewPessoa === "function") {
+        if (typeof this.onPessoaCriada === "function") {
+          this.onPessoaCriada(pessoa);
+        } else if (typeof this.viewPessoa === "function") {
           this.viewPessoa(pessoa.id);
         } else {
           const appEl = document.querySelector("[x-data]");
