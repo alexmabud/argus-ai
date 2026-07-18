@@ -183,3 +183,258 @@ class TestAtualizarAbordagem:
         )
         assert response.status_code == 200
         assert response.json()["observacao"] == "EDIÇÃO FEITA PELO ADMIN"
+
+
+class TestVincularPessoa:
+    """Testes do endpoint POST /api/v1/abordagens/{id}/pessoas."""
+
+    async def test_dono_vincula_pessoa_existente_sucesso(
+        self, client: AsyncClient, auth_headers: dict, pessoa: Pessoa
+    ):
+        """Testa que o dono da abordagem consegue vincular pessoa já cadastrada.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers do usuário dono da abordagem.
+            pessoa: Fixture de pessoa já cadastrada.
+        """
+        criada = await client.post(
+            "/api/v1/abordagens/",
+            json={
+                "data_hora": datetime.now(UTC).isoformat(),
+                "endereco_texto": "Rua Sem Pessoa, 10",
+            },
+            headers=auth_headers,
+        )
+        abordagem_id = criada.json()["id"]
+
+        response = await client.post(
+            f"/api/v1/abordagens/{abordagem_id}/pessoas",
+            json={"pessoa_id": pessoa.id},
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+        pessoa_ids = [p["id"] for p in response.json()["pessoas"]]
+        assert pessoa.id in pessoa_ids
+
+    async def test_terceiro_nao_pode_vincular_pessoa_retorna_403(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        auth_headers_outro_usuario: dict,
+        pessoa: Pessoa,
+    ):
+        """Testa que usuário que não é dono nem admin não pode vincular pessoa.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers do usuário dono da abordagem.
+            auth_headers_outro_usuario: Headers de terceiro sem privilégio de admin.
+            pessoa: Fixture de pessoa já cadastrada.
+        """
+        criada = await client.post(
+            "/api/v1/abordagens/",
+            json={
+                "data_hora": datetime.now(UTC).isoformat(),
+                "endereco_texto": "Rua do Dono, 30",
+            },
+            headers=auth_headers,
+        )
+        abordagem_id = criada.json()["id"]
+
+        response = await client.post(
+            f"/api/v1/abordagens/{abordagem_id}/pessoas",
+            json={"pessoa_id": pessoa.id},
+            headers=auth_headers_outro_usuario,
+        )
+        assert response.status_code == 403
+
+    async def test_admin_vincula_pessoa_em_abordagem_de_outro(
+        self, client: AsyncClient, auth_headers: dict, auth_headers_admin: dict, pessoa: Pessoa
+    ):
+        """Testa que admin da guarnição pode vincular pessoa em abordagem de outro oficial.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers do usuário dono da abordagem (não-admin).
+            auth_headers_admin: Headers de um admin da mesma guarnição.
+            pessoa: Fixture de pessoa já cadastrada.
+        """
+        criada = await client.post(
+            "/api/v1/abordagens/",
+            json={
+                "data_hora": datetime.now(UTC).isoformat(),
+                "endereco_texto": "Rua do Dono, 40",
+            },
+            headers=auth_headers,
+        )
+        abordagem_id = criada.json()["id"]
+
+        response = await client.post(
+            f"/api/v1/abordagens/{abordagem_id}/pessoas",
+            json={"pessoa_id": pessoa.id},
+            headers=auth_headers_admin,
+        )
+        assert response.status_code == 201
+        pessoa_ids = [p["id"] for p in response.json()["pessoas"]]
+        assert pessoa.id in pessoa_ids
+
+    async def test_vincular_pessoa_ja_vinculada_retorna_409(
+        self, client: AsyncClient, auth_headers: dict, pessoa: Pessoa
+    ):
+        """Testa que vincular a mesma pessoa duas vezes retorna 409, não 500.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers do usuário dono da abordagem.
+            pessoa: Fixture de pessoa já cadastrada.
+        """
+        criada = await client.post(
+            "/api/v1/abordagens/",
+            json={
+                "data_hora": datetime.now(UTC).isoformat(),
+                "endereco_texto": "Rua do Dono, 50",
+                "pessoa_ids": [pessoa.id],
+            },
+            headers=auth_headers,
+        )
+        abordagem_id = criada.json()["id"]
+
+        response = await client.post(
+            f"/api/v1/abordagens/{abordagem_id}/pessoas",
+            json={"pessoa_id": pessoa.id},
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
+
+
+class TestDesvincularPessoa:
+    """Testes do endpoint DELETE /api/v1/abordagens/{id}/pessoas/{pessoa_id}."""
+
+    async def test_dono_desvincula_pessoa_sucesso(
+        self, client: AsyncClient, auth_headers: dict, pessoa: Pessoa
+    ):
+        """Testa que o dono da abordagem consegue desvincular uma pessoa.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers do usuário dono da abordagem.
+            pessoa: Fixture de pessoa já cadastrada.
+        """
+        criada = await client.post(
+            "/api/v1/abordagens/",
+            json={
+                "data_hora": datetime.now(UTC).isoformat(),
+                "endereco_texto": "Rua do Dono, 60",
+                "pessoa_ids": [pessoa.id],
+            },
+            headers=auth_headers,
+        )
+        abordagem_id = criada.json()["id"]
+
+        response = await client.delete(
+            f"/api/v1/abordagens/{abordagem_id}/pessoas/{pessoa.id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 204
+
+        detalhe = await client.get(f"/api/v1/abordagens/{abordagem_id}", headers=auth_headers)
+        pessoa_ids = [p["id"] for p in detalhe.json()["pessoas"]]
+        assert pessoa.id not in pessoa_ids
+
+    async def test_terceiro_nao_pode_desvincular_retorna_403(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        auth_headers_outro_usuario: dict,
+        pessoa: Pessoa,
+    ):
+        """Testa que usuário que não é dono nem admin não pode desvincular pessoa.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers do usuário dono da abordagem.
+            auth_headers_outro_usuario: Headers de terceiro sem privilégio de admin.
+            pessoa: Fixture de pessoa já cadastrada.
+        """
+        criada = await client.post(
+            "/api/v1/abordagens/",
+            json={
+                "data_hora": datetime.now(UTC).isoformat(),
+                "endereco_texto": "Rua do Dono, 70",
+                "pessoa_ids": [pessoa.id],
+            },
+            headers=auth_headers,
+        )
+        abordagem_id = criada.json()["id"]
+
+        response = await client.delete(
+            f"/api/v1/abordagens/{abordagem_id}/pessoas/{pessoa.id}",
+            headers=auth_headers_outro_usuario,
+        )
+        assert response.status_code == 403
+
+    async def test_desvincular_pessoa_nao_vinculada_retorna_404(
+        self, client: AsyncClient, auth_headers: dict, pessoa: Pessoa
+    ):
+        """Testa que desvincular pessoa não vinculada retorna 404.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers do usuário dono da abordagem.
+            pessoa: Fixture de pessoa já cadastrada (mas não vinculada).
+        """
+        criada = await client.post(
+            "/api/v1/abordagens/",
+            json={
+                "data_hora": datetime.now(UTC).isoformat(),
+                "endereco_texto": "Rua do Dono, 80",
+            },
+            headers=auth_headers,
+        )
+        abordagem_id = criada.json()["id"]
+
+        response = await client.delete(
+            f"/api/v1/abordagens/{abordagem_id}/pessoas/{pessoa.id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
+
+    async def test_vincular_apos_desvincular_reativa_vinculo(
+        self, client: AsyncClient, auth_headers: dict, pessoa: Pessoa
+    ):
+        """Testa que vincular novamente após desvincular reativa o vínculo antigo.
+
+        Reproduz o cenário de soft-delete: desvincula, depois vincula de novo.
+        Deve reativar o vínculo em vez de tentar inserir uma linha duplicada.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers do usuário dono da abordagem.
+            pessoa: Fixture de pessoa já cadastrada.
+        """
+        criada = await client.post(
+            "/api/v1/abordagens/",
+            json={
+                "data_hora": datetime.now(UTC).isoformat(),
+                "endereco_texto": "Rua do Dono, 90",
+                "pessoa_ids": [pessoa.id],
+            },
+            headers=auth_headers,
+        )
+        abordagem_id = criada.json()["id"]
+
+        desvinculo = await client.delete(
+            f"/api/v1/abordagens/{abordagem_id}/pessoas/{pessoa.id}",
+            headers=auth_headers,
+        )
+        assert desvinculo.status_code == 204
+
+        response = await client.post(
+            f"/api/v1/abordagens/{abordagem_id}/pessoas",
+            json={"pessoa_id": pessoa.id},
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+        pessoa_ids = [p["id"] for p in response.json()["pessoas"]]
+        assert pessoa.id in pessoa_ids
