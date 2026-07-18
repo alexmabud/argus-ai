@@ -5,11 +5,12 @@ materialização de relacionamentos e fluxo completo de criação em campo.
 """
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NaoEncontradoError
+from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
 from app.models.abordagem import Abordagem, AbordagemPessoa
 from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
@@ -168,6 +169,95 @@ class TestAtualizarAbordagem:
         service = AbordagemService(db_session)
         with pytest.raises(NaoEncontradoError):
             await service.buscar_por_id(99999, guarnicao.id)
+
+
+class TestVincularPessoa:
+    """Testes de vincular_pessoa, incluindo o tratamento de corrida no insert."""
+
+    async def test_vincular_pessoa_corrida_no_insert_gera_conflito_dados(
+        self,
+        db_session: AsyncSession,
+        guarnicao: Guarnicao,
+        usuario: Usuario,
+        pessoa: Pessoa,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """Corrida entre duas requisições vinculando a mesma pessoa pela 1a vez.
+
+        Simula o cenário em que a checagem em memória (abordagem.pessoas)
+        não reflete um vínculo já criado por outra requisição concorrente —
+        o INSERT perdedor colide com a unique constraint uq_abordagem_pessoa,
+        e o service deve converter isso em ConflitoDadosError, não deixar o
+        IntegrityError vazar como erro 500. Mesmo padrão de
+        test_pessoa_veiculo_service.py::test_vincular_corrida_no_insert_gera_conflito_dados.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário (dono da abordagem).
+            pessoa: Fixture de pessoa a vincular.
+            monkeypatch: Fixture do pytest para substituir buscar_detalhe.
+        """
+        service = AbordagemService(db_session)
+        data = AbordagemCreate(data_hora=datetime.now(UTC), endereco_texto="Rua Teste, 100")
+        abordagem = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+        await service.vincular_pessoa(abordagem.id, pessoa.id, usuario)
+
+        # Objeto avulso (não gerenciado pela sessão) simulando uma leitura
+        # desatualizada de abordagem.pessoas — evita mutar a coleção real
+        # mapeada pelo SQLAlchemy, que dispararia cascade delete-orphan.
+        abordagem_desatualizada = SimpleNamespace(
+            id=abordagem.id, usuario_id=usuario.id, pessoas=[], data_hora=abordagem.data_hora
+        )
+
+        async def buscar_detalhe_desatualizado(*args, **kwargs):
+            return abordagem_desatualizada
+
+        monkeypatch.setattr(service, "buscar_detalhe", buscar_detalhe_desatualizado)
+
+        with pytest.raises(ConflitoDadosError):
+            await service.vincular_pessoa(abordagem.id, pessoa.id, usuario)
+
+
+class TestVincularVeiculo:
+    """Testes de vincular_veiculo, incluindo o tratamento de corrida no insert."""
+
+    async def test_vincular_veiculo_corrida_no_insert_gera_conflito_dados(
+        self,
+        db_session: AsyncSession,
+        guarnicao: Guarnicao,
+        usuario: Usuario,
+        veiculo: Veiculo,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """Corrida entre duas requisições vinculando o mesmo veículo pela 1a vez.
+
+        Mesmo cenário de test_vincular_pessoa_corrida_no_insert_gera_conflito_dados,
+        para uq_abordagem_veiculo.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário (dono da abordagem).
+            veiculo: Fixture de veículo a vincular.
+            monkeypatch: Fixture do pytest para substituir buscar_detalhe.
+        """
+        service = AbordagemService(db_session)
+        data = AbordagemCreate(data_hora=datetime.now(UTC), endereco_texto="Rua Teste, 200")
+        abordagem = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+        await service.vincular_veiculo(abordagem.id, veiculo.id, usuario)
+
+        abordagem_desatualizada = SimpleNamespace(
+            id=abordagem.id, usuario_id=usuario.id, veiculos=[], data_hora=abordagem.data_hora
+        )
+
+        async def buscar_detalhe_desatualizado(*args, **kwargs):
+            return abordagem_desatualizada
+
+        monkeypatch.setattr(service, "buscar_detalhe", buscar_detalhe_desatualizado)
+
+        with pytest.raises(ConflitoDadosError):
+            await service.vincular_veiculo(abordagem.id, veiculo.id, usuario)
 
 
 class TestListarPorUsuario:

@@ -398,9 +398,12 @@ function cadastroPessoaModal() {
         }
 
         this.fecharCadastroPessoa();
-        showToast("Pessoa cadastrada com sucesso!", "success");
         if (typeof this.onPessoaCriada === "function") {
-          this.onPessoaCriada(pessoa);
+          // Aguarda o hook (ex.: vincularPessoa() na tela de detalhe da
+          // abordagem) antes do toast de sucesso, já que ele nunca relança
+          // seus próprios erros — sem o await, o toast apareceria antes de
+          // saber se o vínculo com a abordagem realmente deu certo.
+          await this.onPessoaCriada(pessoa);
         } else if (typeof this.viewPessoa === "function") {
           this.viewPessoa(pessoa.id);
         } else {
@@ -410,6 +413,7 @@ function cadastroPessoaModal() {
             appEl._x_dataStack[0].navigate("pessoa-detalhe");
           }
         }
+        showToast("Pessoa cadastrada com sucesso!", "success");
       } catch (err) {
         this.erroCadastro = err.message || "Erro ao cadastrar pessoa.";
       } finally {

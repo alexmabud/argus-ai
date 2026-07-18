@@ -244,3 +244,91 @@ def test_dono_cadastra_pessoa_nova_inline_e_vincula(harness: Path) -> None:
     posts_vinculo = [c for c in calls["posts"] if c["url"] == "/abordagens/42/pessoas"]
     assert len(posts_vinculo) == 1
     assert posts_vinculo[0]["body"] == {"pessoa_id": 200}
+
+
+def test_reabrir_painel_apos_vincular_pessoa_vem_com_busca_limpa(harness: Path) -> None:
+    """Depois de vincular uma pessoa, reabrir "+ Adicionar abordado" deve vir limpo.
+
+    Regressão: selecionar um resultado despachava o evento sem chamar
+    select() no componente de autocomplete (que é quem limpa
+    query/results/showDropdown), deixando a busca anterior visível ao
+    reabrir o painel pra adicionar uma segunda pessoa.
+    """
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script("window.__authUser = { id: 1 };")
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.get_by_role("button", name="+ Adicionar abordado").click()
+        busca = page.locator('input[placeholder="Buscar por nome ou CPF..."]')
+        busca.fill("FULANO")
+        page.wait_for_timeout(500)
+        page.get_by_text("FULANO EXISTENTE").first.click()
+        page.wait_for_timeout(200)
+
+        page.get_by_role("button", name="+ Adicionar abordado").click()
+        page.wait_for_timeout(100)
+        busca_reaberta = page.locator('input[placeholder="Buscar por nome ou CPF..."]')
+        valor_reaberto = busca_reaberta.input_value()
+        dropdown_visivel = page.get_by_text("FULANO EXISTENTE").count() > 0
+
+        browser.close()
+
+    assert valor_reaberto == ""
+    assert not dropdown_visivel
+
+
+def test_terceiro_nao_ve_botao_salvar_observacao(harness: Path) -> None:
+    """Usuário que não é dono nem admin não vê o botão de salvar observação.
+
+    Regressão: o backend passou a exigir 403 nesse endpoint para quem não
+    é dono/admin, mas o botão continuava habilitado no frontend.
+    """
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script("window.__authUser = { id: 2 };")
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        botao_salvar = page.get_by_role("button", name="Salvar observação")
+        textarea_desabilitada = page.locator("textarea").is_disabled()
+        botao_visivel = botao_salvar.count() > 0 and botao_salvar.is_visible()
+
+        browser.close()
+
+    assert textarea_desabilitada
+    assert not botao_visivel
+
+
+def test_dono_ve_botao_salvar_observacao(harness: Path) -> None:
+    """Dono da abordagem continua vendo o botão de salvar observação."""
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script("window.__authUser = { id: 1 };")
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        botao_salvar = page.get_by_role("button", name="Salvar observação")
+        visivel = botao_salvar.is_visible()
+        textarea_habilitada = not page.locator("textarea").is_disabled()
+
+        browser.close()
+
+    assert visivel
+    assert textarea_habilitada

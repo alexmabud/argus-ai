@@ -57,6 +57,9 @@ window.api = {
       return window.__abordagem;
     }
     if (url === `/abordagens/${window.__abordagem.id}/veiculos`) {
+      if (window.__vincularVeiculoDeveFalhar) {
+        throw new Error('Erro simulado ao vincular veículo');
+      }
       window.__abordagem = {
         ...window.__abordagem,
         veiculos: [...window.__abordagem.veiculos, { id: body.veiculo_id, placa: 'STUB', modelo: '', cor: '', ano: null }],
@@ -96,6 +99,7 @@ window.__state = () => {
     veiculoIds: (d.ab.veiculos || []).map(v => v.id),
     adicionandoVeiculo: d.adicionandoVeiculo,
     erroVincularVeiculo: d.erroVincularVeiculo,
+    novoVeiculoPlaca: d.novoVeiculo.placa,
   };
 };
 </script>

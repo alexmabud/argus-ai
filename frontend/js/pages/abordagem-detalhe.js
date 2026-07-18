@@ -83,7 +83,7 @@ function renderAbordagemDetalhe() {
                       <div x-show="showDropdown" x-cloak @click.outside="showDropdown = false"
                            style="position:absolute;z-index:20;width:100%;margin-top:4px;max-height:14rem;overflow-y:auto;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
                         <template x-for="item in results" :key="item.id">
-                          <button @click="$dispatch('abordado-selecionado', { pessoa: item })"
+                          <button @click="select(item); $dispatch('abordado-selecionado', { pessoa: item })"
                                   style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);display:flex;flex-direction:column;gap:2px;"
                                   class="hov-row-surface">
                             <span x-text="getLabel(item)"></span>
@@ -159,7 +159,7 @@ function renderAbordagemDetalhe() {
                         <div x-show="showDropdown" x-cloak @click.outside="showDropdown = false"
                              style="position:absolute;z-index:20;width:100%;margin-top:4px;max-height:14rem;overflow-y:auto;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
                           <template x-for="item in results" :key="item.id">
-                            <button @click="$dispatch('veiculo-selecionado', { veiculo: item })"
+                            <button @click="select(item); $dispatch('veiculo-selecionado', { veiculo: item })"
                                     style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);"
                                     class="hov-row-surface"
                                     x-text="getLabel(item)">
@@ -248,7 +248,7 @@ function renderAbordagemDetalhe() {
             <div style="display:flex;flex-direction:column;gap:8px;">
               <div style="display:flex;align-items:center;justify-content:space-between;">
                 <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Observação</span>
-                <button x-show="voiceSupported" @click="toggleVoice()"
+                <button x-show="voiceSupported && podeEditar()" @click="toggleVoice()"
                         style="font-family:var(--font-data);font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;border:none;transition:all 0.15s;"
                         :style="recording
                           ? 'background:rgba(255,107,0,0.2);color:var(--color-danger);border:1px solid rgba(255,107,0,0.4);box-shadow:0 0 8px rgba(255,107,0,0.3);'
@@ -256,8 +256,8 @@ function renderAbordagemDetalhe() {
                   <span x-text="recording ? 'PARAR' : 'VOZ'"></span>
                 </button>
               </div>
-              <textarea class="input-upper" x-model="observacaoEdit" rows="3" placeholder="Descreva a abordagem..."></textarea>
-              <div style="display:flex;align-items:center;gap:8px;">
+              <textarea class="input-upper" x-model="observacaoEdit" rows="3" placeholder="Descreva a abordagem..." :disabled="!podeEditar()"></textarea>
+              <div x-show="podeEditar()" style="display:flex;align-items:center;gap:8px;">
                 <button @click="salvarObservacao()" class="btn btn-primary" style="padding:8px 16px;"
                         :disabled="salvandoObservacao || observacaoEdit.trim() === (ab.observacao || '')">
                   <span x-show="!salvandoObservacao">Salvar observação</span>
@@ -520,7 +520,7 @@ function abordagemDetalhePage() {
     },
 
     async criarEVincularVeiculo() {
-      if (!this.novoVeiculo.placa.trim()) return;
+      if (this.salvandoVeiculo || !this.novoVeiculo.placa.trim()) return;
       this.salvandoVeiculo = true;
       this.erroVincularVeiculo = null;
       try {
@@ -530,8 +530,13 @@ function abordagemDetalhePage() {
         if (this.novoVeiculo.ano) data.ano = parseInt(this.novoVeiculo.ano, 10);
         const veiculo = await api.post('/veiculos/', data);
         await this.vincularVeiculo(veiculo);
-        this.novoVeiculo = { placa: '', modelo: '', cor: '', ano: '' };
-        this.corVeiculoDropdown = '';
+        // vincularVeiculo() nunca relança erro (fica só em erroVincularVeiculo) —
+        // só limpa o formulário se o vínculo realmente deu certo, senão o
+        // veículo fica órfão no banco e o usuário perde o que digitou.
+        if (!this.erroVincularVeiculo) {
+          this.novoVeiculo = { placa: '', modelo: '', cor: '', ano: '' };
+          this.corVeiculoDropdown = '';
+        }
       } catch (e) {
         this.erroVincularVeiculo = e?.message || 'Erro ao cadastrar veículo. Tente novamente.';
       } finally {

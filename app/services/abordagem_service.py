@@ -9,7 +9,7 @@ cadastro completo ocorra em < 40 segundos.
 
 import logging
 from collections.abc import Sequence
-from datetime import date
+from datetime import UTC, date, datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -515,13 +515,24 @@ class AbordagemService:
         if vinculo_existente is not None:
             vinculo = vinculo_existente
             vinculo.ativo = True
+            vinculo.desativado_em = None
+            vinculo.desativado_por_id = None
+            await self.db.flush()
         else:
             vinculo = AbordagemPessoa(
                 abordagem_id=abordagem.id,
                 pessoa_id=pessoa_id,
             )
             self.db.add(vinculo)
-        await self.db.flush()
+            try:
+                await self.db.flush()
+            except IntegrityError:
+                # Corrida entre duas requisições vinculando a mesma pessoa pela
+                # primeira vez: nenhum vínculo ainda existia na leitura acima,
+                # mas o INSERT perdedor colide com a unique constraint. Mesmo
+                # tratamento de pessoa_veiculo_service.py (vincular).
+                await self.db.rollback()
+                raise ConflitoDadosError("Pessoa já vinculada a esta abordagem")
 
         # Re-materializar relacionamentos com todas as pessoas ativas da abordagem
         pessoa_ids_existentes = [ap.pessoa_id for ap in abordagem.pessoas if ap.ativo]
@@ -585,6 +596,8 @@ class AbordagemService:
             raise NaoEncontradoError("Vínculo pessoa-abordagem")
 
         vinculo.ativo = False
+        vinculo.desativado_em = datetime.now(UTC)
+        vinculo.desativado_por_id = user.id
         await self.db.flush()
 
         await self.audit.log(
@@ -641,13 +654,24 @@ class AbordagemService:
         if vinculo_existente is not None:
             vinculo = vinculo_existente
             vinculo.ativo = True
+            vinculo.desativado_em = None
+            vinculo.desativado_por_id = None
+            await self.db.flush()
         else:
             vinculo = AbordagemVeiculo(
                 abordagem_id=abordagem.id,
                 veiculo_id=veiculo_id,
             )
             self.db.add(vinculo)
-        await self.db.flush()
+            try:
+                await self.db.flush()
+            except IntegrityError:
+                # Corrida entre duas requisições vinculando o mesmo veículo pela
+                # primeira vez: nenhum vínculo ainda existia na leitura acima,
+                # mas o INSERT perdedor colide com a unique constraint. Mesmo
+                # tratamento de pessoa_veiculo_service.py (vincular).
+                await self.db.rollback()
+                raise ConflitoDadosError("Veículo já vinculado a esta abordagem")
 
         await self.audit.log(
             usuario_id=user.id,
@@ -703,6 +727,8 @@ class AbordagemService:
             raise NaoEncontradoError("Vínculo veículo-abordagem")
 
         vinculo.ativo = False
+        vinculo.desativado_em = datetime.now(UTC)
+        vinculo.desativado_por_id = user.id
         await self.db.flush()
 
         await self.audit.log(

@@ -193,3 +193,45 @@ def test_dono_cadastra_veiculo_novo_inline_e_vincula(harness: Path) -> None:
     posts_vinculo = [c for c in calls["posts"] if c["url"] == "/abordagens/42/veiculos"]
     assert len(posts_vinculo) == 1
     assert posts_vinculo[0]["body"] == {"veiculo_id": 300}
+
+
+def test_falha_ao_vincular_veiculo_novo_preserva_formulario(harness: Path) -> None:
+    """Se o vínculo falhar após criar o veículo, o formulário não deve ser limpo.
+
+    Regressão: criarEVincularVeiculo() limpava novoVeiculo incondicionalmente
+    mesmo quando vincularVeiculo() falhava internamente (ela nunca relança
+    erro), escondendo os dados digitados e deixando o veículo criado mas
+    órfão no banco.
+    """
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script(
+            "window.__authUser = { id: 1 }; window.__vincularVeiculoDeveFalhar = true;"
+        )
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.get_by_role("button", name="+ Adicionar veículo").click()
+        busca = page.locator('input[placeholder="Buscar por placa..."]')
+        busca.fill("ABC1234")
+        page.wait_for_timeout(500)
+        page.get_by_text("+ Cadastrar novo veículo").click()
+        page.wait_for_timeout(100)
+
+        page.get_by_role("button", name="Salvar e adicionar").click()
+        page.wait_for_timeout(300)
+
+        estado = page.evaluate("__state()")
+        calls = page.evaluate("__calls")
+        browser.close()
+
+    assert estado["novoVeiculoPlaca"] == "ABC1234", "formulário não deveria ter sido limpo"
+    assert estado["erroVincularVeiculo"]
+    assert 300 not in estado["veiculoIds"]
+    posts_veiculo = [c for c in calls["posts"] if c["url"] == "/veiculos/"]
+    assert len(posts_veiculo) == 1, "veículo deveria ter sido criado (órfão) mesmo com a falha"
