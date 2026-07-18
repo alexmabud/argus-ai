@@ -26,6 +26,7 @@ window.__abordagem = window.__abordagem || {
 // window.__authUser: usuário autenticado no teste (id 1 = dono por padrão).
 window.__authUser = window.__authUser || { id: 1 };
 const FULANO = { id: 77, nome: 'FULANO EXISTENTE', cpf_masked: '***.456.789-**', apelido: null };
+const CARRO_EXISTENTE = { id: 88, placa: 'XYZ9Z99', modelo: 'ONIX', cor: 'PRATA' };
 
 window.auth = { getUser: () => window.__authUser };
 
@@ -35,6 +36,9 @@ window.api = {
     if (url.startsWith('/pessoas/?')) {
       return decodeURIComponent(url).includes('FULANO') ? [FULANO] : [];
     }
+    if (url.startsWith('/veiculos/?')) {
+      return decodeURIComponent(url).includes('XYZ9Z99') ? [CARRO_EXISTENTE] : [];
+    }
     return [];
   },
   async post(url, body) {
@@ -42,10 +46,20 @@ window.api = {
     if (url === '/pessoas/') {
       return { id: 200, ...body };
     }
+    if (url === '/veiculos/') {
+      return { id: 300, ...body };
+    }
     if (url === `/abordagens/${window.__abordagem.id}/pessoas`) {
       window.__abordagem = {
         ...window.__abordagem,
         pessoas: [...window.__abordagem.pessoas, { id: body.pessoa_id, nome: 'STUB' }],
+      };
+      return window.__abordagem;
+    }
+    if (url === `/abordagens/${window.__abordagem.id}/veiculos`) {
+      window.__abordagem = {
+        ...window.__abordagem,
+        veiculos: [...window.__abordagem.veiculos, { id: body.veiculo_id, placa: 'STUB', modelo: '', cor: '', ano: null }],
       };
       return window.__abordagem;
     }
@@ -79,6 +93,9 @@ window.__state = () => {
     erroVincularPessoa: d.erroVincularPessoa,
     showCadastroPessoa: d.showCadastroPessoa,
     novaPessoaNome: d.novaPessoa.nome,
+    veiculoIds: (d.ab.veiculos || []).map(v => v.id),
+    adicionandoVeiculo: d.adicionandoVeiculo,
+    erroVincularVeiculo: d.erroVincularVeiculo,
   };
 };
 </script>

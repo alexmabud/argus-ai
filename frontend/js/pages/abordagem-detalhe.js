@@ -113,12 +113,13 @@ function renderAbordagemDetalhe() {
           </div>
 
           <!-- VEÍCULOS -->
-          <template x-if="ab.veiculos && ab.veiculos.length > 0">
+          <template x-if="(ab.veiculos && ab.veiculos.length > 0) || podeEditar()">
             <div class="glass-card" style="padding:12px;">
               <div style="display:flex;flex-direction:column;gap:8px;">
                 <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Veículos</span>
+                <div x-show="!ab.veiculos || ab.veiculos.length === 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">Nenhum veículo registrado.</div>
                 <template x-for="v in ab.veiculos" :key="v.id">
-                  <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;">
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;position:relative;">
                     <div style="width:52px;height:36px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
                       <template x-if="fotoVeiculo(v.id)">
                         <img :src="fotoVeiculo(v.id)" style="width:100%;height:100%;object-fit:cover;">
@@ -131,6 +132,89 @@ function renderAbordagemDetalhe() {
                       <span style="font-family:var(--font-data);font-size:12px;font-weight:700;color:var(--color-text);letter-spacing:0.1em;background:var(--color-surface-hover);padding:0.125rem 0.375rem;border-radius:2px;border:1px solid var(--color-border);" x-text="formatarPlaca(v.placa)"></span>
                       <div style="font-family:var(--font-data);font-size:11px;color:var(--color-text-muted);margin-top:3px;"
                            x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></div>
+                    </div>
+                    <button x-show="podeEditar()" @click.stop="removerVeiculo(v.id)"
+                       class="hov-icon-danger"
+                       style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;background:rgba(5,10,15,0.85);color:var(--color-text-muted);border:none;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;padding:0;"
+                       title="Remover veículo">
+                      ✕
+                    </button>
+                  </div>
+                </template>
+
+                <template x-if="podeEditar()">
+                  <div>
+                    <button x-show="!adicionandoVeiculo" @click="adicionandoVeiculo = true"
+                            style="font-family:var(--font-display);font-size:11px;color:var(--color-primary);background:transparent;border:1px dashed rgba(0,212,255,0.3);border-radius:4px;padding:6px 10px;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
+                      + Adicionar veículo
+                    </button>
+
+                    <div x-show="adicionandoVeiculo" x-cloak style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+                      <div x-data="autocompleteComponent('veiculo')" data-autocomplete="veiculo" style="position:relative;">
+                        <input type="text" :value="query"
+                               @input="query = formatarPlaca($event.target.value); onInput()"
+                               @focus="showDropdown = results.length > 0 || noResults"
+                               placeholder="Buscar por placa..." maxlength="8" style="width:100%;">
+
+                        <div x-show="showDropdown" x-cloak @click.outside="showDropdown = false"
+                             style="position:absolute;z-index:20;width:100%;margin-top:4px;max-height:14rem;overflow-y:auto;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+                          <template x-for="item in results" :key="item.id">
+                            <button @click="$dispatch('veiculo-selecionado', { veiculo: item })"
+                                    style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);"
+                                    class="hov-row-surface"
+                                    x-text="getLabel(item)">
+                            </button>
+                          </template>
+                          <div x-show="noResults" style="padding:12px;font-family:var(--font-body);font-size:14px;color:var(--color-text-muted);">
+                            <p>Nenhum veículo encontrado.</p>
+                            <button @click="showDropdown = false; mostrandoNovoVeiculo = true; novoVeiculo.placa = query"
+                                    style="margin-top:8px;width:100%;text-align:left;color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
+                              + Cadastrar novo veículo
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div x-show="mostrandoNovoVeiculo" x-cloak style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+                        <div>
+                          <label class="login-field-label">Placa *</label>
+                          <input type="text" :value="novoVeiculo.placa"
+                                 @input="novoVeiculo.placa = formatarPlaca($event.target.value)"
+                                 placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase;">
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                          <div>
+                            <label class="login-field-label">Modelo</label>
+                            <input type="text" class="input-upper" x-model="novoVeiculo.modelo" placeholder="Ex: Gol">
+                          </div>
+                          <div>
+                            <label class="login-field-label">Cor</label>
+                            <select x-model="corVeiculoDropdown" @change="onCorVeiculoChange()"
+                                    style="width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:8px;font-size:13px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
+                              <option value="">Selecione...</option>
+                              <template x-for="c in (window.CORES_VEICULO || [])" :key="c"><option :value="c" x-text="c"></option></template>
+                              <option value="__outra__">Outra...</option>
+                            </select>
+                            <input x-show="corVeiculoDropdown === '__outra__'" type="text" class="input-upper" x-model="novoVeiculo.cor" placeholder="Digite a cor" style="margin-top:6px;">
+                          </div>
+                          <div>
+                            <label class="login-field-label">Ano</label>
+                            <input type="number" x-model="novoVeiculo.ano" placeholder="2020" min="1900" max="2100">
+                          </div>
+                        </div>
+                        <button @click="criarEVincularVeiculo()" class="btn btn-primary" :disabled="salvandoVeiculo || !novoVeiculo.placa.trim()">
+                          <span x-show="!salvandoVeiculo">Salvar e adicionar</span>
+                          <span x-show="salvandoVeiculo" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+                            <span class="spinner"></span> Salvando...
+                          </span>
+                        </button>
+                      </div>
+
+                      <button @click="adicionandoVeiculo = false; mostrandoNovoVeiculo = false; erroVincularVeiculo = null"
+                              style="align-self:flex-start;font-family:var(--font-data);font-size:11px;color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;">
+                        Cancelar
+                      </button>
+                      <p x-show="erroVincularVeiculo" x-text="erroVincularVeiculo" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);"></p>
                     </div>
                   </div>
                 </template>
@@ -336,6 +420,13 @@ function abordagemDetalhePage() {
     adicionandoAbordado: false,
     vinculandoPessoa: false,
     erroVincularPessoa: null,
+    adicionandoVeiculo: false,
+    vinculandoVeiculo: false,
+    mostrandoNovoVeiculo: false,
+    novoVeiculo: { placa: '', modelo: '', cor: '', ano: '' },
+    corVeiculoDropdown: '',
+    salvandoVeiculo: false,
+    erroVincularVeiculo: null,
     rapFile: null,
     rapNumero: '',
     rapData: '',
@@ -398,9 +489,60 @@ function abordagemDetalhePage() {
       this.vincularPessoa(pessoa);
     },
 
+    async vincularVeiculo(veiculo) {
+      if (this.vinculandoVeiculo) return;
+      this.erroVincularVeiculo = null;
+      this.vinculandoVeiculo = true;
+      try {
+        const result = await api.post(`/abordagens/${this.ab.id}/veiculos`, { veiculo_id: veiculo.id });
+        this.ab = result;
+        this.adicionandoVeiculo = false;
+        this.mostrandoNovoVeiculo = false;
+      } catch (e) {
+        this.erroVincularVeiculo = e?.message || 'Erro ao vincular veículo. Tente novamente.';
+      } finally {
+        this.vinculandoVeiculo = false;
+      }
+    },
+
+    async removerVeiculo(veiculoId) {
+      if (!confirm('Remover este veículo da abordagem?')) return;
+      try {
+        await api.delete(`/abordagens/${this.ab.id}/veiculos/${veiculoId}`);
+        this.ab = { ...this.ab, veiculos: this.ab.veiculos.filter(v => v.id !== veiculoId) };
+      } catch (e) {
+        showToast(e?.message || 'Erro ao remover veículo', 'error');
+      }
+    },
+
+    onCorVeiculoChange() {
+      this.novoVeiculo.cor = this.corVeiculoDropdown === '__outra__' ? '' : this.corVeiculoDropdown;
+    },
+
+    async criarEVincularVeiculo() {
+      if (!this.novoVeiculo.placa.trim()) return;
+      this.salvandoVeiculo = true;
+      this.erroVincularVeiculo = null;
+      try {
+        const data = { placa: this.novoVeiculo.placa.trim() };
+        if (this.novoVeiculo.modelo.trim()) data.modelo = this.novoVeiculo.modelo.trim();
+        if (this.novoVeiculo.cor.trim()) data.cor = this.novoVeiculo.cor.trim();
+        if (this.novoVeiculo.ano) data.ano = parseInt(this.novoVeiculo.ano, 10);
+        const veiculo = await api.post('/veiculos/', data);
+        await this.vincularVeiculo(veiculo);
+        this.novoVeiculo = { placa: '', modelo: '', cor: '', ano: '' };
+        this.corVeiculoDropdown = '';
+      } catch (e) {
+        this.erroVincularVeiculo = e?.message || 'Erro ao cadastrar veículo. Tente novamente.';
+      } finally {
+        this.salvandoVeiculo = false;
+      }
+    },
+
     async init() {
       this.$el.addEventListener('abordado-selecionado', (e) => this.vincularPessoa(e.detail.pessoa));
       this.$el.addEventListener('cadastrar-abordado-solicitado', (e) => this.abrirCadastroPessoa(e.detail.query));
+      this.$el.addEventListener('veiculo-selecionado', (e) => this.vincularVeiculo(e.detail.veiculo));
       const appEl = document.querySelector('[x-data]');
       const abordagemId = appEl && appEl._x_dataStack && appEl._x_dataStack[0] && appEl._x_dataStack[0]._abordagemId;
       if (!abordagemId) {
