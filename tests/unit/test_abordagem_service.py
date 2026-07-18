@@ -155,7 +155,7 @@ class TestAtualizarAbordagem:
         abordagem = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
         update = AbordagemUpdate(observacao="Nova observação")
         # observacao é normalizada para MAIÚSCULAS no schema
-        atualizada = await service.atualizar(abordagem.id, update, usuario.id, guarnicao.id)
+        atualizada = await service.atualizar(abordagem.id, update, usuario)
         assert atualizada.observacao == "NOVA OBSERVAÇÃO"
 
     async def test_buscar_por_id_inexistente(self, db_session: AsyncSession, guarnicao: Guarnicao):

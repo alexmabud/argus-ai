@@ -237,7 +237,8 @@ async def atualizar_abordagem(
 
     Permite complementar a observação depois do registro em campo, para
     o caso de o oficial não ter tido tempo de descrevê-la no momento
-    da abordagem.
+    da abordagem. Restrito a quem registrou a abordagem ou a um admin
+    da guarnição.
 
     Args:
         request: Objeto Request do FastAPI.
@@ -251,10 +252,11 @@ async def atualizar_abordagem(
 
     Raises:
         HTTPException 404: Abordagem não encontrada ou não pertence à guarnição.
+        HTTPException 403: Usuário sem guarnição, ou não é dono/admin da abordagem.
 
     Status Code:
         200: Abordagem atualizada.
-        403: Usuário sem guarnição.
+        403: Usuário sem guarnição, ou não é dono/admin da abordagem.
         404: Abordagem não encontrada.
         429: Rate limit (30/min).
     """
@@ -264,8 +266,7 @@ async def atualizar_abordagem(
         abordagem = await service.atualizar(
             abordagem_id,
             data,
-            user_id=user.id,
-            guarnicao_id=user.guarnicao_id,
+            user=user,
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )

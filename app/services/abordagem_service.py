@@ -15,11 +15,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NaoEncontradoError
+from app.core.permissions import assert_pode_editar_abordagem
 from app.models.abordagem import (
     Abordagem,
     AbordagemPessoa,
     AbordagemVeiculo,
 )
+from app.models.usuario import Usuario
 from app.repositories.abordagem_repo import AbordagemRepository
 from app.schemas.abordagem import AbordagemCreate, AbordagemUpdate
 from app.services.audit_service import AuditService
@@ -427,8 +429,7 @@ class AbordagemService:
         self,
         abordagem_id: int,
         data: AbordagemUpdate,
-        user_id: int,
-        guarnicao_id: int,
+        user: Usuario,
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> Abordagem:
@@ -436,12 +437,12 @@ class AbordagemService:
 
         Apenas campos de texto (observacao, endereco_texto) são editáveis
         pós-criação. Coordenadas e vinculações não são alteradas por este método.
+        Restrito a quem registrou a abordagem ou a um admin da guarnição.
 
         Args:
             abordagem_id: Identificador da abordagem a atualizar.
             data: Dados de atualização parcial (observacao, endereco_texto).
-            user_id: ID do oficial que realizou a atualização.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            user: Usuário autenticado que realiza a atualização.
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
 
@@ -450,15 +451,18 @@ class AbordagemService:
 
         Raises:
             NaoEncontradoError: Se abordagem não existe ou não pertence à guarnição.
+            AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
         """
-        abordagem = await self.buscar_por_id(abordagem_id, guarnicao_id)
+        assert user.guarnicao_id is not None
+        abordagem = await self.buscar_por_id(abordagem_id, user.guarnicao_id)
+        assert_pode_editar_abordagem(user, abordagem)
 
         update_data = data.model_dump(exclude_unset=True)
         if update_data:
             await self.repo.update(abordagem, update_data)
 
         await self.audit.log(
-            usuario_id=user_id,
+            usuario_id=user.id,
             acao="UPDATE",
             recurso="abordagem",
             recurso_id=abordagem.id,

@@ -127,3 +127,59 @@ class TestAtualizarAbordagem:
             json={"observacao": "Qualquer coisa"},
         )
         assert response.status_code == 401
+
+    async def test_atualizar_abordagem_por_outro_usuario_retorna_403(
+        self, client: AsyncClient, auth_headers: dict, auth_headers_outro_usuario: dict
+    ):
+        """Testa que usuário que não é dono nem admin não pode editar a abordagem.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers do usuário dono da abordagem.
+            auth_headers_outro_usuario: Headers de um segundo usuário da mesma
+                guarnição, sem privilégio de admin.
+        """
+        criada = await client.post(
+            "/api/v1/abordagens/",
+            json={
+                "data_hora": datetime.now(UTC).isoformat(),
+                "endereco_texto": "Rua do Dono, 10",
+            },
+            headers=auth_headers,
+        )
+        abordagem_id = criada.json()["id"]
+
+        response = await client.patch(
+            f"/api/v1/abordagens/{abordagem_id}",
+            json={"observacao": "Tentativa de edição por terceiro"},
+            headers=auth_headers_outro_usuario,
+        )
+        assert response.status_code == 403
+
+    async def test_atualizar_abordagem_por_admin_sucesso(
+        self, client: AsyncClient, auth_headers: dict, auth_headers_admin: dict
+    ):
+        """Testa que admin da guarnição pode editar abordagem de outro oficial.
+
+        Args:
+            client: Cliente HTTP assincrónico.
+            auth_headers: Headers do usuário dono da abordagem (não-admin).
+            auth_headers_admin: Headers de um admin da mesma guarnição.
+        """
+        criada = await client.post(
+            "/api/v1/abordagens/",
+            json={
+                "data_hora": datetime.now(UTC).isoformat(),
+                "endereco_texto": "Rua do Dono, 20",
+            },
+            headers=auth_headers,
+        )
+        abordagem_id = criada.json()["id"]
+
+        response = await client.patch(
+            f"/api/v1/abordagens/{abordagem_id}",
+            json={"observacao": "Edição feita pelo admin"},
+            headers=auth_headers_admin,
+        )
+        assert response.status_code == 200
+        assert response.json()["observacao"] == "EDIÇÃO FEITA PELO ADMIN"
