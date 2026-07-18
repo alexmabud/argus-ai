@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Harness e2e — detalhe de abordagem</title>
+<style>[x-cloak]{display:none!important}</style>
+<script>
+// ---- Stubs dos globais consumidos pelos arquivos reais do frontend ----
+window.__calls = { posts: [], deletes: [] };
+window.__toasts = [];
+
+// window.__abordagem: estado inicial da abordagem, sobrescrito por teste via
+// page.add_init_script() antes do goto(). Default: dono = usuário id 1.
+window.__abordagem = window.__abordagem || {
+  id: 42,
+  data_hora: new Date().toISOString(),
+  endereco_texto: 'RUA TESTE, 100',
+  observacao: null,
+  usuario_id: 1,
+  usuario: { id: 1, posto_graduacao: 'SD', nome_guerra: 'TESTE' },
+  pessoas: [],
+  veiculos: [],
+  fotos: [],
+  ocorrencias: [],
+};
+// window.__authUser: usuário autenticado no teste (id 1 = dono por padrão).
+window.__authUser = window.__authUser || { id: 1 };
+const FULANO = { id: 77, nome: 'FULANO EXISTENTE', cpf_masked: '***.456.789-**', apelido: null };
+
+window.auth = { getUser: () => window.__authUser };
+
+window.api = {
+  async get(url) {
+    if (url === `/abordagens/${window.__abordagem.id}`) return window.__abordagem;
+    if (url.startsWith('/pessoas/?')) {
+      return decodeURIComponent(url).includes('FULANO') ? [FULANO] : [];
+    }
+    return [];
+  },
+  async post(url, body) {
+    window.__calls.posts.push({ url, body: JSON.parse(JSON.stringify(body)) });
+    if (url === `/abordagens/${window.__abordagem.id}/pessoas`) {
+      window.__abordagem = {
+        ...window.__abordagem,
+        pessoas: [...window.__abordagem.pessoas, { id: body.pessoa_id, nome: FULANO.nome }],
+      };
+      return window.__abordagem;
+    }
+    return { id: 1 };
+  },
+  async delete(url) {
+    window.__calls.deletes.push({ url });
+    return null;
+  },
+  async patch() { return window.__abordagem; },
+};
+window.validarCPF = () => true;
+window.formatarPlaca = v => (v || '');
+window.showToast = (msg, type) => window.__toasts.push({ msg, type });
+window.startVoice = () => false;
+window.stopVoice = () => {};
+window.searchPessoasLocal = async () => [];
+window.searchVeiculosLocal = async () => [];
+
+// Inspeção de estado Alpine para os asserts do teste. O segundo elemento
+// [x-data] no DOM é o root da página (o primeiro é o shell que carrega
+// _abordagemId, imitando a app real — ver abordagem-detalhe.js:init()).
+window.__state = () => {
+  const pageEl = document.querySelectorAll('[x-data]')[1];
+  const d = Alpine.$data(pageEl);
+  return {
+    pessoaIds: (d.ab.pessoas || []).map(p => p.id),
+    adicionandoAbordado: d.adicionandoAbordado,
+    erroVincularPessoa: d.erroVincularPessoa,
+  };
+};
+</script>
+<script src="autocomplete.js"></script>
+<script src="person-photo-modal.js"></script>
+<script src="abordagem-detalhe.js"></script>
+</head>
+<body>
+<div id="mount">
+  <div x-data="{ _abordagemId: window.__abordagem.id, navigate(page) { window.__navigatedTo = page; } }">
+    <div id="page-mount"></div>
+  </div>
+</div>
+<script>
+document.getElementById('page-mount').innerHTML = renderAbordagemDetalhe();
+</script>
+<script defer src="alpine.min.js"></script>
+</body>
+</html>
