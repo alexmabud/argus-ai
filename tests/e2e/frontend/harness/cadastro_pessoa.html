@@ -21,7 +21,10 @@ window.api = {
   },
   async post(url, body) {
     window.__calls.posts.push({ url, body: JSON.parse(JSON.stringify(body)) });
-    if (url === '/pessoas/') return { id: 999, ...body };
+    if (url === '/pessoas/') {
+      if (window.__pessoasPostStub) return window.__pessoasPostStub(body);
+      return { id: 999, ...body };
+    }
     return { id: 1 };
   },
   async uploadFile() { return { id: 1 }; },
@@ -51,7 +54,9 @@ window.__state = () => {
   return {
     showCadastroPessoa: d.showCadastroPessoa,
     novaPessoaNome: d.novaPessoa.nome,
+    novaPessoaCpf: d.novaPessoa.cpf,
     cpDuplicatas: JSON.parse(JSON.stringify(d.cpDuplicatas)),
+    erroCadastro: d.erroCadastro,
   };
 };
 </script>

@@ -86,7 +86,7 @@ function cadastroPessoaModalHTML() {
         <div>
           <label class="login-field-label">CPF</label>
           <input type="text" :value="novaPessoa.cpf"
-                 @input="novaPessoa.cpf = formatarCPF($event.target.value); cpfCadastroErro = novaPessoa.cpf.length === 14 && !validarCPF(novaPessoa.cpf) ? 'CPF inválido' : ''"
+                 @input="novaPessoa.cpf = formatarCPF($event.target.value); cpfCadastroErro = novaPessoa.cpf.length === 14 && !validarCPF(novaPessoa.cpf) ? 'CPF inválido' : ''; cpOnInputCPF()"
                  placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
           <p x-show="cpfCadastroErro" x-text="cpfCadastroErro"
              style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);margin-top:4px;"></p>
@@ -342,6 +342,21 @@ function cadastroPessoaModal() {
       } catch (e) {
         console.error(e);
       }
+    },
+
+    /**
+     * Dispara a checagem de duplicidade por CPF assim que o campo fica
+     * completo (11 dígitos) — sem debounce, já que a busca por hash exige o
+     * valor exato e só faz sentido rodar uma vez o CPF esteja inteiro.
+     * CPF incompleto limpa o painel (evita card de uma busca antiga).
+     */
+    cpOnInputCPF() {
+      const digits = this.novaPessoa.cpf.replace(/\D/g, "");
+      if (digits.length !== 11) {
+        this.cpDuplicatas = [];
+        return;
+      }
+      this.cpBuscarDuplicatas(this.novaPessoa.cpf);
     },
 
     /**

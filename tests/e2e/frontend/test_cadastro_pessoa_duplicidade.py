@@ -170,3 +170,154 @@ def test_clicar_no_card_navega_para_ficha_e_fecha_modal(harness: Path) -> None:
 
     assert estado["showCadastroPessoa"] is False
     assert navegacoes == [{"page": "pessoa-detalhe", "pessoaId": 55}]
+
+
+_STUB_CPF_MARIA = """
+(() => {
+  window.__consultaStub = (url) => {
+    const q = new URL(url, 'http://x').searchParams.get('q') || '';
+    if (q === '12345678901') {
+      return {
+        pessoas: [{
+          id: 77,
+          nome: 'MARIA DAS GRACAS',
+          cpf_masked: '***.678.901-**',
+          apelido: null,
+          data_nascimento: '1985-05-20',
+          foto_principal_url: null,
+        }],
+      };
+    }
+    return { pessoas: [] };
+  };
+})();
+"""
+
+
+def _fill_cpf(page, valor: str) -> None:
+    """Preenche o campo CPF do modal de cadastro.
+
+    Args:
+        page: Página Playwright já aberta no harness.
+        valor: Dígitos (ou texto) a digitar no campo CPF.
+    """
+    page.locator('input[placeholder="000.000.000-00"]').fill(valor)
+
+
+def test_cpf_completo_com_correspondencia_exibe_painel(harness: Path) -> None:
+    """CPF completo (11 dígitos) com correspondência exibe o painel com o card certo."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _fill_cpf(page, "12345678901")
+        page.wait_for_timeout(200)  # sem debounce — dispara ao completar
+
+        estado = page.evaluate("__state()")
+        painel_visivel = page.get_by_text("Possível pessoa já cadastrada").is_visible()
+        browser.close()
+
+    assert estado["cpDuplicatas"] == [
+        {
+            "id": 77,
+            "nome": "MARIA DAS GRACAS",
+            "cpf_masked": "***.678.901-**",
+            "apelido": None,
+            "data_nascimento": "1985-05-20",
+            "foto_principal_url": None,
+        }
+    ]
+    assert painel_visivel
+
+
+def test_cpf_completo_sem_correspondencia_nao_exibe_painel(harness: Path) -> None:
+    """CPF completo sem correspondência no backend não exibe o painel."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _fill_cpf(page, "99988877766")
+        page.wait_for_timeout(200)
+
+        estado = page.evaluate("__state()")
+        browser.close()
+
+    assert estado["cpDuplicatas"] == []
+
+
+def test_cpf_incompleto_nao_dispara_busca(harness: Path) -> None:
+    """CPF com menos de 11 dígitos não deve chamar o endpoint de busca."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _fill_cpf(page, "123456789")
+        page.wait_for_timeout(200)
+
+        estado = page.evaluate("__state()")
+        gets = page.evaluate("window.__calls.gets")
+        browser.close()
+
+    assert estado["cpDuplicatas"] == []
+    assert not any(url.startswith("/consultas/") for url in gets), gets
+
+
+def test_editar_cpf_completo_limpa_painel(harness: Path) -> None:
+    """Editar um CPF completo (voltando a incompleto) limpa o painel — sem card fantasma."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _fill_cpf(page, "12345678901")
+        page.wait_for_timeout(200)
+        estado_com_match = page.evaluate("__state()")
+
+        _fill_cpf(page, "1234567")
+        page.wait_for_timeout(200)
+        estado_apos_editar = page.evaluate("__state()")
+        browser.close()
+
+    assert estado_com_match["cpDuplicatas"] != []
+    assert estado_apos_editar["cpDuplicatas"] == []
+
+
+def test_cpf_duplicado_continua_bloqueado_no_submit(harness: Path) -> None:
+    """CPF idêntico a um já cadastrado continua bloqueado com erro no submit (regressão)."""
+    stub_409 = """
+    (() => {
+      window.__pessoasPostStub = () => { throw new Error('Pessoa com este CPF já cadastrada'); };
+    })();
+    """
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.add_init_script(stub_409)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.locator('input[placeholder="Nome completo"]').fill("MARIA DAS GRACAS")
+        _fill_cpf(page, "12345678901")
+        page.wait_for_timeout(200)
+        page.get_by_role("button", name="SALVAR PESSOA").click()
+        page.wait_for_timeout(200)
+
+        estado = page.evaluate("__state()")
+        posts = page.evaluate("window.__calls.posts")
+        posts_pessoas = [c for c in posts if c["url"] == "/pessoas/"]
+        browser.close()
+
+    assert estado["erroCadastro"] == "Pessoa com este CPF já cadastrada"
+    assert len(posts_pessoas) == 1
