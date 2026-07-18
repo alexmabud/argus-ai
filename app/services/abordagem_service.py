@@ -604,40 +604,53 @@ class AbordagemService:
         self,
         abordagem_id: int,
         veiculo_id: int,
-        user_id: int,
-        guarnicao_id: int,
+        user: Usuario,
         ip_address: str | None = None,
         user_agent: str | None = None,
-    ) -> AbordagemVeiculo:
+    ) -> Abordagem:
         """Vincula um veículo a uma abordagem existente.
 
-        Cria registro de associação AbordagemVeiculo.
+        Cria registro de associação AbordagemVeiculo (ou reativa um vínculo
+        soft-deletado anterior). Restrito a quem registrou a abordagem ou
+        a um admin da guarnição.
 
         Args:
             abordagem_id: Identificador da abordagem.
             veiculo_id: Identificador do veículo a vincular.
-            user_id: ID do oficial que realizou a vinculação.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            user: Usuário autenticado que realiza a vinculação.
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
 
         Returns:
-            AbordagemVeiculo criada.
+            Abordagem com a lista de veículos atualizada.
 
         Raises:
             NaoEncontradoError: Se abordagem não existe ou não pertence à guarnição.
+            AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
+            ConflitoDadosError: Se o veículo já está vinculado (ativo) à abordagem.
         """
-        abordagem = await self.buscar_por_id(abordagem_id, guarnicao_id)
+        assert user.guarnicao_id is not None
+        abordagem = await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        assert_pode_editar_abordagem(user, abordagem)
 
-        vinculo = AbordagemVeiculo(
-            abordagem_id=abordagem.id,
-            veiculo_id=veiculo_id,
+        vinculo_existente = next(
+            (av for av in abordagem.veiculos if av.veiculo_id == veiculo_id), None
         )
-        self.db.add(vinculo)
+        if vinculo_existente is not None and vinculo_existente.ativo:
+            raise ConflitoDadosError("Veículo já vinculado a esta abordagem")
+        if vinculo_existente is not None:
+            vinculo = vinculo_existente
+            vinculo.ativo = True
+        else:
+            vinculo = AbordagemVeiculo(
+                abordagem_id=abordagem.id,
+                veiculo_id=veiculo_id,
+            )
+            self.db.add(vinculo)
         await self.db.flush()
 
         await self.audit.log(
-            usuario_id=user_id,
+            usuario_id=user.id,
             acao="CREATE",
             recurso="abordagem_veiculo",
             recurso_id=vinculo.id,
@@ -649,37 +662,41 @@ class AbordagemService:
             user_agent=user_agent,
         )
 
-        return vinculo
+        await self.db.refresh(abordagem, attribute_names=["veiculos"])
+        return abordagem
 
     async def desvincular_veiculo(
         self,
         abordagem_id: int,
         veiculo_id: int,
-        user_id: int,
-        guarnicao_id: int,
+        user: Usuario,
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> None:
         """Remove vínculo de veículo com abordagem.
 
-        Busca e remove a associação AbordagemVeiculo entre a abordagem e o veículo.
+        Busca e remove a associação AbordagemVeiculo entre a abordagem e o
+        veículo. Restrito a quem registrou a abordagem ou a um admin da
+        guarnição.
 
         Args:
             abordagem_id: Identificador da abordagem.
             veiculo_id: Identificador do veículo a desvincular.
-            user_id: ID do oficial que realizou a desvinculação.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            user: Usuário autenticado que realiza a desvinculação.
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
 
         Raises:
             NaoEncontradoError: Se abordagem não existe, não pertence à guarnição,
-                ou veículo não está vinculado a ela.
+                ou veículo não está vinculado (ativo) a ela.
+            AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
         """
-        abordagem = await self.buscar_detalhe(abordagem_id, guarnicao_id)
+        assert user.guarnicao_id is not None
+        abordagem = await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        assert_pode_editar_abordagem(user, abordagem)
 
         vinculo = next(
-            (av for av in abordagem.veiculos if av.veiculo_id == veiculo_id),
+            (av for av in abordagem.veiculos if av.veiculo_id == veiculo_id and av.ativo),
             None,
         )
         if not vinculo:
@@ -689,7 +706,7 @@ class AbordagemService:
         await self.db.flush()
 
         await self.audit.log(
-            usuario_id=user_id,
+            usuario_id=user.id,
             acao="DELETE",
             recurso="abordagem_veiculo",
             recurso_id=vinculo.id,
