@@ -29,7 +29,7 @@ window.api = {
   },
   async uploadFile() { return { id: 1 }; },
 };
-window.validarCPF = () => true;
+window.validarCPF = v => (window.__validarCPFStub ? window.__validarCPFStub(v) : true);
 window.formatarCPF = v => v;
 window.formatarData = v => v;
 window.parseDateBR = () => null;
@@ -56,6 +56,8 @@ window.__state = () => {
     novaPessoaNome: d.novaPessoa.nome,
     novaPessoaCpf: d.novaPessoa.cpf,
     cpDuplicatas: JSON.parse(JSON.stringify(d.cpDuplicatas)),
+    cpMatchesNome: JSON.parse(JSON.stringify(d.cpMatchesNome || [])),
+    cpMatchesCpf: JSON.parse(JSON.stringify(d.cpMatchesCpf || [])),
     erroCadastro: d.erroCadastro,
   };
 };

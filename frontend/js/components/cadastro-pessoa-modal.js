@@ -77,7 +77,7 @@ function cadastroPessoaModalHTML() {
                 <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
                 <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
                 <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
-                <p x-show="p.data_nascimento" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Nasc.: ' + p.data_nascimento"></p>
+                <p x-show="p.data_nascimento" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Nasc.: ' + cpFormatarNascimento(p.data_nascimento)"></p>
               </div>
             </div>
           </template>
@@ -232,8 +232,15 @@ function cadastroPessoaModal() {
     cpBairroSugestoes: [],
     cpCidadeCadastrarNovo: false,
     cpBairroCadastrarNovo: false,
+    // Painel de duplicidade: nome e CPF são fontes independentes, mescladas
+    // (deduplicadas por id) em cpDuplicatas — evita que o guard de um campo
+    // apague o match ainda válido do outro (achado de code-review).
     cpDuplicatas: [],
+    cpMatchesNome: [],
+    cpMatchesCpf: [],
     _cpTimerNome: null,
+    _cpSeqNome: 0,
+    _cpSeqCpf: 0,
 
     /**
      * Abre o modal automaticamente ao chegar na home, quando sinalizado por
@@ -264,8 +271,10 @@ function cadastroPessoaModal() {
       if (prefillTexto) {
         if (/^\d/.test(prefillTexto)) {
           this.novaPessoa.cpf = prefillTexto;
+          this.cpOnInputCPF();
         } else {
           this.novaPessoa.nome = prefillTexto;
+          this.cpOnInputNome();
         }
       }
     },
@@ -291,6 +300,8 @@ function cadastroPessoaModal() {
       this.erroCadastro = null;
       this.cpfCadastroErro = "";
       this.cpDuplicatas = [];
+      this.cpMatchesNome = [];
+      this.cpMatchesCpf = [];
       clearTimeout(this._cpTimerNome);
     },
 
@@ -319,44 +330,93 @@ function cadastroPessoaModal() {
     /**
      * Dispara a checagem de duplicidade por nome com debounce, exigindo ao
      * menos 3 caracteres para evitar buscas ruidosas com o campo quase vazio.
+     * Só mexe em cpMatchesNome — um match por CPF em cpMatchesCpf não é afetado.
      */
     cpOnInputNome() {
       clearTimeout(this._cpTimerNome);
       const nome = this.novaPessoa.nome.trim();
       if (nome.length < 3) {
-        this.cpDuplicatas = [];
+        this.cpMatchesNome = [];
+        this._cpAtualizarPainelDuplicatas();
         return;
       }
-      this._cpTimerNome = setTimeout(() => this.cpBuscarDuplicatas(nome), 400);
+      this._cpTimerNome = setTimeout(() => this.cpBuscarDuplicatas(nome, "nome"), 400);
     },
 
     /**
-     * Busca pessoas já cadastradas com nome parecido, reaproveitando o
-     * endpoint unificado de consulta (fuzzy pg_trgm no backend).
-     * @param {string} query - Nome (ou trecho) digitado no formulário.
+     * Busca pessoas já cadastradas com nome/CPF parecido, reaproveitando o
+     * endpoint unificado de consulta (fuzzy pg_trgm no backend). Guarda um
+     * número de sequência por fonte (nome/cpf) para descartar respostas fora
+     * de ordem — evita que uma busca antiga e lenta sobrescreva uma mais
+     * recente, inclusive se o modal já tiver sido fechado nesse meio tempo.
+     * @param {string} query - Nome ou CPF digitado no formulário.
+     * @param {"nome"|"cpf"} fonte - Campo que disparou esta busca.
      */
-    async cpBuscarDuplicatas(query) {
+    async cpBuscarDuplicatas(query, fonte) {
+      const seqKey = fonte === "nome" ? "_cpSeqNome" : "_cpSeqCpf";
+      const requestId = ++this[seqKey];
+      const matchesKey = fonte === "nome" ? "cpMatchesNome" : "cpMatchesCpf";
       try {
         const r = await api.get(`/consultas/?q=${encodeURIComponent(query)}&tipo=pessoa&limit=5`);
-        this.cpDuplicatas = r.pessoas || [];
+        if (requestId !== this[seqKey] || !this.showCadastroPessoa) return;
+        this[matchesKey] = r.pessoas || [];
       } catch (e) {
         console.error(e);
+        if (requestId !== this[seqKey] || !this.showCadastroPessoa) return;
+        this[matchesKey] = [];
+      } finally {
+        this._cpAtualizarPainelDuplicatas();
       }
+    },
+
+    /**
+     * Mescla cpMatchesNome e cpMatchesCpf (deduplicados por id) no painel
+     * exibido — reflete os dois campos simultaneamente sem que um apague
+     * a contribuição do outro.
+     */
+    _cpAtualizarPainelDuplicatas() {
+      const vistos = new Set();
+      const combinado = [];
+      for (const p of [...this.cpMatchesNome, ...this.cpMatchesCpf]) {
+        if (!vistos.has(p.id)) {
+          vistos.add(p.id);
+          combinado.push(p);
+        }
+      }
+      this.cpDuplicatas = combinado;
     },
 
     /**
      * Dispara a checagem de duplicidade por CPF assim que o campo fica
-     * completo (11 dígitos) — sem debounce, já que a busca por hash exige o
-     * valor exato e só faz sentido rodar uma vez o CPF esteja inteiro.
-     * CPF incompleto limpa o painel (evita card de uma busca antiga).
+     * completo e válido (11 dígitos + dígito verificador correto) — sem
+     * debounce, já que a busca por hash exige o valor exato e só faz
+     * sentido rodar uma vez o CPF esteja inteiro. CPF incompleto/inválido
+     * limpa apenas a contribuição do CPF no painel (evita card de uma busca
+     * antiga, sem apagar um match por nome ainda válido).
      */
     cpOnInputCPF() {
       const digits = this.novaPessoa.cpf.replace(/\D/g, "");
-      if (digits.length !== 11) {
-        this.cpDuplicatas = [];
+      if (digits.length !== 11 || !validarCPF(this.novaPessoa.cpf)) {
+        this.cpMatchesCpf = [];
+        this._cpAtualizarPainelDuplicatas();
         return;
       }
-      this.cpBuscarDuplicatas(this.novaPessoa.cpf);
+      this.cpBuscarDuplicatas(this.novaPessoa.cpf, "cpf");
+    },
+
+    /**
+     * Formata data de nascimento ISO (AAAA-MM-DD) como DD/MM/AAAA para
+     * exibição no card de duplicata. Parse com T00:00:00 evita o
+     * deslocamento de fuso horário que `new Date('AAAA-MM-DD')` sozinho
+     * introduziria (interpretaria a data como UTC meia-noite).
+     * @param {string|null} dataNascimento - Data no formato ISO.
+     * @returns {string} Data formatada, ou string vazia se ausente/inválida.
+     */
+    cpFormatarNascimento(dataNascimento) {
+      if (!dataNascimento) return "";
+      const data = new Date(dataNascimento + "T00:00:00");
+      if (isNaN(data.getTime())) return dataNascimento;
+      return data.toLocaleDateString("pt-BR");
     },
 
     /**
