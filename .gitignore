@@ -188,5 +188,10 @@ docs/manual/
 # Worktrees isoladas (using-git-worktrees skill)
 .worktrees/
 
+# ══════════════════════════════════
+# VÍDEOS DE TUTORIAL/DEMO (gerados localmente, não versionar)
+# ══════════════════════════════════
+.scratch/tutorial-video/
+
 # Metadados do Windows (Mark of the Web) em arquivos copiados pro WSL
 *:Zone.Identifier
