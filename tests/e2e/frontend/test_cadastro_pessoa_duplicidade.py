@@ -410,14 +410,14 @@ _STUB_RESPOSTA_LENTA_E_RAPIDA = """
     if (q === 'AAA LENTO SEM MATCH') {
       return new Promise(resolve => setTimeout(() => resolve({
         pessoas: [{
-          id: 999, nome: 'CANDIDATO ANTIGO ERRADO', cpf_masked: null,
+          id: 999, nome: 'AAA LENTO SEM MATCH SOBRENOME', cpf_masked: null,
           apelido: null, data_nascimento: null, foto_principal_url: null,
         }],
       }), 700));
     }
     if (q === 'BBB RAPIDO COM MATCH') {
       return { pessoas: [{
-        id: 55, nome: 'JOAO DA SILVA', cpf_masked: '***.123.456-**',
+        id: 55, nome: 'BBB RAPIDO COM MATCH SOBRENOME', cpf_masked: '***.123.456-**',
         apelido: 'JOAOZINHO', data_nascimento: '1990-01-01', foto_principal_url: null,
       }] };
     }
@@ -583,3 +583,62 @@ def test_data_nascimento_exibida_formatada(harness: Path) -> None:
         browser.close()
 
     assert nascimento_formatado_visivel
+
+
+_STUB_LUCAS_SEMPRE_RETORNA = """
+(() => {
+  window.__consultaStub = (url) => {
+    // Simula o comportamento real do backend /consultas/: o match fuzzy
+    // (pg_trgm) continua acima do threshold mesmo quando a query tem uma
+    // palavra a mais que não bate com ninguém — é exatamente esse
+    // "vazamento" que o filtro client-side precisa descartar.
+    return {
+      pessoas: [{
+        id: 55, nome: 'LUCAS SILVA', cpf_masked: '***.123.456-**',
+        apelido: null, data_nascimento: '1990-01-01', foto_principal_url: null,
+      }],
+    };
+  };
+})();
+"""
+
+
+def test_nome_com_palavra_extra_sem_correspondencia_esvazia_o_painel(harness: Path) -> None:
+    """Digitar uma palavra a mais que não bate com ninguém deve esvaziar o painel.
+
+    Reproduz o cenário relatado: "lucas" mostra candidatos, "lucas silva"
+    filtra para os Lucas Silva, mas "lucas silva teste" (ninguém com esse
+    nome) deveria fazer a lista sumir — o backend, por usar fuzzy match
+    (pg_trgm) em cima da string inteira, continua retornando o candidato
+    "LUCAS SILVA" mesmo com a palavra extra. O filtro client-side deve
+    descartar esse candidato quando a query tem uma palavra que não está
+    contida (em ordem) no nome/apelido.
+    """
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_LUCAS_SEMPRE_RETORNA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        nome_input = page.locator('input[placeholder="Nome completo"]')
+
+        nome_input.fill("LUCAS")
+        page.wait_for_timeout(600)
+        estado_lucas = page.evaluate("__state()")
+
+        nome_input.fill("LUCAS SILVA")
+        page.wait_for_timeout(600)
+        estado_lucas_silva = page.evaluate("__state()")
+
+        nome_input.fill("LUCAS SILVA TESTE")
+        page.wait_for_timeout(600)
+        estado_lucas_silva_teste = page.evaluate("__state()")
+        browser.close()
+
+    assert [p["id"] for p in estado_lucas["cpDuplicatas"]] == [55]
+    assert [p["id"] for p in estado_lucas_silva["cpDuplicatas"]] == [55]
+    assert estado_lucas_silva_teste["cpDuplicatas"] == [], (
+        "painel continuou mostrando LUCAS SILVA mesmo com a palavra extra "
+        "'TESTE' que não bate com ninguém"
+    )

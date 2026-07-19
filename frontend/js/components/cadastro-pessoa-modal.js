@@ -359,7 +359,8 @@ function cadastroPessoaModal() {
       try {
         const r = await api.get(`/consultas/?q=${encodeURIComponent(query)}&tipo=pessoa&limit=5`);
         if (requestId !== this[seqKey] || !this.showCadastroPessoa) return;
-        this[matchesKey] = r.pessoas || [];
+        const pessoas = r.pessoas || [];
+        this[matchesKey] = fonte === "nome" ? this._cpFiltrarPorNomeDigitado(pessoas, query) : pessoas;
       } catch (e) {
         console.error(e);
         if (requestId !== this[seqKey] || !this.showCadastroPessoa) return;
@@ -367,6 +368,45 @@ function cadastroPessoaModal() {
       } finally {
         this._cpAtualizarPainelDuplicatas();
       }
+    },
+
+    /**
+     * Filtra os candidatos de busca por nome, mantendo só quem realmente
+     * contém as palavras digitadas em ordem no nome ou apelido.
+     *
+     * O endpoint /consultas/ combina match por substring com similaridade
+     * fuzzy (pg_trgm) sobre a string inteira — essa segunda parte "vaza"
+     * candidatos que só bateram por semelhança geral, mesmo quando o texto
+     * digitado tem uma palavra a mais que não corresponde a ninguém (ex.:
+     * "LUCAS SILVA TESTE" continuava retornando "LUCAS SILVA", já que os
+     * dois primeiros terços da string ainda são bem parecidos). Esse filtro
+     * client-side reaplica a mesma regra de substring ordenada usada no
+     * backend (ver PessoaRepository.search_by_nome), descartando quem só
+     * qualificou pela similaridade solta — evita que o painel de duplicidade
+     * nunca esvazie enquanto o operador digita um nome que não existe.
+     * @param {Array<object>} candidatos - Resultado bruto de /consultas/.
+     * @param {string} nomeDigitado - Texto atualmente no campo nome.
+     * @returns {Array<object>} Candidatos cujo nome ou apelido contém, em
+     *   ordem, todas as palavras digitadas.
+     */
+    _cpFiltrarPorNomeDigitado(candidatos, nomeDigitado) {
+      const normalizar = (s) =>
+        (s || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+      const tokens = normalizar(nomeDigitado).trim().split(/\s+/).filter(Boolean);
+      const contemTokensEmOrdem = (campo) => {
+        const texto = normalizar(campo);
+        let pos = 0;
+        return tokens.every((tok) => {
+          const idx = texto.indexOf(tok, pos);
+          if (idx === -1) return false;
+          pos = idx + tok.length;
+          return true;
+        });
+      };
+      return candidatos.filter((p) => contemTokensEmOrdem(p.nome) || contemTokensEmOrdem(p.apelido));
     },
 
     /**
