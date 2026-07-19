@@ -555,8 +555,17 @@ class AbordagemService:
             user_agent=user_agent,
         )
 
-        await self.db.refresh(abordagem, attribute_names=["pessoas"])
-        return abordagem
+        # db.refresh(attribute_names=["pessoas"]) não é suficiente aqui: recarrega
+        # a coleção, mas não o relacionamento aninhado AbordagemPessoa.pessoa (que
+        # buscar_detalhe carrega via selectinload encadeado) — o vínculo novo ficava
+        # com .pessoa não carregado, e _serializar_detalhe (síncrono) batia em
+        # MissingGreenlet ao tentar lazy-load fora do contexto async (achado ao
+        # vivo em 2026-07-19: o vínculo era salvo no banco, só a resposta falhava).
+        # expire() é obrigatório antes do re-fetch: sem isso, buscar_detalhe
+        # encontra o objeto já na identity map e devolve a coleção antiga —
+        # SQLAlchemy não reexecuta selectinload em relacionamento já carregado.
+        self.db.expire(abordagem)
+        return await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
 
     async def desvincular_pessoa(
         self,
@@ -686,8 +695,13 @@ class AbordagemService:
             user_agent=user_agent,
         )
 
-        await self.db.refresh(abordagem, attribute_names=["veiculos"])
-        return abordagem
+        # Mesmo motivo do db.refresh trocado por buscar_detalhe em vincular_pessoa:
+        # refresh(attribute_names=[...]) não recarrega o relacionamento aninhado
+        # (AbordagemVeiculo.veiculo), causando MissingGreenlet em _serializar_detalhe.
+        # expire() força buscar_detalhe a reexecutar o selectinload em vez de
+        # devolver a coleção antiga já carregada na identity map.
+        self.db.expire(abordagem)
+        return await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
 
     async def desvincular_veiculo(
         self,

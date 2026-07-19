@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.abordagens import _serializar_detalhe
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
 from app.models.abordagem import Abordagem, AbordagemPessoa
 from app.models.bpm import Bpm
@@ -218,6 +219,37 @@ class TestVincularPessoa:
         with pytest.raises(ConflitoDadosError):
             await service.vincular_pessoa(abordagem.id, pessoa.id, usuario)
 
+    async def test_pessoa_recem_vinculada_e_serializavel_sem_missing_greenlet(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario, pessoa: Pessoa
+    ):
+        """O objeto retornado por vincular_pessoa precisa ser serializável de imediato.
+
+        Regressão achada testando ao vivo (2026-07-19): vincular_pessoa fazia
+        `db.refresh(abordagem, attribute_names=["pessoas"])`, que recarrega a
+        coleção mas NÃO o relacionamento aninhado AbordagemPessoa.pessoa (que
+        buscar_detalhe carrega via selectinload encadeado). _serializar_detalhe
+        é síncrono e acessa `ap.pessoa` — para o vínculo recém-criado, isso
+        disparava um lazy-load fora do contexto async (MissingGreenlet),
+        mesmo com o vínculo já salvo com sucesso no banco. Importante: os
+        testes de integração via httpx.AsyncClient NÃO pegam essa regressão
+        (passam com ou sem o bug) — só reproduz chamando _serializar_detalhe
+        diretamente sobre uma sessão "crua", fora da camada ASGI.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário (dono da abordagem).
+            pessoa: Fixture de pessoa a vincular.
+        """
+        service = AbordagemService(db_session)
+        data = AbordagemCreate(data_hora=datetime.now(UTC), endereco_texto="Rua Teste, 300")
+        abordagem = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+
+        resultado = await service.vincular_pessoa(abordagem.id, pessoa.id, usuario)
+
+        serializado = _serializar_detalhe(resultado)
+        assert [p.id for p in serializado.pessoas] == [pessoa.id]
+
 
 class TestVincularVeiculo:
     """Testes de vincular_veiculo, incluindo o tratamento de corrida no insert."""
@@ -258,6 +290,26 @@ class TestVincularVeiculo:
 
         with pytest.raises(ConflitoDadosError):
             await service.vincular_veiculo(abordagem.id, veiculo.id, usuario)
+
+    async def test_veiculo_recem_vinculado_e_serializavel_sem_missing_greenlet(
+        self, db_session: AsyncSession, guarnicao: Guarnicao, usuario: Usuario, veiculo: Veiculo
+    ):
+        """Mesma regressão de test_pessoa_recem_vinculada_..., para veículo.
+
+        Args:
+            db_session: Sessão do banco de testes.
+            guarnicao: Fixture de guarnição.
+            usuario: Fixture de usuário (dono da abordagem).
+            veiculo: Fixture de veículo a vincular.
+        """
+        service = AbordagemService(db_session)
+        data = AbordagemCreate(data_hora=datetime.now(UTC), endereco_texto="Rua Teste, 400")
+        abordagem = await service.criar(data=data, user_id=usuario.id, guarnicao_id=guarnicao.id)
+
+        resultado = await service.vincular_veiculo(abordagem.id, veiculo.id, usuario)
+
+        serializado = _serializar_detalhe(resultado)
+        assert [v.id for v in serializado.veiculos] == [veiculo.id]
 
 
 class TestListarPorUsuario:
