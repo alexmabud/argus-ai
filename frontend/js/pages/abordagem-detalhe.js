@@ -35,7 +35,11 @@ function renderAbordagemDetalhe() {
           </div>
 
           <!-- ABORDADOS -->
-          <div class="glass-card card-led-blue" style="padding:12px;">
+          <!-- position:relative + z-index: .glass-card cria stacking context próprio
+               (backdrop-filter) — sem isso, o dropdown do autocomplete (position:absolute
+               interno) fica preso nesse contexto e o card VEÍCULOS (irmão seguinte, sem
+               z-index) pinta por cima dele quando o dropdown ultrapassa a borda do card. -->
+          <div class="glass-card card-led-blue" style="padding:12px;position:relative;z-index:2;">
             <div style="display:flex;flex-direction:column;gap:10px;">
               <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Abordados</span>
               <div x-show="!ab.pessoas || ab.pessoas.length === 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">Nenhum abordado registrado.</div>
@@ -113,8 +117,11 @@ function renderAbordagemDetalhe() {
           </div>
 
           <!-- VEÍCULOS -->
+          <!-- position:relative + z-index: mesmo motivo do card ABORDADOS acima —
+               o dropdown do autocomplete de veículo não pode ficar preso atrás do
+               card LOCALIZAÇÃO (irmão seguinte). -->
           <template x-if="(ab.veiculos && ab.veiculos.length > 0) || podeEditar()">
-            <div class="glass-card" style="padding:12px;">
+            <div class="glass-card" style="padding:12px;position:relative;z-index:1;">
               <div style="display:flex;flex-direction:column;gap:8px;">
                 <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Veículos</span>
                 <div x-show="!ab.veiculos || ab.veiculos.length === 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">Nenhum veículo registrado.</div>

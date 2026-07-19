@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <title>Harness e2e — detalhe de abordagem</title>
+<!-- CSS real do app (não só inline styles): .glass-card usa backdrop-filter,
+     que cria stacking context e afeta como dropdowns position:absolute
+     competem em z-index com cards irmãos — sem isso carregado, bugs desse
+     tipo passam despercebidos pelos testes (achado ao vivo em 2026-07-19). -->
+<link rel="stylesheet" href="app.css">
 <style>[x-cloak]{display:none!important}</style>
 <script>
 // ---- Stubs dos globais consumidos pelos arquivos reais do frontend ----

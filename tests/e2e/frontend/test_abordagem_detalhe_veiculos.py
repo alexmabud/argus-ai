@@ -28,6 +28,7 @@ from playwright.sync_api import sync_playwright  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FRONTEND_JS = REPO_ROOT / "frontend" / "js"
+FRONTEND_CSS = REPO_ROOT / "frontend" / "css"
 HARNESS_DIR = Path(__file__).parent / "harness"
 
 
@@ -47,6 +48,7 @@ def harness(tmp_path: Path) -> Path:
         tmp_path / "cadastro-pessoa-modal.js",
     )
     shutil.copy(FRONTEND_JS / "pages" / "abordagem-detalhe.js", tmp_path / "abordagem-detalhe.js")
+    shutil.copy(FRONTEND_CSS / "app.css", tmp_path / "app.css")
     shutil.copy(HARNESS_DIR / "alpine.min.js", tmp_path / "alpine.min.js")
     shutil.copy(HARNESS_DIR / "abordagem_detalhe.html", tmp_path / "abordagem_detalhe.html")
     return tmp_path / "abordagem_detalhe.html"

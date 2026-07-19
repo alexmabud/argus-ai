@@ -27,6 +27,7 @@ from playwright.sync_api import sync_playwright  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FRONTEND_JS = REPO_ROOT / "frontend" / "js"
+FRONTEND_CSS = REPO_ROOT / "frontend" / "css"
 HARNESS_DIR = Path(__file__).parent / "harness"
 
 
@@ -35,9 +36,11 @@ def harness(tmp_path: Path) -> Path:
     """Monta o harness em diretório temporário com os arquivos reais do frontend.
 
     Copia ``autocomplete.js``, ``person-photo-modal.js``,
-    ``cadastro-pessoa-modal.js`` e ``abordagem-detalhe.js`` do projeto
-    (sempre a versão atual do código) junto com o HTML do harness e o
-    Alpine vendorado.
+    ``cadastro-pessoa-modal.js``, ``abordagem-detalhe.js`` e ``app.css`` do
+    projeto (sempre a versão atual do código) junto com o HTML do harness e
+    o Alpine vendorado. O CSS real é necessário para pegar bugs de stacking
+    context (ex.: backdrop-filter em .glass-card) que inline styles sozinhos
+    não reproduzem.
 
     Returns:
         Caminho do HTML do harness pronto para abrir via file://.
@@ -51,6 +54,7 @@ def harness(tmp_path: Path) -> Path:
         tmp_path / "cadastro-pessoa-modal.js",
     )
     shutil.copy(FRONTEND_JS / "pages" / "abordagem-detalhe.js", tmp_path / "abordagem-detalhe.js")
+    shutil.copy(FRONTEND_CSS / "app.css", tmp_path / "app.css")
     shutil.copy(HARNESS_DIR / "alpine.min.js", tmp_path / "alpine.min.js")
     shutil.copy(HARNESS_DIR / "abordagem_detalhe.html", tmp_path / "abordagem_detalhe.html")
     return tmp_path / "abordagem_detalhe.html"
@@ -332,3 +336,48 @@ def test_dono_ve_botao_salvar_observacao(harness: Path) -> None:
 
     assert visivel
     assert textarea_habilitada
+
+
+def test_botao_cadastrar_novo_abordado_nao_fica_coberto_pelo_card_veiculos(harness: Path) -> None:
+    """O botão "+ Cadastrar novo abordado" precisa estar realmente clicável.
+
+    Regressão: .glass-card usa backdrop-filter, que cria um stacking context
+    próprio (spec CSS) — o dropdown do autocomplete (position:absolute,
+    z-index interno) ficava preso dentro do card ABORDADOS, e o card
+    VEÍCULOS (irmão seguinte, sem z-index) pintava por cima dele sempre que
+    o dropdown ultrapassava a borda do card. Playwright's is_visible()/count()
+    não pega esse tipo de bug (só checam display/size, não oclusão visual)
+    — por isso o teste usa elementFromPoint no centro do botão.
+    """
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script("window.__authUser = { id: 1 };")
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.get_by_role("button", name="+ Adicionar abordado").click()
+        busca = page.locator('input[placeholder="Buscar por nome ou CPF..."]')
+        busca.fill("NAO EXISTE NA BASE")
+        page.wait_for_timeout(500)
+
+        botao = page.get_by_text("+ Cadastrar novo abordado")
+        box = botao.bounding_box()
+        assert box is not None, "botão não está no DOM"
+
+        elemento_no_topo = page.evaluate(
+            """([x, y]) => {
+                const el = document.elementFromPoint(x, y);
+                return el ? (el.textContent || '').trim() : null;
+            }""",
+            [box["x"] + box["width"] / 2, box["y"] + box["height"] / 2],
+        )
+        browser.close()
+
+    assert elemento_no_topo is not None and "Cadastrar novo abordado" in elemento_no_topo, (
+        f"botão está coberto por outro elemento — elementFromPoint retornou: {elemento_no_topo!r}"
+    )
