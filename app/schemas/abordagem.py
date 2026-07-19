@@ -50,6 +50,26 @@ class AbordagemCreate(BaseModel):
     veiculo_por_pessoa: dict[int, int] = {}
 
 
+class VincularPessoaRequest(BaseModel):
+    """Requisição para vincular uma pessoa já cadastrada a uma abordagem existente.
+
+    Attributes:
+        pessoa_id: Identificador da pessoa a vincular.
+    """
+
+    pessoa_id: int
+
+
+class VincularVeiculoRequest(BaseModel):
+    """Requisição para vincular um veículo já cadastrado a uma abordagem existente.
+
+    Attributes:
+        veiculo_id: Identificador do veículo a vincular.
+    """
+
+    veiculo_id: int
+
+
 class AbordagemUpdate(BaseModel):
     """Requisição de atualização parcial de abordagem.
 

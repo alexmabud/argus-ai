@@ -9,17 +9,19 @@ cadastro completo ocorra em < 40 segundos.
 
 import logging
 from collections.abc import Sequence
-from datetime import date
+from datetime import UTC, date, datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NaoEncontradoError
+from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
+from app.core.permissions import assert_pode_editar_abordagem
 from app.models.abordagem import (
     Abordagem,
     AbordagemPessoa,
     AbordagemVeiculo,
 )
+from app.models.usuario import Usuario
 from app.repositories.abordagem_repo import AbordagemRepository
 from app.schemas.abordagem import AbordagemCreate, AbordagemUpdate
 from app.services.audit_service import AuditService
@@ -427,8 +429,7 @@ class AbordagemService:
         self,
         abordagem_id: int,
         data: AbordagemUpdate,
-        user_id: int,
-        guarnicao_id: int,
+        user: Usuario,
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> Abordagem:
@@ -436,12 +437,12 @@ class AbordagemService:
 
         Apenas campos de texto (observacao, endereco_texto) são editáveis
         pós-criação. Coordenadas e vinculações não são alteradas por este método.
+        Restrito a quem registrou a abordagem ou a um admin da guarnição.
 
         Args:
             abordagem_id: Identificador da abordagem a atualizar.
             data: Dados de atualização parcial (observacao, endereco_texto).
-            user_id: ID do oficial que realizou a atualização.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            user: Usuário autenticado que realiza a atualização.
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
 
@@ -450,15 +451,18 @@ class AbordagemService:
 
         Raises:
             NaoEncontradoError: Se abordagem não existe ou não pertence à guarnição.
+            AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
         """
-        abordagem = await self.buscar_por_id(abordagem_id, guarnicao_id)
+        assert user.guarnicao_id is not None
+        abordagem = await self.buscar_por_id(abordagem_id, user.guarnicao_id)
+        assert_pode_editar_abordagem(user, abordagem)
 
         update_data = data.model_dump(exclude_unset=True)
         if update_data:
             await self.repo.update(abordagem, update_data)
 
         await self.audit.log(
-            usuario_id=user_id,
+            usuario_id=user.id,
             acao="UPDATE",
             recurso="abordagem",
             recurso_id=abordagem.id,
@@ -473,41 +477,65 @@ class AbordagemService:
         self,
         abordagem_id: int,
         pessoa_id: int,
-        user_id: int,
-        guarnicao_id: int,
+        user: Usuario,
         ip_address: str | None = None,
         user_agent: str | None = None,
-    ) -> AbordagemPessoa:
+    ) -> Abordagem:
         """Vincula uma pessoa a uma abordagem existente.
 
-        Cria registro de associação AbordagemPessoa e re-materializa
-        relacionamentos entre todas as pessoas da abordagem.
+        Cria registro de associação AbordagemPessoa (ou reativa um vínculo
+        soft-deletado anterior) e re-materializa relacionamentos entre
+        todas as pessoas ativas da abordagem. Restrito a quem registrou
+        a abordagem ou a um admin da guarnição.
 
         Args:
             abordagem_id: Identificador da abordagem.
             pessoa_id: Identificador da pessoa a vincular.
-            user_id: ID do oficial que realizou a vinculação.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            user: Usuário autenticado que realiza a vinculação.
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
 
         Returns:
-            AbordagemPessoa criada.
+            Abordagem com a lista de pessoas atualizada.
 
         Raises:
             NaoEncontradoError: Se abordagem não existe ou não pertence à guarnição.
+            AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
+            ConflitoDadosError: Se a pessoa já está vinculada (ativa) à abordagem.
         """
-        abordagem = await self.buscar_detalhe(abordagem_id, guarnicao_id)
+        assert user.guarnicao_id is not None
+        abordagem = await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        assert_pode_editar_abordagem(user, abordagem)
 
-        vinculo = AbordagemPessoa(
-            abordagem_id=abordagem.id,
-            pessoa_id=pessoa_id,
+        vinculo_existente = next(
+            (ap for ap in abordagem.pessoas if ap.pessoa_id == pessoa_id), None
         )
-        self.db.add(vinculo)
-        await self.db.flush()
+        if vinculo_existente is not None and vinculo_existente.ativo:
+            raise ConflitoDadosError("Pessoa já vinculada a esta abordagem")
+        if vinculo_existente is not None:
+            vinculo = vinculo_existente
+            vinculo.ativo = True
+            vinculo.desativado_em = None
+            vinculo.desativado_por_id = None
+            await self.db.flush()
+        else:
+            vinculo = AbordagemPessoa(
+                abordagem_id=abordagem.id,
+                pessoa_id=pessoa_id,
+            )
+            self.db.add(vinculo)
+            try:
+                await self.db.flush()
+            except IntegrityError:
+                # Corrida entre duas requisições vinculando a mesma pessoa pela
+                # primeira vez: nenhum vínculo ainda existia na leitura acima,
+                # mas o INSERT perdedor colide com a unique constraint. Mesmo
+                # tratamento de pessoa_veiculo_service.py (vincular).
+                await self.db.rollback()
+                raise ConflitoDadosError("Pessoa já vinculada a esta abordagem")
 
-        # Re-materializar relacionamentos com todas as pessoas da abordagem
-        pessoa_ids_existentes = [ap.pessoa_id for ap in abordagem.pessoas]
+        # Re-materializar relacionamentos com todas as pessoas ativas da abordagem
+        pessoa_ids_existentes = [ap.pessoa_id for ap in abordagem.pessoas if ap.ativo]
         todas_pessoa_ids = list(set(pessoa_ids_existentes + [pessoa_id]))
         if len(todas_pessoa_ids) > 1:
             await self.relacionamento.registrar_vinculo(
@@ -515,7 +543,7 @@ class AbordagemService:
             )
 
         await self.audit.log(
-            usuario_id=user_id,
+            usuario_id=user.id,
             acao="CREATE",
             recurso="abordagem_pessoa",
             recurso_id=vinculo.id,
@@ -527,48 +555,62 @@ class AbordagemService:
             user_agent=user_agent,
         )
 
-        return vinculo
+        # db.refresh(attribute_names=["pessoas"]) não é suficiente aqui: recarrega
+        # a coleção, mas não o relacionamento aninhado AbordagemPessoa.pessoa (que
+        # buscar_detalhe carrega via selectinload encadeado) — o vínculo novo ficava
+        # com .pessoa não carregado, e _serializar_detalhe (síncrono) batia em
+        # MissingGreenlet ao tentar lazy-load fora do contexto async (achado ao
+        # vivo em 2026-07-19: o vínculo era salvo no banco, só a resposta falhava).
+        # expire() é obrigatório antes do re-fetch: sem isso, buscar_detalhe
+        # encontra o objeto já na identity map e devolve a coleção antiga —
+        # SQLAlchemy não reexecuta selectinload em relacionamento já carregado.
+        self.db.expire(abordagem)
+        return await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
 
     async def desvincular_pessoa(
         self,
         abordagem_id: int,
         pessoa_id: int,
-        user_id: int,
-        guarnicao_id: int,
+        user: Usuario,
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> None:
         """Remove vínculo de pessoa com abordagem (soft delete da associação).
 
         Busca e remove a associação AbordagemPessoa entre a abordagem e a pessoa.
-        Não afeta os relacionamentos materializados já existentes.
+        Não afeta os relacionamentos materializados já existentes. Restrito a
+        quem registrou a abordagem ou a um admin da guarnição.
 
         Args:
             abordagem_id: Identificador da abordagem.
             pessoa_id: Identificador da pessoa a desvincular.
-            user_id: ID do oficial que realizou a desvinculação.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            user: Usuário autenticado que realiza a desvinculação.
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
 
         Raises:
             NaoEncontradoError: Se abordagem não existe, não pertence à guarnição,
-                ou pessoa não está vinculada a ela.
+                ou pessoa não está vinculada (ativa) a ela.
+            AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
         """
-        abordagem = await self.buscar_detalhe(abordagem_id, guarnicao_id)
+        assert user.guarnicao_id is not None
+        abordagem = await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        assert_pode_editar_abordagem(user, abordagem)
 
         vinculo = next(
-            (ap for ap in abordagem.pessoas if ap.pessoa_id == pessoa_id),
+            (ap for ap in abordagem.pessoas if ap.pessoa_id == pessoa_id and ap.ativo),
             None,
         )
         if not vinculo:
             raise NaoEncontradoError("Vínculo pessoa-abordagem")
 
         vinculo.ativo = False
+        vinculo.desativado_em = datetime.now(UTC)
+        vinculo.desativado_por_id = user.id
         await self.db.flush()
 
         await self.audit.log(
-            usuario_id=user_id,
+            usuario_id=user.id,
             acao="DELETE",
             recurso="abordagem_pessoa",
             recurso_id=vinculo.id,
@@ -584,40 +626,64 @@ class AbordagemService:
         self,
         abordagem_id: int,
         veiculo_id: int,
-        user_id: int,
-        guarnicao_id: int,
+        user: Usuario,
         ip_address: str | None = None,
         user_agent: str | None = None,
-    ) -> AbordagemVeiculo:
+    ) -> Abordagem:
         """Vincula um veículo a uma abordagem existente.
 
-        Cria registro de associação AbordagemVeiculo.
+        Cria registro de associação AbordagemVeiculo (ou reativa um vínculo
+        soft-deletado anterior). Restrito a quem registrou a abordagem ou
+        a um admin da guarnição.
 
         Args:
             abordagem_id: Identificador da abordagem.
             veiculo_id: Identificador do veículo a vincular.
-            user_id: ID do oficial que realizou a vinculação.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            user: Usuário autenticado que realiza a vinculação.
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
 
         Returns:
-            AbordagemVeiculo criada.
+            Abordagem com a lista de veículos atualizada.
 
         Raises:
             NaoEncontradoError: Se abordagem não existe ou não pertence à guarnição.
+            AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
+            ConflitoDadosError: Se o veículo já está vinculado (ativo) à abordagem.
         """
-        abordagem = await self.buscar_por_id(abordagem_id, guarnicao_id)
+        assert user.guarnicao_id is not None
+        abordagem = await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        assert_pode_editar_abordagem(user, abordagem)
 
-        vinculo = AbordagemVeiculo(
-            abordagem_id=abordagem.id,
-            veiculo_id=veiculo_id,
+        vinculo_existente = next(
+            (av for av in abordagem.veiculos if av.veiculo_id == veiculo_id), None
         )
-        self.db.add(vinculo)
-        await self.db.flush()
+        if vinculo_existente is not None and vinculo_existente.ativo:
+            raise ConflitoDadosError("Veículo já vinculado a esta abordagem")
+        if vinculo_existente is not None:
+            vinculo = vinculo_existente
+            vinculo.ativo = True
+            vinculo.desativado_em = None
+            vinculo.desativado_por_id = None
+            await self.db.flush()
+        else:
+            vinculo = AbordagemVeiculo(
+                abordagem_id=abordagem.id,
+                veiculo_id=veiculo_id,
+            )
+            self.db.add(vinculo)
+            try:
+                await self.db.flush()
+            except IntegrityError:
+                # Corrida entre duas requisições vinculando o mesmo veículo pela
+                # primeira vez: nenhum vínculo ainda existia na leitura acima,
+                # mas o INSERT perdedor colide com a unique constraint. Mesmo
+                # tratamento de pessoa_veiculo_service.py (vincular).
+                await self.db.rollback()
+                raise ConflitoDadosError("Veículo já vinculado a esta abordagem")
 
         await self.audit.log(
-            usuario_id=user_id,
+            usuario_id=user.id,
             acao="CREATE",
             recurso="abordagem_veiculo",
             recurso_id=vinculo.id,
@@ -629,47 +695,58 @@ class AbordagemService:
             user_agent=user_agent,
         )
 
-        return vinculo
+        # Mesmo motivo do db.refresh trocado por buscar_detalhe em vincular_pessoa:
+        # refresh(attribute_names=[...]) não recarrega o relacionamento aninhado
+        # (AbordagemVeiculo.veiculo), causando MissingGreenlet em _serializar_detalhe.
+        # expire() força buscar_detalhe a reexecutar o selectinload em vez de
+        # devolver a coleção antiga já carregada na identity map.
+        self.db.expire(abordagem)
+        return await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
 
     async def desvincular_veiculo(
         self,
         abordagem_id: int,
         veiculo_id: int,
-        user_id: int,
-        guarnicao_id: int,
+        user: Usuario,
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> None:
         """Remove vínculo de veículo com abordagem.
 
-        Busca e remove a associação AbordagemVeiculo entre a abordagem e o veículo.
+        Busca e remove a associação AbordagemVeiculo entre a abordagem e o
+        veículo. Restrito a quem registrou a abordagem ou a um admin da
+        guarnição.
 
         Args:
             abordagem_id: Identificador da abordagem.
             veiculo_id: Identificador do veículo a desvincular.
-            user_id: ID do oficial que realizou a desvinculação.
-            guarnicao_id: ID da guarnição para filtro multi-tenant.
+            user: Usuário autenticado que realiza a desvinculação.
             ip_address: Endereço IP da requisição (opcional, para auditoria).
             user_agent: User-Agent do cliente (opcional, para auditoria).
 
         Raises:
             NaoEncontradoError: Se abordagem não existe, não pertence à guarnição,
-                ou veículo não está vinculado a ela.
+                ou veículo não está vinculado (ativo) a ela.
+            AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
         """
-        abordagem = await self.buscar_detalhe(abordagem_id, guarnicao_id)
+        assert user.guarnicao_id is not None
+        abordagem = await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        assert_pode_editar_abordagem(user, abordagem)
 
         vinculo = next(
-            (av for av in abordagem.veiculos if av.veiculo_id == veiculo_id),
+            (av for av in abordagem.veiculos if av.veiculo_id == veiculo_id and av.ativo),
             None,
         )
         if not vinculo:
             raise NaoEncontradoError("Vínculo veículo-abordagem")
 
         vinculo.ativo = False
+        vinculo.desativado_em = datetime.now(UTC)
+        vinculo.desativado_por_id = user.id
         await self.db.flush()
 
         await self.audit.log(
-            usuario_id=user_id,
+            usuario_id=user.id,
             acao="DELETE",
             recurso="abordagem_veiculo",
             recurso_id=vinculo.id,

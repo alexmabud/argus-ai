@@ -8,7 +8,7 @@
 
 function renderAbordagemDetalhe() {
   return `
-    <div x-data="{ ...abordagemDetalhePage(), ...personPhotoModal() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
+    <div x-data="{ ...abordagemDetalhePage(), ...personPhotoModal(), ...cadastroPessoaModal() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
 
       <!-- Loading inicial -->
       <div x-show="loading" style="text-align:center;padding:48px 0;">
@@ -35,38 +35,98 @@ function renderAbordagemDetalhe() {
           </div>
 
           <!-- ABORDADOS -->
-          <div class="glass-card card-led-blue" style="padding:12px;">
+          <!-- position:relative + z-index: .glass-card cria stacking context próprio
+               (backdrop-filter) — sem isso, o dropdown do autocomplete (position:absolute
+               interno) fica preso nesse contexto e o card VEÍCULOS (irmão seguinte, sem
+               z-index) pinta por cima dele quando o dropdown ultrapassa a borda do card. -->
+          <div class="glass-card card-led-blue" style="padding:12px;position:relative;z-index:2;">
             <div style="display:flex;flex-direction:column;gap:10px;">
               <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Abordados</span>
               <div x-show="!ab.pessoas || ab.pessoas.length === 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">Nenhum abordado registrado.</div>
               <div style="display:flex;gap:10px;flex-wrap:wrap;">
                 <template x-for="p in (ab.pessoas || [])" :key="p.id">
-                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;" @click="if(p.foto_principal_url) openPhotoModal(p.foto_principal_url, p.id, p); else abrirFicha(p.id)">
-                    <div style="width:54px;height:54px;border-radius:4px;border:1px solid rgba(0,212,255,0.2);background:var(--color-surface-hover);display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color 0.15s;"
-                         class="hov-border-primary">
-                      <template x-if="p.foto_principal_url">
-                        <img :src="p.foto_principal_thumb_url || p.foto_principal_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
-                      </template>
-                      <template x-if="!p.foto_principal_url">
-                        <span style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--color-primary);" x-text="iniciais(p.nome)"></span>
-                      </template>
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative;" @click="if(p.foto_principal_url) openPhotoModal(p.foto_principal_url, p.id, p); else abrirFicha(p.id)">
+                    <button x-show="podeEditar()" @click.stop="removerPessoa(p.id)"
+                       class="hov-icon-danger"
+                       style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;background:rgba(5,10,15,0.85);color:var(--color-text-muted);border:none;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;padding:0;z-index:1;"
+                       title="Remover abordado">
+                      ✕
+                    </button>
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                      <div style="width:54px;height:54px;border-radius:4px;border:1px solid rgba(0,212,255,0.2);background:var(--color-surface-hover);display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color 0.15s;"
+                           class="hov-border-primary">
+                        <template x-if="p.foto_principal_url">
+                          <img :src="p.foto_principal_thumb_url || p.foto_principal_url" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
+                        </template>
+                        <template x-if="!p.foto_principal_url">
+                          <span style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--color-primary);" x-text="iniciais(p.nome)"></span>
+                        </template>
+                      </div>
+                      <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-muted);text-align:center;max-width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+                            x-text="p.nome.split(' ')[0]"></span>
                     </div>
-                    <span style="font-family:var(--font-data);font-size:10px;color:var(--color-text-muted);text-align:center;max-width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
-                          x-text="p.nome.split(' ')[0]"></span>
                   </div>
                 </template>
               </div>
               <p x-show="ab.pessoas && ab.pessoas.length > 0" style="font-family:var(--font-data);font-size:10px;color:var(--color-text-dim);margin-top:2px;">Toque para abrir a ficha</p>
+
+              <template x-if="podeEditar()">
+                <div>
+                  <button x-show="!adicionandoAbordado" @click="adicionandoAbordado = true"
+                          style="font-family:var(--font-display);font-size:11px;color:var(--color-primary);background:transparent;border:1px dashed rgba(0,212,255,0.3);border-radius:4px;padding:6px 10px;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
+                    + Adicionar abordado
+                  </button>
+
+                  <div x-show="adicionandoAbordado" x-cloak style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+                    <div x-data="autocompleteComponent('pessoa')" data-autocomplete="pessoa" style="position:relative;">
+                      <input type="text" :value="query"
+                             @input="query = $event.target.value; onInput()"
+                             @focus="showDropdown = results.length > 0 || noResults"
+                             placeholder="Buscar por nome ou CPF..." style="width:100%;">
+
+                      <div x-show="showDropdown" x-cloak @click.outside="showDropdown = false"
+                           style="position:absolute;z-index:20;width:100%;margin-top:4px;max-height:14rem;overflow-y:auto;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+                        <template x-for="item in results" :key="item.id">
+                          <button @click="select(item); $dispatch('abordado-selecionado', { pessoa: item })"
+                                  style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);display:flex;flex-direction:column;gap:2px;"
+                                  class="hov-row-surface">
+                            <span x-text="getLabel(item)"></span>
+                            <span x-show="getSubLabel(item)" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="getSubLabel(item)"></span>
+                          </button>
+                        </template>
+                        <div x-show="noResults" style="padding:12px;font-family:var(--font-body);font-size:14px;color:var(--color-text-muted);">
+                          <p>Nenhuma pessoa encontrada.</p>
+                          <button @click="$dispatch('cadastrar-abordado-solicitado', { query: query })"
+                                  style="margin-top:8px;width:100%;text-align:left;color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
+                            + Cadastrar novo abordado
+                          </button>
+                        </div>
+                      </div>
+
+                      <p x-show="cpfErro" x-text="cpfErro" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);margin-top:4px;"></p>
+                    </div>
+                    <button @click="adicionandoAbordado = false; erroVincularPessoa = null"
+                            style="align-self:flex-start;font-family:var(--font-data);font-size:11px;color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;">
+                      Cancelar
+                    </button>
+                    <p x-show="erroVincularPessoa" x-text="erroVincularPessoa" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);"></p>
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
 
           <!-- VEÍCULOS -->
-          <template x-if="ab.veiculos && ab.veiculos.length > 0">
-            <div class="glass-card" style="padding:12px;">
+          <!-- position:relative + z-index: mesmo motivo do card ABORDADOS acima —
+               o dropdown do autocomplete de veículo não pode ficar preso atrás do
+               card LOCALIZAÇÃO (irmão seguinte). -->
+          <template x-if="(ab.veiculos && ab.veiculos.length > 0) || podeEditar()">
+            <div class="glass-card" style="padding:12px;position:relative;z-index:1;">
               <div style="display:flex;flex-direction:column;gap:8px;">
                 <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Veículos</span>
+                <div x-show="!ab.veiculos || ab.veiculos.length === 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">Nenhum veículo registrado.</div>
                 <template x-for="v in ab.veiculos" :key="v.id">
-                  <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;">
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;position:relative;">
                     <div style="width:52px;height:36px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
                       <template x-if="fotoVeiculo(v.id)">
                         <img :src="fotoVeiculo(v.id)" style="width:100%;height:100%;object-fit:cover;">
@@ -79,6 +139,89 @@ function renderAbordagemDetalhe() {
                       <span style="font-family:var(--font-data);font-size:12px;font-weight:700;color:var(--color-text);letter-spacing:0.1em;background:var(--color-surface-hover);padding:0.125rem 0.375rem;border-radius:2px;border:1px solid var(--color-border);" x-text="formatarPlaca(v.placa)"></span>
                       <div style="font-family:var(--font-data);font-size:11px;color:var(--color-text-muted);margin-top:3px;"
                            x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></div>
+                    </div>
+                    <button x-show="podeEditar()" @click.stop="removerVeiculo(v.id)"
+                       class="hov-icon-danger"
+                       style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;background:rgba(5,10,15,0.85);color:var(--color-text-muted);border:none;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;padding:0;"
+                       title="Remover veículo">
+                      ✕
+                    </button>
+                  </div>
+                </template>
+
+                <template x-if="podeEditar()">
+                  <div>
+                    <button x-show="!adicionandoVeiculo" @click="adicionandoVeiculo = true"
+                            style="font-family:var(--font-display);font-size:11px;color:var(--color-primary);background:transparent;border:1px dashed rgba(0,212,255,0.3);border-radius:4px;padding:6px 10px;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
+                      + Adicionar veículo
+                    </button>
+
+                    <div x-show="adicionandoVeiculo" x-cloak style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+                      <div x-data="autocompleteComponent('veiculo')" data-autocomplete="veiculo" style="position:relative;">
+                        <input type="text" :value="query"
+                               @input="query = formatarPlaca($event.target.value); onInput()"
+                               @focus="showDropdown = results.length > 0 || noResults"
+                               placeholder="Buscar por placa..." maxlength="8" style="width:100%;">
+
+                        <div x-show="showDropdown" x-cloak @click.outside="showDropdown = false"
+                             style="position:absolute;z-index:20;width:100%;margin-top:4px;max-height:14rem;overflow-y:auto;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+                          <template x-for="item in results" :key="item.id">
+                            <button @click="select(item); $dispatch('veiculo-selecionado', { veiculo: item })"
+                                    style="width:100%;text-align:left;padding:8px 12px;font-family:var(--font-body);font-size:14px;color:var(--color-text);border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--color-border);"
+                                    class="hov-row-surface"
+                                    x-text="getLabel(item)">
+                            </button>
+                          </template>
+                          <div x-show="noResults" style="padding:12px;font-family:var(--font-body);font-size:14px;color:var(--color-text-muted);">
+                            <p>Nenhum veículo encontrado.</p>
+                            <button @click="showDropdown = false; mostrandoNovoVeiculo = true; novoVeiculo.placa = query"
+                                    style="margin-top:8px;width:100%;text-align:left;color:var(--color-primary);font-family:var(--font-data);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">
+                              + Cadastrar novo veículo
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div x-show="mostrandoNovoVeiculo" x-cloak style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+                        <div>
+                          <label class="login-field-label">Placa *</label>
+                          <input type="text" :value="novoVeiculo.placa"
+                                 @input="novoVeiculo.placa = formatarPlaca($event.target.value)"
+                                 placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase;">
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                          <div>
+                            <label class="login-field-label">Modelo</label>
+                            <input type="text" class="input-upper" x-model="novoVeiculo.modelo" placeholder="Ex: Gol">
+                          </div>
+                          <div>
+                            <label class="login-field-label">Cor</label>
+                            <select x-model="corVeiculoDropdown" @change="onCorVeiculoChange()"
+                                    style="width:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;padding:8px;font-size:13px;color:var(--color-text);font-family:var(--font-body);box-sizing:border-box;">
+                              <option value="">Selecione...</option>
+                              <template x-for="c in (window.CORES_VEICULO || [])" :key="c"><option :value="c" x-text="c"></option></template>
+                              <option value="__outra__">Outra...</option>
+                            </select>
+                            <input x-show="corVeiculoDropdown === '__outra__'" type="text" class="input-upper" x-model="novoVeiculo.cor" placeholder="Digite a cor" style="margin-top:6px;">
+                          </div>
+                          <div>
+                            <label class="login-field-label">Ano</label>
+                            <input type="number" x-model="novoVeiculo.ano" placeholder="2020" min="1900" max="2100">
+                          </div>
+                        </div>
+                        <button @click="criarEVincularVeiculo()" class="btn btn-primary" :disabled="salvandoVeiculo || !novoVeiculo.placa.trim()">
+                          <span x-show="!salvandoVeiculo">Salvar e adicionar</span>
+                          <span x-show="salvandoVeiculo" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+                            <span class="spinner"></span> Salvando...
+                          </span>
+                        </button>
+                      </div>
+
+                      <button @click="adicionandoVeiculo = false; mostrandoNovoVeiculo = false; erroVincularVeiculo = null"
+                              style="align-self:flex-start;font-family:var(--font-data);font-size:11px;color:var(--color-text-muted);background:transparent;border:none;cursor:pointer;">
+                        Cancelar
+                      </button>
+                      <p x-show="erroVincularVeiculo" x-text="erroVincularVeiculo" style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);"></p>
                     </div>
                   </div>
                 </template>
@@ -112,7 +255,7 @@ function renderAbordagemDetalhe() {
             <div style="display:flex;flex-direction:column;gap:8px;">
               <div style="display:flex;align-items:center;justify-content:space-between;">
                 <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Observação</span>
-                <button x-show="voiceSupported" @click="toggleVoice()"
+                <button x-show="voiceSupported && podeEditar()" @click="toggleVoice()"
                         style="font-family:var(--font-data);font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;border:none;transition:all 0.15s;"
                         :style="recording
                           ? 'background:rgba(255,107,0,0.2);color:var(--color-danger);border:1px solid rgba(255,107,0,0.4);box-shadow:0 0 8px rgba(255,107,0,0.3);'
@@ -120,8 +263,8 @@ function renderAbordagemDetalhe() {
                   <span x-text="recording ? 'PARAR' : 'VOZ'"></span>
                 </button>
               </div>
-              <textarea class="input-upper" x-model="observacaoEdit" rows="3" placeholder="Descreva a abordagem..."></textarea>
-              <div style="display:flex;align-items:center;gap:8px;">
+              <textarea class="input-upper" x-model="observacaoEdit" rows="3" placeholder="Descreva a abordagem..." :disabled="!podeEditar()"></textarea>
+              <div x-show="podeEditar()" style="display:flex;align-items:center;gap:8px;">
                 <button @click="salvarObservacao()" class="btn btn-primary" style="padding:8px 16px;"
                         :disabled="salvandoObservacao || observacaoEdit.trim() === (ab.observacao || '')">
                   <span x-show="!salvandoObservacao">Salvar observação</span>
@@ -261,6 +404,7 @@ function renderAbordagemDetalhe() {
       </template>
 
       ${personPhotoModalHTML()}
+      ${cadastroPessoaModalHTML()}
 
       <!-- Foto ampliada (mídia da abordagem — sem pessoa vinculada) -->
       <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
@@ -280,6 +424,16 @@ function abordagemDetalhePage() {
     erro: null,
     fotoAmpliada: null,
     isAdmin: !!(auth.getUser()?.is_admin || auth.getUser()?.is_super_admin),
+    adicionandoAbordado: false,
+    vinculandoPessoa: false,
+    erroVincularPessoa: null,
+    adicionandoVeiculo: false,
+    vinculandoVeiculo: false,
+    mostrandoNovoVeiculo: false,
+    novoVeiculo: { placa: '', modelo: '', cor: '', ano: '' },
+    corVeiculoDropdown: '',
+    salvandoVeiculo: false,
+    erroVincularVeiculo: null,
     rapFile: null,
     rapNumero: '',
     rapData: '',
@@ -304,7 +458,103 @@ function abordagemDetalhePage() {
       return (this.ab && this.ab.fotos ? this.ab.fotos : []).filter(f => f.tipo === 'midia_abordagem');
     },
 
+    // Método (não getter) pelo mesmo motivo de midiasAbordagem() acima.
+    podeEditar() {
+      const me = auth.getUser();
+      return !!(this.ab && me && (this.ab.usuario_id === me.id || this.isAdmin));
+    },
+
+    async vincularPessoa(pessoa) {
+      if (this.vinculandoPessoa) return;
+      this.erroVincularPessoa = null;
+      this.vinculandoPessoa = true;
+      try {
+        const result = await api.post(`/abordagens/${this.ab.id}/pessoas`, { pessoa_id: pessoa.id });
+        this.ab = result;
+        this.adicionandoAbordado = false;
+      } catch (e) {
+        this.erroVincularPessoa = e?.message || 'Erro ao vincular pessoa. Tente novamente.';
+      } finally {
+        this.vinculandoPessoa = false;
+      }
+    },
+
+    async removerPessoa(pessoaId) {
+      if (!confirm('Remover este abordado da abordagem?')) return;
+      try {
+        await api.delete(`/abordagens/${this.ab.id}/pessoas/${pessoaId}`);
+        this.ab = { ...this.ab, pessoas: this.ab.pessoas.filter(p => p.id !== pessoaId) };
+      } catch (e) {
+        showToast(e?.message || 'Erro ao remover abordado', 'error');
+      }
+    },
+
+    // Hook de cadastroPessoaModal() (ver frontend/js/components/cadastro-pessoa-modal.js):
+    // chamado no lugar de navegar pra ficha após criar a pessoa — vincula
+    // direto na abordagem aberta.
+    onPessoaCriada(pessoa) {
+      this.vincularPessoa(pessoa);
+    },
+
+    async vincularVeiculo(veiculo) {
+      if (this.vinculandoVeiculo) return;
+      this.erroVincularVeiculo = null;
+      this.vinculandoVeiculo = true;
+      try {
+        const result = await api.post(`/abordagens/${this.ab.id}/veiculos`, { veiculo_id: veiculo.id });
+        this.ab = result;
+        this.adicionandoVeiculo = false;
+        this.mostrandoNovoVeiculo = false;
+      } catch (e) {
+        this.erroVincularVeiculo = e?.message || 'Erro ao vincular veículo. Tente novamente.';
+      } finally {
+        this.vinculandoVeiculo = false;
+      }
+    },
+
+    async removerVeiculo(veiculoId) {
+      if (!confirm('Remover este veículo da abordagem?')) return;
+      try {
+        await api.delete(`/abordagens/${this.ab.id}/veiculos/${veiculoId}`);
+        this.ab = { ...this.ab, veiculos: this.ab.veiculos.filter(v => v.id !== veiculoId) };
+      } catch (e) {
+        showToast(e?.message || 'Erro ao remover veículo', 'error');
+      }
+    },
+
+    onCorVeiculoChange() {
+      this.novoVeiculo.cor = this.corVeiculoDropdown === '__outra__' ? '' : this.corVeiculoDropdown;
+    },
+
+    async criarEVincularVeiculo() {
+      if (this.salvandoVeiculo || !this.novoVeiculo.placa.trim()) return;
+      this.salvandoVeiculo = true;
+      this.erroVincularVeiculo = null;
+      try {
+        const data = { placa: this.novoVeiculo.placa.trim() };
+        if (this.novoVeiculo.modelo.trim()) data.modelo = this.novoVeiculo.modelo.trim();
+        if (this.novoVeiculo.cor.trim()) data.cor = this.novoVeiculo.cor.trim();
+        if (this.novoVeiculo.ano) data.ano = parseInt(this.novoVeiculo.ano, 10);
+        const veiculo = await api.post('/veiculos/', data);
+        await this.vincularVeiculo(veiculo);
+        // vincularVeiculo() nunca relança erro (fica só em erroVincularVeiculo) —
+        // só limpa o formulário se o vínculo realmente deu certo, senão o
+        // veículo fica órfão no banco e o usuário perde o que digitou.
+        if (!this.erroVincularVeiculo) {
+          this.novoVeiculo = { placa: '', modelo: '', cor: '', ano: '' };
+          this.corVeiculoDropdown = '';
+        }
+      } catch (e) {
+        this.erroVincularVeiculo = e?.message || 'Erro ao cadastrar veículo. Tente novamente.';
+      } finally {
+        this.salvandoVeiculo = false;
+      }
+    },
+
     async init() {
+      this.$el.addEventListener('abordado-selecionado', (e) => this.vincularPessoa(e.detail.pessoa));
+      this.$el.addEventListener('cadastrar-abordado-solicitado', (e) => this.abrirCadastroPessoa(e.detail.query));
+      this.$el.addEventListener('veiculo-selecionado', (e) => this.vincularVeiculo(e.detail.veiculo));
       const appEl = document.querySelector('[x-data]');
       const abordagemId = appEl && appEl._x_dataStack && appEl._x_dataStack[0] && appEl._x_dataStack[0]._abordagemId;
       if (!abordagemId) {

@@ -5,6 +5,8 @@ de filtros automáticos em queries e verificações de propriedade de recursos.
 """
 
 from app.core.exceptions import AcessoNegadoError
+from app.models.abordagem import Abordagem
+from app.models.usuario import Usuario
 
 
 class TenantFilter:
@@ -86,3 +88,23 @@ def assert_scope(admin, alvo_guarnicao_id: int | None) -> None:
         return
     if admin.guarnicao_id is None or alvo_guarnicao_id != admin.guarnicao_id:
         raise AcessoNegadoError("Fora do alcance da sua equipe")
+
+
+def assert_pode_editar_abordagem(user: Usuario, abordagem: Abordagem) -> None:
+    """Valida se o usuário pode editar ou complementar uma abordagem.
+
+    Apenas o oficial que registrou a abordagem (dono) ou um admin da
+    guarnição (is_admin/is_super_admin) pode editar a abordagem ou
+    adicionar/remover pessoas e veículos vinculados a ela.
+
+    Args:
+        user: Usuário autenticado tentando editar.
+        abordagem: Abordagem alvo da edição.
+
+    Raises:
+        AcessoNegadoError: 403 se o usuário não é dono nem admin.
+    """
+    if user.is_admin or user.is_super_admin:
+        return
+    if abordagem.usuario_id != user.id:
+        raise AcessoNegadoError("Apenas quem registrou a abordagem pode editá-la")

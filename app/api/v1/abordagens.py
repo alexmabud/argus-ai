@@ -22,6 +22,8 @@ from app.schemas.abordagem import (
     AbordagemUpdate,
     PessoaAbordagemRead,
     VeiculoAbordagemRead,
+    VincularPessoaRequest,
+    VincularVeiculoRequest,
 )
 from app.schemas.auth import UsuarioResumoRead
 from app.schemas.foto import FotoRead
@@ -237,7 +239,8 @@ async def atualizar_abordagem(
 
     Permite complementar a observação depois do registro em campo, para
     o caso de o oficial não ter tido tempo de descrevê-la no momento
-    da abordagem.
+    da abordagem. Restrito a quem registrou a abordagem ou a um admin
+    da guarnição.
 
     Args:
         request: Objeto Request do FastAPI.
@@ -251,10 +254,11 @@ async def atualizar_abordagem(
 
     Raises:
         HTTPException 404: Abordagem não encontrada ou não pertence à guarnição.
+        HTTPException 403: Usuário sem guarnição, ou não é dono/admin da abordagem.
 
     Status Code:
         200: Abordagem atualizada.
-        403: Usuário sem guarnição.
+        403: Usuário sem guarnição, ou não é dono/admin da abordagem.
         404: Abordagem não encontrada.
         429: Rate limit (30/min).
     """
@@ -264,8 +268,7 @@ async def atualizar_abordagem(
         abordagem = await service.atualizar(
             abordagem_id,
             data,
-            user_id=user.id,
-            guarnicao_id=user.guarnicao_id,
+            user=user,
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
@@ -276,6 +279,218 @@ async def atualizar_abordagem(
         )
     await db.commit()
     return AbordagemRead.model_validate(abordagem)
+
+
+@router.post(
+    "/{abordagem_id}/pessoas", response_model=AbordagemDetail, status_code=status.HTTP_201_CREATED
+)
+@limiter.limit("30/minute")
+async def vincular_pessoa(
+    request: Request,
+    abordagem_id: int,
+    data: VincularPessoaRequest,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
+) -> AbordagemDetail:
+    """Vincula uma pessoa já cadastrada a uma abordagem existente.
+
+    Permite complementar a abordagem depois do registro em campo, para
+    o caso de o oficial não ter tido tempo de cadastrar todos os
+    abordados no momento da abordagem. Restrito a quem registrou a
+    abordagem ou a um admin da guarnição.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        abordagem_id: Identificador da abordagem.
+        data: Corpo da requisição com o pessoa_id a vincular.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado com guarnição atribuída.
+
+    Returns:
+        AbordagemDetail com a lista de pessoas atualizada.
+
+    Raises:
+        HTTPException 404: Abordagem não encontrada ou não pertence à guarnição.
+        HTTPException 403: Usuário sem guarnição, ou não é dono/admin da abordagem.
+        HTTPException 409: Pessoa já vinculada (ativa) à abordagem.
+
+    Status Code:
+        201: Pessoa vinculada.
+        403: Usuário sem guarnição, ou não é dono/admin da abordagem.
+        404: Abordagem não encontrada.
+        409: Pessoa já vinculada à abordagem.
+        429: Rate limit (30/min).
+    """
+    assert user.guarnicao_id is not None
+    service = AbordagemService(db)
+    try:
+        abordagem = await service.vincular_pessoa(
+            abordagem_id,
+            data.pessoa_id,
+            user=user,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except NaoEncontradoError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Abordagem não encontrada",
+        )
+    await db.commit()
+    return _serializar_detalhe(abordagem)
+
+
+@router.delete("/{abordagem_id}/pessoas/{pessoa_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
+async def desvincular_pessoa(
+    request: Request,
+    abordagem_id: int,
+    pessoa_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
+) -> None:
+    """Remove o vínculo de uma pessoa com uma abordagem existente.
+
+    Restrito a quem registrou a abordagem ou a um admin da guarnição.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        abordagem_id: Identificador da abordagem.
+        pessoa_id: Identificador da pessoa a desvincular.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado com guarnição atribuída.
+
+    Raises:
+        HTTPException 404: Abordagem não encontrada, ou pessoa não vinculada a ela.
+        HTTPException 403: Usuário sem guarnição, ou não é dono/admin da abordagem.
+
+    Status Code:
+        204: Pessoa desvinculada.
+        403: Usuário sem guarnição, ou não é dono/admin da abordagem.
+        404: Abordagem ou vínculo não encontrado.
+        429: Rate limit (30/min).
+    """
+    assert user.guarnicao_id is not None
+    service = AbordagemService(db)
+    try:
+        await service.desvincular_pessoa(
+            abordagem_id,
+            pessoa_id,
+            user=user,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except NaoEncontradoError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Abordagem ou vínculo não encontrado",
+        )
+    await db.commit()
+
+
+@router.post(
+    "/{abordagem_id}/veiculos", response_model=AbordagemDetail, status_code=status.HTTP_201_CREATED
+)
+@limiter.limit("30/minute")
+async def vincular_veiculo(
+    request: Request,
+    abordagem_id: int,
+    data: VincularVeiculoRequest,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
+) -> AbordagemDetail:
+    """Vincula um veículo já cadastrado a uma abordagem existente.
+
+    Permite complementar a abordagem depois do registro em campo.
+    Restrito a quem registrou a abordagem ou a um admin da guarnição.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        abordagem_id: Identificador da abordagem.
+        data: Corpo da requisição com o veiculo_id a vincular.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado com guarnição atribuída.
+
+    Returns:
+        AbordagemDetail com a lista de veículos atualizada.
+
+    Raises:
+        HTTPException 404: Abordagem não encontrada ou não pertence à guarnição.
+        HTTPException 403: Usuário sem guarnição, ou não é dono/admin da abordagem.
+        HTTPException 409: Veículo já vinculado (ativo) à abordagem.
+
+    Status Code:
+        201: Veículo vinculado.
+        403: Usuário sem guarnição, ou não é dono/admin da abordagem.
+        404: Abordagem não encontrada.
+        409: Veículo já vinculado à abordagem.
+        429: Rate limit (30/min).
+    """
+    assert user.guarnicao_id is not None
+    service = AbordagemService(db)
+    try:
+        abordagem = await service.vincular_veiculo(
+            abordagem_id,
+            data.veiculo_id,
+            user=user,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except NaoEncontradoError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Abordagem não encontrada",
+        )
+    await db.commit()
+    return _serializar_detalhe(abordagem)
+
+
+@router.delete("/{abordagem_id}/veiculos/{veiculo_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
+async def desvincular_veiculo(
+    request: Request,
+    abordagem_id: int,
+    veiculo_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user_with_guarnicao),
+) -> None:
+    """Remove o vínculo de um veículo com uma abordagem existente.
+
+    Restrito a quem registrou a abordagem ou a um admin da guarnição.
+
+    Args:
+        request: Objeto Request do FastAPI.
+        abordagem_id: Identificador da abordagem.
+        veiculo_id: Identificador do veículo a desvincular.
+        db: Sessão do banco de dados.
+        user: Usuário autenticado com guarnição atribuída.
+
+    Raises:
+        HTTPException 404: Abordagem não encontrada, ou veículo não vinculado a ela.
+        HTTPException 403: Usuário sem guarnição, ou não é dono/admin da abordagem.
+
+    Status Code:
+        204: Veículo desvinculado.
+        403: Usuário sem guarnição, ou não é dono/admin da abordagem.
+        404: Abordagem ou vínculo não encontrado.
+        429: Rate limit (30/min).
+    """
+    assert user.guarnicao_id is not None
+    service = AbordagemService(db)
+    try:
+        await service.desvincular_veiculo(
+            abordagem_id,
+            veiculo_id,
+            user=user,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except NaoEncontradoError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Abordagem ou vínculo não encontrado",
+        )
+    await db.commit()
 
 
 def _serializar_detalhe(abordagem: Abordagem) -> AbordagemDetail:

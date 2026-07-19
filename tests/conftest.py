@@ -236,16 +236,14 @@ async def usuario(db_session: AsyncSession, guarnicao: Guarnicao) -> Usuario:
     return u
 
 
-@pytest.fixture
-async def auth_headers(usuario: Usuario) -> dict:
-    """Fixture que gera headers com token de autenticação válido e session_id.
+def _gerar_auth_headers(usuario: Usuario) -> dict:
+    """Gera headers com token de autenticação válido para um usuário de teste.
 
-    Cria um token JWT de acesso válido para o usuário de teste, incluindo
-    o claim 'sid' com o session_id do usuário para que a verificação de
-    sessão exclusiva passe em todos os testes autenticados.
+    Cria um token JWT de acesso válido, incluindo o claim 'sid' com o
+    session_id do usuário para que a verificação de sessão exclusiva passe.
 
     Args:
-        usuario: Fixture de usuário com session_id definido.
+        usuario: Usuário de teste com session_id definido.
 
     Returns:
         dict: Headers com Authorization Bearer token incluindo sid.
@@ -258,6 +256,97 @@ async def auth_headers(usuario: Usuario) -> dict:
         }
     )
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+async def auth_headers(usuario: Usuario) -> dict:
+    """Fixture que gera headers autenticados para a fixture `usuario`.
+
+    Args:
+        usuario: Fixture de usuário com session_id definido.
+
+    Returns:
+        dict: Headers com Authorization Bearer token incluindo sid.
+    """
+    return _gerar_auth_headers(usuario)
+
+
+@pytest.fixture
+async def outro_usuario(db_session: AsyncSession, guarnicao: Guarnicao) -> Usuario:
+    """Segundo usuário de teste na mesma guarnição, sem is_admin.
+
+    Usado para testar autorização por autoria: representa um oficial que
+    não é dono do recurso e não tem privilégio de admin.
+
+    Args:
+        db_session: Sessão do banco de testes.
+        guarnicao: Fixture de guarnição para associar ao usuário.
+
+    Returns:
+        Usuario: Objeto de usuário com matrícula TEST002.
+    """
+    u = Usuario(
+        nome="Agente Outro",
+        matricula="TEST002",
+        senha_hash=hash_senha("senha123"),
+        guarnicao_id=guarnicao.id,
+        session_id="test-session-id-outro",
+    )
+    db_session.add(u)
+    await db_session.flush()
+    return u
+
+
+@pytest.fixture
+async def auth_headers_outro_usuario(outro_usuario: Usuario) -> dict:
+    """Headers autenticados para a fixture `outro_usuario`.
+
+    Args:
+        outro_usuario: Fixture de segundo usuário (não dono, não admin).
+
+    Returns:
+        dict: Headers com Authorization Bearer token incluindo sid.
+    """
+    return _gerar_auth_headers(outro_usuario)
+
+
+@pytest.fixture
+async def admin_usuario(db_session: AsyncSession, guarnicao: Guarnicao) -> Usuario:
+    """Usuário admin de teste na mesma guarnição (is_admin=True).
+
+    Usado para testar o bypass de autorização concedido a admins delegados.
+
+    Args:
+        db_session: Sessão do banco de testes.
+        guarnicao: Fixture de guarnição para associar ao usuário.
+
+    Returns:
+        Usuario: Objeto de usuário admin com matrícula TESTADM.
+    """
+    u = Usuario(
+        nome="Agente Admin",
+        matricula="TESTADM",
+        senha_hash=hash_senha("senha123"),
+        guarnicao_id=guarnicao.id,
+        session_id="test-session-id-admin",
+        is_admin=True,
+    )
+    db_session.add(u)
+    await db_session.flush()
+    return u
+
+
+@pytest.fixture
+async def auth_headers_admin(admin_usuario: Usuario) -> dict:
+    """Headers autenticados para a fixture `admin_usuario`.
+
+    Args:
+        admin_usuario: Fixture de usuário admin.
+
+    Returns:
+        dict: Headers com Authorization Bearer token incluindo sid.
+    """
+    return _gerar_auth_headers(admin_usuario)
 
 
 @pytest.fixture
