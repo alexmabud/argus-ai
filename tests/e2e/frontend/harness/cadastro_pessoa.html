@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Harness e2e — cadastro de pessoa</title>
+<style>[x-cloak]{display:none!important}</style>
+<script>
+// ---- Stubs dos globais consumidos por cadastro-pessoa-modal.js ----
+window.__calls = { gets: [], posts: [] };
+window.__navigateCalls = [];
+
+window.api = {
+  async get(url) {
+    window.__calls.gets.push(url);
+    if (url.startsWith('/localidades?tipo=estado')) return [];
+    if (url.startsWith('/consultas/?')) {
+      const stub = window.__consultaStub || (() => ({ pessoas: [] }));
+      return stub(url);
+    }
+    return [];
+  },
+  async post(url, body) {
+    window.__calls.posts.push({ url, body: JSON.parse(JSON.stringify(body)) });
+    if (url === '/pessoas/') {
+      if (window.__pessoasPostStub) return window.__pessoasPostStub(body);
+      return { id: 999, ...body };
+    }
+    return { id: 1 };
+  },
+  async uploadFile() { return { id: 1 }; },
+};
+window.validarCPF = v => (window.__validarCPFStub ? window.__validarCPFStub(v) : true);
+window.formatarCPF = v => v;
+window.formatarData = v => v;
+window.parseDateBR = () => null;
+window.showToast = () => {};
+
+// Host que envolve o modal, replicando o wrapper real (body x-data="app()")
+// usado pelo botão "Cadastrar Nova Pessoa" da home — sem viewPessoa próprio,
+// exercitando o fallback de navegação de cadastro-pessoa-modal.js.
+function hostAppStub() {
+  return {
+    _pessoaId: null,
+    navigate(page) {
+      window.__navigateCalls.push({ page, pessoaId: this._pessoaId });
+    },
+  };
+}
+
+// Inspecao de estado Alpine para os asserts do teste
+window.__state = () => {
+  const el = document.querySelector('[x-data*="cadastroPessoaModal"]');
+  const d = Alpine.$data(el);
+  return {
+    showCadastroPessoa: d.showCadastroPessoa,
+    novaPessoaNome: d.novaPessoa.nome,
+    novaPessoaCpf: d.novaPessoa.cpf,
+    cpDuplicatas: JSON.parse(JSON.stringify(d.cpDuplicatas)),
+    cpMatchesNome: JSON.parse(JSON.stringify(d.cpMatchesNome || [])),
+    cpMatchesCpf: JSON.parse(JSON.stringify(d.cpMatchesCpf || [])),
+    erroCadastro: d.erroCadastro,
+  };
+};
+</script>
+<script src="cadastro-pessoa-modal.js"></script>
+</head>
+<body x-data="hostAppStub()">
+<div id="mount"></div>
+<script>
+document.getElementById('mount').innerHTML =
+  '<div x-data="cadastroPessoaModal()" x-init="abrirCadastroPessoa()">' + cadastroPessoaModalHTML() + '</div>';
+</script>
+<script defer src="alpine.min.js"></script>
+</body>
+</html>

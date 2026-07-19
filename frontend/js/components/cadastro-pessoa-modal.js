@@ -49,13 +49,44 @@ function cadastroPessoaModalHTML() {
 
         <div>
           <label class="login-field-label">Nome *</label>
-          <input type="text" x-model="novaPessoa.nome" placeholder="Nome completo">
+          <input type="text" :value="novaPessoa.nome"
+                 @input="novaPessoa.nome = $event.target.value; cpOnInputNome()"
+                 placeholder="Nome completo">
+        </div>
+
+        <div x-show="cpDuplicatas.length > 0" x-cloak style="display:flex;flex-direction:column;gap:6px;">
+          <p style="font-family:var(--font-data);font-size:11px;font-weight:600;color:#FFD700;text-transform:uppercase;letter-spacing:0.08em;">
+            Possível pessoa já cadastrada
+          </p>
+          <template x-for="p in cpDuplicatas" :key="'dup-' + p.id">
+            <div @click="cpVerFicha(p.id)"
+                 class="hov-list-card"
+                 style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;cursor:pointer;border:1px solid var(--color-border);background:var(--color-surface);transition:all 150ms;">
+              <template x-if="p.foto_principal_url">
+                <img :src="p.foto_principal_thumb_url || p.foto_principal_url" :alt="'Foto de ' + p.nome"
+                     style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;border:1px solid var(--color-border);">
+              </template>
+              <template x-if="!p.foto_principal_url">
+                <div style="width:32px;height:32px;border-radius:4px;background:var(--color-surface-hover);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--color-text-dim);border:1px solid var(--color-border);">
+                  <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                  </svg>
+                </div>
+              </template>
+              <div style="flex:1;min-width:0;">
+                <p style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--color-text);" x-text="p.nome"></p>
+                <p x-show="p.cpf_masked" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'CPF: ' + p.cpf_masked"></p>
+                <p x-show="p.apelido" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Vulgo: ' + p.apelido"></p>
+                <p x-show="p.data_nascimento" style="font-family:var(--font-data);font-size:11px;color:var(--color-text-dim);" x-text="'Nasc.: ' + cpFormatarNascimento(p.data_nascimento)"></p>
+              </div>
+            </div>
+          </template>
         </div>
 
         <div>
           <label class="login-field-label">CPF</label>
           <input type="text" :value="novaPessoa.cpf"
-                 @input="novaPessoa.cpf = formatarCPF($event.target.value); cpfCadastroErro = novaPessoa.cpf.length === 14 && !validarCPF(novaPessoa.cpf) ? 'CPF inválido' : ''"
+                 @input="novaPessoa.cpf = formatarCPF($event.target.value); cpfCadastroErro = novaPessoa.cpf.length === 14 && !validarCPF(novaPessoa.cpf) ? 'CPF inválido' : ''; cpOnInputCPF()"
                  placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
           <p x-show="cpfCadastroErro" x-text="cpfCadastroErro"
              style="font-family:var(--font-data);font-size:11px;color:var(--color-danger);margin-top:4px;"></p>
@@ -201,6 +232,15 @@ function cadastroPessoaModal() {
     cpBairroSugestoes: [],
     cpCidadeCadastrarNovo: false,
     cpBairroCadastrarNovo: false,
+    // Painel de duplicidade: nome e CPF são fontes independentes, mescladas
+    // (deduplicadas por id) em cpDuplicatas — evita que o guard de um campo
+    // apague o match ainda válido do outro (achado de code-review).
+    cpDuplicatas: [],
+    cpMatchesNome: [],
+    cpMatchesCpf: [],
+    _cpTimerNome: null,
+    _cpSeqNome: 0,
+    _cpSeqCpf: 0,
 
     /**
      * Abre o modal automaticamente ao chegar na home, quando sinalizado por
@@ -231,8 +271,10 @@ function cadastroPessoaModal() {
       if (prefillTexto) {
         if (/^\d/.test(prefillTexto)) {
           this.novaPessoa.cpf = prefillTexto;
+          this.cpOnInputCPF();
         } else {
           this.novaPessoa.nome = prefillTexto;
+          this.cpOnInputNome();
         }
       }
     },
@@ -257,6 +299,10 @@ function cadastroPessoaModal() {
       this.fotoPessoaPreviewUrl = "";
       this.erroCadastro = null;
       this.cpfCadastroErro = "";
+      this.cpDuplicatas = [];
+      this.cpMatchesNome = [];
+      this.cpMatchesCpf = [];
+      clearTimeout(this._cpTimerNome);
     },
 
     /**
@@ -279,6 +325,127 @@ function cadastroPessoaModal() {
     irParaNovaAbordagem() {
       this.fecharCadastroPessoa();
       window.dispatchEvent(new CustomEvent("navigate", { detail: "abordagem-nova" }));
+    },
+
+    /**
+     * Dispara a checagem de duplicidade por nome com debounce, exigindo ao
+     * menos 3 caracteres para evitar buscas ruidosas com o campo quase vazio.
+     * Só mexe em cpMatchesNome — um match por CPF em cpMatchesCpf não é afetado.
+     */
+    cpOnInputNome() {
+      clearTimeout(this._cpTimerNome);
+      const nome = this.novaPessoa.nome.trim();
+      if (nome.length < 3) {
+        this.cpMatchesNome = [];
+        this._cpAtualizarPainelDuplicatas();
+        return;
+      }
+      this._cpTimerNome = setTimeout(() => this.cpBuscarDuplicatas(nome, "nome"), 400);
+    },
+
+    /**
+     * Busca pessoas já cadastradas com nome/CPF parecido, reaproveitando o
+     * endpoint unificado de consulta (fuzzy pg_trgm no backend). Guarda um
+     * número de sequência por fonte (nome/cpf) para descartar respostas fora
+     * de ordem — evita que uma busca antiga e lenta sobrescreva uma mais
+     * recente, inclusive se o modal já tiver sido fechado nesse meio tempo.
+     * @param {string} query - Nome ou CPF digitado no formulário.
+     * @param {"nome"|"cpf"} fonte - Campo que disparou esta busca.
+     */
+    async cpBuscarDuplicatas(query, fonte) {
+      const seqKey = fonte === "nome" ? "_cpSeqNome" : "_cpSeqCpf";
+      const requestId = ++this[seqKey];
+      const matchesKey = fonte === "nome" ? "cpMatchesNome" : "cpMatchesCpf";
+      try {
+        const r = await api.get(`/consultas/?q=${encodeURIComponent(query)}&tipo=pessoa&limit=5`);
+        if (requestId !== this[seqKey] || !this.showCadastroPessoa) return;
+        this[matchesKey] = r.pessoas || [];
+      } catch (e) {
+        console.error(e);
+        if (requestId !== this[seqKey] || !this.showCadastroPessoa) return;
+        this[matchesKey] = [];
+      } finally {
+        this._cpAtualizarPainelDuplicatas();
+      }
+    },
+
+    /**
+     * Mescla cpMatchesNome e cpMatchesCpf (deduplicados por id) no painel
+     * exibido — reflete os dois campos simultaneamente sem que um apague
+     * a contribuição do outro.
+     */
+    _cpAtualizarPainelDuplicatas() {
+      const vistos = new Set();
+      const combinado = [];
+      for (const p of [...this.cpMatchesNome, ...this.cpMatchesCpf]) {
+        if (!vistos.has(p.id)) {
+          vistos.add(p.id);
+          combinado.push(p);
+        }
+      }
+      this.cpDuplicatas = combinado;
+    },
+
+    /**
+     * Dispara a checagem de duplicidade por CPF assim que o campo fica
+     * completo e válido (11 dígitos + dígito verificador correto) — sem
+     * debounce, já que a busca por hash exige o valor exato e só faz
+     * sentido rodar uma vez o CPF esteja inteiro. CPF incompleto/inválido
+     * limpa apenas a contribuição do CPF no painel (evita card de uma busca
+     * antiga, sem apagar um match por nome ainda válido).
+     */
+    cpOnInputCPF() {
+      const digits = this.novaPessoa.cpf.replace(/\D/g, "");
+      if (digits.length !== 11 || !validarCPF(this.novaPessoa.cpf)) {
+        this.cpMatchesCpf = [];
+        this._cpAtualizarPainelDuplicatas();
+        return;
+      }
+      this.cpBuscarDuplicatas(this.novaPessoa.cpf, "cpf");
+    },
+
+    /**
+     * Formata data de nascimento ISO (AAAA-MM-DD) como DD/MM/AAAA para
+     * exibição no card de duplicata. Parse com T00:00:00 evita o
+     * deslocamento de fuso horário que `new Date('AAAA-MM-DD')` sozinho
+     * introduziria (interpretaria a data como UTC meia-noite).
+     * @param {string|null} dataNascimento - Data no formato ISO.
+     * @returns {string} Data formatada, ou string vazia se ausente/inválida.
+     */
+    cpFormatarNascimento(dataNascimento) {
+      if (!dataNascimento) return "";
+      const data = new Date(dataNascimento + "T00:00:00");
+      if (isNaN(data.getTime())) return dataNascimento;
+      return data.toLocaleDateString("pt-BR");
+    },
+
+    /**
+     * Fecha o modal e navega para a ficha completa de uma pessoa apontada
+     * como possível duplicata, sem criar cadastro novo.
+     * @param {number} id - Id da pessoa já cadastrada.
+     */
+    cpVerFicha(id) {
+      this.fecharCadastroPessoa();
+      this.cpNavegarParaFicha(id);
+    },
+
+    /**
+     * Navega até a ficha de uma pessoa via viewPessoa do host (quando
+     * existir — preserva estado de busca da Consulta IA) ou, senão, navega
+     * diretamente. Compartilhado entre criarPessoa() (após salvar) e
+     * cpVerFicha() (ao apontar uma duplicata já cadastrada).
+     * @param {number} id - Id da pessoa a exibir.
+     */
+    cpNavegarParaFicha(id) {
+      if (typeof this.viewPessoa === "function") {
+        this.viewPessoa(id);
+      } else {
+        const appEl = document.querySelector("[x-data]");
+        if (appEl?._x_dataStack) {
+          appEl._x_dataStack[0]._pessoaId = id;
+          appEl._x_dataStack[0].navigate("pessoa-detalhe");
+        }
+      }
     },
 
     async cpCarregarEstados() {
@@ -392,15 +559,7 @@ function cadastroPessoaModal() {
 
         this.fecharCadastroPessoa();
         showToast("Pessoa cadastrada com sucesso!", "success");
-        if (typeof this.viewPessoa === "function") {
-          this.viewPessoa(pessoa.id);
-        } else {
-          const appEl = document.querySelector("[x-data]");
-          if (appEl?._x_dataStack) {
-            appEl._x_dataStack[0]._pessoaId = pessoa.id;
-            appEl._x_dataStack[0].navigate("pessoa-detalhe");
-          }
-        }
+        this.cpNavegarParaFicha(pessoa.id);
       } catch (err) {
         this.erroCadastro = err.message || "Erro ao cadastrar pessoa.";
       } finally {
