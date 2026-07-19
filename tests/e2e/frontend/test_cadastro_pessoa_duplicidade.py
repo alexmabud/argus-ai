@@ -1,0 +1,644 @@
+"""Teste e2e: detecção de duplicidade ao digitar o nome no cadastro de pessoa.
+
+Slice 1 de .scratch/deteccao-duplicidade-pessoa/: o modal de cadastro de
+pessoa (compartilhado entre o botão "Cadastrar Nova Pessoa" da home e a
+Consulta IA) busca, com debounce, pessoas já cadastradas com nome parecido
+enquanto o operador digita — evitando cadastro duplicado.
+
+O teste dirige os arquivos REAIS do frontend (copiados no momento do teste)
+num harness HTML com a API estubada, via Playwright/Chromium headless.
+
+Opt-in: requer ``pip install playwright && playwright install chromium``.
+Sem isso, o teste é pulado.
+"""
+
+import shutil
+from pathlib import Path
+
+import pytest
+
+pytest.importorskip("playwright.sync_api", reason="playwright não instalado")
+
+from playwright.sync_api import Error as PlaywrightError  # noqa: E402
+from playwright.sync_api import sync_playwright  # noqa: E402
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+FRONTEND_JS = REPO_ROOT / "frontend" / "js"
+HARNESS_DIR = Path(__file__).parent / "harness"
+
+_STUB_JOAO = """
+(() => {
+  window.__consultaStub = (url) => {
+    const q = new URL(url, 'http://x').searchParams.get('q') || '';
+    if (q.toUpperCase().includes('JOAO')) {
+      return {
+        pessoas: [{
+          id: 55,
+          nome: 'JOAO DA SILVA',
+          cpf_masked: '***.123.456-**',
+          apelido: 'JOAOZINHO',
+          data_nascimento: '1990-01-01',
+          foto_principal_url: null,
+        }],
+      };
+    }
+    return { pessoas: [] };
+  };
+})();
+"""
+
+
+@pytest.fixture
+def harness(tmp_path: Path) -> Path:
+    """Monta o harness em diretório temporário com os arquivos reais do frontend.
+
+    Copia ``cadastro-pessoa-modal.js`` do projeto (sempre a versão atual do
+    código) junto com o HTML do harness e o Alpine vendorado.
+
+    Returns:
+        Caminho do HTML do harness pronto para abrir via file://.
+    """
+    shutil.copy(
+        FRONTEND_JS / "components" / "cadastro-pessoa-modal.js",
+        tmp_path / "cadastro-pessoa-modal.js",
+    )
+    shutil.copy(HARNESS_DIR / "alpine.min.js", tmp_path / "alpine.min.js")
+    shutil.copy(HARNESS_DIR / "cadastro_pessoa.html", tmp_path / "cadastro_pessoa.html")
+    return tmp_path / "cadastro_pessoa.html"
+
+
+def _open(harness: Path, browser_launcher):
+    """Abre o harness num browser Chromium, aplicando o stub de /consultas/.
+
+    Args:
+        harness: Caminho do HTML do harness.
+        browser_launcher: Callable que lança o browser (permite pular se
+            Chromium estiver indisponível no ambiente).
+
+    Returns:
+        Tupla (browser, page) já com o harness carregado e o modal aberto.
+    """
+    browser = browser_launcher()
+    page = browser.new_page()
+    page.add_init_script(_STUB_JOAO)
+    page.goto(f"file://{harness}")
+    page.wait_for_timeout(300)
+    return browser, page
+
+
+def _launch_or_skip(p):
+    """Lança o Chromium headless, pulando o teste graciosamente se indisponível.
+
+    Args:
+        p: Contexto do Playwright (retorno de ``sync_playwright()``).
+
+    Returns:
+        Instância de browser Chromium já lançada.
+    """
+    try:
+        return p.chromium.launch()
+    except PlaywrightError:
+        pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+
+def test_nome_com_correspondencia_exibe_painel_de_duplicata(harness: Path) -> None:
+    """Digitar um nome com correspondência exibe o painel com o card certo."""
+    with sync_playwright() as p:
+        browser, page = _open(harness, lambda: _launch_or_skip(p))
+
+        page.locator('input[placeholder="Nome completo"]').fill("JOAO DA SILVA")
+        page.wait_for_timeout(600)  # debounce 400ms + folga
+
+        estado = page.evaluate("__state()")
+        painel_visivel = page.get_by_text("Possível pessoa já cadastrada").is_visible()
+        card_nome_visivel = page.get_by_text("JOAO DA SILVA").last.is_visible()
+        card_cpf_visivel = page.get_by_text("***.123.456-**").is_visible()
+        browser.close()
+
+    assert estado["cpDuplicatas"] == [
+        {
+            "id": 55,
+            "nome": "JOAO DA SILVA",
+            "cpf_masked": "***.123.456-**",
+            "apelido": "JOAOZINHO",
+            "data_nascimento": "1990-01-01",
+            "foto_principal_url": None,
+        }
+    ]
+    assert painel_visivel
+    assert card_nome_visivel
+    assert card_cpf_visivel
+
+
+def test_nome_curto_nao_dispara_busca(harness: Path) -> None:
+    """Nome com menos de 3 caracteres não deve nem chamar o endpoint de busca."""
+    with sync_playwright() as p:
+        browser, page = _open(harness, lambda: _launch_or_skip(p))
+
+        page.locator('input[placeholder="Nome completo"]').fill("JO")
+        page.wait_for_timeout(600)
+
+        estado = page.evaluate("__state()")
+        gets = page.evaluate("window.__calls.gets")
+        browser.close()
+
+    assert estado["cpDuplicatas"] == []
+    assert not any(url.startswith("/consultas/") for url in gets), gets
+
+
+def test_nome_sem_correspondencia_nao_exibe_painel(harness: Path) -> None:
+    """Nome válido (≥3 chars) sem correspondência no backend não exibe o painel."""
+    with sync_playwright() as p:
+        browser, page = _open(harness, lambda: _launch_or_skip(p))
+
+        page.locator('input[placeholder="Nome completo"]').fill("PESSOA INEXISTENTE")
+        page.wait_for_timeout(600)
+
+        estado = page.evaluate("__state()")
+        painel_visivel = page.get_by_text("Possível pessoa já cadastrada").is_visible()
+        browser.close()
+
+    assert estado["cpDuplicatas"] == []
+    assert not painel_visivel
+
+
+def test_clicar_no_card_navega_para_ficha_e_fecha_modal(harness: Path) -> None:
+    """Clicar no card de duplicata fecha o modal e navega para a ficha certa."""
+    with sync_playwright() as p:
+        browser, page = _open(harness, lambda: _launch_or_skip(p))
+
+        page.locator('input[placeholder="Nome completo"]').fill("JOAO DA SILVA")
+        page.wait_for_timeout(600)
+        page.get_by_text("JOAO DA SILVA").last.click()
+        page.wait_for_timeout(100)
+
+        estado = page.evaluate("__state()")
+        navegacoes = page.evaluate("window.__navigateCalls")
+        browser.close()
+
+    assert estado["showCadastroPessoa"] is False
+    assert navegacoes == [{"page": "pessoa-detalhe", "pessoaId": 55}]
+
+
+_STUB_CPF_MARIA = """
+(() => {
+  window.__consultaStub = (url) => {
+    const q = new URL(url, 'http://x').searchParams.get('q') || '';
+    if (q === '12345678901') {
+      return {
+        pessoas: [{
+          id: 77,
+          nome: 'MARIA DAS GRACAS',
+          cpf_masked: '***.678.901-**',
+          apelido: null,
+          data_nascimento: '1985-05-20',
+          foto_principal_url: null,
+        }],
+      };
+    }
+    return { pessoas: [] };
+  };
+})();
+"""
+
+
+def _fill_cpf(page, valor: str) -> None:
+    """Preenche o campo CPF do modal de cadastro.
+
+    Args:
+        page: Página Playwright já aberta no harness.
+        valor: Dígitos (ou texto) a digitar no campo CPF.
+    """
+    page.locator('input[placeholder="000.000.000-00"]').fill(valor)
+
+
+def test_cpf_completo_com_correspondencia_exibe_painel(harness: Path) -> None:
+    """CPF completo (11 dígitos) com correspondência exibe o painel com o card certo."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _fill_cpf(page, "12345678901")
+        page.wait_for_timeout(200)  # sem debounce — dispara ao completar
+
+        estado = page.evaluate("__state()")
+        painel_visivel = page.get_by_text("Possível pessoa já cadastrada").is_visible()
+        browser.close()
+
+    assert estado["cpDuplicatas"] == [
+        {
+            "id": 77,
+            "nome": "MARIA DAS GRACAS",
+            "cpf_masked": "***.678.901-**",
+            "apelido": None,
+            "data_nascimento": "1985-05-20",
+            "foto_principal_url": None,
+        }
+    ]
+    assert painel_visivel
+
+
+def test_cpf_completo_sem_correspondencia_nao_exibe_painel(harness: Path) -> None:
+    """CPF completo sem correspondência no backend não exibe o painel."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _fill_cpf(page, "99988877766")
+        page.wait_for_timeout(200)
+
+        estado = page.evaluate("__state()")
+        browser.close()
+
+    assert estado["cpDuplicatas"] == []
+
+
+def test_cpf_incompleto_nao_dispara_busca(harness: Path) -> None:
+    """CPF com menos de 11 dígitos não deve chamar o endpoint de busca."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _fill_cpf(page, "123456789")
+        page.wait_for_timeout(200)
+
+        estado = page.evaluate("__state()")
+        gets = page.evaluate("window.__calls.gets")
+        browser.close()
+
+    assert estado["cpDuplicatas"] == []
+    assert not any(url.startswith("/consultas/") for url in gets), gets
+
+
+def test_editar_cpf_completo_limpa_painel(harness: Path) -> None:
+    """Editar um CPF completo (voltando a incompleto) limpa o painel — sem card fantasma."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _fill_cpf(page, "12345678901")
+        page.wait_for_timeout(200)
+        estado_com_match = page.evaluate("__state()")
+
+        _fill_cpf(page, "1234567")
+        page.wait_for_timeout(200)
+        estado_apos_editar = page.evaluate("__state()")
+        browser.close()
+
+    assert estado_com_match["cpDuplicatas"] != []
+    assert estado_apos_editar["cpDuplicatas"] == []
+
+
+def test_cpf_duplicado_continua_bloqueado_no_submit(harness: Path) -> None:
+    """CPF idêntico a um já cadastrado continua bloqueado com erro no submit (regressão)."""
+    stub_409 = """
+    (() => {
+      window.__pessoasPostStub = () => { throw new Error('Pessoa com este CPF já cadastrada'); };
+    })();
+    """
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.add_init_script(stub_409)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.locator('input[placeholder="Nome completo"]').fill("MARIA DAS GRACAS")
+        _fill_cpf(page, "12345678901")
+        page.wait_for_timeout(200)
+        page.get_by_role("button", name="SALVAR PESSOA").click()
+        page.wait_for_timeout(200)
+
+        estado = page.evaluate("__state()")
+        posts = page.evaluate("window.__calls.posts")
+        posts_pessoas = [c for c in posts if c["url"] == "/pessoas/"]
+        browser.close()
+
+    assert estado["erroCadastro"] == "Pessoa com este CPF já cadastrada"
+    assert len(posts_pessoas) == 1
+
+
+# --- Fixes de achados do code-review (race entre buscas / clobbering) ---
+
+_STUB_NOME_E_CPF_INDEPENDENTES = """
+(() => {
+  window.__consultaStub = (url) => {
+    const q = new URL(url, 'http://x').searchParams.get('q') || '';
+    if (q === 'JOAO DA SILVA') {
+      return { pessoas: [{
+        id: 55, nome: 'JOAO DA SILVA', cpf_masked: '***.123.456-**',
+        apelido: 'JOAOZINHO', data_nascimento: '1990-01-01', foto_principal_url: null,
+      }] };
+    }
+    if (q === '99988877766') {
+      return { pessoas: [{
+        id: 77, nome: 'MARIA DAS GRACAS', cpf_masked: '***.678.901-**',
+        apelido: null, data_nascimento: '1985-05-20', foto_principal_url: null,
+      }] };
+    }
+    return { pessoas: [] };
+  };
+})();
+"""
+
+
+def test_match_por_nome_sobrevive_a_cpf_incompleto(harness: Path) -> None:
+    """Um match por nome não deve ser apagado por editar um CPF ainda incompleto."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_NOME_E_CPF_INDEPENDENTES)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.locator('input[placeholder="Nome completo"]').fill("JOAO DA SILVA")
+        page.wait_for_timeout(600)
+        estado_com_match = page.evaluate("__state()")
+
+        _fill_cpf(page, "111")  # incompleto — não deveria mexer no match de nome
+        page.wait_for_timeout(200)
+        estado_apos_cpf_incompleto = page.evaluate("__state()")
+        browser.close()
+
+    assert estado_com_match["cpDuplicatas"] != []
+    assert estado_apos_cpf_incompleto["cpDuplicatas"] == estado_com_match["cpDuplicatas"], (
+        "match por nome foi apagado ao digitar um CPF ainda incompleto"
+    )
+
+
+def test_match_por_cpf_sobrevive_a_nome_curto(harness: Path) -> None:
+    """Um match por CPF não deve ser apagado por um campo nome ficar curto/vazio."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_NOME_E_CPF_INDEPENDENTES)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _fill_cpf(page, "99988877766")
+        page.wait_for_timeout(200)
+        estado_com_match = page.evaluate("__state()")
+
+        page.locator('input[placeholder="Nome completo"]').fill("JO")  # <3 chars
+        page.wait_for_timeout(200)
+        estado_apos_nome_curto = page.evaluate("__state()")
+        browser.close()
+
+    assert estado_com_match["cpDuplicatas"] != []
+    assert estado_apos_nome_curto["cpDuplicatas"] == estado_com_match["cpDuplicatas"], (
+        "match por CPF foi apagado ao encurtar o campo nome"
+    )
+
+
+_STUB_RESPOSTA_LENTA_E_RAPIDA = """
+(() => {
+  window.__consultaStub = (url) => {
+    const q = new URL(url, 'http://x').searchParams.get('q') || '';
+    if (q === 'AAA LENTO SEM MATCH') {
+      return new Promise(resolve => setTimeout(() => resolve({
+        pessoas: [{
+          id: 999, nome: 'AAA LENTO SEM MATCH SOBRENOME', cpf_masked: null,
+          apelido: null, data_nascimento: null, foto_principal_url: null,
+        }],
+      }), 700));
+    }
+    if (q === 'BBB RAPIDO COM MATCH') {
+      return { pessoas: [{
+        id: 55, nome: 'BBB RAPIDO COM MATCH SOBRENOME', cpf_masked: '***.123.456-**',
+        apelido: 'JOAOZINHO', data_nascimento: '1990-01-01', foto_principal_url: null,
+      }] };
+    }
+    return { pessoas: [] };
+  };
+})();
+"""
+
+
+def test_resposta_antiga_e_lenta_nao_sobrescreve_a_mais_recente(harness: Path) -> None:
+    """Uma busca antiga e lenta não pode sobrescrever o resultado de uma busca mais nova."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_RESPOSTA_LENTA_E_RAPIDA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        nome_input = page.locator('input[placeholder="Nome completo"]')
+        nome_input.fill("AAA LENTO SEM MATCH")
+        page.wait_for_timeout(450)  # debounce dispara a busca lenta (resolve em ~700ms)
+
+        nome_input.fill("BBB RAPIDO COM MATCH")
+        page.wait_for_timeout(450)  # debounce dispara a busca rápida, que já resolve
+
+        estado_apos_rapida = page.evaluate("__state()")
+
+        page.wait_for_timeout(500)  # tempo suficiente pra lenta (antiga) resolver
+        estado_final = page.evaluate("__state()")
+        browser.close()
+
+    assert [p["id"] for p in estado_apos_rapida["cpDuplicatas"]] == [55]
+    assert [p["id"] for p in estado_final["cpDuplicatas"]] == [55], (
+        "resposta antiga e lenta sobrescreveu o resultado correto e mais recente"
+    )
+
+
+def test_resposta_apos_fechar_modal_nao_repovoa_painel(harness: Path) -> None:
+    """Uma busca ainda em andamento ao fechar o modal não pode repovoar o painel depois."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_RESPOSTA_LENTA_E_RAPIDA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.locator('input[placeholder="Nome completo"]').fill("AAA LENTO SEM MATCH")
+        page.wait_for_timeout(450)  # debounce dispara a busca lenta (ainda em voo)
+
+        page.get_by_role("button", name="Cancelar").click()
+        page.wait_for_timeout(600)  # tempo suficiente pra busca lenta resolver
+
+        estado = page.evaluate("__state()")
+        browser.close()
+
+    assert estado["cpDuplicatas"] == [], "resposta que chegou após fechar o modal repovoou o painel"
+
+
+_STUB_FALHA_PARA_MARIA = """
+(() => {
+  window.__consultaStub = (url) => {
+    const q = new URL(url, 'http://x').searchParams.get('q') || '';
+    if (q === 'JOAO DA SILVA') {
+      return { pessoas: [{
+        id: 55, nome: 'JOAO DA SILVA', cpf_masked: '***.123.456-**',
+        apelido: 'JOAOZINHO', data_nascimento: '1990-01-01', foto_principal_url: null,
+      }] };
+    }
+    if (q === 'MARIA COSTA') {
+      throw new Error('falha de rede');
+    }
+    return { pessoas: [] };
+  };
+})();
+"""
+
+
+def test_falha_na_busca_limpa_card_desatualizado(harness: Path) -> None:
+    """Uma busca que falha não pode deixar um card antigo exibido sob um campo já diferente."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_FALHA_PARA_MARIA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        nome_input = page.locator('input[placeholder="Nome completo"]')
+        nome_input.fill("JOAO DA SILVA")
+        page.wait_for_timeout(600)
+        estado_com_match = page.evaluate("__state()")
+
+        nome_input.fill("MARIA COSTA")
+        page.wait_for_timeout(600)
+        estado_apos_falha = page.evaluate("__state()")
+        browser.close()
+
+    assert estado_com_match["cpDuplicatas"] != []
+    assert estado_apos_falha["cpDuplicatas"] == [], (
+        "card do match antigo (JOAO DA SILVA) continuou visível sob o campo MARIA COSTA"
+    )
+
+
+def test_prefill_dispara_checagem_de_duplicidade(harness: Path) -> None:
+    """abrirCadastroPessoa(prefillTexto) deve disparar a checagem, não só preencher o campo."""
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_JOAO)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.evaluate(
+            """() => {
+              const el = document.querySelector('[x-data*="cadastroPessoaModal"]');
+              Alpine.$data(el).abrirCadastroPessoa('JOAO DA SILVA');
+            }"""
+        )
+        page.wait_for_timeout(600)
+
+        estado = page.evaluate("__state()")
+        browser.close()
+
+    assert [p["id"] for p in estado["cpDuplicatas"]] == [55], (
+        "pré-preenchimento não disparou a checagem de duplicidade"
+    )
+
+
+def test_cpf_com_digito_verificador_invalido_nao_dispara_busca(harness: Path) -> None:
+    """CPF com 11 dígitos mas checksum inválido não deve disparar a busca de duplicidade."""
+    stub_invalido = """
+    (() => {
+      window.__validarCPFStub = (v) => v !== '11111111111';
+    })();
+    """
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_CPF_MARIA)
+        page.add_init_script(stub_invalido)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        _fill_cpf(page, "11111111111")
+        page.wait_for_timeout(200)
+
+        estado = page.evaluate("__state()")
+        gets = page.evaluate("window.__calls.gets")
+        browser.close()
+
+    assert estado["cpDuplicatas"] == []
+    assert not any(url.startswith("/consultas/") for url in gets), gets
+
+
+def test_data_nascimento_exibida_formatada(harness: Path) -> None:
+    """A data de nascimento no card deve aparecer como DD/MM/AAAA, não o ISO cru do backend."""
+    with sync_playwright() as p:
+        browser, page = _open(harness, lambda: _launch_or_skip(p))
+
+        page.locator('input[placeholder="Nome completo"]').fill("JOAO DA SILVA")
+        page.wait_for_timeout(600)
+
+        nascimento_formatado_visivel = page.get_by_text("Nasc.: 01/01/1990").is_visible()
+        browser.close()
+
+    assert nascimento_formatado_visivel
+
+
+_STUB_LUCAS_SEMPRE_RETORNA = """
+(() => {
+  window.__consultaStub = (url) => {
+    // Simula o comportamento real do backend /consultas/: o match fuzzy
+    // (pg_trgm) continua acima do threshold mesmo quando a query tem uma
+    // palavra a mais que não bate com ninguém — é exatamente esse
+    // "vazamento" que o filtro client-side precisa descartar.
+    return {
+      pessoas: [{
+        id: 55, nome: 'LUCAS SILVA', cpf_masked: '***.123.456-**',
+        apelido: null, data_nascimento: '1990-01-01', foto_principal_url: null,
+      }],
+    };
+  };
+})();
+"""
+
+
+def test_nome_com_palavra_extra_sem_correspondencia_esvazia_o_painel(harness: Path) -> None:
+    """Digitar uma palavra a mais que não bate com ninguém deve esvaziar o painel.
+
+    Reproduz o cenário relatado: "lucas" mostra candidatos, "lucas silva"
+    filtra para os Lucas Silva, mas "lucas silva teste" (ninguém com esse
+    nome) deveria fazer a lista sumir — o backend, por usar fuzzy match
+    (pg_trgm) em cima da string inteira, continua retornando o candidato
+    "LUCAS SILVA" mesmo com a palavra extra. O filtro client-side deve
+    descartar esse candidato quando a query tem uma palavra que não está
+    contida (em ordem) no nome/apelido.
+    """
+    with sync_playwright() as p:
+        browser = _launch_or_skip(p)
+        page = browser.new_page()
+        page.add_init_script(_STUB_LUCAS_SEMPRE_RETORNA)
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        nome_input = page.locator('input[placeholder="Nome completo"]')
+
+        nome_input.fill("LUCAS")
+        page.wait_for_timeout(600)
+        estado_lucas = page.evaluate("__state()")
+
+        nome_input.fill("LUCAS SILVA")
+        page.wait_for_timeout(600)
+        estado_lucas_silva = page.evaluate("__state()")
+
+        nome_input.fill("LUCAS SILVA TESTE")
+        page.wait_for_timeout(600)
+        estado_lucas_silva_teste = page.evaluate("__state()")
+        browser.close()
+
+    assert [p["id"] for p in estado_lucas["cpDuplicatas"]] == [55]
+    assert [p["id"] for p in estado_lucas_silva["cpDuplicatas"]] == [55]
+    assert estado_lucas_silva_teste["cpDuplicatas"] == [], (
+        "painel continuou mostrando LUCAS SILVA mesmo com a palavra extra "
+        "'TESTE' que não bate com ninguém"
+    )
