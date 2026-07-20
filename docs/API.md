@@ -55,6 +55,11 @@ Autenticação: Bearer JWT (`Authorization: Bearer <access_token>`).
 | POST | `/abordagens/` | Criar abordagem (com pessoas/veículos + auto-relacionamento) | Sim | 30/min |
 | GET | `/abordagens/` | Listar paginado; busca textual (`q`) por nome de pessoa, placa e veículo (modelo/cor/tipo), ou filtro por `data` | Sim | 30/min |
 | GET | `/abordagens/{id}` | Detalhe com pessoas, veículos e fotos | Sim | 60/min |
+| PATCH | `/abordagens/{id}` | Atualizar observação/endereço. Restrito a dono da abordagem ou admin da guarnição | Sim | 30/min |
+| POST | `/abordagens/{id}/pessoas` | Vincular pessoa já cadastrada a abordagem existente. Restrito a dono/admin; 409 se já vinculada | Sim | 30/min |
+| DELETE | `/abordagens/{id}/pessoas/{pessoa_id}` | Desvincular pessoa da abordagem. Restrito a dono/admin | Sim | 30/min |
+| POST | `/abordagens/{id}/veiculos` | Vincular veículo já cadastrado a abordagem existente. Restrito a dono/admin; 409 se já vinculado | Sim | 30/min |
+| DELETE | `/abordagens/{id}/veiculos/{veiculo_id}` | Desvincular veículo da abordagem. Restrito a dono/admin | Sim | 30/min |
 
 ## Fotos (`/fotos`)
 

@@ -38,6 +38,8 @@
 | Feature | Descricao |
 |---------|-----------|
 | Cadastro rapido | Registro de abordagem em < 40 segundos (GPS automatico, voz, camera) |
+| Complementar abordagem | Vincular/desvincular pessoas e veiculos numa abordagem ja registrada, sem alterar coordenadas/data-hora originais. Restrito a quem registrou ou a admin da guarnicao |
+| Deteccao de duplicidade | Aviso (nao bloqueante) no cadastro de pessoa quando ja existe alguem com nome parecido ou CPF igual, com link direto para a ficha existente |
 | Entrada por voz | Ditado de observacoes via Web Speech API |
 | Captura de foto | Camera direta no navegador com upload para MinIO (storage S3-compatible) |
 | Reconhecimento facial | Busca por similaridade com InsightFace (embedding 512-dim, IVFFlat pgvector) |
@@ -349,6 +351,11 @@ argus-ai/
 | POST | `/` | Registrar abordagem com pessoas + veiculos + auto-relacionamento |
 | GET | `/` | Listar abordagens (paginado, com filtros) |
 | GET | `/{id}` | Detalhe de abordagem com pessoas, veiculos e fotos |
+| PATCH | `/{id}` | Atualizar observacao/endereco (restrito a dono ou admin da guarnicao) |
+| POST | `/{id}/pessoas` | Vincular pessoa existente a abordagem (restrito a dono/admin) |
+| DELETE | `/{id}/pessoas/{pessoa_id}` | Desvincular pessoa da abordagem (restrito a dono/admin) |
+| POST | `/{id}/veiculos` | Vincular veiculo existente a abordagem (restrito a dono/admin) |
+| DELETE | `/{id}/veiculos/{veiculo_id}` | Desvincular veiculo da abordagem (restrito a dono/admin) |
 
 ### Fotos e Midias (`/api/v1/fotos`)
 

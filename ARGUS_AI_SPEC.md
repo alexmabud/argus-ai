@@ -85,6 +85,7 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 - ✅ **Gestão administrativa**: usuários, BPMs, equipes, super-admin + permissões granulares
 - ✅ **Rate limiting** e controle de acesso
 - ✅ **Audit log** completo
+- ✅ **Complementar abordagem existente**: `POST`/`DELETE /abordagens/{id}/pessoas` e `.../veiculos` vinculam/desvinculam pessoa ou veículo numa abordagem já registrada (coordenadas/data-hora permanecem imutáveis). Restrito a quem registrou a abordagem ou a admin/super-admin da guarnição — mesma trava aplicada retroativamente ao `PATCH /abordagens/{id}`. Vínculo duplicado (já ativo) retorna 409 em vez de violar constraint única
 
 #### Banco de Dados
 - ✅ **PostgreSQL 16** com extensões (pgvector, PostGIS, pg_trgm, unaccent)
@@ -113,6 +114,7 @@ O nome faz referência a Argus Panoptes, o gigante de cem olhos da mitologia gre
 - ✅ **Captura de câmera** (getUserMedia)
 - ✅ **Entrada por voz** (Web Speech API)
 - ✅ **OCR de placa** no frontend
+- ✅ **Detecção de duplicidade no cadastro de pessoa**: busca em tempo real (debounce, reaproveita `GET /consultas/`) por nome parecido (pg_trgm) ou CPF igual enquanto o operador digita em `cadastro-pessoa-modal.js`; aviso é sempre soft (não bloqueia o cadastro) — a única barreira dura continua sendo o 409 de CPF exatamente igual no submit
 
 #### Infraestrutura & Segurança
 - ✅ **Criptografia de campos sensíveis** (CPF com Fernet)
