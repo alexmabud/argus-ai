@@ -51,7 +51,7 @@ dependencies = [
     "arq>=0.28.0",
     # Cache
     # Teto <6 obrigatorio: arq exige redis[hiredis]<6 — redis 6/7/8 quebra o worker (ver PR #32)
-    "redis>=5.0.0,<6",
+    "redis>=7.4.1,<8",
     # Production server
     "gunicorn>=26.0.0",
 ]
