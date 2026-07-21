@@ -814,6 +814,7 @@ async def listar_veiculos_pessoa(
             observacoes=item["veiculo"].observacoes,
             criado_em=item["veiculo"].criado_em,
             origem=item["origem"],
+            criado_por_id=item["criado_por_id"],
         )
         for item in itens
     ]

@@ -6,6 +6,7 @@ de filtros automáticos em queries e verificações de propriedade de recursos.
 
 from app.core.exceptions import AcessoNegadoError
 from app.models.abordagem import Abordagem
+from app.models.pessoa_veiculo import PessoaVeiculo
 from app.models.usuario import Usuario
 
 
@@ -108,3 +109,23 @@ def assert_pode_editar_abordagem(user: Usuario, abordagem: Abordagem) -> None:
         return
     if abordagem.usuario_id != user.id:
         raise AcessoNegadoError("Apenas quem registrou a abordagem pode editá-la")
+
+
+def assert_pode_remover_vinculo_veiculo(user: Usuario, vinculo: PessoaVeiculo) -> None:
+    """Valida se o usuário pode desfazer um vínculo direto pessoa-veículo.
+
+    Apenas quem criou o vínculo (dono) ou um admin da guarnição
+    (is_admin/is_super_admin) pode removê-lo. Vínculo sem autor registrado
+    (`criado_por_id` nulo, legado) só pode ser removido por admin.
+
+    Args:
+        user: Usuário autenticado tentando remover o vínculo.
+        vinculo: Vínculo pessoa-veículo alvo da remoção.
+
+    Raises:
+        AcessoNegadoError: 403 se o usuário não é dono nem admin.
+    """
+    if user.is_admin or user.is_super_admin:
+        return
+    if vinculo.criado_por_id != user.id:
+        raise AcessoNegadoError("Apenas quem criou o vínculo pode removê-lo")

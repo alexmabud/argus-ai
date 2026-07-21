@@ -19,7 +19,7 @@ function renderPessoaDetalhe(appState) {
   }
 
   return `
-    <div x-data="{ ...pessoaDetalhePage(${pessoaId}), ...personPhotoModal(), ...veiculoFichaForm() }" x-init="load()" @veiculo-vinculado.window="recarregarVeiculosPessoa()" style="display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem;">
+    <div x-data="{ ...pessoaDetalhePage(${pessoaId}), ...personPhotoModal(), ...veiculoFichaForm(), ...confirmDialog() }" x-init="load()" @veiculo-vinculado.window="recarregarVeiculosPessoa()" style="display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem;">
       <!-- Loading -->
       <div x-show="loading" style="display: flex; justify-content: center; padding: 3rem 0;">
         <span class="spinner"></span>
@@ -130,15 +130,9 @@ function renderPessoaDetalhe(appState) {
               <template x-for="foto in fotosRosto().slice(0, 4)" :key="foto.id">
                 <div style="position: relative;">
                   <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
-                       @click="fotoAmpliada = foto.arquivo_url">
+                       @click="fotoAmpliada = foto.arquivo_url; fotoAmpliadaId = foto.id">
                   <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                         x-text="foto.tipo || 'foto'"></span>
-                  <button x-show="isAdmin" @click.stop="apagarFoto(foto.id)"
-                          class="hov-icon-danger"
-                          style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
-                          title="Apagar foto">
-                    ✕
-                  </button>
                 </div>
               </template>
               </div>
@@ -208,15 +202,9 @@ function renderPessoaDetalhe(appState) {
               <template x-for="foto in fotosEvidencia().slice(0, 4)" :key="foto.id">
                 <div style="position: relative;">
                   <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
-                       @click="fotoAmpliada = foto.arquivo_url">
+                       @click="fotoAmpliada = foto.arquivo_url; fotoAmpliadaId = foto.id">
                   <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                         x-text="foto.tipo || 'foto'"></span>
-                  <button x-show="isAdmin" @click.stop="apagarFoto(foto.id)"
-                          class="hov-icon-danger"
-                          style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
-                          title="Apagar foto">
-                    ✕
-                  </button>
                 </div>
               </template>
               </div>
@@ -234,10 +222,18 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Foto ampliada (modal) -->
-          <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
+          <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null; fotoAmpliadaId = null"
                style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: var(--bottom-nav-height); background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;">
-            <div @click.stop style="display: flex; flex-direction: column; max-width: min(90vw, 480px); width: 100%;">
-              <img :src="fotoAmpliada" @click="fotoAmpliada = null"
+            <div @click.stop style="position: relative; display: flex; flex-direction: column; max-width: min(90vw, 480px); width: 100%;">
+              <button x-show="isAdmin" @click="confirmarApagarFotoAmpliada()"
+                      class="hov-icon-danger"
+                      style="position: absolute; top: 0.5rem; right: 0.5rem; width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 4px; cursor: pointer; line-height: 1; z-index: 1;"
+                      title="Apagar foto">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.1rem; height: 1.1rem;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+              </button>
+              <img :src="fotoAmpliada" @click="fotoAmpliada = null; fotoAmpliadaId = null"
                    style="width: 100%; border-radius: 4px 4px 0 0; display: block; cursor: pointer; object-fit: contain; max-height: 70vh;">
               <div style="background: rgba(5,10,15,0.95); border-radius: 0 0 4px 4px; padding: 0.75rem;">
                 <p x-show="pessoa?.nome"
@@ -277,15 +273,9 @@ function renderPessoaDetalhe(appState) {
                 <template x-for="foto in fotosModal()" :key="'modal-' + foto.id">
                   <div style="position: relative;">
                     <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
-                         @click="fotoAmpliada = foto.arquivo_url">
+                         @click="fotoAmpliada = foto.arquivo_url; fotoAmpliadaId = foto.id">
                     <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                           x-text="foto.tipo || 'foto'"></span>
-                    <button x-show="isAdmin" @click.stop="apagarFoto(foto.id)"
-                            class="hov-icon-danger"
-                            style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
-                            title="Apagar foto">
-                      ✕
-                    </button>
                   </div>
                 </template>
               </div>
@@ -745,7 +735,8 @@ function renderPessoaDetalhe(appState) {
               <template x-for="v in veiculos" :key="v.veiculo_id">
                 <div class="card-led-purple" style="display: flex; align-items: center; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem;">
                   <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; width: 100%;">
-                    <div style="flex: 1; min-width: 0;">
+                    <div style="flex: 1; min-width: 0; cursor: pointer;"
+                         @click="openPhotoModal(fotoRepresentativaVeiculo(v), pessoa.id, pessoa, v, veiculoDeleteContext(v))">
                       <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em; background: var(--color-surface-hover); padding: 0.125rem 0.375rem; border-radius: 2px; border: 1px solid var(--color-border);" x-text="formatPlaca(v.placa)"></span>
                       <p x-show="v.modelo || v.cor || v.ano" style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;"
                          x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
@@ -755,11 +746,11 @@ function renderPessoaDetalhe(appState) {
                             <template x-for="fv in fotosVeiculos[v.veiculo_id].slice(0, 4)" :key="fv.id">
                               <img :src="fv.thumbnail_url || fv.arquivo_url"
                                    style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;"
-                                   @click="openPhotoModal(fv.arquivo_url, pessoa.id, pessoa, v)"
+                                   @click.stop="openPhotoModal(fv.arquivo_url, pessoa.id, pessoa, v, veiculoDeleteContext(v))"
                                    loading="lazy">
                             </template>
                           </div>
-                          <button x-show="fotosVeiculos[v.veiculo_id].length > 4" @click="modalFotosVeiculo = v.veiculo_id"
+                          <button x-show="fotosVeiculos[v.veiculo_id].length > 4" @click.stop="modalFotosVeiculo = v.veiculo_id"
                                   style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0;">
                             Ver mais (<span x-text="fotosVeiculos[v.veiculo_id].length - 4"></span>)
                           </button>
@@ -785,14 +776,6 @@ function renderPessoaDetalhe(appState) {
                           <input type="file" accept="image/*" style="display: none;"
                                  @change="onFotoVeiculoDireto($event, v.veiculo_id)">
                         </label>
-                        <button x-show="v.origem === 'direto'" @click="removerVinculoVeiculo(v.veiculo_id)"
-                                class="hov-icon-danger"
-                                style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); padding: 0.125rem;"
-                                title="Remover vínculo">
-                          <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                          </svg>
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -1074,6 +1057,7 @@ function renderPessoaDetalhe(appState) {
 
       ${personPhotoModalHTML()}
       ${veiculoFichaFormHTML()}
+      ${confirmDialogHTML()}
 
       <!-- Erro -->
       <p x-show="erro" style="color: var(--color-danger); font-size: 0.875rem;" x-text="erro"></p>
@@ -1101,6 +1085,7 @@ function pessoaDetalhePage(pessoaId) {
     // não importa qual, pois o botão sempre define o valor antes de usá-lo.
     pessoaIdParaVeiculo: null,
     fotoAmpliada: null,
+    fotoAmpliadaId: null,
     modalTodasFotos: false,
     modalFotosVeiculo: null,
     pessoaPreview: null,
@@ -1295,13 +1280,59 @@ function pessoaDetalhePage(pessoaId) {
     },
 
     /**
+     * Primeira foto disponível do veículo (representativa, para abrir a
+     * foto ampliada a partir do card, mesmo sem clicar numa miniatura
+     * específica). Retorna null se o veículo não tem foto cadastrada.
+     *
+     * @param {object} v - Item de veículo ({veiculo_id, ...}).
+     * @returns {string|null} URL da foto ou null.
+     */
+    fotoRepresentativaVeiculo(v) {
+      const fotos = this.fotosVeiculos[v.veiculo_id];
+      if (!fotos || fotos.length === 0) return null;
+      return fotos[0].arquivo_url;
+    },
+
+    /**
+     * Se o usuário autenticado pode desfazer o vínculo direto deste
+     * veículo: dono do vínculo (criado_por_id) ou admin/super-admin.
+     * Vínculo derivado de abordagem (origem !== 'direto') nunca é
+     * removível por aqui.
+     *
+     * @param {object} v - Item de veículo ({veiculo_id, origem, criado_por_id}).
+     * @returns {boolean}
+     */
+    podeRemoverVinculoVeiculo(v) {
+      if (v.origem !== 'direto') return false;
+      if (this.isAdmin) return true;
+      const user = auth.getUser() || {};
+      return v.criado_por_id === user.id;
+    },
+
+    /**
+     * Contexto de exclusão passado ao personPhotoModal para este veículo,
+     * ou null se o usuário não pode remover o vínculo.
+     *
+     * @param {object} v - Item de veículo.
+     * @returns {object|null}
+     */
+    veiculoDeleteContext(v) {
+      if (!this.podeRemoverVinculoVeiculo(v)) return null;
+      return {
+        tituloBotao: 'Remover veículo',
+        mensagem: 'Remover este vínculo? O veículo continua cadastrado no sistema. Esta ação não pode ser desfeita.',
+        onConfirm: () => this.removerVinculoVeiculo(v.veiculo_id),
+      };
+    },
+
+    /**
      * Remove o vínculo direto entre a pessoa e um veículo (soft delete do
-     * vínculo, não do veículo em si) após confirmação do usuário.
+     * vínculo, não do veículo em si). Confirmação já ocorreu via
+     * confirmDialog antes desta chamada.
      *
      * @param {number} veiculoId - ID do veículo a desvincular.
      */
     async removerVinculoVeiculo(veiculoId) {
-      if (!confirm("Remover este vínculo? O veículo continua cadastrado no sistema.")) return;
       try {
         await api.delete(`/pessoas/${pessoaId}/veiculos/${veiculoId}`);
         await this.carregarVeiculos();
@@ -1911,15 +1942,15 @@ function pessoaDetalhePage(pessoaId) {
     },
 
     /**
-     * Apaga uma foto (soft delete) após confirmação do usuário.
+     * Remove uma foto (soft delete). Confirmação já ocorreu via
+     * confirmDialog antes desta chamada (ver confirmarApagarFotoAmpliada).
      *
      * Remove a foto da lista local (`this.fotos`) em caso de sucesso, sem
      * precisar recarregar a página inteira.
      *
-     * @param {number} fotoId - ID da foto a ser apagada.
+     * @param {number} fotoId - ID da foto a apagar.
      */
     async apagarFoto(fotoId) {
-      if (!confirm("Apagar esta foto? Esta ação não pode ser desfeita.")) return;
       try {
         await api.delete(`/fotos/${fotoId}`);
         this.fotos = this.fotos.filter(f => f.id !== fotoId);
@@ -1927,6 +1958,21 @@ function pessoaDetalhePage(pessoaId) {
       } catch (err) {
         showToast(err?.message || "Erro ao apagar foto", "error");
       }
+    },
+
+    /**
+     * Abre a confirmação customizada para apagar a foto atualmente exibida
+     * no modal de foto ampliada (fotoAmpliadaId); ao confirmar, apaga e
+     * fecha o modal. Só admin vê o botão que chama este método.
+     */
+    confirmarApagarFotoAmpliada() {
+      const fotoId = this.fotoAmpliadaId;
+      if (!fotoId) return;
+      this.abrirConfirmacao('Apagar esta foto? Esta ação não pode ser desfeita.', async () => {
+        await this.apagarFoto(fotoId);
+        this.fotoAmpliada = null;
+        this.fotoAmpliadaId = null;
+      });
     },
   };
 }

@@ -8,7 +8,7 @@
 
 function renderAbordagemDetalhe() {
   return `
-    <div x-data="{ ...abordagemDetalhePage(), ...personPhotoModal(), ...cadastroPessoaModal() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
+    <div x-data="{ ...abordagemDetalhePage(), ...personPhotoModal(), ...cadastroPessoaModal(), ...confirmDialog() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
 
       <!-- Loading inicial -->
       <div x-show="loading" style="text-align:center;padding:48px 0;">
@@ -45,13 +45,8 @@ function renderAbordagemDetalhe() {
               <div x-show="!ab.pessoas || ab.pessoas.length === 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">Nenhum abordado registrado.</div>
               <div style="display:flex;gap:10px;flex-wrap:wrap;">
                 <template x-for="p in (ab.pessoas || [])" :key="p.id">
-                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative;" @click="if(p.foto_principal_url) openPhotoModal(p.foto_principal_url, p.id, p); else abrirFicha(p.id)">
-                    <button x-show="podeEditar()" @click.stop="removerPessoa(p.id)"
-                       class="hov-icon-danger"
-                       style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;background:rgba(5,10,15,0.85);color:var(--color-text-muted);border:none;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;padding:0;z-index:1;"
-                       title="Remover abordado">
-                      ✕
-                    </button>
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative;"
+                       @click="openPhotoModal(p.foto_principal_url || null, p.id, p, null, podeEditar() ? { tituloBotao: 'Remover abordado', mensagem: 'Remover este abordado da abordagem? Esta ação não pode ser desfeita.', onConfirm: () => removerPessoa(p.id) } : null)">
                     <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
                       <div style="width:54px;height:54px;border-radius:4px;border:1px solid rgba(0,212,255,0.2);background:var(--color-surface-hover);display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color 0.15s;"
                            class="hov-border-primary">
@@ -126,7 +121,8 @@ function renderAbordagemDetalhe() {
                 <span style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--color-text-dim);text-transform:uppercase;letter-spacing:0.15em;">Veículos</span>
                 <div x-show="!ab.veiculos || ab.veiculos.length === 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">Nenhum veículo registrado.</div>
                 <template x-for="v in ab.veiculos" :key="v.id">
-                  <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;position:relative;">
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:4px;position:relative;cursor:pointer;"
+                       @click="openPhotoModal(fotoVeiculo(v.id), v.pessoa_id || null, null, v, podeEditar() ? { tituloBotao: 'Remover veículo', mensagem: 'Remover este veículo da abordagem? Esta ação não pode ser desfeita.', onConfirm: () => removerVeiculo(v.id) } : null)">
                     <div style="width:52px;height:36px;background:var(--color-surface-hover);border:1px solid var(--color-border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
                       <template x-if="fotoVeiculo(v.id)">
                         <img :src="fotoVeiculo(v.id)" style="width:100%;height:100%;object-fit:cover;">
@@ -140,12 +136,6 @@ function renderAbordagemDetalhe() {
                       <div style="font-family:var(--font-data);font-size:11px;color:var(--color-text-muted);margin-top:3px;"
                            x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></div>
                     </div>
-                    <button x-show="podeEditar()" @click.stop="removerVeiculo(v.id)"
-                       class="hov-icon-danger"
-                       style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;background:rgba(5,10,15,0.85);color:var(--color-text-muted);border:none;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;padding:0;"
-                       title="Remover veículo">
-                      ✕
-                    </button>
                   </div>
                 </template>
 
@@ -405,6 +395,7 @@ function renderAbordagemDetalhe() {
 
       ${personPhotoModalHTML()}
       ${cadastroPessoaModalHTML()}
+      ${confirmDialogHTML()}
 
       <!-- Foto ampliada (mídia da abordagem — sem pessoa vinculada) -->
       <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
@@ -480,7 +471,6 @@ function abordagemDetalhePage() {
     },
 
     async removerPessoa(pessoaId) {
-      if (!confirm('Remover este abordado da abordagem?')) return;
       try {
         await api.delete(`/abordagens/${this.ab.id}/pessoas/${pessoaId}`);
         this.ab = { ...this.ab, pessoas: this.ab.pessoas.filter(p => p.id !== pessoaId) };
@@ -513,7 +503,6 @@ function abordagemDetalhePage() {
     },
 
     async removerVeiculo(veiculoId) {
-      if (!confirm('Remover este veículo da abordagem?')) return;
       try {
         await api.delete(`/abordagens/${this.ab.id}/veiculos/${veiculoId}`);
         this.ab = { ...this.ab, veiculos: this.ab.veiculos.filter(v => v.id !== veiculoId) };
@@ -606,14 +595,6 @@ function abordagemDetalhePage() {
         f => f.veiculo_id === veiculoId && f.tipo === 'veiculo'
       );
       return f ? (f.thumbnail_url || f.arquivo_url) : null;
-    },
-
-    abrirFicha(pessoaId) {
-      const appEl = document.querySelector('[x-data]');
-      if (appEl && appEl._x_dataStack) {
-        appEl._x_dataStack[0]._pessoaId = pessoaId;
-        appEl._x_dataStack[0].navigate('pessoa-detalhe');
-      }
     },
 
     async enviarRap() {

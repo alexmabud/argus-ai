@@ -234,6 +234,43 @@ class TestDesvincularEReativar:
         with pytest.raises(AcessoNegadoError):
             await service.desvincular(pessoa.id, veiculo.id, usuario_b)
 
+    async def test_desvincular_por_outro_usuario_da_mesma_guarnicao_levanta_acesso_negado(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        usuario: Usuario,
+        outro_usuario: Usuario,
+    ):
+        """Vínculo criado por um usuário não pode ser desfeito por outro da mesma guarnição.
+
+        Diferente do teste de outra guarnição acima: aqui `outro_usuario`
+        está na MESMA guarnição (passaria no `TenantFilter.check_ownership`),
+        mas não é quem criou o vínculo nem é admin.
+        """
+        service = PessoaVeiculoService(db_session)
+        await service.vincular(pessoa.id, veiculo.id, usuario)
+
+        with pytest.raises(AcessoNegadoError):
+            await service.desvincular(pessoa.id, veiculo.id, outro_usuario)
+
+    async def test_desvincular_por_admin_de_vinculo_de_outro_usuario_tem_sucesso(
+        self,
+        db_session: AsyncSession,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+        usuario: Usuario,
+        admin_usuario: Usuario,
+    ):
+        """Admin da guarnição pode desvincular vínculo criado por outro usuário."""
+        service = PessoaVeiculoService(db_session)
+        await service.vincular(pessoa.id, veiculo.id, usuario)
+
+        await service.desvincular(pessoa.id, veiculo.id, admin_usuario)
+
+        resultado = await service.listar_veiculos_pessoa(pessoa.id, usuario)
+        assert resultado == []
+
 
 class TestListarVeiculosPessoa:
     async def test_marca_origem_direto(
@@ -247,6 +284,7 @@ class TestListarVeiculosPessoa:
         assert len(resultado) == 1
         assert resultado[0]["origem"] == "direto"
         assert resultado[0]["veiculo"].id == veiculo.id
+        assert resultado[0]["criado_por_id"] == usuario.id
 
     async def test_marca_origem_abordagem_quando_so_via_abordagem(
         self,
@@ -268,6 +306,7 @@ class TestListarVeiculosPessoa:
         assert len(resultado) == 1
         assert resultado[0]["origem"] == "abordagem"
         assert resultado[0]["veiculo"].id == veiculo.id
+        assert resultado[0]["criado_por_id"] is None
 
     async def test_direto_prevalece_sobre_abordagem_quando_ambos(
         self,

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Harness e2e — confirm dialog</title>
+<link rel="stylesheet" href="app.css">
+<style>[x-cloak]{display:none!important}</style>
+<script>
+window.__confirmado = null;
+
+// Inspeção de estado Alpine para os asserts do teste.
+window.__state = () => {
+  const el = document.querySelector('[x-data]');
+  const d = Alpine.$data(el);
+  return {
+    visivel: d.confirmDialogVisible,
+    mensagem: d.confirmDialogMensagem,
+    confirmado: window.__confirmado,
+  };
+};
+</script>
+<script src="confirm-dialog.js"></script>
+</head>
+<body>
+<div id="mount">
+  <div x-data="{ ...confirmDialog() }">
+    <button @click="abrirConfirmacao('Remover este item? Esta ação não pode ser desfeita.', () => { window.__confirmado = true; })">
+      Testar remoção
+    </button>
+    <div id="dialog-mount"></div>
+  </div>
+</div>
+<script>
+document.getElementById('dialog-mount').innerHTML = confirmDialogHTML();
+</script>
+<script defer src="alpine.min.js"></script>
+</body>
+</html>

@@ -23,6 +23,10 @@ class PessoaVeiculoRead(BaseModel):
         origem: "direto" (vinculado pela ficha) ou "abordagem" (vinculado
             via alguma abordagem da pessoa). Só "direto" habilita o botão
             de desvincular no frontend.
+        criado_por_id: ID do usuário que criou o vínculo direto (None para
+            vínculo só via abordagem, ou vínculo direto legado sem autor
+            registrado). Usado pelo frontend para decidir se o usuário
+            autenticado pode desvincular (dono do vínculo ou admin).
     """
 
     veiculo_id: int
@@ -34,5 +38,6 @@ class PessoaVeiculoRead(BaseModel):
     observacoes: str | None = None
     criado_em: datetime
     origem: Literal["direto", "abordagem"]
+    criado_por_id: int | None = None
 
     model_config = {"from_attributes": True}

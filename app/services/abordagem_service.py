@@ -31,6 +31,32 @@ from app.services.relacionamento_service import RelacionamentoService
 logger = logging.getLogger("argus")
 
 
+def filtro_abordagem(user: Usuario) -> tuple[int | None, int | None]:
+    """Retorna (guarnicao_id, bpm_id) para filtro de escopo de abordagens.
+
+    Prioridade: guarnição > BPM > global. Apenas um dos dois será não-None.
+    Mesma regra usada por `GET /abordagens/{id}` e `GET /abordagens/` —
+    reaproveitada por `AbordagemService.atualizar`/`vincular_pessoa`/
+    `desvincular_pessoa`/`vincular_veiculo`/`desvincular_veiculo` para que
+    essas ações respeitem o mesmo escopo que a visualização já respeita
+    (achado em teste manual: antes, esses métodos filtravam direto por
+    `user.guarnicao_id`, ignorando `isolamento_abordagens` — um admin cuja
+    guarnição não tem isolamento ativado, o padrão do model, conseguia ver
+    a abordagem de outra guarnição mas não conseguia editá-la).
+
+    Args:
+        user: Usuário autenticado com guarnicao e bpm carregados.
+
+    Returns:
+        Tupla (guarnicao_id, bpm_id). Ambos None = acesso global.
+    """
+    if user.guarnicao and user.guarnicao.isolamento_abordagens:
+        return (user.guarnicao_id, None)
+    if user.guarnicao and user.guarnicao.bpm and user.guarnicao.bpm.isolamento_abordagens:
+        return (None, user.guarnicao.bpm_id)
+    return (None, None)
+
+
 class AbordagemService:
     """Serviço central de Abordagem com PostGIS e materialização de relacionamentos.
 
@@ -454,7 +480,10 @@ class AbordagemService:
             AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
         """
         assert user.guarnicao_id is not None
-        abordagem = await self.buscar_por_id(abordagem_id, user.guarnicao_id)
+        guarnicao_id_filtro, bpm_id_filtro = filtro_abordagem(user)
+        abordagem = await self.buscar_detalhe(
+            abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro
+        )
         assert_pode_editar_abordagem(user, abordagem)
 
         update_data = data.model_dump(exclude_unset=True)
@@ -504,7 +533,10 @@ class AbordagemService:
             ConflitoDadosError: Se a pessoa já está vinculada (ativa) à abordagem.
         """
         assert user.guarnicao_id is not None
-        abordagem = await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        guarnicao_id_filtro, bpm_id_filtro = filtro_abordagem(user)
+        abordagem = await self.buscar_detalhe(
+            abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro
+        )
         assert_pode_editar_abordagem(user, abordagem)
 
         vinculo_existente = next(
@@ -565,7 +597,7 @@ class AbordagemService:
         # encontra o objeto já na identity map e devolve a coleção antiga —
         # SQLAlchemy não reexecuta selectinload em relacionamento já carregado.
         self.db.expire(abordagem)
-        return await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        return await self.buscar_detalhe(abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro)
 
     async def desvincular_pessoa(
         self,
@@ -594,7 +626,10 @@ class AbordagemService:
             AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
         """
         assert user.guarnicao_id is not None
-        abordagem = await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        guarnicao_id_filtro, bpm_id_filtro = filtro_abordagem(user)
+        abordagem = await self.buscar_detalhe(
+            abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro
+        )
         assert_pode_editar_abordagem(user, abordagem)
 
         vinculo = next(
@@ -652,7 +687,10 @@ class AbordagemService:
             ConflitoDadosError: Se o veículo já está vinculado (ativo) à abordagem.
         """
         assert user.guarnicao_id is not None
-        abordagem = await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        guarnicao_id_filtro, bpm_id_filtro = filtro_abordagem(user)
+        abordagem = await self.buscar_detalhe(
+            abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro
+        )
         assert_pode_editar_abordagem(user, abordagem)
 
         vinculo_existente = next(
@@ -701,7 +739,7 @@ class AbordagemService:
         # expire() força buscar_detalhe a reexecutar o selectinload em vez de
         # devolver a coleção antiga já carregada na identity map.
         self.db.expire(abordagem)
-        return await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        return await self.buscar_detalhe(abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro)
 
     async def desvincular_veiculo(
         self,
@@ -730,7 +768,10 @@ class AbordagemService:
             AcessoNegadoError: Se o usuário não é dono da abordagem nem admin.
         """
         assert user.guarnicao_id is not None
-        abordagem = await self.buscar_detalhe(abordagem_id, user.guarnicao_id)
+        guarnicao_id_filtro, bpm_id_filtro = filtro_abordagem(user)
+        abordagem = await self.buscar_detalhe(
+            abordagem_id, guarnicao_id_filtro, bpm_id=bpm_id_filtro
+        )
         assert_pode_editar_abordagem(user, abordagem)
 
         vinculo = next(

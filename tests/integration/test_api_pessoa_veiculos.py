@@ -95,6 +95,7 @@ class TestListarVeiculosPessoa:
         assert len(data) == 1
         assert data[0]["origem"] == "direto"
         assert data[0]["veiculo_id"] == veiculo.id
+        assert data[0]["criado_por_id"] is not None
 
     async def test_lista_vazia_quando_sem_vinculo(
         self, client: AsyncClient, auth_headers: dict, pessoa: Pessoa
@@ -174,6 +175,58 @@ class TestDesvincularVeiculo:
         """
         response = await client.delete(f"/api/v1/pessoas/{pessoa.id}/veiculos/{veiculo.id}")
         assert response.status_code == 401
+
+    async def test_desvincular_por_outro_usuario_retorna_403(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        auth_headers_outro_usuario: dict,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+    ):
+        """Testa que usuário que não criou o vínculo nem é admin recebe 403.
+
+        Args:
+            client: Cliente HTTP assíncrono.
+            auth_headers: Headers do usuário que criou o vínculo.
+            auth_headers_outro_usuario: Headers de um segundo usuário da mesma
+                guarnição, sem privilégio de admin.
+            pessoa: Fixture de pessoa da guarnição.
+            veiculo: Fixture de veículo da guarnição.
+        """
+        await client.post(
+            f"/api/v1/pessoas/{pessoa.id}/veiculos/{veiculo.id}", headers=auth_headers
+        )
+        response = await client.delete(
+            f"/api/v1/pessoas/{pessoa.id}/veiculos/{veiculo.id}",
+            headers=auth_headers_outro_usuario,
+        )
+        assert response.status_code == 403
+
+    async def test_desvincular_por_admin_retorna_204(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        auth_headers_admin: dict,
+        pessoa: Pessoa,
+        veiculo: Veiculo,
+    ):
+        """Testa que admin da guarnição pode desvincular vínculo criado por outro usuário.
+
+        Args:
+            client: Cliente HTTP assíncrono.
+            auth_headers: Headers do usuário que criou o vínculo (não-admin).
+            auth_headers_admin: Headers de um admin da mesma guarnição.
+            pessoa: Fixture de pessoa da guarnição.
+            veiculo: Fixture de veículo da guarnição.
+        """
+        await client.post(
+            f"/api/v1/pessoas/{pessoa.id}/veiculos/{veiculo.id}", headers=auth_headers
+        )
+        response = await client.delete(
+            f"/api/v1/pessoas/{pessoa.id}/veiculos/{veiculo.id}", headers=auth_headers_admin
+        )
+        assert response.status_code == 204
 
 
 class TestPessoaVeiculoCrossTenant:

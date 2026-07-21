@@ -28,28 +28,10 @@ from app.schemas.abordagem import (
 from app.schemas.auth import UsuarioResumoRead
 from app.schemas.foto import FotoRead
 from app.schemas.ocorrencia import OcorrenciaRead
-from app.services.abordagem_service import AbordagemService
+from app.services.abordagem_service import AbordagemService, filtro_abordagem
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/abordagens", tags=["Abordagens"])
-
-
-def _filtro_abordagem(user: Usuario) -> tuple[int | None, int | None]:
-    """Retorna (guarnicao_id, bpm_id) para filtro de abordagens.
-
-    Prioridade: equipe > BPM > global. Apenas um dos dois será não-None.
-
-    Args:
-        user: Usuário autenticado com guarnicao e bpm carregados.
-
-    Returns:
-        Tupla (guarnicao_id, bpm_id). Ambos None = acesso global.
-    """
-    if user.guarnicao and user.guarnicao.isolamento_abordagens:
-        return (user.guarnicao_id, None)
-    if user.guarnicao and user.guarnicao.bpm and user.guarnicao.bpm.isolamento_abordagens:
-        return (None, user.guarnicao.bpm_id)
-    return (None, None)
 
 
 @router.post("/", response_model=AbordagemRead, status_code=status.HTTP_201_CREATED)
@@ -153,7 +135,7 @@ async def listar_abordagens(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário sem guarnição atribuída",
         )
-    guarnicao_id_filtro, bpm_id_filtro = _filtro_abordagem(user)
+    guarnicao_id_filtro, bpm_id_filtro = filtro_abordagem(user)
     service = AbordagemService(db)
     if q is not None:
         abordagens = await service.buscar_por_texto(
@@ -212,7 +194,7 @@ async def detalhe_abordagem(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário sem guarnição atribuída",
         )
-    guarnicao_id_filtro, bpm_id_filtro = _filtro_abordagem(user)
+    guarnicao_id_filtro, bpm_id_filtro = filtro_abordagem(user)
     service = AbordagemService(db)
     try:
         abordagem = await service.buscar_detalhe(

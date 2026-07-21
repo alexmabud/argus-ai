@@ -7,6 +7,14 @@
  *   Incluir no template: ${personPhotoModalHTML()}
  *   Acionar: openPhotoModal(fotoUrl, pessoaId, dadosPreview)
  *   dadosPreview: objeto com dados básicos já disponíveis no contexto (mostra imediatamente)
+ *
+ * Exclusão opcional (lixeira no modal): páginas que precisam oferecer
+ * remoção a partir da foto ampliada também misturam confirmDialog()
+ * (ver frontend/js/components/confirm-dialog.js) e incluem
+ * ${confirmDialogHTML()} no template, e passam um `deleteContext` ao
+ * abrir o modal: openPhotoModal(url, id, preview, veiculo, { mensagem, onConfirm }).
+ * Sem `deleteContext`, a lixeira não aparece (comportamento atual
+ * inalterado para dashboard/consulta/relacionamentos).
  */
 
 /**
@@ -25,7 +33,14 @@ function personPhotoModalHTML() {
         <!-- Header -->
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--color-border); flex-shrink: 0;">
           <h3 style="font-family: var(--font-data); font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Foto Ampliada</h3>
-          <button @click="closePhotoModal()" class="hov-icon-danger" style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); font-size: 1.1rem; line-height: 1; padding: 0; width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">✕</button>
+          <div style="display: flex; align-items: center; gap: 0.25rem;">
+            <button x-show="photoModalDeleteContext" @click="confirmarExclusaoModal()" :title="photoModalDeleteContext && photoModalDeleteContext.tituloBotao || 'Remover'" class="hov-icon-danger" style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); line-height: 1; padding: 0; width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.1rem; height: 1.1rem;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+              </svg>
+            </button>
+            <button @click="closePhotoModal()" class="hov-icon-danger" style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); font-size: 1.1rem; line-height: 1; padding: 0; width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">✕</button>
+          </div>
         </div>
 
         <!-- Conteúdo -->
@@ -146,7 +161,7 @@ function personPhotoModalHTML() {
 
         <!-- Footer — Ver Ficha (primário/maior) | Fechar (vermelho) -->
         <div style="display: flex; gap: 0.5rem; padding: 1rem; border-top: 1px solid var(--color-border); background: var(--color-surface-hover); border-radius: 0 0 8px 8px; flex-shrink: 0;">
-          <button @click="goToFichaPessoa()"
+          <button x-show="modalPessoaId" @click="goToFichaPessoa()"
                   style="flex: 2; padding: 0.75rem; border-radius: 4px; background: var(--color-primary); color: var(--color-bg); border: none; font-family: var(--font-data); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.05em;"
                   class="hov-opacity-down">
             Ver Ficha Completa →
@@ -172,6 +187,7 @@ function personPhotoModal() {
     modalVeiculo: null,
     photoModalLoading: false,
     photoModalError: null,
+    photoModalDeleteContext: null,
 
     /**
      * Abre o modal.
@@ -179,17 +195,27 @@ function personPhotoModal() {
      * @param {number|string} pessoaId - ID da pessoa
      * @param {object|null} previewData - Dados básicos já disponíveis (exibe imediatamente)
      * @param {object|null} veiculoData - Dados do veículo (opcional, exibe seção extra)
+     * @param {object|null} deleteContext - Opcional: { tituloBotao, mensagem, onConfirm }.
+     *   Quando presente, mostra a lixeira no modal; ao confirmar, chama
+     *   `onConfirm()` e fecha o modal. Requer que a página host também
+     *   misture confirmDialog() e inclua ${confirmDialogHTML()}.
      */
-    openPhotoModal(photoUrl, pessoaId, previewData, veiculoData) {
+    openPhotoModal(photoUrl, pessoaId, previewData, veiculoData, deleteContext) {
       this.photoUrl = photoUrl;
       this.modalPessoaId = pessoaId;
       this.showPhotoModal = true;
       this.photoModalError = null;
       this.modalPessoa = previewData || null;
       this.modalVeiculo = veiculoData || null;
-      this.photoModalLoading = true;
-      // Fetch dados completos em background
-      this._fetchPessoaModal(pessoaId);
+      this.photoModalDeleteContext = deleteContext || null;
+      // pessoaId pode ser null (ex.: veículo de abordagem sem condutor
+      // vinculado) — sem pessoa pra buscar, não há "Dados do Condutor".
+      if (pessoaId) {
+        this.photoModalLoading = true;
+        this._fetchPessoaModal(pessoaId);
+      } else {
+        this.photoModalLoading = false;
+      }
     },
 
     closePhotoModal() {
@@ -199,9 +225,23 @@ function personPhotoModal() {
         this.modalPessoaId = null;
         this.modalPessoa = null;
         this.modalVeiculo = null;
+        this.photoModalDeleteContext = null;
         this.photoModalLoading = false;
         this.photoModalError = null;
       }, 300);
+    },
+
+    /**
+     * Abre a confirmação customizada (confirmDialog) para o `deleteContext`
+     * atual; ao confirmar, executa a exclusão e fecha o modal de foto.
+     */
+    confirmarExclusaoModal() {
+      const ctx = this.photoModalDeleteContext;
+      if (!ctx) return;
+      this.abrirConfirmacao(ctx.mensagem, async () => {
+        await ctx.onConfirm();
+        this.closePhotoModal();
+      });
     },
 
     async _fetchPessoaModal(pessoaId) {

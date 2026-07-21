@@ -6,8 +6,14 @@ Testa endpoint de criação de abordagem em campo.
 from datetime import UTC, datetime
 
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import criar_access_token, hash_senha
+from app.models.abordagem import Abordagem, AbordagemVeiculo
+from app.models.bpm import Bpm
+from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
+from app.models.usuario import Usuario
 from app.models.veiculo import Veiculo
 
 
@@ -691,3 +697,74 @@ class TestDesvincularVeiculo:
         assert response.status_code == 201
         veiculo_ids = [v["id"] for v in response.json()["veiculos"]]
         assert veiculo.id in veiculo_ids
+
+
+class TestDesvincularVeiculoOutraGuarnicaoSemIsolamento:
+    """Testes de regressão: admin de outra guarnição sem isolamento_abordagens.
+
+    Bug encontrado em teste manual (make dev): `desvincular_veiculo` (e os
+    métodos irmãos — vincular_pessoa/desvincular_pessoa/vincular_veiculo/
+    atualizar) filtravam direto por `user.guarnicao_id`, ignorando a mesma
+    regra de escopo (`isolamento_abordagens`) que `GET /abordagens/{id}` já
+    respeita. Resultado: um admin cuja guarnição não tem isolamento ativado
+    (padrão do model, `isolamento_abordagens=False`) conseguia VER a
+    abordagem de outra guarnição, mas não conseguia desvincular veículo
+    dela — 404 inesperado, mesmo sendo admin.
+    """
+
+    async def _criar_admin_outra_guarnicao(self, db_session: AsyncSession) -> dict:
+        """Cria um admin numa guarnição B sem isolamento_abordagens (padrão).
+
+        Args:
+            db_session: Sessão do banco de teste.
+
+        Returns:
+            Headers autenticados desse admin.
+        """
+        bpm_b = Bpm(nome="5o BPM Cross")
+        db_session.add(bpm_b)
+        await db_session.flush()
+        guarnicao_b = Guarnicao(nome="5a Cia - GU 03", bpm_id=bpm_b.id, codigo="5BPM-5CIA-GU03")
+        db_session.add(guarnicao_b)
+        await db_session.flush()
+        admin_b = Usuario(
+            nome="Admin Outra Guarnicao",
+            matricula="ADMB001",
+            senha_hash=hash_senha("senha123"),
+            guarnicao_id=guarnicao_b.id,
+            session_id="test-session-admin-b",
+            is_admin=True,
+        )
+        db_session.add(admin_b)
+        await db_session.flush()
+        token = criar_access_token(
+            {"sub": str(admin_b.id), "guarnicao_id": guarnicao_b.id, "sid": admin_b.session_id}
+        )
+        return {"Authorization": f"Bearer {token}"}
+
+    async def test_admin_de_outra_guarnicao_desvincula_veiculo_sem_isolamento(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        abordagem: Abordagem,
+        veiculo: Veiculo,
+    ):
+        """Admin de guarnição B consegue desvincular veículo de abordagem da guarnição A.
+
+        Ambas as guarnições sem `isolamento_abordagens` (padrão) — mesmo
+        escopo "global" que já vale para GET /abordagens/{id}.
+
+        Cria o vínculo direto via ORM (não via POST /abordagens/{id}/veiculos)
+        para não competir com o rate limit compartilhado (30/min) desse
+        endpoint, já bastante exercitado pelos outros testes desta classe.
+        """
+        db_session.add(AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id))
+        await db_session.flush()
+
+        headers_admin_b = await self._criar_admin_outra_guarnicao(db_session)
+
+        response = await client.delete(
+            f"/api/v1/abordagens/{abordagem.id}/veiculos/{veiculo.id}",
+            headers=headers_admin_b,
+        )
+        assert response.status_code == 204

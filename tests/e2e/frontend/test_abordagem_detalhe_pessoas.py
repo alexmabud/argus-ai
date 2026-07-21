@@ -53,6 +53,7 @@ def harness(tmp_path: Path) -> Path:
         FRONTEND_JS / "components" / "cadastro-pessoa-modal.js",
         tmp_path / "cadastro-pessoa-modal.js",
     )
+    shutil.copy(FRONTEND_JS / "components" / "confirm-dialog.js", tmp_path / "confirm-dialog.js")
     shutil.copy(FRONTEND_JS / "pages" / "abordagem-detalhe.js", tmp_path / "abordagem-detalhe.js")
     shutil.copy(FRONTEND_CSS / "app.css", tmp_path / "app.css")
     shutil.copy(HARNESS_DIR / "alpine.min.js", tmp_path / "alpine.min.js")
@@ -151,8 +152,15 @@ def test_admin_ve_e_usa_botao_adicionar(harness: Path) -> None:
     assert 77 in estado["pessoaIds"]
 
 
-def test_dono_remove_pessoa_vinculada(harness: Path) -> None:
-    """Dono da abordagem remove um abordado já vinculado via botão ×."""
+def test_dono_remove_pessoa_vinculada_via_foto_ampliada(harness: Path) -> None:
+    """Dono da abordagem remove um abordado vinculado via lixeira na foto ampliada.
+
+    Regressão do fluxo antigo (botão "×" direto na miniatura + confirm()
+    nativo): agora a remoção exige abrir a foto ampliada (mesmo sem foto —
+    o abordado do teste não tem `foto_principal_url`, exercitando o
+    fallback de iniciais) e confirmar via modal customizado, não mais
+    diálogo nativo do navegador.
+    """
     with sync_playwright() as p:
         try:
             browser = p.chromium.launch()
@@ -177,14 +185,17 @@ def test_dono_remove_pessoa_vinculada(harness: Path) -> None:
             };
             """
         )
-        page.on("dialog", lambda dialog: dialog.accept())
         page.goto(f"file://{harness}")
         page.wait_for_timeout(300)
 
         estado_antes = page.evaluate("__state()")
         assert 77 in estado_antes["pessoaIds"]
 
+        page.get_by_text("FULANO", exact=True).click()
+        page.wait_for_timeout(200)
         page.locator('button[title="Remover abordado"]').click()
+        page.wait_for_timeout(100)
+        page.get_by_role("button", name="Remover", exact=True).click()
         page.wait_for_timeout(200)
 
         estado_depois = page.evaluate("__state()")
@@ -194,6 +205,88 @@ def test_dono_remove_pessoa_vinculada(harness: Path) -> None:
     assert 77 not in estado_depois["pessoaIds"]
     deletes = [c for c in calls["deletes"] if c["url"] == "/abordagens/42/pessoas/77"]
     assert len(deletes) == 1
+
+
+def test_cancelar_confirmacao_nao_remove_pessoa(harness: Path) -> None:
+    """Cancelar a confirmação de remoção mantém o abordado vinculado."""
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script(
+            """
+            window.__authUser = { id: 1 };
+            window.__abordagem = {
+              id: 42,
+              data_hora: new Date().toISOString(),
+              endereco_texto: 'RUA TESTE, 100',
+              observacao: null,
+              usuario_id: 1,
+              usuario: { id: 1, posto_graduacao: 'SD', nome_guerra: 'TESTE' },
+              pessoas: [{ id: 77, nome: 'FULANO EXISTENTE' }],
+              veiculos: [],
+              fotos: [],
+              ocorrencias: [],
+            };
+            """
+        )
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.get_by_text("FULANO", exact=True).click()
+        page.wait_for_timeout(200)
+        page.locator('button[title="Remover abordado"]').click()
+        page.wait_for_timeout(100)
+        page.get_by_role("button", name="Cancelar").click()
+        page.wait_for_timeout(200)
+
+        estado_depois = page.evaluate("__state()")
+        calls = page.evaluate("__calls")
+        browser.close()
+
+    assert 77 in estado_depois["pessoaIds"]
+    assert calls["deletes"] == []
+
+
+def test_terceiro_nao_ve_lixeira_na_foto_ampliada_do_abordado(harness: Path) -> None:
+    """Usuário que não é dono nem admin não vê a lixeira na foto ampliada."""
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script(
+            """
+            window.__authUser = { id: 2 };
+            window.__abordagem = {
+              id: 42,
+              data_hora: new Date().toISOString(),
+              endereco_texto: 'RUA TESTE, 100',
+              observacao: null,
+              usuario_id: 1,
+              usuario: { id: 1, posto_graduacao: 'SD', nome_guerra: 'TESTE' },
+              pessoas: [{ id: 77, nome: 'FULANO EXISTENTE' }],
+              veiculos: [],
+              fotos: [],
+              ocorrencias: [],
+            };
+            """
+        )
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.get_by_text("FULANO", exact=True).click()
+        page.wait_for_timeout(200)
+        lixeira = page.locator('button[title="Remover abordado"]')
+        visivel = lixeira.count() > 0 and lixeira.is_visible()
+        browser.close()
+
+    assert not visivel
 
 
 def test_dono_cadastra_pessoa_nova_inline_e_vincula(harness: Path) -> None:
