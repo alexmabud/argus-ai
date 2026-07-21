@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflitoDadosError, NaoEncontradoError
-from app.core.permissions import TenantFilter
+from app.core.permissions import TenantFilter, assert_pode_remover_vinculo_veiculo
 from app.models.pessoa_veiculo import PessoaVeiculo
 from app.models.usuario import Usuario
 from app.repositories.pessoa_repo import PessoaRepository
@@ -149,12 +149,14 @@ class PessoaVeiculoService:
 
         Raises:
             NaoEncontradoError: Se não existe vínculo direto ativo pro par.
-            AcessoNegadoError: Se o vínculo pertence a outra guarnição.
+            AcessoNegadoError: Se o vínculo pertence a outra guarnição, ou se
+                o usuário não é quem criou o vínculo nem admin/super-admin.
         """
         vinculo = await self.repo.get_par(pessoa_id, veiculo_id, include_inactive=False)
         if not vinculo:
             raise NaoEncontradoError("Vínculo pessoa-veículo")
         TenantFilter.check_ownership(vinculo, user)
+        assert_pode_remover_vinculo_veiculo(user, vinculo)
 
         await self.repo.soft_delete(vinculo, deleted_by_id=user.id)
 
