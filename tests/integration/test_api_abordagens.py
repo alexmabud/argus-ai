@@ -9,6 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import criar_access_token, hash_senha
+from app.models.abordagem import Abordagem, AbordagemVeiculo
 from app.models.bpm import Bpm
 from app.models.guarnicao import Guarnicao
 from app.models.pessoa import Pessoa
@@ -745,29 +746,25 @@ class TestDesvincularVeiculoOutraGuarnicaoSemIsolamento:
         self,
         client: AsyncClient,
         db_session: AsyncSession,
-        auth_headers: dict,
+        abordagem: Abordagem,
         veiculo: Veiculo,
     ):
         """Admin de guarnição B consegue desvincular veículo de abordagem da guarnição A.
 
         Ambas as guarnições sem `isolamento_abordagens` (padrão) — mesmo
         escopo "global" que já vale para GET /abordagens/{id}.
+
+        Cria o vínculo direto via ORM (não via POST /abordagens/{id}/veiculos)
+        para não competir com o rate limit compartilhado (30/min) desse
+        endpoint, já bastante exercitado pelos outros testes desta classe.
         """
-        criada = await client.post(
-            "/api/v1/abordagens/",
-            json={
-                "data_hora": datetime.now(UTC).isoformat(),
-                "endereco_texto": "Rua Cross Guarnicao, 1",
-                "veiculo_ids": [veiculo.id],
-            },
-            headers=auth_headers,
-        )
-        abordagem_id = criada.json()["id"]
+        db_session.add(AbordagemVeiculo(abordagem_id=abordagem.id, veiculo_id=veiculo.id))
+        await db_session.flush()
 
         headers_admin_b = await self._criar_admin_outra_guarnicao(db_session)
 
         response = await client.delete(
-            f"/api/v1/abordagens/{abordagem_id}/veiculos/{veiculo.id}",
+            f"/api/v1/abordagens/{abordagem.id}/veiculos/{veiculo.id}",
             headers=headers_admin_b,
         )
         assert response.status_code == 204
