@@ -11,7 +11,6 @@ from datetime import date
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.abordagens import _filtro_abordagem
 from app.core.exceptions import NaoEncontradoError
 from app.core.rate_limit import limiter
 from app.core.upload_validation import ler_upload_com_limite, validar_magic_bytes_pdf
@@ -19,6 +18,7 @@ from app.database.session import get_db
 from app.dependencies import get_current_user_with_guarnicao
 from app.models.usuario import Usuario
 from app.schemas.ocorrencia import OcorrenciaRead
+from app.services.abordagem_service import filtro_abordagem
 from app.services.audit_service import AuditService
 from app.services.ocorrencia_service import OcorrenciaService
 
@@ -80,7 +80,7 @@ async def criar_ocorrencia(
     # service valida abordagem_id (se informado) contra este escopo antes de
     # vincular. Antes, qualquer abordagem_id passava sem checagem nenhuma,
     # inclusive de outra equipe com isolamento ativado (achado #22/2026-07-13).
-    guarnicao_id_filtro, bpm_id_filtro = _filtro_abordagem(user)
+    guarnicao_id_filtro, bpm_id_filtro = filtro_abordagem(user)
     service = OcorrenciaService(db)
     try:
         ocorrencia = await service.criar(

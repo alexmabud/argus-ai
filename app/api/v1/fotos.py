@@ -22,7 +22,6 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.abordagens import _filtro_abordagem
 from app.core.rate_limit import _get_user_rate_limit_key, limiter
 from app.core.upload_validation import (
     converter_heic_para_jpeg,
@@ -44,7 +43,7 @@ from app.schemas.foto import (
     FotoUploadResponse,
     OCRPlacaResponse,
 )
-from app.services.abordagem_service import AbordagemService
+from app.services.abordagem_service import AbordagemService, filtro_abordagem
 from app.services.access_audit import log_download
 from app.services.audit_service import AuditService
 from app.services.foto_service import FotoService
@@ -319,7 +318,7 @@ async def listar_fotos_abordagem(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário sem guarnição atribuída",
         )
-    guarnicao_id_filtro, bpm_id_filtro = _filtro_abordagem(user)
+    guarnicao_id_filtro, bpm_id_filtro = filtro_abordagem(user)
     # NaoEncontradoError já é HTTPException(404) — propaga direto sem
     # try/except redundante no router (revisão pós-#22/2026-07-13). A
     # checagem de escopo (achado #22/2026-07-13) e a listagem ficam no
