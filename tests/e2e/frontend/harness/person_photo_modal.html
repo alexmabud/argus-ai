@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Harness e2e — person photo modal (uso genérico, sem exclusão)</title>
+<link rel="stylesheet" href="app.css">
+<style>[x-cloak]{display:none!important}</style>
+<script>
+// Uso mínimo do componente compartilhado, como em dashboard.js/consulta.js/
+// pessoa-detalhe.js (relacionamentos/vínculos): openPhotoModal chamado sem
+// deleteContext (4 args) — a lixeira nunca deve aparecer nesse caso.
+window.api = {
+  async get() { return { id: 1, nome: 'FULANO TESTE' }; },
+};
+window.formatarPlaca = v => (v || '');
+</script>
+<script src="person-photo-modal.js"></script>
+<script src="confirm-dialog.js"></script>
+</head>
+<body>
+<div id="mount">
+  <div x-data="{ ...personPhotoModal(), ...confirmDialog() }">
+    <button @click="openPhotoModal('https://example.test/foto.jpg', 1, { nome: 'FULANO TESTE' })">
+      Abrir sem exclusao
+    </button>
+    <button @click="openPhotoModal('https://example.test/foto.jpg', 1, { nome: 'FULANO TESTE' }, null, { tituloBotao: 'Remover teste', mensagem: 'Remover?', onConfirm: () => {} })">
+      Abrir com exclusao
+    </button>
+    <div id="modal-mount"></div>
+  </div>
+</div>
+<script>
+document.getElementById('modal-mount').innerHTML = personPhotoModalHTML() + confirmDialogHTML();
+</script>
+<script defer src="alpine.min.js"></script>
+</body>
+</html>

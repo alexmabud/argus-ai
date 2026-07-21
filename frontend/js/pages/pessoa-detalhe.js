@@ -1940,16 +1940,11 @@ function pessoaDetalhePage(pessoaId) {
     },
 
     /**
-     * Apaga uma foto (soft delete) após confirmação do usuário.
+     * Remove uma foto (soft delete). Confirmação já ocorreu via
+     * confirmDialog antes desta chamada (ver confirmarApagarFotoAmpliada).
      *
      * Remove a foto da lista local (`this.fotos`) em caso de sucesso, sem
      * precisar recarregar a página inteira.
-     *
-     * @param {number} fotoId - ID da foto a ser apagada.
-     */
-    /**
-     * Remove uma foto (soft delete). Confirmação já ocorreu via
-     * confirmDialog antes desta chamada (ver confirmarApagarFotoAmpliada).
      *
      * @param {number} fotoId - ID da foto a apagar.
      */
