@@ -178,9 +178,13 @@ class PessoaVeiculoService:
             user: Usuário autenticado (verificação de tenant).
 
         Returns:
-            Lista de dicts {"veiculo": Veiculo, "origem": "direto"|"abordagem"}.
-            Quando o mesmo veículo tem as duas origens, prevalece "direto"
-            (permite exibir o botão de desvincular).
+            Lista de dicts {"veiculo": Veiculo, "origem": "direto"|"abordagem",
+            "criado_por_id": int|None}. Quando o mesmo veículo tem as duas
+            origens, prevalece "direto" (permite exibir o botão de
+            desvincular). "criado_por_id" identifica quem criou o vínculo
+            direto (None para vínculo só via abordagem, ou vínculo direto
+            legado sem autor registrado) — usado pelo frontend para decidir
+            se mostra a opção de remover (dono do vínculo ou admin).
 
         Raises:
             NaoEncontradoError: Se a pessoa não existe.
@@ -195,9 +199,14 @@ class PessoaVeiculoService:
         diretos = await self.repo.listar_diretos(pessoa_id)
 
         merged: dict[int, dict] = {
-            v.id: {"veiculo": v, "origem": "abordagem"} for v in via_abordagem
+            v.id: {"veiculo": v, "origem": "abordagem", "criado_por_id": None}
+            for v in via_abordagem
         }
         for pv in diretos:
-            merged[pv.veiculo_id] = {"veiculo": pv.veiculo, "origem": "direto"}
+            merged[pv.veiculo_id] = {
+                "veiculo": pv.veiculo,
+                "origem": "direto",
+                "criado_por_id": pv.criado_por_id,
+            }
 
         return list(merged.values())

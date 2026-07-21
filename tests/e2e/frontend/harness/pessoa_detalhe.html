@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Harness e2e — ficha do abordado (pessoa-detalhe)</title>
+<link rel="stylesheet" href="app.css">
+<style>[x-cloak]{display:none!important}</style>
+<script>
+// ---- Stubs dos globais consumidos pelos arquivos reais do frontend ----
+window.__calls = { posts: [], deletes: [], puts: [] };
+
+// window.__pessoa: estado inicial da pessoa, sobrescrito por teste via
+// page.add_init_script() antes do goto().
+window.__pessoa = window.__pessoa || {
+  id: 1,
+  nome: 'FULANO EXISTENTE',
+  cpf_masked: '***.456.789-**',
+  apelido: null,
+  data_nascimento: null,
+  nome_mae: null,
+  enderecos: [],
+  relacionamentos: [],
+};
+window.__veiculos = window.__veiculos || [];
+// window.__authUser: usuário autenticado no teste.
+window.__authUser = window.__authUser || { id: 1 };
+
+window.auth = { getUser: () => window.__authUser };
+
+window.api = {
+  async get(url) {
+    if (url === `/pessoas/${window.__pessoa.id}`) return window.__pessoa;
+    if (url === `/pessoas/${window.__pessoa.id}/observacoes`) return [];
+    if (url === `/fotos/pessoa/${window.__pessoa.id}`) return [];
+    if (url === `/pessoas/${window.__pessoa.id}/abordagens`) return [];
+    if (url === `/pessoas/${window.__pessoa.id}/veiculos`) return window.__veiculos;
+    return [];
+  },
+  async post(url, body) {
+    window.__calls.posts.push({ url, body: JSON.parse(JSON.stringify(body || {})) });
+    return { id: 1 };
+  },
+  async put(url, body) {
+    window.__calls.puts.push({ url, body: JSON.parse(JSON.stringify(body || {})) });
+    return { id: 1 };
+  },
+  async delete(url) {
+    window.__calls.deletes.push({ url });
+    const match = url.match(/^\/pessoas\/\d+\/veiculos\/(\d+)$/);
+    if (match) {
+      const veiculoId = Number(match[1]);
+      window.__veiculos = window.__veiculos.filter(v => v.veiculo_id !== veiculoId);
+    }
+    return null;
+  },
+};
+window.showToast = (msg, type) => { window.__toasts = window.__toasts || []; window.__toasts.push({ msg, type }); };
+window.parseDateBR = () => null;
+window.formatarPlaca = v => (v || '');
+
+// Inspeção de estado Alpine para os asserts do teste. O segundo elemento
+// [x-data] no DOM é o root da página (o primeiro é o shell que carrega
+// _pessoaId, imitando a app real).
+window.__state = () => {
+  const pageEl = document.querySelectorAll('[x-data]')[1];
+  const d = Alpine.$data(pageEl);
+  return {
+    veiculoIds: (d.veiculos || []).map(v => v.veiculo_id),
+  };
+};
+</script>
+<script src="person-photo-modal.js"></script>
+<script src="veiculo-ficha-form.js"></script>
+<script src="confirm-dialog.js"></script>
+<script src="pessoa-detalhe.js"></script>
+</head>
+<body>
+<div id="mount">
+  <div x-data="{ _pessoaId: window.__pessoa.id, goBack() { window.__wentBack = true; }, navigate(page) { window.__navigatedTo = page; } }">
+    <div id="page-mount"></div>
+  </div>
+</div>
+<script>
+document.getElementById('page-mount').innerHTML = renderPessoaDetalhe({ _pessoaId: window.__pessoa.id });
+</script>
+<script defer src="alpine.min.js"></script>
+</body>
+</html>

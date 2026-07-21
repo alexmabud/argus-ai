@@ -284,6 +284,7 @@ class TestListarVeiculosPessoa:
         assert len(resultado) == 1
         assert resultado[0]["origem"] == "direto"
         assert resultado[0]["veiculo"].id == veiculo.id
+        assert resultado[0]["criado_por_id"] == usuario.id
 
     async def test_marca_origem_abordagem_quando_so_via_abordagem(
         self,
@@ -305,6 +306,7 @@ class TestListarVeiculosPessoa:
         assert len(resultado) == 1
         assert resultado[0]["origem"] == "abordagem"
         assert resultado[0]["veiculo"].id == veiculo.id
+        assert resultado[0]["criado_por_id"] is None
 
     async def test_direto_prevalece_sobre_abordagem_quando_ambos(
         self,

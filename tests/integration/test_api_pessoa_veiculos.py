@@ -95,6 +95,7 @@ class TestListarVeiculosPessoa:
         assert len(data) == 1
         assert data[0]["origem"] == "direto"
         assert data[0]["veiculo_id"] == veiculo.id
+        assert data[0]["criado_por_id"] is not None
 
     async def test_lista_vazia_quando_sem_vinculo(
         self, client: AsyncClient, auth_headers: dict, pessoa: Pessoa

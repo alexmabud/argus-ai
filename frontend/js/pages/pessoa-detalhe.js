@@ -19,7 +19,7 @@ function renderPessoaDetalhe(appState) {
   }
 
   return `
-    <div x-data="{ ...pessoaDetalhePage(${pessoaId}), ...personPhotoModal(), ...veiculoFichaForm() }" x-init="load()" @veiculo-vinculado.window="recarregarVeiculosPessoa()" style="display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem;">
+    <div x-data="{ ...pessoaDetalhePage(${pessoaId}), ...personPhotoModal(), ...veiculoFichaForm(), ...confirmDialog() }" x-init="load()" @veiculo-vinculado.window="recarregarVeiculosPessoa()" style="display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem;">
       <!-- Loading -->
       <div x-show="loading" style="display: flex; justify-content: center; padding: 3rem 0;">
         <span class="spinner"></span>
@@ -745,7 +745,8 @@ function renderPessoaDetalhe(appState) {
               <template x-for="v in veiculos" :key="v.veiculo_id">
                 <div class="card-led-purple" style="display: flex; align-items: center; border: 1px solid rgba(167,139,250,0.2); border-radius: 4px; padding: 0.75rem;">
                   <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; width: 100%;">
-                    <div style="flex: 1; min-width: 0;">
+                    <div style="flex: 1; min-width: 0; cursor: pointer;"
+                         @click="openPhotoModal(fotoRepresentativaVeiculo(v), pessoa.id, pessoa, v, veiculoDeleteContext(v))">
                       <span style="font-family: var(--font-data); font-weight: 700; color: var(--color-text); letter-spacing: 0.1em; background: var(--color-surface-hover); padding: 0.125rem 0.375rem; border-radius: 2px; border: 1px solid var(--color-border);" x-text="formatPlaca(v.placa)"></span>
                       <p x-show="v.modelo || v.cor || v.ano" style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0;"
                          x-text="[v.modelo, v.cor, v.ano].filter(Boolean).join(' · ')"></p>
@@ -755,11 +756,11 @@ function renderPessoaDetalhe(appState) {
                             <template x-for="fv in fotosVeiculos[v.veiculo_id].slice(0, 4)" :key="fv.id">
                               <img :src="fv.thumbnail_url || fv.arquivo_url"
                                    style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;"
-                                   @click="openPhotoModal(fv.arquivo_url, pessoa.id, pessoa, v)"
+                                   @click.stop="openPhotoModal(fv.arquivo_url, pessoa.id, pessoa, v, veiculoDeleteContext(v))"
                                    loading="lazy">
                             </template>
                           </div>
-                          <button x-show="fotosVeiculos[v.veiculo_id].length > 4" @click="modalFotosVeiculo = v.veiculo_id"
+                          <button x-show="fotosVeiculos[v.veiculo_id].length > 4" @click.stop="modalFotosVeiculo = v.veiculo_id"
                                   style="background: none; border: none; cursor: pointer; color: var(--color-primary); font-family: var(--font-data); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0;">
                             Ver mais (<span x-text="fotosVeiculos[v.veiculo_id].length - 4"></span>)
                           </button>
@@ -785,14 +786,6 @@ function renderPessoaDetalhe(appState) {
                           <input type="file" accept="image/*" style="display: none;"
                                  @change="onFotoVeiculoDireto($event, v.veiculo_id)">
                         </label>
-                        <button x-show="v.origem === 'direto'" @click="removerVinculoVeiculo(v.veiculo_id)"
-                                class="hov-icon-danger"
-                                style="background: none; border: none; cursor: pointer; color: var(--color-text-dim); padding: 0.125rem;"
-                                title="Remover vínculo">
-                          <svg style="width: 0.875rem; height: 0.875rem;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                          </svg>
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -1074,6 +1067,7 @@ function renderPessoaDetalhe(appState) {
 
       ${personPhotoModalHTML()}
       ${veiculoFichaFormHTML()}
+      ${confirmDialogHTML()}
 
       <!-- Erro -->
       <p x-show="erro" style="color: var(--color-danger); font-size: 0.875rem;" x-text="erro"></p>
@@ -1295,13 +1289,59 @@ function pessoaDetalhePage(pessoaId) {
     },
 
     /**
+     * Primeira foto disponível do veículo (representativa, para abrir a
+     * foto ampliada a partir do card, mesmo sem clicar numa miniatura
+     * específica). Retorna null se o veículo não tem foto cadastrada.
+     *
+     * @param {object} v - Item de veículo ({veiculo_id, ...}).
+     * @returns {string|null} URL da foto ou null.
+     */
+    fotoRepresentativaVeiculo(v) {
+      const fotos = this.fotosVeiculos[v.veiculo_id];
+      if (!fotos || fotos.length === 0) return null;
+      return fotos[0].arquivo_url;
+    },
+
+    /**
+     * Se o usuário autenticado pode desfazer o vínculo direto deste
+     * veículo: dono do vínculo (criado_por_id) ou admin/super-admin.
+     * Vínculo derivado de abordagem (origem !== 'direto') nunca é
+     * removível por aqui.
+     *
+     * @param {object} v - Item de veículo ({veiculo_id, origem, criado_por_id}).
+     * @returns {boolean}
+     */
+    podeRemoverVinculoVeiculo(v) {
+      if (v.origem !== 'direto') return false;
+      if (this.isAdmin) return true;
+      const user = auth.getUser() || {};
+      return v.criado_por_id === user.id;
+    },
+
+    /**
+     * Contexto de exclusão passado ao personPhotoModal para este veículo,
+     * ou null se o usuário não pode remover o vínculo.
+     *
+     * @param {object} v - Item de veículo.
+     * @returns {object|null}
+     */
+    veiculoDeleteContext(v) {
+      if (!this.podeRemoverVinculoVeiculo(v)) return null;
+      return {
+        tituloBotao: 'Remover veículo',
+        mensagem: 'Remover este vínculo? O veículo continua cadastrado no sistema. Esta ação não pode ser desfeita.',
+        onConfirm: () => this.removerVinculoVeiculo(v.veiculo_id),
+      };
+    },
+
+    /**
      * Remove o vínculo direto entre a pessoa e um veículo (soft delete do
-     * vínculo, não do veículo em si) após confirmação do usuário.
+     * vínculo, não do veículo em si). Confirmação já ocorreu via
+     * confirmDialog antes desta chamada.
      *
      * @param {number} veiculoId - ID do veículo a desvincular.
      */
     async removerVinculoVeiculo(veiculoId) {
-      if (!confirm("Remover este vínculo? O veículo continua cadastrado no sistema.")) return;
       try {
         await api.delete(`/pessoas/${pessoaId}/veiculos/${veiculoId}`);
         await this.carregarVeiculos();
