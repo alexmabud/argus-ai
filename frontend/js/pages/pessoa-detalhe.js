@@ -130,15 +130,9 @@ function renderPessoaDetalhe(appState) {
               <template x-for="foto in fotosRosto().slice(0, 4)" :key="foto.id">
                 <div style="position: relative;">
                   <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
-                       @click="fotoAmpliada = foto.arquivo_url">
+                       @click="fotoAmpliada = foto.arquivo_url; fotoAmpliadaId = foto.id">
                   <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                         x-text="foto.tipo || 'foto'"></span>
-                  <button x-show="isAdmin" @click.stop="apagarFoto(foto.id)"
-                          class="hov-icon-danger"
-                          style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
-                          title="Apagar foto">
-                    ✕
-                  </button>
                 </div>
               </template>
               </div>
@@ -208,15 +202,9 @@ function renderPessoaDetalhe(appState) {
               <template x-for="foto in fotosEvidencia().slice(0, 4)" :key="foto.id">
                 <div style="position: relative;">
                   <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
-                       @click="fotoAmpliada = foto.arquivo_url">
+                       @click="fotoAmpliada = foto.arquivo_url; fotoAmpliadaId = foto.id">
                   <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                         x-text="foto.tipo || 'foto'"></span>
-                  <button x-show="isAdmin" @click.stop="apagarFoto(foto.id)"
-                          class="hov-icon-danger"
-                          style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
-                          title="Apagar foto">
-                    ✕
-                  </button>
                 </div>
               </template>
               </div>
@@ -234,10 +222,16 @@ function renderPessoaDetalhe(appState) {
           </div>
 
           <!-- Foto ampliada (modal) -->
-          <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
+          <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null; fotoAmpliadaId = null"
                style="position: fixed; top: var(--header-height); left: 0; right: 0; bottom: var(--bottom-nav-height); background: rgba(5,10,15,0.85); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;">
-            <div @click.stop style="display: flex; flex-direction: column; max-width: min(90vw, 480px); width: 100%;">
-              <img :src="fotoAmpliada" @click="fotoAmpliada = null"
+            <div @click.stop style="position: relative; display: flex; flex-direction: column; max-width: min(90vw, 480px); width: 100%;">
+              <button x-show="isAdmin" @click="confirmarApagarFotoAmpliada()"
+                      class="hov-icon-danger"
+                      style="position: absolute; top: 0.5rem; right: 0.5rem; width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 4px; cursor: pointer; font-size: 0.95rem; line-height: 1; z-index: 1;"
+                      title="Apagar foto">
+                🗑
+              </button>
+              <img :src="fotoAmpliada" @click="fotoAmpliada = null; fotoAmpliadaId = null"
                    style="width: 100%; border-radius: 4px 4px 0 0; display: block; cursor: pointer; object-fit: contain; max-height: 70vh;">
               <div style="background: rgba(5,10,15,0.95); border-radius: 0 0 4px 4px; padding: 0.75rem;">
                 <p x-show="pessoa?.nome"
@@ -277,15 +271,9 @@ function renderPessoaDetalhe(appState) {
                 <template x-for="foto in fotosModal()" :key="'modal-' + foto.id">
                   <div style="position: relative;">
                     <img :src="foto.thumbnail_url || foto.arquivo_url" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; cursor: pointer; display: block;" loading="lazy"
-                         @click="fotoAmpliada = foto.arquivo_url">
+                         @click="fotoAmpliada = foto.arquivo_url; fotoAmpliadaId = foto.id">
                     <span style="position: absolute; bottom: 0.125rem; left: 0.125rem; background: rgba(5,10,15,0.75); font-size: 9px; color: var(--color-text-muted); padding: 0 0.2rem; border-radius: 2px;"
                           x-text="foto.tipo || 'foto'"></span>
-                    <button x-show="isAdmin" @click.stop="apagarFoto(foto.id)"
-                            class="hov-icon-danger"
-                            style="position: absolute; top: 0.125rem; right: 0.125rem; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center; background: rgba(5,10,15,0.75); color: var(--color-text-muted); border: none; border-radius: 2px; cursor: pointer; font-size: 10px; line-height: 1; padding: 0;"
-                            title="Apagar foto">
-                      ✕
-                    </button>
                   </div>
                 </template>
               </div>
@@ -1095,6 +1083,7 @@ function pessoaDetalhePage(pessoaId) {
     // não importa qual, pois o botão sempre define o valor antes de usá-lo.
     pessoaIdParaVeiculo: null,
     fotoAmpliada: null,
+    fotoAmpliadaId: null,
     modalTodasFotos: false,
     modalFotosVeiculo: null,
     pessoaPreview: null,
@@ -1958,8 +1947,13 @@ function pessoaDetalhePage(pessoaId) {
      *
      * @param {number} fotoId - ID da foto a ser apagada.
      */
+    /**
+     * Remove uma foto (soft delete). Confirmação já ocorreu via
+     * confirmDialog antes desta chamada (ver confirmarApagarFotoAmpliada).
+     *
+     * @param {number} fotoId - ID da foto a apagar.
+     */
     async apagarFoto(fotoId) {
-      if (!confirm("Apagar esta foto? Esta ação não pode ser desfeita.")) return;
       try {
         await api.delete(`/fotos/${fotoId}`);
         this.fotos = this.fotos.filter(f => f.id !== fotoId);
@@ -1967,6 +1961,21 @@ function pessoaDetalhePage(pessoaId) {
       } catch (err) {
         showToast(err?.message || "Erro ao apagar foto", "error");
       }
+    },
+
+    /**
+     * Abre a confirmação customizada para apagar a foto atualmente exibida
+     * no modal de foto ampliada (fotoAmpliadaId); ao confirmar, apaga e
+     * fecha o modal. Só admin vê o botão que chama este método.
+     */
+    confirmarApagarFotoAmpliada() {
+      const fotoId = this.fotoAmpliadaId;
+      if (!fotoId) return;
+      this.abrirConfirmacao('Apagar esta foto? Esta ação não pode ser desfeita.', async () => {
+        await this.apagarFoto(fotoId);
+        this.fotoAmpliada = null;
+        this.fotoAmpliadaId = null;
+      });
     },
   };
 }

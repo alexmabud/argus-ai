@@ -22,6 +22,7 @@ window.__pessoa = window.__pessoa || {
   relacionamentos: [],
 };
 window.__veiculos = window.__veiculos || [];
+window.__fotos = window.__fotos || [];
 // window.__authUser: usuário autenticado no teste.
 window.__authUser = window.__authUser || { id: 1 };
 
@@ -31,7 +32,7 @@ window.api = {
   async get(url) {
     if (url === `/pessoas/${window.__pessoa.id}`) return window.__pessoa;
     if (url === `/pessoas/${window.__pessoa.id}/observacoes`) return [];
-    if (url === `/fotos/pessoa/${window.__pessoa.id}`) return [];
+    if (url === `/fotos/pessoa/${window.__pessoa.id}`) return window.__fotos;
     if (url === `/pessoas/${window.__pessoa.id}/abordagens`) return [];
     if (url === `/pessoas/${window.__pessoa.id}/veiculos`) return window.__veiculos;
     return [];
@@ -46,10 +47,15 @@ window.api = {
   },
   async delete(url) {
     window.__calls.deletes.push({ url });
-    const match = url.match(/^\/pessoas\/\d+\/veiculos\/(\d+)$/);
-    if (match) {
-      const veiculoId = Number(match[1]);
+    const matchVeiculo = url.match(/^\/pessoas\/\d+\/veiculos\/(\d+)$/);
+    if (matchVeiculo) {
+      const veiculoId = Number(matchVeiculo[1]);
       window.__veiculos = window.__veiculos.filter(v => v.veiculo_id !== veiculoId);
+    }
+    const matchFoto = url.match(/^\/fotos\/(\d+)$/);
+    if (matchFoto) {
+      const fotoId = Number(matchFoto[1]);
+      window.__fotos = window.__fotos.filter(f => f.id !== fotoId);
     }
     return null;
   },
@@ -66,6 +72,7 @@ window.__state = () => {
   const d = Alpine.$data(pageEl);
   return {
     veiculoIds: (d.veiculos || []).map(v => v.veiculo_id),
+    fotoIds: (d.fotos || []).map(f => f.id),
   };
 };
 </script>
