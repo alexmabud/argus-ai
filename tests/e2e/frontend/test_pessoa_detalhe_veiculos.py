@@ -121,7 +121,7 @@ def test_dono_do_vinculo_remove_veiculo_via_foto_ampliada(harness: Path) -> None
         page.wait_for_timeout(200)
         page.locator('button[title="Remover veículo"]').click()
         page.wait_for_timeout(100)
-        page.get_by_role("button", name="Remover").click()
+        page.get_by_role("button", name="Remover", exact=True).click()
         page.wait_for_timeout(200)
 
         estado = page.evaluate("__state()")
