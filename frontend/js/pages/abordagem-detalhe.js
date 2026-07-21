@@ -8,7 +8,7 @@
 
 function renderAbordagemDetalhe() {
   return `
-    <div x-data="{ ...abordagemDetalhePage(), ...personPhotoModal(), ...cadastroPessoaModal() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
+    <div x-data="{ ...abordagemDetalhePage(), ...personPhotoModal(), ...cadastroPessoaModal(), ...confirmDialog() }" x-init="init()" style="display:flex;flex-direction:column;gap:16px;">
 
       <!-- Loading inicial -->
       <div x-show="loading" style="text-align:center;padding:48px 0;">
@@ -45,13 +45,8 @@ function renderAbordagemDetalhe() {
               <div x-show="!ab.pessoas || ab.pessoas.length === 0" style="font-family:var(--font-data);font-size:12px;color:var(--color-text-muted);">Nenhum abordado registrado.</div>
               <div style="display:flex;gap:10px;flex-wrap:wrap;">
                 <template x-for="p in (ab.pessoas || [])" :key="p.id">
-                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative;" @click="if(p.foto_principal_url) openPhotoModal(p.foto_principal_url, p.id, p); else abrirFicha(p.id)">
-                    <button x-show="podeEditar()" @click.stop="removerPessoa(p.id)"
-                       class="hov-icon-danger"
-                       style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;background:rgba(5,10,15,0.85);color:var(--color-text-muted);border:none;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;padding:0;z-index:1;"
-                       title="Remover abordado">
-                      ✕
-                    </button>
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative;"
+                       @click="openPhotoModal(p.foto_principal_url || null, p.id, p, null, podeEditar() ? { tituloBotao: 'Remover abordado', mensagem: 'Remover este abordado da abordagem? Esta ação não pode ser desfeita.', onConfirm: () => removerPessoa(p.id) } : null)">
                     <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
                       <div style="width:54px;height:54px;border-radius:4px;border:1px solid rgba(0,212,255,0.2);background:var(--color-surface-hover);display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color 0.15s;"
                            class="hov-border-primary">
@@ -405,6 +400,7 @@ function renderAbordagemDetalhe() {
 
       ${personPhotoModalHTML()}
       ${cadastroPessoaModalHTML()}
+      ${confirmDialogHTML()}
 
       <!-- Foto ampliada (mídia da abordagem — sem pessoa vinculada) -->
       <div x-show="fotoAmpliada" x-cloak @click="fotoAmpliada = null"
@@ -480,7 +476,6 @@ function abordagemDetalhePage() {
     },
 
     async removerPessoa(pessoaId) {
-      if (!confirm('Remover este abordado da abordagem?')) return;
       try {
         await api.delete(`/abordagens/${this.ab.id}/pessoas/${pessoaId}`);
         this.ab = { ...this.ab, pessoas: this.ab.pessoas.filter(p => p.id !== pessoaId) };
@@ -606,14 +601,6 @@ function abordagemDetalhePage() {
         f => f.veiculo_id === veiculoId && f.tipo === 'veiculo'
       );
       return f ? (f.thumbnail_url || f.arquivo_url) : null;
-    },
-
-    abrirFicha(pessoaId) {
-      const appEl = document.querySelector('[x-data]');
-      if (appEl && appEl._x_dataStack) {
-        appEl._x_dataStack[0]._pessoaId = pessoaId;
-        appEl._x_dataStack[0].navigate('pessoa-detalhe');
-      }
     },
 
     async enviarRap() {

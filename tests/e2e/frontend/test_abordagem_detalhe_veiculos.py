@@ -47,6 +47,7 @@ def harness(tmp_path: Path) -> Path:
         FRONTEND_JS / "components" / "cadastro-pessoa-modal.js",
         tmp_path / "cadastro-pessoa-modal.js",
     )
+    shutil.copy(FRONTEND_JS / "components" / "confirm-dialog.js", tmp_path / "confirm-dialog.js")
     shutil.copy(FRONTEND_JS / "pages" / "abordagem-detalhe.js", tmp_path / "abordagem-detalhe.js")
     shutil.copy(FRONTEND_CSS / "app.css", tmp_path / "app.css")
     shutil.copy(HARNESS_DIR / "alpine.min.js", tmp_path / "alpine.min.js")
