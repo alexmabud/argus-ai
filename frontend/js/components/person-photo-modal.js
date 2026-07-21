@@ -157,7 +157,7 @@ function personPhotoModalHTML() {
 
         <!-- Footer — Ver Ficha (primário/maior) | Fechar (vermelho) -->
         <div style="display: flex; gap: 0.5rem; padding: 1rem; border-top: 1px solid var(--color-border); background: var(--color-surface-hover); border-radius: 0 0 8px 8px; flex-shrink: 0;">
-          <button @click="goToFichaPessoa()"
+          <button x-show="modalPessoaId" @click="goToFichaPessoa()"
                   style="flex: 2; padding: 0.75rem; border-radius: 4px; background: var(--color-primary); color: var(--color-bg); border: none; font-family: var(--font-data); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.05em;"
                   class="hov-opacity-down">
             Ver Ficha Completa →
@@ -204,9 +204,14 @@ function personPhotoModal() {
       this.modalPessoa = previewData || null;
       this.modalVeiculo = veiculoData || null;
       this.photoModalDeleteContext = deleteContext || null;
-      this.photoModalLoading = true;
-      // Fetch dados completos em background
-      this._fetchPessoaModal(pessoaId);
+      // pessoaId pode ser null (ex.: veículo de abordagem sem condutor
+      // vinculado) — sem pessoa pra buscar, não há "Dados do Condutor".
+      if (pessoaId) {
+        this.photoModalLoading = true;
+        this._fetchPessoaModal(pessoaId);
+      } else {
+        this.photoModalLoading = false;
+      }
     },
 
     closePhotoModal() {

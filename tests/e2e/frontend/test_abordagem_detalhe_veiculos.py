@@ -109,8 +109,13 @@ def test_terceiro_nao_ve_botao_adicionar_veiculo(harness: Path) -> None:
     assert not visivel
 
 
-def test_dono_remove_veiculo_vinculado(harness: Path) -> None:
-    """Dono da abordagem remove um veículo já vinculado via botão ×."""
+def test_dono_remove_veiculo_vinculado_via_foto_ampliada(harness: Path) -> None:
+    """Dono da abordagem remove um veículo vinculado via lixeira na foto ampliada.
+
+    Veículo do teste não tem foto nem condutor associado (`pessoa_id`
+    ausente) — exercita o fallback do modal (placeholder de veículo,
+    sem seção "Dados do Condutor") e a lixeira condicionada a `podeEditar()`.
+    """
     with sync_playwright() as p:
         try:
             browser = p.chromium.launch()
@@ -135,14 +140,17 @@ def test_dono_remove_veiculo_vinculado(harness: Path) -> None:
             };
             """
         )
-        page.on("dialog", lambda dialog: dialog.accept())
         page.goto(f"file://{harness}")
         page.wait_for_timeout(300)
 
         estado_antes = page.evaluate("__state()")
         assert 88 in estado_antes["veiculoIds"]
 
+        page.get_by_text("XYZ9Z99", exact=True).click()
+        page.wait_for_timeout(200)
         page.locator('button[title="Remover veículo"]').click()
+        page.wait_for_timeout(100)
+        page.get_by_role("button", name="Remover").click()
         page.wait_for_timeout(200)
 
         estado_depois = page.evaluate("__state()")
@@ -152,6 +160,88 @@ def test_dono_remove_veiculo_vinculado(harness: Path) -> None:
     assert 88 not in estado_depois["veiculoIds"]
     deletes = [c for c in calls["deletes"] if c["url"] == "/abordagens/42/veiculos/88"]
     assert len(deletes) == 1
+
+
+def test_cancelar_confirmacao_nao_remove_veiculo(harness: Path) -> None:
+    """Cancelar a confirmação de remoção mantém o veículo vinculado."""
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script(
+            """
+            window.__authUser = { id: 1 };
+            window.__abordagem = {
+              id: 42,
+              data_hora: new Date().toISOString(),
+              endereco_texto: 'RUA TESTE, 100',
+              observacao: null,
+              usuario_id: 1,
+              usuario: { id: 1, posto_graduacao: 'SD', nome_guerra: 'TESTE' },
+              pessoas: [],
+              veiculos: [{ id: 88, placa: 'XYZ9Z99', modelo: 'ONIX', cor: 'PRATA' }],
+              fotos: [],
+              ocorrencias: [],
+            };
+            """
+        )
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.get_by_text("XYZ9Z99", exact=True).click()
+        page.wait_for_timeout(200)
+        page.locator('button[title="Remover veículo"]').click()
+        page.wait_for_timeout(100)
+        page.get_by_role("button", name="Cancelar").click()
+        page.wait_for_timeout(200)
+
+        estado_depois = page.evaluate("__state()")
+        calls = page.evaluate("__calls")
+        browser.close()
+
+    assert 88 in estado_depois["veiculoIds"]
+    assert calls["deletes"] == []
+
+
+def test_terceiro_nao_ve_lixeira_na_foto_ampliada_do_veiculo(harness: Path) -> None:
+    """Usuário que não é dono nem admin não vê a lixeira na foto ampliada do veículo."""
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except PlaywrightError:
+            pytest.skip("Chromium indisponível — rode `playwright install chromium`")
+
+        page = browser.new_page()
+        page.add_init_script(
+            """
+            window.__authUser = { id: 2 };
+            window.__abordagem = {
+              id: 42,
+              data_hora: new Date().toISOString(),
+              endereco_texto: 'RUA TESTE, 100',
+              observacao: null,
+              usuario_id: 1,
+              usuario: { id: 1, posto_graduacao: 'SD', nome_guerra: 'TESTE' },
+              pessoas: [],
+              veiculos: [{ id: 88, placa: 'XYZ9Z99', modelo: 'ONIX', cor: 'PRATA' }],
+              fotos: [],
+              ocorrencias: [],
+            };
+            """
+        )
+        page.goto(f"file://{harness}")
+        page.wait_for_timeout(300)
+
+        page.get_by_text("XYZ9Z99", exact=True).click()
+        page.wait_for_timeout(200)
+        lixeira = page.locator('button[title="Remover veículo"]')
+        visivel = lixeira.count() > 0 and lixeira.is_visible()
+        browser.close()
+
+    assert not visivel
 
 
 def test_dono_cadastra_veiculo_novo_inline_e_vincula(harness: Path) -> None:
