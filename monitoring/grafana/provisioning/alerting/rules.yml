@@ -220,11 +220,18 @@ groups:
         labels:
           severity: warning
         data:
+          # Mesmo bug do alert-latencia-alta (achado 2026-07-07): com tráfego
+          # baixo, uma janela de 5min sem NENHUMA request faz
+          # sum(rate(total[5m])) == 0, e a divisão vira 0/0 == NaN — não "sem
+          # erro". O avaliador de threshold do Grafana trata NaN como se
+          # satisfizesse "gt", disparando o alerta com "(atual: NaN%)". O "and
+          # on()" remove a série da resposta quando não há tráfego mínimo (>=3
+          # reqs) na janela, em vez de deixar o NaN chegar ao threshold.
           - refId: A
             relativeTimeRange: {from: 300, to: 0}
             datasourceUid: prometheus-argus
             model:
-              expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100
+              expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100 and on () (sum(increase(http_requests_total[5m])) >= 3)
               refId: A
               instant: true
               range: false
